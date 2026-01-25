@@ -5,10 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
-  test-go:
-    name: Go Tests
+  test:
+    name: Tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -26,14 +27,11 @@ jobs:
         run: go build ./...
 
       - name: Test
-        run: go test ./... -v -race
+        run: go test -v ./...
 
-  lint-go:
-    name: Go Lint
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: go
     steps:
       - uses: actions/checkout@v4
 
@@ -48,3 +46,50 @@ jobs:
         with:
           working-directory: go
           version: latest
+
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+
+      - name: Cache Go tools
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin
+          key: go-tools-${{ runner.os }}-govulncheck-v1.1.4
+
+      - name: Run govulncheck
+        run: |
+          command -v govulncheck || go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+          govulncheck ./...
+
+  race:
+    name: Race Detection
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+
+      - name: Test with race detector
+        run: go test -race -v ./...
