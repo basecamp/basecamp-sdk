@@ -304,7 +304,7 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	if err != nil {
 		return ErrNetwork(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
