@@ -1,0 +1,8 @@
+{
+  "content": "Review hardware schematics",
+  "description": "<div>Check for power consumption issues</div>",
+  "assignee_ids": [1049715920],
+  "notify": true,
+  "due_on": "2022-12-10",
+  "starts_on": "2022-11-28"
+}

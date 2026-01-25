@@ -33,6 +33,7 @@ type Client struct {
 
 	// Services
 	projects *ProjectsService
+	todos    *TodosService
 }
 
 // Response wraps an API response.
@@ -474,4 +475,12 @@ func (c *Client) Projects() *ProjectsService {
 		c.projects = NewProjectsService(c)
 	}
 	return c.projects
+}
+
+// Todos returns the TodosService for todo operations.
+func (c *Client) Todos() *TodosService {
+	if c.todos == nil {
+		c.todos = NewTodosService(c)
+	}
+	return c.todos
 }

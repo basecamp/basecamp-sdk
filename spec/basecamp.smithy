@@ -9,7 +9,7 @@ use smithy.api#httpQuery
 use smithy.api#httpPayload
 use smithy.api#required
 
-/// Basecamp API (projects slice)
+/// Basecamp API
 service Basecamp {
   version: "2026-01-25"
   operations: [
@@ -17,7 +17,14 @@ service Basecamp {
     GetProject,
     CreateProject,
     UpdateProject,
-    TrashProject
+    TrashProject,
+    ListTodos,
+    GetTodo,
+    CreateTodo,
+    UpdateTodo,
+    TrashTodo,
+    CompleteTodo,
+    UncompleteTodo
   ]
 }
 
@@ -176,4 +183,268 @@ structure ClientCompany {
 structure ClientSide {
   url: String
   app_url: String
+}
+
+// ===== Todo Operations =====
+
+/// List todos in a todolist
+@http(method: "GET", uri: "/buckets/{projectId}/todolists/{todolistId}/todos.json")
+operation ListTodos {
+  input: ListTodosInput
+  output: ListTodosOutput
+}
+
+structure ListTodosInput {
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  todolistId: TodolistId
+
+  @httpQuery("status")
+  status: TodoStatus
+
+  @httpQuery("completed")
+  completed: Boolean
+}
+
+structure ListTodosOutput {
+  @httpPayload
+  todos: TodoList
+}
+
+/// Get a single todo by id
+@http(method: "GET", uri: "/buckets/{projectId}/todos/{todoId}.json")
+operation GetTodo {
+  input: GetTodoInput
+  output: GetTodoOutput
+}
+
+structure GetTodoInput {
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  todoId: TodoId
+}
+
+structure GetTodoOutput {
+  @httpPayload
+  todo: Todo
+}
+
+/// Create a new todo in a todolist
+@http(method: "POST", uri: "/buckets/{projectId}/todolists/{todolistId}/todos.json")
+operation CreateTodo {
+  input: CreateTodoInput
+  output: CreateTodoOutput
+}
+
+structure CreateTodoInput {
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  todolistId: TodolistId
+
+  @required
+  content: TodoContent
+
+  description: TodoDescription
+  assignee_ids: PersonIdList
+  completion_subscriber_ids: PersonIdList
+  notify: Boolean
+  due_on: ISO8601Date
+  starts_on: ISO8601Date
+}
+
+structure CreateTodoOutput {
+  @httpPayload
+  todo: Todo
+}
+
+/// Update an existing todo
+@http(method: "PUT", uri: "/buckets/{projectId}/todos/{todoId}.json")
+operation UpdateTodo {
+  input: UpdateTodoInput
+  output: UpdateTodoOutput
+}
+
+structure UpdateTodoInput {
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  todoId: TodoId
+
+  content: TodoContent
+  description: TodoDescription
+  assignee_ids: PersonIdList
+  completion_subscriber_ids: PersonIdList
+  notify: Boolean
+  due_on: ISO8601Date
+  starts_on: ISO8601Date
+}
+
+structure UpdateTodoOutput {
+  @httpPayload
+  todo: Todo
+}
+
+/// Trash a todo (returns 204 No Content)
+@http(method: "DELETE", uri: "/buckets/{projectId}/todos/{todoId}.json")
+operation TrashTodo {
+  input: TrashTodoInput
+  output: TrashTodoOutput
+}
+
+structure TrashTodoInput {
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  todoId: TodoId
+}
+
+structure TrashTodoOutput {}
+
+/// Mark a todo as complete
+@http(method: "POST", uri: "/buckets/{projectId}/todos/{todoId}/completion.json")
+operation CompleteTodo {
+  input: CompleteTodoInput
+  output: CompleteTodoOutput
+}
+
+structure CompleteTodoInput {
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  todoId: TodoId
+}
+
+structure CompleteTodoOutput {}
+
+/// Mark a todo as incomplete
+@http(method: "DELETE", uri: "/buckets/{projectId}/todos/{todoId}/completion.json")
+operation UncompleteTodo {
+  input: UncompleteTodoInput
+  output: UncompleteTodoOutput
+}
+
+structure UncompleteTodoInput {
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  todoId: TodoId
+}
+
+structure UncompleteTodoOutput {}
+
+// ===== Todo Shapes =====
+
+long TodoId
+long TodolistId
+long PersonId
+string TodoContent
+string TodoDescription
+
+@documentation("active|archived|trashed")
+string TodoStatus
+
+list TodoList {
+  member: Todo
+}
+
+list PersonIdList {
+  member: PersonId
+}
+
+structure Todo {
+  id: TodoId
+  status: TodoStatus
+  visible_to_clients: Boolean
+  created_at: ISO8601Timestamp
+  updated_at: ISO8601Timestamp
+  title: String
+  inherits_status: Boolean
+  type: String
+  url: String
+  app_url: String
+  bookmark_url: String
+  subscription_url: String
+  comments_count: Integer
+  comments_url: String
+  position: Integer
+  parent: TodoParent
+  bucket: TodoBucket
+  creator: Person
+  description: TodoDescription
+  completed: Boolean
+  content: TodoContent
+  starts_on: ISO8601Date
+  due_on: ISO8601Date
+  assignees: PersonList
+  completion_subscribers: PersonList
+  completion_url: String
+}
+
+structure TodoParent {
+  id: TodolistId
+  title: String
+  type: String
+  url: String
+  app_url: String
+}
+
+structure TodoBucket {
+  id: ProjectId
+  name: String
+  type: String
+}
+
+structure Person {
+  id: PersonId
+  attachable_sgid: String
+  name: String
+  email_address: String
+  personable_type: String
+  title: String
+  bio: String
+  location: String
+  created_at: ISO8601Timestamp
+  updated_at: ISO8601Timestamp
+  admin: Boolean
+  owner: Boolean
+  client: Boolean
+  employee: Boolean
+  time_zone: String
+  avatar_url: String
+  company: PersonCompany
+  can_manage_projects: Boolean
+  can_manage_people: Boolean
+}
+
+structure PersonCompany {
+  id: Long
+  name: String
+}
+
+list PersonList {
+  member: Person
 }
