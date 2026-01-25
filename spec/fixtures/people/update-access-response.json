@@ -1,0 +1,20 @@
+{
+  "granted": [
+    {
+      "id": 1049715920,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTIwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--f0d48d2c54d09541d4fe79b0b4de328e89b4a0c0",
+      "name": "Steve Marsh",
+      "email_address": "steve@honchodesign.com",
+      "personable_type": "User",
+      "title": "Legacy Directives Strategist"
+    }
+  ],
+  "revoked": [
+    {
+      "id": 1049715925,
+      "name": "Former Member",
+      "email_address": "former@example.com",
+      "personable_type": "User"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "grant": [1049715920],
+  "revoke": [1049715925],
+  "create": [
+    {
+      "name": "New Person",
+      "email_address": "new@example.com",
+      "title": "Developer",
+      "company_name": "Acme Corp"
+    }
+  ]
+}
