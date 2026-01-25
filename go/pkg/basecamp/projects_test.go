@@ -9,7 +9,7 @@ import (
 
 // fixturesDir returns the path to the fixtures directory.
 func fixturesDir() string {
-	return filepath.Join("..", "..", "spec", "fixtures", "projects")
+	return filepath.Join("..", "..", "..", "spec", "fixtures", "projects")
 }
 
 // loadFixture reads a fixture file and returns its contents.
