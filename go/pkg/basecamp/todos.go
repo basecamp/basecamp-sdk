@@ -36,24 +36,32 @@ type Todo struct {
 
 // Person represents a Basecamp user.
 type Person struct {
-	ID             int64  `json:"id"`
-	AttachableSGID string `json:"attachable_sgid,omitempty"`
-	Name           string `json:"name"`
-	EmailAddress   string `json:"email_address,omitempty"`
-	PersonableType string `json:"personable_type,omitempty"`
-	Title          string `json:"title,omitempty"`
-	Bio            string `json:"bio,omitempty"`
-	Location       string `json:"location,omitempty"`
-	CreatedAt      string `json:"created_at,omitempty"`
-	UpdatedAt      string `json:"updated_at,omitempty"`
-	Admin          bool   `json:"admin,omitempty"`
-	Owner          bool   `json:"owner,omitempty"`
-	Client         bool   `json:"client,omitempty"`
-	Employee       bool   `json:"employee,omitempty"`
-	TimeZone       string `json:"time_zone,omitempty"`
-	AvatarURL      string `json:"avatar_url,omitempty"`
-	CanPing        bool   `json:"can_ping,omitempty"`
-	CompanyID      int64  `json:"company,omitempty"`
+	ID                 int64          `json:"id"`
+	AttachableSGID     string         `json:"attachable_sgid,omitempty"`
+	Name               string         `json:"name"`
+	EmailAddress       string         `json:"email_address,omitempty"`
+	PersonableType     string         `json:"personable_type,omitempty"`
+	Title              string         `json:"title,omitempty"`
+	Bio                string         `json:"bio,omitempty"`
+	Location           string         `json:"location,omitempty"`
+	CreatedAt          string         `json:"created_at,omitempty"`
+	UpdatedAt          string         `json:"updated_at,omitempty"`
+	Admin              bool           `json:"admin,omitempty"`
+	Owner              bool           `json:"owner,omitempty"`
+	Client             bool           `json:"client,omitempty"`
+	Employee           bool           `json:"employee,omitempty"`
+	TimeZone           string         `json:"time_zone,omitempty"`
+	AvatarURL          string         `json:"avatar_url,omitempty"`
+	CanPing            bool           `json:"can_ping,omitempty"`
+	Company            *PersonCompany `json:"company,omitempty"`
+	CanManageProjects  bool           `json:"can_manage_projects,omitempty"`
+	CanManagePeople    bool           `json:"can_manage_people,omitempty"`
+}
+
+// PersonCompany represents a company associated with a person.
+type PersonCompany struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
 }
 
 // Parent represents the parent object of a todo.
