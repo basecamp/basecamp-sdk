@@ -38,6 +38,7 @@ type Client struct {
 	todolists      *TodolistsService
 	todolistGroups *TodolistGroupsService
 	people         *PeopleService
+	comments       *CommentsService
 }
 
 // Response wraps an API response.
@@ -519,4 +520,12 @@ func (c *Client) People() *PeopleService {
 		c.people = NewPeopleService(c)
 	}
 	return c.people
+}
+
+// Comments returns the CommentsService for comment operations.
+func (c *Client) Comments() *CommentsService {
+	if c.comments == nil {
+		c.comments = NewCommentsService(c)
+	}
+	return c.comments
 }
