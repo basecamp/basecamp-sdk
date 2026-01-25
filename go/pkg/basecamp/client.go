@@ -263,7 +263,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 	if err != nil {
 		return nil, ErrNetwork(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if c.verbose {
 		fmt.Printf("[basecamp-sdk] HTTP %d\n", resp.StatusCode)

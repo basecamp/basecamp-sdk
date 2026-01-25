@@ -15,13 +15,12 @@ jobs:
       run:
         working-directory: go
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version-file: go/go.mod
-          cache-dependency-path: go/go.sum
+          go-version: '1.25'
 
       - name: Build
         run: go build ./...
@@ -33,16 +32,15 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version-file: go/go.mod
-          cache-dependency-path: go/go.sum
+          go-version: '1.25'
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           working-directory: go
           version: latest
@@ -50,19 +48,16 @@ jobs:
   security:
     name: Security
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    continue-on-error: true
     defaults:
       run:
         working-directory: go
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version-file: go/go.mod
-          cache-dependency-path: go/go.sum
+          go-version: '1.25'
 
       - name: Cache Go tools
         uses: actions/cache@v4
@@ -78,19 +73,16 @@ jobs:
   race:
     name: Race Detection
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    continue-on-error: true
     defaults:
       run:
         working-directory: go
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version-file: go/go.mod
-          cache-dependency-path: go/go.sum
+          go-version: '1.25'
 
       - name: Test with race detector
         run: go test -race -v ./...

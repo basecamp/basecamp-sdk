@@ -84,7 +84,7 @@ func (c *Cache) Set(key string, body []byte, etag string) error {
 		return err
 	}
 	if err := os.Rename(tmpFile, bodyFile); err != nil {
-		os.Remove(tmpFile)
+		_ = os.Remove(tmpFile)
 		return err
 	}
 
@@ -110,7 +110,7 @@ func (c *Cache) Set(key string, body []byte, etag string) error {
 		return err
 	}
 	if err := os.Rename(tmpEtags, etagsFile); err != nil {
-		os.Remove(tmpEtags)
+		_ = os.Remove(tmpEtags)
 		return err
 	}
 
@@ -128,7 +128,7 @@ func (c *Cache) Clear() error {
 	}
 
 	etagsFile := filepath.Join(c.dir, "etags.json")
-	os.Remove(etagsFile)
+	_ = os.Remove(etagsFile)
 
 	return nil
 }
@@ -140,7 +140,7 @@ func (c *Cache) Invalidate(key string) error {
 
 	// Remove body file
 	bodyFile := filepath.Join(c.dir, "responses", key+".body")
-	os.Remove(bodyFile)
+	_ = os.Remove(bodyFile)
 
 	// Remove from etags.json
 	etagsFile := filepath.Join(c.dir, "etags.json")
