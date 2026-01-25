@@ -32,8 +32,11 @@ type Client struct {
 	verbose       bool
 
 	// Services
-	projects *ProjectsService
-	todos    *TodosService
+	projects       *ProjectsService
+	todos          *TodosService
+	todosets       *TodosetsService
+	todolists      *TodolistsService
+	todolistGroups *TodolistGroupsService
 }
 
 // Response wraps an API response.
@@ -483,4 +486,28 @@ func (c *Client) Todos() *TodosService {
 		c.todos = NewTodosService(c)
 	}
 	return c.todos
+}
+
+// Todosets returns the TodosetsService for todoset operations.
+func (c *Client) Todosets() *TodosetsService {
+	if c.todosets == nil {
+		c.todosets = NewTodosetsService(c)
+	}
+	return c.todosets
+}
+
+// Todolists returns the TodolistsService for todolist operations.
+func (c *Client) Todolists() *TodolistsService {
+	if c.todolists == nil {
+		c.todolists = NewTodolistsService(c)
+	}
+	return c.todolists
+}
+
+// TodolistGroups returns the TodolistGroupsService for todolist group operations.
+func (c *Client) TodolistGroups() *TodolistGroupsService {
+	if c.todolistGroups == nil {
+		c.todolistGroups = NewTodolistGroupsService(c)
+	}
+	return c.todolistGroups
 }

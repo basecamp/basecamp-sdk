@@ -1,0 +1,60 @@
+{
+  "id": 1069479519,
+  "status": "active",
+  "visible_to_clients": false,
+  "created_at": "2022-11-22T08:25:24.425Z",
+  "updated_at": "2022-11-22T17:56:27.363Z",
+  "title": "Hardware",
+  "inherits_status": true,
+  "type": "Todolist",
+  "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519.json",
+  "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479519",
+  "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NTE5P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--ebab26d1c66e726e17dd785d0e46bfc4e5cba3f5.json",
+  "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479519/subscription.json",
+  "comments_count": 0,
+  "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479519/comments.json",
+  "position": 1,
+  "parent": {
+    "id": 1069479338,
+    "title": "To-dos",
+    "type": "Todoset",
+    "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todosets/1069479338.json",
+    "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todosets/1069479338"
+  },
+  "bucket": {
+    "id": 2085958500,
+    "name": "The Leto Locator",
+    "type": "Project"
+  },
+  "creator": {
+    "id": 1049715915,
+    "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+    "name": "Victor Cooper",
+    "email_address": "victor@honchodesign.com",
+    "personable_type": "User",
+    "title": "Chief Strategist",
+    "bio": "Don't let your dreams be dreams",
+    "location": "Chicago, IL",
+    "created_at": "2022-11-22T08:23:21.732Z",
+    "updated_at": "2022-11-22T08:23:21.904Z",
+    "admin": true,
+    "owner": true,
+    "client": false,
+    "employee": true,
+    "time_zone": "America/Chicago",
+    "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--e609ef146e39f9ca5e4bb7571f0f7da68e5f6302/avatar?v=1",
+    "company": {
+      "id": 1033447817,
+      "name": "Honcho Design"
+    },
+    "can_manage_projects": true,
+    "can_manage_people": true
+  },
+  "description": "",
+  "completed": false,
+  "completed_ratio": "0/3",
+  "name": "Hardware",
+  "todos_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519/todos.json",
+  "groups_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519/groups.json",
+  "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479519/todos"
+}
