@@ -61,7 +61,7 @@ func NewCredentialStore(fallbackDir string) *CredentialStore {
 	testKey := "basecamp-sdk::test"
 	err := keyring.Set(serviceName, testKey, "test")
 	if err == nil {
-		keyring.Delete(serviceName, testKey)
+		_ = keyring.Delete(serviceName, testKey) // Cleanup test key
 		return &CredentialStore{useKeyring: true, fallbackDir: fallbackDir}
 	}
 	return &CredentialStore{useKeyring: false, fallbackDir: fallbackDir}

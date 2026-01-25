@@ -94,7 +94,7 @@ func (c *Cache) Set(key string, body []byte, etag string) error {
 
 	// Load existing etags
 	if data, err := os.ReadFile(etagsFile); err == nil {
-		json.Unmarshal(data, &etags)
+		_ = json.Unmarshal(data, &etags) // Ignore parse errors, start fresh
 	}
 
 	etags[key] = etag
@@ -147,7 +147,7 @@ func (c *Cache) Invalidate(key string) error {
 	etags := make(map[string]string)
 
 	if data, err := os.ReadFile(etagsFile); err == nil {
-		json.Unmarshal(data, &etags)
+		_ = json.Unmarshal(data, &etags) // Ignore parse errors, start fresh
 	}
 
 	delete(etags, key)

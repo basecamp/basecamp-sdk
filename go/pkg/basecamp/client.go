@@ -294,7 +294,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		// Cache GET responses with ETag
 		if method == "GET" && cacheKey != "" {
 			if etag := resp.Header.Get("ETag"); etag != "" {
-				c.cache.Set(cacheKey, respBody, etag)
+				_ = c.cache.Set(cacheKey, respBody, etag) // Ignore cache write errors
 				if c.verbose {
 					fmt.Printf("[basecamp-sdk] Cache: stored with ETag %s\n", etag)
 				}
