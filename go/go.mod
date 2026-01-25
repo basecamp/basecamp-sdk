@@ -1,6 +1,6 @@
 module github.com/basecamp/basecamp-sdk/go
 
-go 1.24.0
+go 1.25.0
 
 require github.com/zalando/go-keyring v0.2.6
 
