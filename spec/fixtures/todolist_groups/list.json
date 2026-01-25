@@ -1,0 +1,118 @@
+[
+  {
+    "id": 1069479600,
+    "status": "active",
+    "visible_to_clients": false,
+    "created_at": "2022-11-22T10:15:24.425Z",
+    "updated_at": "2022-11-22T17:56:27.363Z",
+    "title": "Phase 1",
+    "inherits_status": true,
+    "type": "Todolist",
+    "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479600.json",
+    "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479600",
+    "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NjAwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0.json",
+    "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479600/subscription.json",
+    "comments_count": 0,
+    "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479600/comments.json",
+    "position": 1,
+    "parent": {
+      "id": 1069479519,
+      "title": "Hardware",
+      "type": "Todolist",
+      "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519.json",
+      "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479519"
+    },
+    "bucket": {
+      "id": 2085958500,
+      "name": "The Leto Locator",
+      "type": "Project"
+    },
+    "creator": {
+      "id": 1049715915,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+      "name": "Victor Cooper",
+      "email_address": "victor@honchodesign.com",
+      "personable_type": "User",
+      "title": "Chief Strategist",
+      "bio": "Don't let your dreams be dreams",
+      "location": "Chicago, IL",
+      "created_at": "2022-11-22T08:23:21.732Z",
+      "updated_at": "2022-11-22T08:23:21.904Z",
+      "admin": true,
+      "owner": true,
+      "client": false,
+      "employee": true,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--e609ef146e39f9ca5e4bb7571f0f7da68e5f6302/avatar?v=1",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      },
+      "can_manage_projects": true,
+      "can_manage_people": true
+    },
+    "name": "Phase 1",
+    "completed": false,
+    "completed_ratio": "1/3",
+    "todos_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479600/todos.json",
+    "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479600/todos"
+  },
+  {
+    "id": 1069479601,
+    "status": "active",
+    "visible_to_clients": false,
+    "created_at": "2022-11-22T10:20:24.425Z",
+    "updated_at": "2022-11-22T17:56:27.363Z",
+    "title": "Phase 2",
+    "inherits_status": true,
+    "type": "Todolist",
+    "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479601.json",
+    "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479601",
+    "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NjAxP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0.json",
+    "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479601/subscription.json",
+    "comments_count": 0,
+    "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479601/comments.json",
+    "position": 2,
+    "parent": {
+      "id": 1069479519,
+      "title": "Hardware",
+      "type": "Todolist",
+      "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519.json",
+      "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479519"
+    },
+    "bucket": {
+      "id": 2085958500,
+      "name": "The Leto Locator",
+      "type": "Project"
+    },
+    "creator": {
+      "id": 1049715915,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+      "name": "Victor Cooper",
+      "email_address": "victor@honchodesign.com",
+      "personable_type": "User",
+      "title": "Chief Strategist",
+      "bio": "Don't let your dreams be dreams",
+      "location": "Chicago, IL",
+      "created_at": "2022-11-22T08:23:21.732Z",
+      "updated_at": "2022-11-22T08:23:21.904Z",
+      "admin": true,
+      "owner": true,
+      "client": false,
+      "employee": true,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--e609ef146e39f9ca5e4bb7571f0f7da68e5f6302/avatar?v=1",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      },
+      "can_manage_projects": true,
+      "can_manage_people": true
+    },
+    "name": "Phase 2",
+    "completed": false,
+    "completed_ratio": "0/2",
+    "todos_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479601/todos.json",
+    "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479601/todos"
+  }
+]
