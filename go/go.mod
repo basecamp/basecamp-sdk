@@ -1,4 +1,4 @@
-module github.com/basecamp/basecamp-sdk
+module github.com/basecamp/basecamp-sdk/go
 
 go 1.24.0
 
