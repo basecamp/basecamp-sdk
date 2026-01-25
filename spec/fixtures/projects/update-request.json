@@ -1,0 +1,9 @@
+{
+  "name": "Marketing Campaign",
+  "description": "For Client: Xyz Corp Conference",
+  "admissions": "team",
+  "schedule_attributes": {
+    "start_date": "2022-01-01",
+    "end_date": "2022-04-01"
+  }
+}
