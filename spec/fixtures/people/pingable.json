@@ -1,0 +1,21 @@
+[
+  {
+    "id": 1049715915,
+    "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+    "name": "Victor Cooper",
+    "email_address": "victor@honchodesign.com",
+    "personable_type": "User",
+    "title": "Chief Strategist",
+    "bio": "Don't let your dreams be dreams",
+    "location": "Chicago, IL",
+    "created_at": "2022-11-22T08:23:21.732Z",
+    "updated_at": "2022-11-22T08:23:21.904Z",
+    "admin": true,
+    "owner": true,
+    "client": false,
+    "employee": true,
+    "time_zone": "America/Chicago",
+    "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--e609ef146e39f9ca5e4bb7571f0f7da68e5f6302/avatar?v=1",
+    "can_ping": true
+  }
+]
