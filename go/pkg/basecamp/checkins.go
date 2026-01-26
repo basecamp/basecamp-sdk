@@ -108,6 +108,12 @@ type CreateAnswerRequest struct {
 	GroupOn string `json:"group_on,omitempty"`
 }
 
+// createAnswerRequestWrapper wraps the create request for the API.
+// The Basecamp API expects: {"question_answer": {"content": "...", "group_on": "..."}}
+type createAnswerRequestWrapper struct {
+	QuestionAnswer *CreateAnswerRequest `json:"question_answer"`
+}
+
 // UpdateAnswerRequest specifies the parameters for updating an answer.
 type UpdateAnswerRequest struct {
 	// Content is the updated answer content in HTML (required).
@@ -115,6 +121,7 @@ type UpdateAnswerRequest struct {
 }
 
 // updateAnswerRequestWrapper wraps the update request for the API.
+// The Basecamp API expects: {"question_answer": {"content": "..."}}
 type updateAnswerRequestWrapper struct {
 	QuestionAnswer *UpdateAnswerRequest `json:"question_answer"`
 }
@@ -309,8 +316,9 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 		return nil, ErrUsage("answer content is required")
 	}
 
+	wrapper := &createAnswerRequestWrapper{QuestionAnswer: req}
 	path := fmt.Sprintf("/buckets/%d/questions/%d/answers.json", bucketID, questionID)
-	resp, err := s.client.Post(ctx, path, req)
+	resp, err := s.client.Post(ctx, path, wrapper)
 	if err != nil {
 		return nil, err
 	}
