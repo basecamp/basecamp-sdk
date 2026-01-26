@@ -43,6 +43,7 @@ type Client struct {
 	messageBoards  *MessageBoardsService
 	messageTypes   *MessageTypesService
 	webhooks       *WebhooksService
+	events         *EventsService
 }
 
 // Response wraps an API response.
@@ -564,4 +565,12 @@ func (c *Client) Webhooks() *WebhooksService {
 		c.webhooks = NewWebhooksService(c)
 	}
 	return c.webhooks
+}
+
+// Events returns the EventsService for event operations.
+func (c *Client) Events() *EventsService {
+	if c.events == nil {
+		c.events = NewEventsService(c)
+	}
+	return c.events
 }
