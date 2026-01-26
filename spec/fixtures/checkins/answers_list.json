@@ -1,0 +1,106 @@
+[
+  {
+    "id": 1069479450,
+    "status": "active",
+    "visible_to_clients": false,
+    "created_at": "2022-10-28T17:30:00.000Z",
+    "updated_at": "2022-10-28T17:30:00.000Z",
+    "title": "What did you work on today?",
+    "inherits_status": true,
+    "type": "Question::Answer",
+    "url": "https://3.basecampapi.com/195539477/buckets/2085958499/question_answers/1069479450.json",
+    "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/question_answers/1069479450",
+    "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NDUwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--aabbccdd.json",
+    "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479450/subscription.json",
+    "comments_count": 2,
+    "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479450/comments.json",
+    "content": "<div>Worked on the new landing page design and reviewed PRs.</div>",
+    "group_on": "2022-10-28",
+    "parent": {
+      "id": 1069479410,
+      "title": "What did you work on today?",
+      "type": "Question",
+      "url": "https://3.basecampapi.com/195539477/buckets/2085958499/questions/1069479410.json",
+      "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/questions/1069479410"
+    },
+    "bucket": {
+      "id": 2085958499,
+      "name": "The Leto Laptop",
+      "type": "Project"
+    },
+    "creator": {
+      "id": 1049715914,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+      "name": "Victor Cooper",
+      "email_address": "victor@honchodesign.com",
+      "personable_type": "User",
+      "title": "Chief Strategist",
+      "bio": "Don't let your dreams be dreams",
+      "location": "Chicago, IL",
+      "created_at": "2022-11-22T08:23:21.732Z",
+      "updated_at": "2022-11-22T08:23:21.732Z",
+      "admin": true,
+      "owner": true,
+      "client": false,
+      "employee": true,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+      "can_manage_projects": true,
+      "can_manage_people": true
+    }
+  },
+  {
+    "id": 1069479460,
+    "status": "active",
+    "visible_to_clients": false,
+    "created_at": "2022-10-28T17:45:00.000Z",
+    "updated_at": "2022-10-28T17:45:00.000Z",
+    "title": "What did you work on today?",
+    "inherits_status": true,
+    "type": "Question::Answer",
+    "url": "https://3.basecampapi.com/195539477/buckets/2085958499/question_answers/1069479460.json",
+    "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/question_answers/1069479460",
+    "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NDYwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--aabbccdd.json",
+    "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479460/subscription.json",
+    "comments_count": 0,
+    "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479460/comments.json",
+    "content": "<div>Fixed authentication bugs and updated documentation.</div>",
+    "group_on": "2022-10-28",
+    "parent": {
+      "id": 1069479410,
+      "title": "What did you work on today?",
+      "type": "Question",
+      "url": "https://3.basecampapi.com/195539477/buckets/2085958499/questions/1069479410.json",
+      "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/questions/1069479410"
+    },
+    "bucket": {
+      "id": 2085958499,
+      "name": "The Leto Laptop",
+      "type": "Project"
+    },
+    "creator": {
+      "id": 1049715915,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+      "name": "Annie Bryan",
+      "email_address": "annie@honchodesign.com",
+      "personable_type": "User",
+      "title": "Central Markets Manager",
+      "bio": null,
+      "location": null,
+      "created_at": "2022-11-22T08:23:21.732Z",
+      "updated_at": "2022-11-22T08:23:21.732Z",
+      "admin": false,
+      "owner": false,
+      "client": false,
+      "employee": true,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--avatar",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      },
+      "can_manage_projects": true,
+      "can_manage_people": false
+    }
+  }
+]
