@@ -8,6 +8,8 @@ use smithy.api#httpLabel
 use smithy.api#httpQuery
 use smithy.api#httpPayload
 use smithy.api#required
+use smithy.api#readonly
+use smithy.api#idempotent
 use aws.protocols#restJson1
 
 /// Basecamp API
@@ -191,6 +193,7 @@ service Basecamp {
 }
 
 /// List projects (active by default; optionally archived/trashed)
+@readonly
 @http(method: "GET", uri: "/projects.json")
 operation ListProjects {
   input: ListProjectsInput
@@ -208,6 +211,7 @@ structure ListProjectsOutput {
 }
 
 /// Get a single project by id
+@readonly
 @http(method: "GET", uri: "/projects/{projectId}")
 operation GetProject {
   input: GetProjectInput
@@ -244,6 +248,7 @@ structure CreateProjectOutput {
 }
 
 /// Update an existing project
+@idempotent
 @http(method: "PUT", uri: "/projects/{projectId}")
 operation UpdateProject {
   input: UpdateProjectInput
@@ -268,6 +273,7 @@ structure UpdateProjectOutput {
 }
 
 /// Trash a project (returns 204 No Content)
+@idempotent
 @http(method: "DELETE", uri: "/projects/{projectId}")
 operation TrashProject {
   input: TrashProjectInput
@@ -350,6 +356,7 @@ structure ClientSide {
 // ===== Todo Operations =====
 
 /// List todos in a todolist
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/todolists/{todolistId}/todos.json")
 operation ListTodos {
   input: ListTodosInput
@@ -378,6 +385,7 @@ structure ListTodosOutput {
 }
 
 /// Get a single todo by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/todos/{todoId}")
 operation GetTodo {
   input: GetTodoInput
@@ -432,6 +440,7 @@ structure CreateTodoOutput {
 }
 
 /// Update an existing todo
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/todos/{todoId}")
 operation UpdateTodo {
   input: UpdateTodoInput
@@ -462,6 +471,7 @@ structure UpdateTodoOutput {
 }
 
 /// Trash a todo (returns 204 No Content)
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/todos/{todoId}")
 operation TrashTodo {
   input: TrashTodoInput
@@ -500,6 +510,7 @@ structure CompleteTodoInput {
 structure CompleteTodoOutput {}
 
 /// Mark a todo as incomplete
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/todos/{todoId}/completion.json")
 operation UncompleteTodo {
   input: UncompleteTodoInput
@@ -521,6 +532,7 @@ structure UncompleteTodoOutput {}
 // ===== Todoset Operations =====
 
 /// Get a todoset (container for todolists in a project)
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/todosets/{todosetId}")
 operation GetTodoset {
   input: GetTodosetInput
@@ -545,6 +557,7 @@ structure GetTodosetOutput {
 // ===== Todolist Operations =====
 
 /// List todolists in a todoset
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/todosets/{todosetId}/todolists.json")
 operation ListTodolists {
   input: ListTodolistsInput
@@ -571,6 +584,7 @@ structure ListTodolistsOutput {
 
 /// Get a single todolist or todolist group by id
 /// The endpoint is polymorphic - the same URI returns either a Todolist or TodolistGroup
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/todolists/{id}")
 operation GetTodolistOrGroup {
   input: GetTodolistOrGroupInput
@@ -627,6 +641,7 @@ structure CreateTodolistOutput {
 
 /// Update an existing todolist or todolist group
 /// The endpoint is polymorphic - updates either a Todolist or TodolistGroup
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/todolists/{id}")
 operation UpdateTodolistOrGroup {
   input: UpdateTodolistOrGroupInput
@@ -660,6 +675,7 @@ structure UpdateTodolistOrGroupOutput {
 // TrashTodolist and TrashTodolistGroup use generic TrashRecording operation
 
 /// List groups in a todolist
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/todolists/{todolistId}/groups.json")
 operation ListTodolistGroups {
   input: ListTodolistGroupsInput
@@ -707,6 +723,7 @@ structure CreateTodolistGroupOutput {
 }
 
 /// Reposition a todolist group
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/todolists/{groupId}/position.json")
 operation RepositionTodolistGroup {
   input: RepositionTodolistGroupInput
@@ -930,6 +947,7 @@ structure TodolistGroup {
 // ===== Comment Operations (Batch 1) =====
 
 /// List comments on a recording
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}/comments.json")
 operation ListComments {
   input: ListCommentsInput
@@ -952,6 +970,7 @@ structure ListCommentsOutput {
 }
 
 /// Get a single comment by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/comments/{commentId}")
 operation GetComment {
   input: GetCommentInput
@@ -999,6 +1018,7 @@ structure CreateCommentOutput {
 }
 
 /// Update an existing comment
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/comments/{commentId}")
 operation UpdateComment {
   input: UpdateCommentInput
@@ -1028,6 +1048,7 @@ structure UpdateCommentOutput {
 // ===== Message Operations (Batch 1) =====
 
 /// List messages on a message board
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/message_boards/{boardId}/messages.json")
 operation ListMessages {
   input: ListMessagesInput
@@ -1050,6 +1071,7 @@ structure ListMessagesOutput {
 }
 
 /// Get a single message by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/messages/{messageId}")
 operation GetMessage {
   input: GetMessageInput
@@ -1104,6 +1126,7 @@ structure CreateMessageOutput {
 }
 
 /// Update an existing message
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/messages/{messageId}")
 operation UpdateMessage {
   input: UpdateMessageInput
@@ -1153,6 +1176,7 @@ structure PinMessageInput {
 structure PinMessageOutput {}
 
 /// Unpin a message from the message board
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/recordings/{messageId}/pin.json")
 operation UnpinMessage {
   input: UnpinMessageInput
@@ -1176,6 +1200,7 @@ structure UnpinMessageOutput {}
 // ===== Message Board Operations (Batch 1) =====
 
 /// Get a message board
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/message_boards/{boardId}")
 operation GetMessageBoard {
   input: GetMessageBoardInput
@@ -1200,6 +1225,7 @@ structure GetMessageBoardOutput {
 // ===== Message Type Operations (Batch 1) =====
 
 /// List message types in a project
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/categories.json")
 operation ListMessageTypes {
   input: ListMessageTypesInput
@@ -1218,6 +1244,7 @@ structure ListMessageTypesOutput {
 }
 
 /// Get a single message type by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/categories/{typeId}")
 operation GetMessageType {
   input: GetMessageTypeInput
@@ -1264,6 +1291,7 @@ structure CreateMessageTypeOutput {
 }
 
 /// Update an existing message type
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/categories/{typeId}")
 operation UpdateMessageType {
   input: UpdateMessageTypeInput
@@ -1289,6 +1317,7 @@ structure UpdateMessageTypeOutput {
 }
 
 /// Delete a message type
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/categories/{typeId}")
 operation DeleteMessageType {
   input: DeleteMessageTypeInput
@@ -1310,6 +1339,7 @@ structure DeleteMessageTypeOutput {}
 // ===== Vault Operations (Batch 2) =====
 
 /// List vaults (subfolders) in a vault
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}/vaults.json")
 operation ListVaults {
   input: ListVaultsInput
@@ -1332,6 +1362,7 @@ structure ListVaultsOutput {
 }
 
 /// Get a single vault by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}")
 operation GetVault {
   input: GetVaultInput
@@ -1379,6 +1410,7 @@ structure CreateVaultOutput {
 }
 
 /// Update an existing vault
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/vaults/{vaultId}")
 operation UpdateVault {
   input: UpdateVaultInput
@@ -1405,6 +1437,7 @@ structure UpdateVaultOutput {
 // ===== Document Operations (Batch 2) =====
 
 /// List documents in a vault
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}/documents.json")
 operation ListDocuments {
   input: ListDocumentsInput
@@ -1427,6 +1460,7 @@ structure ListDocumentsOutput {
 }
 
 /// Get a single document by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/documents/{documentId}")
 operation GetDocument {
   input: GetDocumentInput
@@ -1479,6 +1513,7 @@ structure CreateDocumentOutput {
 }
 
 /// Update an existing document
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/documents/{documentId}")
 operation UpdateDocument {
   input: UpdateDocumentInput
@@ -1508,6 +1543,7 @@ structure UpdateDocumentOutput {
 // ===== Upload Operations (Batch 2) =====
 
 /// List uploads in a vault
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}/uploads.json")
 operation ListUploads {
   input: ListUploadsInput
@@ -1530,6 +1566,7 @@ structure ListUploadsOutput {
 }
 
 /// Get a single upload by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/uploads/{uploadId}")
 operation GetUpload {
   input: GetUploadInput
@@ -1580,6 +1617,7 @@ structure CreateUploadOutput {
 }
 
 /// Update an existing upload
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/uploads/{uploadId}")
 operation UpdateUpload {
   input: UpdateUploadInput
@@ -1607,6 +1645,7 @@ structure UpdateUploadOutput {
 // Note: Use TrashRecording to trash uploads
 
 /// List versions of an upload
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/uploads/{uploadId}/versions.json")
 operation ListUploadVersions {
   input: ListUploadVersionsInput
@@ -1658,6 +1697,7 @@ structure CreateAttachmentOutput {
 // ===== Schedule Operations (Batch 3) =====
 
 /// Get a schedule
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/schedules/{scheduleId}")
 operation GetSchedule {
   input: GetScheduleInput
@@ -1680,6 +1720,7 @@ structure GetScheduleOutput {
 }
 
 /// Update schedule settings
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/schedules/{scheduleId}")
 operation UpdateScheduleSettings {
   input: UpdateScheduleSettingsInput
@@ -1705,6 +1746,7 @@ structure UpdateScheduleSettingsOutput {
 }
 
 /// List entries on a schedule
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/schedules/{scheduleId}/entries.json")
 operation ListScheduleEntries {
   input: ListScheduleEntriesInput
@@ -1730,6 +1772,7 @@ structure ListScheduleEntriesOutput {
 }
 
 /// Get a single schedule entry by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/schedule_entries/{entryId}")
 operation GetScheduleEntry {
   input: GetScheduleEntryInput
@@ -1752,6 +1795,7 @@ structure GetScheduleEntryOutput {
 }
 
 /// Get a specific occurrence of a recurring schedule entry
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}")
 operation GetScheduleEntryOccurrence {
   input: GetScheduleEntryOccurrenceInput
@@ -1814,6 +1858,7 @@ structure CreateScheduleEntryOutput {
 }
 
 /// Update an existing schedule entry
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/schedule_entries/{entryId}")
 operation UpdateScheduleEntry {
   input: UpdateScheduleEntryInput
@@ -1848,6 +1893,7 @@ structure UpdateScheduleEntryOutput {
 // ===== Timesheet Operations (Batch 3) =====
 
 /// Get account-wide timesheet report
+@readonly
 @http(method: "GET", uri: "/reports/timesheet.json")
 operation GetTimesheetReport {
   input: GetTimesheetReportInput
@@ -1871,6 +1917,7 @@ structure GetTimesheetReportOutput {
 }
 
 /// Get timesheet for a specific project
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/timesheet.json")
 operation GetProjectTimesheet {
   input: GetProjectTimesheetInput
@@ -1898,6 +1945,7 @@ structure GetProjectTimesheetOutput {
 }
 
 /// Get timesheet for a specific recording
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}/timesheet.json")
 operation GetRecordingTimesheet {
   input: GetRecordingTimesheetInput
@@ -2233,6 +2281,7 @@ structure TimesheetEntry {
 // ===== Campfire Operations =====
 
 /// List all campfires across the account
+@readonly
 @http(method: "GET", uri: "/chats.json")
 operation ListCampfires {
   input: ListCampfiresInput
@@ -2247,6 +2296,7 @@ structure ListCampfiresOutput {
 }
 
 /// Get a campfire by ID
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}")
 operation GetCampfire {
   input: GetCampfireInput
@@ -2269,6 +2319,7 @@ structure GetCampfireOutput {
 }
 
 /// List all lines (messages) in a campfire
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/lines.json")
 operation ListCampfireLines {
   input: ListCampfireLinesInput
@@ -2291,6 +2342,7 @@ structure ListCampfireLinesOutput {
 }
 
 /// Get a campfire line by ID
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/lines/{lineId}")
 operation GetCampfireLine {
   input: GetCampfireLineInput
@@ -2342,6 +2394,7 @@ structure CreateCampfireLineOutput {
 }
 
 /// Delete a campfire line
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/chats/{campfireId}/lines/{lineId}")
 operation DeleteCampfireLine {
   input: DeleteCampfireLineInput
@@ -2367,6 +2420,7 @@ structure DeleteCampfireLineOutput {}
 // ===== Chatbot Operations =====
 
 /// List all chatbots for a campfire
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/integrations.json")
 operation ListChatbots {
   input: ListChatbotsInput
@@ -2389,6 +2443,7 @@ structure ListChatbotsOutput {
 }
 
 /// Get a chatbot by ID
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
 operation GetChatbot {
   input: GetChatbotInput
@@ -2442,6 +2497,7 @@ structure CreateChatbotOutput {
 }
 
 /// Update an existing chatbot
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
 operation UpdateChatbot {
   input: UpdateChatbotInput
@@ -2473,6 +2529,7 @@ structure UpdateChatbotOutput {
 }
 
 /// Delete a chatbot
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
 operation DeleteChatbot {
   input: DeleteChatbotInput
@@ -2498,6 +2555,7 @@ structure DeleteChatbotOutput {}
 // ===== Inbox Operations =====
 
 /// Get an inbox by ID
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/inboxes/{inboxId}")
 operation GetInbox {
   input: GetInboxInput
@@ -2522,6 +2580,7 @@ structure GetInboxOutput {
 // ===== Forward Operations =====
 
 /// List all forwards in an inbox
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/inboxes/{inboxId}/forwards.json")
 operation ListForwards {
   input: ListForwardsInput
@@ -2544,6 +2603,7 @@ structure ListForwardsOutput {
 }
 
 /// Get a forward by ID
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}")
 operation GetForward {
   input: GetForwardInput
@@ -2566,6 +2626,7 @@ structure GetForwardOutput {
 }
 
 /// List all replies to a forward
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json")
 operation ListForwardReplies {
   input: ListForwardRepliesInput
@@ -2588,6 +2649,7 @@ structure ListForwardRepliesOutput {
 }
 
 /// Get a forward reply by ID
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}")
 operation GetForwardReply {
   input: GetForwardReplyInput
@@ -2786,6 +2848,7 @@ structure ForwardReply {
 // ===== CardTable Operations =====
 
 /// Get a card table by ID
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/card_tables/{cardTableId}")
 operation GetCardTable {
   input: GetCardTableInput
@@ -2810,6 +2873,7 @@ structure GetCardTableOutput {
 // ===== Card Operations =====
 
 /// List cards in a column
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/card_tables/lists/{columnId}/cards.json")
 operation ListCards {
   input: ListCardsInput
@@ -2832,6 +2896,7 @@ structure ListCardsOutput {
 }
 
 /// Get a card by ID
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/card_tables/cards/{cardId}")
 operation GetCard {
   input: GetCardInput
@@ -2883,6 +2948,7 @@ structure CreateCardOutput {
 }
 
 /// Update an existing card
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/card_tables/cards/{cardId}")
 operation UpdateCard {
   input: UpdateCardInput
@@ -2936,6 +3002,7 @@ structure MoveCardOutput {}
 // ===== CardColumn Operations =====
 
 /// Get a card column by ID
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/card_tables/columns/{columnId}")
 operation GetCardColumn {
   input: GetCardColumnInput
@@ -2985,6 +3052,7 @@ structure CreateCardColumnOutput {
 }
 
 /// Update an existing column
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/card_tables/columns/{columnId}")
 operation UpdateCardColumn {
   input: UpdateCardColumnInput
@@ -3037,6 +3105,7 @@ structure MoveCardColumnInput {
 structure MoveCardColumnOutput {}
 
 /// Set the color of a column
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/card_tables/columns/{columnId}/color.json")
 operation SetCardColumnColor {
   input: SetCardColumnColorInput
@@ -3085,6 +3154,7 @@ structure EnableCardColumnOnHoldOutput {
 }
 
 /// Disable on-hold section in a column
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json")
 operation DisableCardColumnOnHold {
   input: DisableCardColumnOnHoldInput
@@ -3140,6 +3210,7 @@ structure CreateCardStepOutput {
 }
 
 /// Update an existing step
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/card_tables/steps/{stepId}")
 operation UpdateCardStep {
   input: UpdateCardStepInput
@@ -3167,6 +3238,7 @@ structure UpdateCardStepOutput {
 }
 
 /// Mark a step as completed
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/card_tables/steps/{stepId}/completions.json")
 operation CompleteCardStep {
   input: CompleteCardStepInput
@@ -3189,6 +3261,7 @@ structure CompleteCardStepOutput {
 }
 
 /// Mark a step as incomplete
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/card_tables/steps/{stepId}/completions.json")
 operation UncompleteCardStep {
   input: UncompleteCardStepInput
@@ -3363,6 +3436,7 @@ structure CardStep {
 // ===== People Operations =====
 
 /// List all people visible to the current user
+@readonly
 @http(method: "GET", uri: "/people.json")
 operation ListPeople {
   input: ListPeopleInput
@@ -3377,6 +3451,7 @@ structure ListPeopleOutput {
 }
 
 /// Get a person by ID
+@readonly
 @http(method: "GET", uri: "/people/{personId}")
 operation GetPerson {
   input: GetPersonInput
@@ -3395,6 +3470,7 @@ structure GetPersonOutput {
 }
 
 /// Get the current authenticated user's profile
+@readonly
 @http(method: "GET", uri: "/my/profile.json")
 operation GetMyProfile {
   input: GetMyProfileInput
@@ -3409,6 +3485,7 @@ structure GetMyProfileOutput {
 }
 
 /// List all active people on a project
+@readonly
 @http(method: "GET", uri: "/projects/{projectId}/people.json")
 operation ListProjectPeople {
   input: ListProjectPeopleInput
@@ -3427,6 +3504,7 @@ structure ListProjectPeopleOutput {
 }
 
 /// List all account users who can be pinged
+@readonly
 @http(method: "GET", uri: "/circles/people.json")
 operation ListPingablePeople {
   input: ListPingablePeopleInput
@@ -3441,6 +3519,7 @@ structure ListPingablePeopleOutput {
 }
 
 /// Update project access (grant/revoke/create people)
+@idempotent
 @http(method: "PUT", uri: "/projects/{projectId}/people/users.json")
 operation UpdateProjectAccess {
   input: UpdateProjectAccessInput
@@ -3485,6 +3564,7 @@ structure ProjectAccessResult {
 // ===== Subscription Operations =====
 
 /// Get subscription information for a recording
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}/subscription.json")
 operation GetSubscription {
   input: GetSubscriptionInput
@@ -3529,6 +3609,7 @@ structure SubscribeOutput {
 }
 
 /// Unsubscribe the current user from a recording
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/recordings/{recordingId}/subscription.json")
 operation Unsubscribe {
   input: UnsubscribeInput
@@ -3548,6 +3629,7 @@ structure UnsubscribeInput {
 structure UnsubscribeOutput {}
 
 /// Update subscriptions by adding or removing specific users
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/recordings/{recordingId}/subscription.json")
 operation UpdateSubscription {
   input: UpdateSubscriptionInput
@@ -3588,6 +3670,7 @@ structure Subscription {
 // ===== Client Approval Operations =====
 
 /// List all client approvals in a project
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/client/approvals.json")
 operation ListClientApprovals {
   input: ListClientApprovalsInput
@@ -3606,6 +3689,7 @@ structure ListClientApprovalsOutput {
 }
 
 /// Get a single client approval by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/client/approvals/{approvalId}")
 operation GetClientApproval {
   input: GetClientApprovalInput
@@ -3630,6 +3714,7 @@ structure GetClientApprovalOutput {
 // ===== Client Correspondence Operations =====
 
 /// List all client correspondences in a project
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/client/correspondences.json")
 operation ListClientCorrespondences {
   input: ListClientCorrespondencesInput
@@ -3648,6 +3733,7 @@ structure ListClientCorrespondencesOutput {
 }
 
 /// Get a single client correspondence by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/client/correspondences/{correspondenceId}")
 operation GetClientCorrespondence {
   input: GetClientCorrespondenceInput
@@ -3672,6 +3758,7 @@ structure GetClientCorrespondenceOutput {
 // ===== Client Reply Operations =====
 
 /// List all client replies for a recording (correspondence or approval)
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/client/recordings/{recordingId}/replies.json")
 operation ListClientReplies {
   input: ListClientRepliesInput
@@ -3694,6 +3781,7 @@ structure ListClientRepliesOutput {
 }
 
 /// Get a single client reply by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}")
 operation GetClientReply {
   input: GetClientReplyInput
@@ -3838,6 +3926,7 @@ structure RecordingBucket {
 // ===== Webhook Operations =====
 
 /// List all webhooks for a project
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/webhooks.json")
 operation ListWebhooks {
   input: ListWebhooksInput
@@ -3856,6 +3945,7 @@ structure ListWebhooksOutput {
 }
 
 /// Get a single webhook by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/webhooks/{webhookId}")
 operation GetWebhook {
   input: GetWebhookInput
@@ -3904,6 +3994,7 @@ structure CreateWebhookOutput {
 }
 
 /// Update an existing webhook
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/webhooks/{webhookId}")
 operation UpdateWebhook {
   input: UpdateWebhookInput
@@ -3930,6 +4021,7 @@ structure UpdateWebhookOutput {
 }
 
 /// Delete a webhook
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/webhooks/{webhookId}")
 operation DeleteWebhook {
   input: DeleteWebhookInput
@@ -3951,6 +4043,7 @@ structure DeleteWebhookOutput {}
 // ===== Event Operations =====
 
 /// List all events for a recording
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}/events.json")
 operation ListEvents {
   input: ListEventsInput
@@ -3975,6 +4068,7 @@ structure ListEventsOutput {
 // ===== Recording Operations =====
 
 /// List recordings of a given type across projects
+@readonly
 @http(method: "GET", uri: "/projects/recordings.json")
 operation ListRecordings {
   input: ListRecordingsInput
@@ -4005,6 +4099,7 @@ structure ListRecordingsOutput {
 }
 
 /// Get a single recording by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}")
 operation GetRecording {
   input: GetRecordingInput
@@ -4027,6 +4122,7 @@ structure GetRecordingOutput {
 }
 
 /// Trash a recording
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/recordings/{recordingId}/status/trashed.json")
 operation TrashRecording {
   input: TrashRecordingInput
@@ -4046,6 +4142,7 @@ structure TrashRecordingInput {
 structure TrashRecordingOutput {}
 
 /// Archive a recording
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/recordings/{recordingId}/status/archived.json")
 operation ArchiveRecording {
   input: ArchiveRecordingInput
@@ -4065,6 +4162,7 @@ structure ArchiveRecordingInput {
 structure ArchiveRecordingOutput {}
 
 /// Unarchive a recording (restore to active status)
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/recordings/{recordingId}/status/active.json")
 operation UnarchiveRecording {
   input: UnarchiveRecordingInput
@@ -4084,6 +4182,7 @@ structure UnarchiveRecordingInput {
 structure UnarchiveRecordingOutput {}
 
 /// Set client visibility for a recording
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/recordings/{recordingId}/client_visibility.json")
 operation SetClientVisibility {
   input: SetClientVisibilityInput
@@ -4196,6 +4295,7 @@ structure Recording {
 // ===== Questionnaire Operations =====
 
 /// Get a questionnaire (automatic check-ins container) by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/questionnaires/{questionnaireId}")
 operation GetQuestionnaire {
   input: GetQuestionnaireInput
@@ -4220,6 +4320,7 @@ structure GetQuestionnaireOutput {
 // ===== Question Operations =====
 
 /// List all questions in a questionnaire
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json")
 operation ListQuestions {
   input: ListQuestionsInput
@@ -4242,6 +4343,7 @@ structure ListQuestionsOutput {
 }
 
 /// Get a single question by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/questions/{questionId}")
 operation GetQuestion {
   input: GetQuestionInput
@@ -4292,6 +4394,7 @@ structure CreateQuestionOutput {
 }
 
 /// Update an existing question
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/questions/{questionId}")
 operation UpdateQuestion {
   input: UpdateQuestionInput
@@ -4320,6 +4423,7 @@ structure UpdateQuestionOutput {
 // ===== Answer Operations =====
 
 /// List all answers for a question
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/questions/{questionId}/answers.json")
 operation ListAnswers {
   input: ListAnswersInput
@@ -4342,6 +4446,7 @@ structure ListAnswersOutput {
 }
 
 /// Get a single answer by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/question_answers/{answerId}")
 operation GetAnswer {
   input: GetAnswerInput
@@ -4397,6 +4502,7 @@ structure CreateAnswerOutput {
 }
 
 /// Update an existing answer
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/question_answers/{answerId}")
 operation UpdateAnswer {
   input: UpdateAnswerInput
@@ -4533,6 +4639,7 @@ structure QuestionAnswer {
 // ===== Search Operations =====
 
 /// Search for content across the account
+@readonly
 @http(method: "GET", uri: "/search.json")
 operation Search {
   input: SearchInput
@@ -4554,6 +4661,7 @@ structure SearchOutput {
 }
 
 /// Get search metadata (available filter options)
+@readonly
 @http(method: "GET", uri: "/searches/metadata.json")
 operation GetSearchMetadata {
   input: GetSearchMetadataInput
@@ -4570,6 +4678,7 @@ structure GetSearchMetadataOutput {
 // ===== Template Operations =====
 
 /// List all templates visible to the current user
+@readonly
 @http(method: "GET", uri: "/templates.json")
 operation ListTemplates {
   input: ListTemplatesInput
@@ -4587,6 +4696,7 @@ structure ListTemplatesOutput {
 }
 
 /// Get a single template by id
+@readonly
 @http(method: "GET", uri: "/templates/{templateId}")
 operation GetTemplate {
   input: GetTemplateInput
@@ -4624,6 +4734,7 @@ structure CreateTemplateOutput {
 }
 
 /// Update an existing template
+@idempotent
 @http(method: "PUT", uri: "/templates/{templateId}")
 operation UpdateTemplate {
   input: UpdateTemplateInput
@@ -4646,6 +4757,7 @@ structure UpdateTemplateOutput {
 }
 
 /// Delete a template (trash it)
+@idempotent
 @http(method: "DELETE", uri: "/templates/{templateId}")
 operation DeleteTemplate {
   input: DeleteTemplateInput
@@ -4684,6 +4796,7 @@ structure CreateProjectFromTemplateOutput {
 }
 
 /// Get the status of a project construction
+@readonly
 @http(method: "GET", uri: "/templates/{templateId}/project_constructions/{constructionId}")
 operation GetProjectConstruction {
   input: GetProjectConstructionInput
@@ -4708,6 +4821,7 @@ structure GetProjectConstructionOutput {
 // ===== Tool Operations =====
 
 /// Get a dock tool by id
+@readonly
 @http(method: "GET", uri: "/buckets/{projectId}/dock/tools/{toolId}")
 operation GetTool {
   input: GetToolInput
@@ -4752,6 +4866,7 @@ structure CloneToolOutput {
 }
 
 /// Update (rename) an existing tool
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/dock/tools/{toolId}")
 operation UpdateTool {
   input: UpdateToolInput
@@ -4777,6 +4892,7 @@ structure UpdateToolOutput {
 }
 
 /// Delete a tool (trash it)
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/dock/tools/{toolId}")
 operation DeleteTool {
   input: DeleteToolInput
@@ -4815,6 +4931,7 @@ structure EnableToolInput {
 structure EnableToolOutput {}
 
 /// Disable a tool (hide it from the project dock)
+@idempotent
 @http(method: "DELETE", uri: "/buckets/{projectId}/dock/tools/{toolId}/position.json")
 operation DisableTool {
   input: DisableToolInput
@@ -4834,6 +4951,7 @@ structure DisableToolInput {
 structure DisableToolOutput {}
 
 /// Reposition a tool on the project dock
+@idempotent
 @http(method: "PUT", uri: "/buckets/{projectId}/dock/tools/{toolId}/position.json")
 operation RepositionTool {
   input: RepositionToolInput
@@ -4884,6 +5002,7 @@ structure CreateLineupMarkerOutput {
 }
 
 /// Update an existing lineup marker
+@idempotent
 @http(method: "PUT", uri: "/lineup/markers/{markerId}")
 operation UpdateLineupMarker {
   input: UpdateLineupMarkerInput
@@ -4908,6 +5027,7 @@ structure UpdateLineupMarkerOutput {
 }
 
 /// Delete a lineup marker
+@idempotent
 @http(method: "DELETE", uri: "/lineup/markers/{markerId}")
 operation DeleteLineupMarker {
   input: DeleteLineupMarkerInput
