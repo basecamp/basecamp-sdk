@@ -97,7 +97,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/projects/%d/timesheet.json", projectID) + s.buildQueryParams(opts)
+	path := fmt.Sprintf("/buckets/%d/timesheet.json", projectID) + s.buildQueryParams(opts)
 	results, err := s.client.GetAll(ctx, path)
 	if err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recor
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/projects/%d/recordings/%d/timesheet.json", projectID, recordingID) + s.buildQueryParams(opts)
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/timesheet.json", projectID, recordingID) + s.buildQueryParams(opts)
 	results, err := s.client.GetAll(ctx, path)
 	if err != nil {
 		return nil, err
