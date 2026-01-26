@@ -99,9 +99,12 @@ func WithUserAgent(ua string) ClientOption {
 
 // WithLogger sets a custom slog logger for debug output.
 // By default, the client uses a no-op logger (silent).
+// Passing nil is safe and will use the default no-op logger.
 func WithLogger(l *slog.Logger) ClientOption {
 	return func(client *Client) {
-		client.logger = l
+		if l != nil {
+			client.logger = l
+		}
 	}
 }
 
@@ -152,7 +155,9 @@ func (h discardHandler) WithGroup(string) slog.Handler           { return h }
 
 // SetLogger sets the logger for debug output.
 func (c *Client) SetLogger(l *slog.Logger) {
-	c.logger = l
+	if l != nil {
+		c.logger = l
+	}
 }
 
 // Get performs a GET request.
