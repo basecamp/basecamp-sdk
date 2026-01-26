@@ -48,6 +48,7 @@ type Client struct {
 	templates       *TemplatesService
 	tools           *ToolsService
 	lineup          *LineupService
+	subscriptions   *SubscriptionsService
 }
 
 // Response wraps an API response.
@@ -609,4 +610,12 @@ func (c *Client) Lineup() *LineupService {
 		c.lineup = NewLineupService(c)
 	}
 	return c.lineup
+}
+
+// Subscriptions returns the SubscriptionsService for subscription operations.
+func (c *Client) Subscriptions() *SubscriptionsService {
+	if c.subscriptions == nil {
+		c.subscriptions = NewSubscriptionsService(c)
+	}
+	return c.subscriptions
 }
