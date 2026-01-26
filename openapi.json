@@ -180,7 +180,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             },
             "put": {
@@ -276,7 +276,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -368,7 +368,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -460,7 +460,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -559,7 +559,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -638,7 +638,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             },
             "put": {
@@ -734,7 +734,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -833,7 +833,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -912,7 +912,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             },
             "post": {
@@ -999,7 +999,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -1078,7 +1078,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             },
             "post": {
@@ -1175,7 +1175,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -1273,7 +1273,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -1352,7 +1352,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             },
             "put": {
@@ -1439,7 +1439,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -1518,7 +1518,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -1617,7 +1617,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -1709,7 +1709,7 @@
                     }
                 },
                 "tags": [
-                    "Kanban"
+                    "Card Tables"
                 ]
             }
         },
@@ -4453,7 +4453,7 @@
                     }
                 },
                 "tags": [
-                    "Inboxes"
+                    "Forwards"
                 ]
             }
         },
@@ -4532,7 +4532,7 @@
                     }
                 },
                 "tags": [
-                    "Inboxes"
+                    "Forwards"
                 ]
             },
             "post": {
@@ -4629,7 +4629,7 @@
                     }
                 },
                 "tags": [
-                    "Inboxes"
+                    "Forwards"
                 ]
             }
         },
@@ -4716,7 +4716,7 @@
                     }
                 },
                 "tags": [
-                    "Inboxes"
+                    "Forwards"
                 ]
             }
         },
@@ -4795,7 +4795,7 @@
                     }
                 },
                 "tags": [
-                    "Inboxes"
+                    "Forwards"
                 ]
             }
         },
@@ -4874,7 +4874,7 @@
                     }
                 },
                 "tags": [
-                    "Inboxes"
+                    "Forwards"
                 ]
             }
         },
@@ -8827,6 +8827,76 @@
             }
         },
         "/buckets/{projectId}/todos/{todoId}": {
+            "delete": {
+                "description": "Trash a todo (returns 204 No Content)",
+                "operationId": "TrashTodo",
+                "parameters": [
+                    {
+                        "name": "projectId",
+                        "in": "path",
+                        "schema": {
+                            "type": "number"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "todoId",
+                        "in": "path",
+                        "schema": {
+                            "type": "number"
+                        },
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "TrashTodo 200 response"
+                    },
+                    "401": {
+                        "description": "UnauthorizedError 401 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "ForbiddenError 403 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NotFoundError 404 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "InternalServerError 500 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": [
+                    "Todos"
+                ]
+            },
             "get": {
                 "description": "Get a single todo by id",
                 "operationId": "GetTodo",

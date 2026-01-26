@@ -31,6 +31,7 @@ service Basecamp {
     GetTodo,
     CreateTodo,
     UpdateTodo,
+    TrashTodo,
     CompleteTodo,
     UncompleteTodo,
     GetTodoset,
