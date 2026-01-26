@@ -61,7 +61,10 @@ type Client struct {
 	cardTables      *CardTablesService
 	cards           *CardsService
 	cardColumns     *CardColumnsService
-	cardSteps       *CardStepsService
+	cardSteps             *CardStepsService
+	attachments           *AttachmentsService
+	clientApprovals       *ClientApprovalsService
+	clientCorrespondences *ClientCorrespondencesService
 }
 
 // Response wraps an API response.
@@ -735,4 +738,28 @@ func (c *Client) CardSteps() *CardStepsService {
 		c.cardSteps = NewCardStepsService(c)
 	}
 	return c.cardSteps
+}
+
+// Attachments returns the AttachmentsService for file upload operations.
+func (c *Client) Attachments() *AttachmentsService {
+	if c.attachments == nil {
+		c.attachments = NewAttachmentsService(c)
+	}
+	return c.attachments
+}
+
+// ClientApprovals returns the ClientApprovalsService for client approval operations.
+func (c *Client) ClientApprovals() *ClientApprovalsService {
+	if c.clientApprovals == nil {
+		c.clientApprovals = NewClientApprovalsService(c)
+	}
+	return c.clientApprovals
+}
+
+// ClientCorrespondences returns the ClientCorrespondencesService for client correspondence operations.
+func (c *Client) ClientCorrespondences() *ClientCorrespondencesService {
+	if c.clientCorrespondences == nil {
+		c.clientCorrespondences = NewClientCorrespondencesService(c)
+	}
+	return c.clientCorrespondences
 }

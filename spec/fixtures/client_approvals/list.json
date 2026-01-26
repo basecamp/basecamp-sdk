@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1069479654,
+    "status": "active",
+    "visible_to_clients": false,
+    "created_at": "2022-11-21T12:13:14.049Z",
+    "updated_at": "2022-11-22T08:24:21.287Z",
+    "title": "Business card",
+    "inherits_status": true,
+    "type": "Client::Approval",
+    "url": "https://3.basecampapi.com/195539477/buckets/2085958500/client/approvals/1069479654.json",
+    "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/client/approvals/1069479654",
+    "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NjU0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--9cfe8a2356c54d6c68971d684758701488bccd00.json",
+    "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479654/subscription.json",
+    "parent": {
+      "id": 1069479564,
+      "title": "The Clientside",
+      "type": "Client::Board",
+      "url": "https://3.basecampapi.com/195539477/buckets/2085958500/client/board.json",
+      "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/client/board.1069479564"
+    },
+    "bucket": {
+      "id": 2085958500,
+      "name": "The Leto Locator",
+      "type": "Project"
+    },
+    "creator": {
+      "id": 1049715915,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd820e45f27add22bae3a8c7da56",
+      "name": "Annie Bryan",
+      "email_address": "annie@honchodesign.com",
+      "personable_type": "User",
+      "title": "Central Markets Manager",
+      "bio": "To open a store is easy, to keep it open is an art",
+      "location": null,
+      "created_at": "2022-11-22T08:23:21.911Z",
+      "updated_at": "2022-11-22T08:23:21.911Z",
+      "admin": false,
+      "owner": false,
+      "client": false,
+      "employee": true,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--9927c47a4cbee30a7f9aea667882496aba799149/avatar?v=1",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      },
+      "can_manage_projects": true,
+      "can_manage_people": true
+    },
+    "content": "<div>OK, here's another one!</div>",
+    "subject": "Business card",
+    "due_on": null,
+    "replies_count": 0,
+    "replies_url": "https://3.basecampapi.com/195539477/buckets/2085958500/client/recordings/1069479654/replies.json",
+    "approval_status": "pending",
+    "approver": {
+      "id": 1049715942,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTQyP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--fa05bcc15bdd53f8a944ba3f2386b0ec8aedfc73",
+      "name": "Miranda Grant",
+      "email_address": "miranda@letobrand.com",
+      "personable_type": "Client",
+      "title": "Dynamic Markets Analyst",
+      "bio": null,
+      "location": null,
+      "created_at": "2022-11-22T08:23:22.343Z",
+      "updated_at": "2022-11-22T08:23:22.343Z",
+      "admin": false,
+      "owner": false,
+      "client": false,
+      "employee": false,
+      "time_zone": "Etc/UTC",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBOZkkT4=--b8553b154990a1112ab6275b749296c4a3b56334/avatar?v=1",
+      "company": {
+        "id": 1033447818,
+        "name": "Leto Brand"
+      },
+      "can_manage_projects": false,
+      "can_manage_people": false
+    }
+  }
+]

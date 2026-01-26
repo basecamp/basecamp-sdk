@@ -338,3 +338,162 @@ func TestCreateCampfireLineRequest_Marshal(t *testing.T) {
 		t.Errorf("expected content %q, got %q", req.Content, roundtrip.Content)
 	}
 }
+
+func TestChatbot_UnmarshalList(t *testing.T) {
+	data := loadCampfiresFixture(t, "chatbots_list.json")
+
+	var chatbots []Chatbot
+	if err := json.Unmarshal(data, &chatbots); err != nil {
+		t.Fatalf("failed to unmarshal chatbots_list.json: %v", err)
+	}
+
+	if len(chatbots) != 2 {
+		t.Errorf("expected 2 chatbots, got %d", len(chatbots))
+	}
+
+	// Verify first chatbot (no command_url)
+	c1 := chatbots[0]
+	if c1.ID != 1049715958 {
+		t.Errorf("expected ID 1049715958, got %d", c1.ID)
+	}
+	if c1.ServiceName != "Capistrano" {
+		t.Errorf("expected ServiceName 'Capistrano', got %q", c1.ServiceName)
+	}
+	if c1.CommandURL != "" {
+		t.Errorf("expected empty CommandURL, got %q", c1.CommandURL)
+	}
+	if c1.URL != "https://3.basecampapi.com/195539477/buckets/2085958497/chats/1069478933/integrations/1049715958.json" {
+		t.Errorf("unexpected URL: %q", c1.URL)
+	}
+	if c1.AppURL != "https://3.basecamp.com/195539477/buckets/2085958497/chats/1069478933/integrations/1049715958" {
+		t.Errorf("unexpected AppURL: %q", c1.AppURL)
+	}
+	if c1.LinesURL != "https://3.basecampapi.com/195539477/integrations/B5JQYvHsNWCoDvYGZfH1xNR9/buckets/2085958497/chats/1069478933/lines" {
+		t.Errorf("unexpected LinesURL: %q", c1.LinesURL)
+	}
+
+	// Verify timestamps are parsed
+	if c1.CreatedAt.IsZero() {
+		t.Error("expected CreatedAt to be non-zero")
+	}
+	if c1.UpdatedAt.IsZero() {
+		t.Error("expected UpdatedAt to be non-zero")
+	}
+
+	// Verify second chatbot (with command_url)
+	c2 := chatbots[1]
+	if c2.ID != 1049715959 {
+		t.Errorf("expected ID 1049715959, got %d", c2.ID)
+	}
+	if c2.ServiceName != "deploy" {
+		t.Errorf("expected ServiceName 'deploy', got %q", c2.ServiceName)
+	}
+	if c2.CommandURL != "https://example.com/deploy" {
+		t.Errorf("expected CommandURL 'https://example.com/deploy', got %q", c2.CommandURL)
+	}
+}
+
+func TestChatbot_UnmarshalGet(t *testing.T) {
+	data := loadCampfiresFixture(t, "chatbot_get.json")
+
+	var chatbot Chatbot
+	if err := json.Unmarshal(data, &chatbot); err != nil {
+		t.Fatalf("failed to unmarshal chatbot_get.json: %v", err)
+	}
+
+	if chatbot.ID != 1049715958 {
+		t.Errorf("expected ID 1049715958, got %d", chatbot.ID)
+	}
+	if chatbot.ServiceName != "Capistrano" {
+		t.Errorf("expected ServiceName 'Capistrano', got %q", chatbot.ServiceName)
+	}
+	if chatbot.CommandURL != "https://example.com/command" {
+		t.Errorf("expected CommandURL 'https://example.com/command', got %q", chatbot.CommandURL)
+	}
+	if chatbot.URL != "https://3.basecampapi.com/195539477/buckets/2085958497/chats/1069478933/integrations/1049715958.json" {
+		t.Errorf("unexpected URL: %q", chatbot.URL)
+	}
+	if chatbot.AppURL != "https://3.basecamp.com/195539477/buckets/2085958497/chats/1069478933/integrations/1049715958" {
+		t.Errorf("unexpected AppURL: %q", chatbot.AppURL)
+	}
+	if chatbot.LinesURL != "https://3.basecampapi.com/195539477/integrations/B5JQYvHsNWCoDvYGZfH1xNR9/buckets/2085958497/chats/1069478933/lines" {
+		t.Errorf("unexpected LinesURL: %q", chatbot.LinesURL)
+	}
+
+	// Verify timestamps are parsed
+	if chatbot.CreatedAt.IsZero() {
+		t.Error("expected CreatedAt to be non-zero")
+	}
+	if chatbot.UpdatedAt.IsZero() {
+		t.Error("expected UpdatedAt to be non-zero")
+	}
+}
+
+func TestCreateChatbotRequest_Marshal(t *testing.T) {
+	req := CreateChatbotRequest{
+		ServiceName: "mybot",
+		CommandURL:  "https://example.com/webhook",
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateChatbotRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["service_name"] != "mybot" {
+		t.Errorf("unexpected service_name: %v", data["service_name"])
+	}
+	if data["command_url"] != "https://example.com/webhook" {
+		t.Errorf("unexpected command_url: %v", data["command_url"])
+	}
+
+	// Test without command_url
+	reqNoURL := CreateChatbotRequest{
+		ServiceName: "simplebot",
+	}
+	outNoURL, err := json.Marshal(reqNoURL)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateChatbotRequest without command_url: %v", err)
+	}
+
+	var dataNoURL map[string]interface{}
+	if err := json.Unmarshal(outNoURL, &dataNoURL); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if dataNoURL["service_name"] != "simplebot" {
+		t.Errorf("unexpected service_name: %v", dataNoURL["service_name"])
+	}
+	if _, exists := dataNoURL["command_url"]; exists {
+		t.Errorf("command_url should be omitted when empty, got: %v", dataNoURL["command_url"])
+	}
+}
+
+func TestUpdateChatbotRequest_Marshal(t *testing.T) {
+	req := UpdateChatbotRequest{
+		ServiceName: "updatedbot",
+		CommandURL:  "https://example.com/updated",
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal UpdateChatbotRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["service_name"] != "updatedbot" {
+		t.Errorf("unexpected service_name: %v", data["service_name"])
+	}
+	if data["command_url"] != "https://example.com/updated" {
+		t.Errorf("unexpected command_url: %v", data["command_url"])
+	}
+}

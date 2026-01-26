@@ -282,3 +282,29 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, schedul
 
 	return &schedule, nil
 }
+
+// TrashEntry moves a schedule entry to the trash.
+// bucketID is the project ID, entryID is the schedule entry ID.
+// Trashed entries can be recovered from the trash.
+func (s *SchedulesService) TrashEntry(ctx context.Context, bucketID, entryID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, entryID)
+	_, err := s.client.Put(ctx, path, nil)
+	return err
+}
+
+// DeleteEntry permanently removes a schedule entry.
+// bucketID is the project ID, entryID is the schedule entry ID.
+// Note: This permanently deletes the entry. Use TrashEntry for recoverable deletion.
+func (s *SchedulesService) DeleteEntry(ctx context.Context, bucketID, entryID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/schedule_entries/%d.json", bucketID, entryID)
+	_, err := s.client.Delete(ctx, path)
+	return err
+}
