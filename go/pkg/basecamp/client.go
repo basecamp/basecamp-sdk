@@ -58,6 +58,10 @@ type Client struct {
 	vaults          *VaultsService
 	documents       *DocumentsService
 	uploads         *UploadsService
+	cardTables      *CardTablesService
+	cards           *CardsService
+	cardColumns     *CardColumnsService
+	cardSteps       *CardStepsService
 }
 
 // Response wraps an API response.
@@ -699,4 +703,36 @@ func (c *Client) Uploads() *UploadsService {
 		c.uploads = NewUploadsService(c)
 	}
 	return c.uploads
+}
+
+// CardTables returns the CardTablesService for card table operations.
+func (c *Client) CardTables() *CardTablesService {
+	if c.cardTables == nil {
+		c.cardTables = NewCardTablesService(c)
+	}
+	return c.cardTables
+}
+
+// Cards returns the CardsService for card operations.
+func (c *Client) Cards() *CardsService {
+	if c.cards == nil {
+		c.cards = NewCardsService(c)
+	}
+	return c.cards
+}
+
+// CardColumns returns the CardColumnsService for card column operations.
+func (c *Client) CardColumns() *CardColumnsService {
+	if c.cardColumns == nil {
+		c.cardColumns = NewCardColumnsService(c)
+	}
+	return c.cardColumns
+}
+
+// CardSteps returns the CardStepsService for card step operations.
+func (c *Client) CardSteps() *CardStepsService {
+	if c.cardSteps == nil {
+		c.cardSteps = NewCardStepsService(c)
+	}
+	return c.cardSteps
 }
