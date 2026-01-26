@@ -148,7 +148,7 @@ func TestTool_UnmarshalDisabled(t *testing.T) {
 
 func TestUpdateToolRequest_Marshal(t *testing.T) {
 	req := UpdateToolRequest{
-		Name: "Project Tasks",
+		Title: "Project Tasks",
 	}
 
 	out, err := json.Marshal(req)
@@ -161,8 +161,8 @@ func TestUpdateToolRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
-	if data["name"] != "Project Tasks" {
-		t.Errorf("expected name 'Project Tasks', got %v", data["name"])
+	if data["title"] != "Project Tasks" {
+		t.Errorf("expected title 'Project Tasks', got %v", data["name"])
 	}
 
 	// Round-trip test
@@ -171,7 +171,7 @@ func TestUpdateToolRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal round-trip: %v", err)
 	}
 
-	if roundtrip.Name != req.Name {
-		t.Errorf("expected name %q, got %q", req.Name, roundtrip.Name)
+	if roundtrip.Title != req.Title {
+		t.Errorf("expected title %q, got %q", req.Title, roundtrip.Title)
 	}
 }

@@ -23,8 +23,8 @@ type Tool struct {
 
 // UpdateToolRequest specifies the parameters for updating (renaming) a tool.
 type UpdateToolRequest struct {
-	// Name is the new name for the tool (required).
-	Name string `json:"name"`
+	// Title is the new title for the tool (required).
+	Title string `json:"title"`
 }
 
 // ToolsService handles dock tool operations.
@@ -83,17 +83,17 @@ func (s *ToolsService) Create(ctx context.Context, bucketID, sourceToolID int64)
 // Update updates (renames) an existing tool.
 // bucketID is the project ID, toolID is the tool ID.
 // Returns the updated tool.
-func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, name string) (*Tool, error) {
+func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, title string) (*Tool, error) {
 	if err := s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
-	if name == "" {
-		return nil, ErrUsage("tool name is required")
+	if title == "" {
+		return nil, ErrUsage("tool title is required")
 	}
 
 	path := fmt.Sprintf("/buckets/%d/dock/tools/%d.json", bucketID, toolID)
-	req := &UpdateToolRequest{Name: name}
+	req := &UpdateToolRequest{Title: title}
 	resp, err := s.client.Put(ctx, path, req)
 	if err != nil {
 		return nil, err
