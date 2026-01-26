@@ -46,6 +46,7 @@ type Client struct {
 	events         *EventsService
 	search          *SearchService
 	templates       *TemplatesService
+	tools           *ToolsService
 }
 
 // Response wraps an API response.
@@ -591,4 +592,12 @@ func (c *Client) Templates() *TemplatesService {
 		c.templates = NewTemplatesService(c)
 	}
 	return c.templates
+}
+
+// Tools returns the ToolsService for dock tool operations.
+func (c *Client) Tools() *ToolsService {
+	if c.tools == nil {
+		c.tools = NewToolsService(c)
+	}
+	return c.tools
 }
