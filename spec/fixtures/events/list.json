@@ -1,0 +1,100 @@
+[
+  {
+    "id": 1069479400,
+    "recording_id": 1069479351,
+    "action": "created",
+    "details": {},
+    "created_at": "2022-11-22T08:23:58.523Z",
+    "creator": {
+      "id": 1049715915,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd1e798e7c0e2b40cd88ed93c0b8",
+      "name": "Annie Bryan",
+      "email_address": "annie@honchodesign.com",
+      "personable_type": "User",
+      "title": "Central Markets Manager",
+      "bio": "To open a store is easy, to keep it open is an art",
+      "location": null,
+      "created_at": "2022-11-22T08:23:21.911Z",
+      "updated_at": "2022-11-22T08:23:21.911Z",
+      "admin": false,
+      "owner": false,
+      "client": false,
+      "employee": true,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkz4=--e609ef146e39f9ca5e4bb7f8bf7b7fecfff6e302/avatar?v=1",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      },
+      "can_manage_projects": true,
+      "can_manage_people": true
+    }
+  },
+  {
+    "id": 1069479401,
+    "recording_id": 1069479351,
+    "action": "assignment_changed",
+    "details": {
+      "added_person_ids": [1049715923, 1049715924],
+      "removed_person_ids": []
+    },
+    "created_at": "2022-11-22T09:15:32.845Z",
+    "creator": {
+      "id": 1049715915,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd1e798e7c0e2b40cd88ed93c0b8",
+      "name": "Annie Bryan",
+      "email_address": "annie@honchodesign.com",
+      "personable_type": "User",
+      "title": "Central Markets Manager",
+      "bio": "To open a store is easy, to keep it open is an art",
+      "location": null,
+      "created_at": "2022-11-22T08:23:21.911Z",
+      "updated_at": "2022-11-22T08:23:21.911Z",
+      "admin": false,
+      "owner": false,
+      "client": false,
+      "employee": true,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkz4=--e609ef146e39f9ca5e4bb7f8bf7b7fecfff6e302/avatar?v=1",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      },
+      "can_manage_projects": true,
+      "can_manage_people": true
+    }
+  },
+  {
+    "id": 1069479402,
+    "recording_id": 1069479351,
+    "action": "completed",
+    "details": {
+      "notified_recipient_ids": [1049715915]
+    },
+    "created_at": "2022-11-22T10:45:00.123Z",
+    "creator": {
+      "id": 1049715923,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTIzP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--31f1cab83be9fb9d83e2c0aff5cf8cc7c21e6cc7",
+      "name": "Andrew Wong",
+      "email_address": "andrew@honchodesign.com",
+      "personable_type": "User",
+      "title": "Senior Developer",
+      "bio": null,
+      "location": "San Francisco",
+      "created_at": "2022-11-22T08:23:21.732Z",
+      "updated_at": "2022-11-22T08:23:21.732Z",
+      "admin": false,
+      "owner": false,
+      "client": false,
+      "employee": true,
+      "time_zone": "America/Los_Angeles",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBNNkkz4=--b73c77e72df49d8ab28b0d3f9c36c0791bae5efd/avatar?v=1",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      },
+      "can_manage_projects": false,
+      "can_manage_people": false
+    }
+  }
+]
