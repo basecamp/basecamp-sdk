@@ -1831,6 +1831,10 @@ structure CreateAttachmentInput {
   name: AttachmentFilename
 
   @required
+  @httpHeader("Content-Type")
+  contentType: String
+
+  @required
   @httpPayload
   data: Blob
 }
@@ -3446,7 +3450,7 @@ structure CompleteCardStepOutput {
 }
 
 /// Mark a step as incomplete
-@http(method: "PUT", uri: "/buckets/{projectId}/card_tables/steps/{stepId}/completions.json")
+@http(method: "DELETE", uri: "/buckets/{projectId}/card_tables/steps/{stepId}/completions.json")
 operation UncompleteCardStep {
   input: UncompleteCardStepInput
   output: UncompleteCardStepOutput
@@ -4654,6 +4658,12 @@ structure CreateAnswerInput {
   questionId: QuestionId
 
   @required
+  @httpPayload
+  question_answer: QuestionAnswerPayload
+}
+
+structure QuestionAnswerPayload {
+  @required
   content: String
 
   group_on: ISO8601Date
@@ -4681,10 +4691,19 @@ structure UpdateAnswerInput {
   answerId: AnswerId
 
   @required
+  @httpPayload
+  question_answer: QuestionAnswerUpdatePayload
+}
+
+structure QuestionAnswerUpdatePayload {
+  @required
   content: String
 }
 
-structure UpdateAnswerOutput {}
+structure UpdateAnswerOutput {
+  @httpPayload
+  answer: QuestionAnswer
+}
 
 // ===== Questionnaire Shapes =====
 
@@ -4894,7 +4913,6 @@ structure UpdateTemplateInput {
   @httpLabel
   templateId: TemplateId
 
-  @required
   name: String
 
   description: String

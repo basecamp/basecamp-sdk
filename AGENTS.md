@@ -90,5 +90,5 @@ Reuse these common shapes throughout the spec:
 - `ISO8601Timestamp` - String for datetime fields
 - `ISO8601Date` - String for date-only fields
 - `Person` - Full person object structure
-- `Parent` - Parent reference (id, title, type, url, app_url)
-- `Bucket` / `TodoBucket` - Project reference in recordings
+- `TodoParent` / `RecordingParent` - Parent reference (id, title, type, url, app_url)
+- `TodoBucket` / `RecordingBucket` - Project reference in recordings
