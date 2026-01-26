@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/rand"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -29,7 +29,7 @@ type Client struct {
 	cfg           *Config
 	cache         *Cache
 	userAgent     string
-	verbose       bool
+	logger        *slog.Logger
 
 	// Services
 	projects       *ProjectsService
@@ -97,10 +97,11 @@ func WithUserAgent(ua string) ClientOption {
 	}
 }
 
-// WithVerbose enables verbose output for debugging.
-func WithVerbose(v bool) ClientOption {
+// WithLogger sets a custom slog logger for debug output.
+// By default, the client uses a no-op logger (silent).
+func WithLogger(l *slog.Logger) ClientOption {
 	return func(client *Client) {
-		client.verbose = v
+		client.logger = l
 	}
 }
 
@@ -125,6 +126,7 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 		tokenProvider: tokenProvider,
 		cfg:           cfg,
 		userAgent:     DefaultUserAgent,
+		logger:        slog.New(discardHandler{}),
 	}
 
 	// Apply options
@@ -140,9 +142,17 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	return c
 }
 
-// SetVerbose enables or disables verbose output.
-func (c *Client) SetVerbose(v bool) {
-	c.verbose = v
+// discardHandler is a slog.Handler that discards all log records.
+type discardHandler struct{}
+
+func (discardHandler) Enabled(context.Context, slog.Level) bool  { return false }
+func (discardHandler) Handle(context.Context, slog.Record) error { return nil }
+func (h discardHandler) WithAttrs([]slog.Attr) slog.Handler      { return h }
+func (h discardHandler) WithGroup(string) slog.Handler           { return h }
+
+// SetLogger sets the logger for debug output.
+func (c *Client) SetLogger(l *slog.Logger) {
+	c.logger = l
 }
 
 // Get performs a GET request.
@@ -194,7 +204,7 @@ func (c *Client) GetAll(ctx context.Context, path string) ([]json.RawMessage, er
 	}
 
 	if page > maxPages {
-		fmt.Fprintf(os.Stderr, "[basecamp-sdk] Warning: pagination capped at %d pages; results may be incomplete\n", maxPages)
+		c.logger.Warn("pagination capped", "maxPages", maxPages)
 	}
 
 	return allResults, nil
@@ -224,9 +234,7 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 
 			// Calculate backoff delay
 			delay := c.backoffDelay(attempt)
-			if c.verbose {
-				fmt.Printf("[basecamp-sdk] Retry %d/%d in %v: %s\n", attempt, maxRetries, delay, err)
-			}
+			c.logger.Debug("retrying request", "attempt", attempt, "maxRetries", maxRetries, "delay", delay, "error", err)
 
 			select {
 			case <-ctx.Done():
@@ -276,15 +284,11 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		cacheKey = c.cache.Key(url, c.cfg.AccountID, token)
 		if etag := c.cache.GetETag(cacheKey); etag != "" {
 			req.Header.Set("If-None-Match", etag)
-			if c.verbose {
-				fmt.Printf("[basecamp-sdk] Cache: If-None-Match %s\n", etag)
-			}
+			c.logger.Debug("cache conditional request", "etag", etag)
 		}
 	}
 
-	if c.verbose {
-		fmt.Printf("[basecamp-sdk] %s %s (attempt %d)\n", method, url, attempt)
-	}
+	c.logger.Debug("http request", "method", method, "url", url, "attempt", attempt)
 
 	// Execute request
 	resp, err := c.httpClient.Do(req)
@@ -293,17 +297,13 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if c.verbose {
-		fmt.Printf("[basecamp-sdk] HTTP %d\n", resp.StatusCode)
-	}
+	c.logger.Debug("http response", "status", resp.StatusCode)
 
 	// Handle response based on status code
 	switch resp.StatusCode {
 	case http.StatusNotModified: // 304
 		if cacheKey != "" {
-			if c.verbose {
-				fmt.Println("[basecamp-sdk] Cache hit: 304 Not Modified")
-			}
+			c.logger.Debug("cache hit", "status", 304)
 			cached := c.cache.GetBody(cacheKey)
 			if cached != nil {
 				return &Response{
@@ -326,9 +326,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		if method == "GET" && cacheKey != "" {
 			if etag := resp.Header.Get("ETag"); etag != "" {
 				_ = c.cache.Set(cacheKey, respBody, etag) // Ignore cache write errors
-				if c.verbose {
-					fmt.Printf("[basecamp-sdk] Cache: stored with ETag %s\n", etag)
-				}
+				c.logger.Debug("cache stored", "etag", etag)
 			}
 		}
 

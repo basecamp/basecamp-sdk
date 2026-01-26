@@ -70,9 +70,7 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Content-Length", fmt.Sprintf("%d", len(body)))
 
-	if s.client.verbose {
-		fmt.Printf("[basecamp-sdk] POST %s\n", url)
-	}
+	s.client.logger.Debug("http request", "method", "POST", "url", url)
 
 	// Execute request
 	resp, err := s.client.httpClient.Do(req)
@@ -81,9 +79,7 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if s.client.verbose {
-		fmt.Printf("[basecamp-sdk] HTTP %d\n", resp.StatusCode)
-	}
+	s.client.logger.Debug("http response", "status", resp.StatusCode)
 
 	// Read response body
 	respBody, err := io.ReadAll(resp.Body)
