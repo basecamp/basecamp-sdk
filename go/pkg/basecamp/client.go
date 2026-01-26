@@ -52,6 +52,7 @@ type Client struct {
 	campfires       *CampfiresService
 	timesheet       *TimesheetService
 	schedules       *SchedulesService
+	forwards        *ForwardsService
 }
 
 // Response wraps an API response.
@@ -645,4 +646,12 @@ func (c *Client) Schedules() *SchedulesService {
 		c.schedules = NewSchedulesService(c)
 	}
 	return c.schedules
+}
+
+// Forwards returns the ForwardsService for email forward operations.
+func (c *Client) Forwards() *ForwardsService {
+	if c.forwards == nil {
+		c.forwards = NewForwardsService(c)
+	}
+	return c.forwards
 }
