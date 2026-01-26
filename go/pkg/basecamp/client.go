@@ -53,6 +53,7 @@ type Client struct {
 	timesheet       *TimesheetService
 	schedules       *SchedulesService
 	forwards        *ForwardsService
+	recordings      *RecordingsService
 }
 
 // Response wraps an API response.
@@ -654,4 +655,12 @@ func (c *Client) Forwards() *ForwardsService {
 		c.forwards = NewForwardsService(c)
 	}
 	return c.forwards
+}
+
+// Recordings returns the RecordingsService for recording operations.
+func (c *Client) Recordings() *RecordingsService {
+	if c.recordings == nil {
+		c.recordings = NewRecordingsService(c)
+	}
+	return c.recordings
 }
