@@ -6,10 +6,17 @@ GOTEST := $(GOCMD) test
 GOVET := $(GOCMD) vet
 GOFMT := gofmt
 GOMOD := $(GOCMD) mod
+GOGEN := $(GOCMD) generate
 
 # Default target
 .PHONY: all
 all: check
+
+# Generate code from OpenAPI spec
+.PHONY: generate
+generate:
+	@echo "Generating client code from OpenAPI spec..."
+	$(GOGEN) ./...
 
 # Run tests
 .PHONY: test
@@ -63,6 +70,7 @@ verify:
 .PHONY: clean
 clean:
 	rm -f coverage.out coverage.html
+	rm -f pkg/generated/*.gen.go
 
 # Run all checks (local development gate)
 .PHONY: check
@@ -84,6 +92,9 @@ release-check: check vuln
 .PHONY: help
 help:
 	@echo "Basecamp Go SDK Makefile targets:"
+	@echo ""
+	@echo "Code Generation:"
+	@echo "  generate       Generate client code from OpenAPI spec using oapi-codegen"
 	@echo ""
 	@echo "Testing:"
 	@echo "  test           Run all tests"

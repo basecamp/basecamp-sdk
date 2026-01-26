@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/HEAD/configuration-schema.json
+#
+# oapi-codegen configuration for Basecamp SDK
+# Generates Go client code from OpenAPI spec with Basecamp-specific extensions
+#
+package: generated
+output: pkg/generated/client.gen.go
+generate:
+  client: true
+  models: true
+  embedded-spec: false
+output-options:
+  # Use custom templates that read x-basecamp-* extensions
+  user-templates:
+    client.tmpl: templates/client.tmpl
+    typedef.tmpl: templates/typedef.tmpl
+    imports.tmpl: templates/imports.tmpl
+  # Skip formatting - we'll run gofmt separately
+  skip-fmt: false
+  # Skip pruning unused types
+  skip-prune: false

@@ -1,0 +1,526 @@
+// RequestEditorFn is the function signature for the RequestEditor callback function
+type RequestEditorFn func(ctx context.Context, req *http.Request) error
+
+// Doer performs HTTP requests.
+//
+// The standard http.Client implements this interface.
+type HttpRequestDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+{{$clientTypeName := opts.OutputOptions.ClientTypeName -}}
+
+// RetryConfig configures retry behavior for idempotent operations.
+type RetryConfig struct {
+	// MaxRetries is the maximum number of retry attempts (default: 3)
+	MaxRetries int
+	// BaseDelay is the initial delay between retries (default: 1s)
+	BaseDelay time.Duration
+	// MaxDelay is the maximum delay between retries (default: 30s)
+	MaxDelay time.Duration
+	// Multiplier is the exponential backoff multiplier (default: 2.0)
+	Multiplier float64
+}
+
+// DefaultRetryConfig returns the default retry configuration.
+func DefaultRetryConfig() RetryConfig {
+	return RetryConfig{
+		MaxRetries: 3,
+		BaseDelay:  1 * time.Second,
+		MaxDelay:   30 * time.Second,
+		Multiplier: 2.0,
+	}
+}
+
+// {{ $clientTypeName }} which conforms to the OpenAPI3 specification for this service.
+type {{ $clientTypeName }} struct {
+	// The endpoint of the server conforming to this interface, with scheme,
+	// https://api.deepmap.com for example. This can contain a path relative
+	// to the server, such as https://api.deepmap.com/dev-test, and all the
+	// paths in the swagger spec will be appended to the server.
+	Server string
+
+	// Doer for performing requests, typically a *http.Client with any
+	// customized settings, such as certificate chains.
+	Client HttpRequestDoer
+
+	// A list of callbacks for modifying requests which are generated before sending over
+	// the network.
+	RequestEditors []RequestEditorFn
+
+	// RetryConfig for idempotent operations
+	RetryConfig RetryConfig
+
+	// Logger for debug output (optional)
+	Logger *slog.Logger
+}
+
+// ClientOption allows setting custom parameters during construction
+type ClientOption func(*{{ $clientTypeName }}) error
+
+// Creates a new {{ $clientTypeName }}, with reasonable defaults
+func NewClient(server string, opts ...ClientOption) (*{{ $clientTypeName }}, error) {
+    // create a client with sane default values
+    client := {{ $clientTypeName }}{
+        Server:      server,
+        RetryConfig: DefaultRetryConfig(),
+    }
+    // mutate client and add all optional params
+    for _, o := range opts {
+        if err := o(&client); err != nil {
+            return nil, err
+        }
+    }
+    // ensure the server URL always has a trailing slash
+    if !strings.HasSuffix(client.Server, "/") {
+        client.Server += "/"
+    }
+    // create httpClient, if not already present
+    if client.Client == nil {
+        client.Client = &http.Client{}
+    }
+    return &client, nil
+}
+
+// WithHTTPClient allows overriding the default Doer, which is
+// automatically created using http.Client. This is useful for tests.
+func WithHTTPClient(doer HttpRequestDoer) ClientOption {
+	return func(c *{{ $clientTypeName }}) error {
+		c.Client = doer
+		return nil
+	}
+}
+
+// WithRequestEditorFn allows setting up a callback function, which will be
+// called right before sending the request. This can be used to mutate the request.
+func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
+	return func(c *{{ $clientTypeName }}) error {
+		c.RequestEditors = append(c.RequestEditors, fn)
+		return nil
+	}
+}
+
+// WithRetryConfig allows setting custom retry configuration for idempotent operations.
+func WithRetryConfig(cfg RetryConfig) ClientOption {
+	return func(c *{{ $clientTypeName }}) error {
+		c.RetryConfig = cfg
+		return nil
+	}
+}
+
+// WithLogger allows setting a custom logger for debug output.
+func WithLogger(logger *slog.Logger) ClientOption {
+	return func(c *{{ $clientTypeName }}) error {
+		c.Logger = logger
+		return nil
+	}
+}
+
+// isRetryableStatus returns true if the HTTP status code indicates a retryable error.
+func isRetryableStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusTooManyRequests,       // 429
+		http.StatusInternalServerError,     // 500
+		http.StatusBadGateway,              // 502
+		http.StatusServiceUnavailable,      // 503
+		http.StatusGatewayTimeout:          // 504
+		return true
+	default:
+		return false
+	}
+}
+
+// doWithRetry executes a request with retry logic for idempotent operations.
+func (c *{{ $clientTypeName }}) doWithRetry(ctx context.Context, buildRequest func() (*http.Request, error), isIdempotent bool, operationId string) (*http.Response, error) {
+	maxAttempts := 1
+	if isIdempotent {
+		maxAttempts = c.RetryConfig.MaxRetries + 1
+	}
+
+	var lastResp *http.Response
+	var lastErr error
+	delay := c.RetryConfig.BaseDelay
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		req, err := buildRequest()
+		if err != nil {
+			return nil, err
+		}
+		req = req.WithContext(ctx)
+		if err := c.applyEditors(ctx, req, nil); err != nil {
+			return nil, err
+		}
+
+		resp, err := c.Client.Do(req)
+		if err != nil {
+			lastErr = err
+			if c.Logger != nil {
+				c.Logger.Debug("request failed",
+					"operation", operationId,
+					"attempt", attempt,
+					"error", err,
+				)
+			}
+			// Network errors are retryable for idempotent operations
+			if isIdempotent && attempt < maxAttempts {
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-time.After(delay + time.Duration(rand.Int63n(int64(100*time.Millisecond)))):
+				}
+				delay = time.Duration(float64(delay) * c.RetryConfig.Multiplier)
+				if delay > c.RetryConfig.MaxDelay {
+					delay = c.RetryConfig.MaxDelay
+				}
+				continue
+			}
+			return nil, err
+		}
+
+		// Success or non-retryable status
+		if !isRetryableStatus(resp.StatusCode) {
+			return resp, nil
+		}
+
+		lastResp = resp
+		if c.Logger != nil {
+			c.Logger.Debug("retryable status received",
+				"operation", operationId,
+				"attempt", attempt,
+				"status", resp.StatusCode,
+			)
+		}
+
+		// Don't retry if not idempotent or last attempt
+		if !isIdempotent || attempt >= maxAttempts {
+			return resp, nil
+		}
+
+		// Close body before retry
+		_ = resp.Body.Close()
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(delay + time.Duration(rand.Int63n(int64(100*time.Millisecond)))):
+		}
+		delay = time.Duration(float64(delay) * c.RetryConfig.Multiplier)
+		if delay > c.RetryConfig.MaxDelay {
+			delay = c.RetryConfig.MaxDelay
+		}
+	}
+
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return lastResp, nil
+}
+
+// The interface specification for the client above.
+type ClientInterface interface {
+{{range . -}}
+{{$hasParams := .RequiresParamObject -}}
+{{$pathParams := .PathParams -}}
+{{$opid := .OperationId -}}
+    // {{$opid}}{{if .HasBody}}WithBody{{end}} request{{if .HasBody}} with any body{{end}}
+    {{$opid}}{{if .HasBody}}WithBody{{end}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}{{if .HasBody}}, contentType string, body io.Reader{{end}}, reqEditors... RequestEditorFn) (*http.Response, error)
+{{range .Bodies}}
+    {{if .IsSupportedByClient -}}
+    {{$opid}}{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error)
+    {{end -}}
+{{end}}{{/* range .Bodies */}}
+{{end}}{{/* range . $opid := .OperationId */}}
+}
+
+
+{{/* Generate client methods with retry support based on x-basecamp-idempotent */}}
+{{range . -}}
+{{$hasParams := .RequiresParamObject -}}
+{{$pathParams := .PathParams -}}
+{{$opid := .OperationId -}}
+{{/* Check for x-basecamp-idempotent extension */}}
+{{$isIdempotent := false -}}
+{{if .Spec -}}
+{{if .Spec.Extensions -}}
+{{if index .Spec.Extensions "x-basecamp-idempotent" -}}
+{{$isIdempotent = true -}}
+{{end -}}
+{{end -}}
+{{end -}}
+
+{{if $isIdempotent}}
+// {{$opid}}{{if .HasBody}}WithBody{{end}} is marked as idempotent and will be retried on transient failures.
+{{else}}
+// {{$opid}}{{if .HasBody}}WithBody{{end}} executes the {{$opid}} operation.
+{{end}}
+func (c *{{ $clientTypeName }}) {{$opid}}{{if .HasBody}}WithBody{{end}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}{{if .HasBody}}, contentType string, body io.Reader{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+{{if $isIdempotent}}
+    return c.doWithRetry(ctx, func() (*http.Request, error) {
+        return New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(c.Server{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}{{if .HasBody}}, contentType, body{{end}})
+    }, true, "{{$opid}}")
+{{else}}
+    req, err := New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(c.Server{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}{{if .HasBody}}, contentType, body{{end}})
+    if err != nil {
+        return nil, err
+    }
+    req = req.WithContext(ctx)
+    if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+        return nil, err
+    }
+    return c.Client.Do(req)
+{{end}}
+}
+
+{{range .Bodies}}
+{{if .IsSupportedByClient -}}
+func (c *{{ $clientTypeName }}) {{$opid}}{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+{{if $isIdempotent}}
+    return c.doWithRetry(ctx, func() (*http.Request, error) {
+        return New{{$opid}}Request{{.Suffix}}(c.Server{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body)
+    }, true, "{{$opid}}")
+{{else}}
+    req, err := New{{$opid}}Request{{.Suffix}}(c.Server{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body)
+    if err != nil {
+        return nil, err
+    }
+    req = req.WithContext(ctx)
+    if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+        return nil, err
+    }
+    return c.Client.Do(req)
+{{end}}
+}
+{{end -}}{{/* if .IsSupported */}}
+{{end}}{{/* range .Bodies */}}
+{{end}}
+
+{{/* Generate request builders */}}
+{{range .}}
+{{$hasParams := .RequiresParamObject -}}
+{{$pathParams := .PathParams -}}
+{{$bodyRequired := .BodyRequired -}}
+{{$opid := .OperationId -}}
+
+{{range .Bodies}}
+{{if .IsSupportedByClient -}}
+// New{{$opid}}Request{{.Suffix}} calls the generic {{$opid}} builder with {{.ContentType}} body
+func New{{$opid}}Request{{.Suffix}}(server string{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody) (*http.Request, error) {
+    var bodyReader io.Reader
+    {{if .IsJSON -}}
+        buf, err := json.Marshal(body)
+        if err != nil {
+            return nil, err
+        }
+        bodyReader = bytes.NewReader(buf)
+    {{else if eq .NameTag "Formdata" -}}
+        bodyStr, err := runtime.MarshalForm(body, nil)
+        if err != nil {
+            return nil, err
+        }
+        bodyReader = strings.NewReader(bodyStr.Encode())
+    {{else if eq .NameTag "Text" -}}
+        bodyReader = strings.NewReader(string(body))
+    {{end -}}
+    return New{{$opid}}RequestWithBody(server{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, "{{.ContentType}}", bodyReader)
+}
+{{end -}}
+{{end}}
+
+// New{{$opid}}Request{{if .HasBody}}WithBody{{end}} generates requests for {{$opid}}{{if .HasBody}} with any type of body{{end}}
+func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}{{if .HasBody}}, contentType string, body io.Reader{{end}}) (*http.Request, error) {
+    var err error
+{{range $paramIdx, $param := .PathParams}}
+    var pathParam{{$paramIdx}} string
+    {{if .IsPassThrough}}
+    pathParam{{$paramIdx}} = {{.GoVariableName}}
+    {{end}}
+    {{if .IsJson}}
+    var pathParamBuf{{$paramIdx}} []byte
+    pathParamBuf{{$paramIdx}}, err = json.Marshal({{.GoVariableName}})
+    if err != nil {
+        return nil, err
+    }
+    pathParam{{$paramIdx}} = string(pathParamBuf{{$paramIdx}})
+    {{end}}
+    {{if .IsStyled}}
+    pathParam{{$paramIdx}}, err = runtime.StyleParamWithLocation("{{.Style}}", {{.Explode}}, "{{.ParamName}}", runtime.ParamLocationPath, {{.GoVariableName}})
+    if err != nil {
+        return nil, err
+    }
+    {{end}}
+{{end}}
+    serverURL, err := url.Parse(server)
+    if err != nil {
+        return nil, err
+    }
+
+    operationPath := fmt.Sprintf("{{genParamFmtString .Path}}"{{range $paramIdx, $param := .PathParams}}, pathParam{{$paramIdx}}{{end}})
+    if operationPath[0] == '/' {
+        operationPath = "." + operationPath
+    }
+
+    queryURL, err := serverURL.Parse(operationPath)
+    if err != nil {
+        return nil, err
+    }
+
+{{if .QueryParams}}
+    if params != nil {
+        queryValues := queryURL.Query()
+            {{range $paramIdx, $param := .QueryParams}}
+            {{if .HasOptionalPointer}} if params.{{.GoName}} != nil { {{end}}
+            {{if .IsPassThrough}}
+            queryValues.Add("{{.ParamName}}", {{if .HasOptionalPointer}}*{{end}}params.{{.GoName}})
+            {{end}}
+            {{if .IsJson}}
+            if queryParamBuf, err := json.Marshal({{if .HasOptionalPointer}}*{{end}}params.{{.GoName}}); err != nil {
+                return nil, err
+            } else {
+                queryValues.Add("{{.ParamName}}", string(queryParamBuf))
+            }
+
+            {{end}}
+            {{if .IsStyled}}
+            if queryFrag, err := runtime.StyleParamWithLocation("{{.Style}}", {{.Explode}}, "{{.ParamName}}", runtime.ParamLocationQuery, {{if .HasOptionalPointer}}*{{end}}params.{{.GoName}}); err != nil {
+                return nil, err
+            } else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+               return nil, err
+            } else {
+               for k, v := range parsed {
+                   for _, v2 := range v {
+                       queryValues.Add(k, v2)
+                   }
+               }
+            }
+            {{end}}
+            {{if .HasOptionalPointer}}}{{end}}
+        {{end}}
+        queryURL.RawQuery = queryValues.Encode()
+    }
+{{end}}{{/* if .QueryParams */}}
+    req, err := http.NewRequest("{{.Method}}", queryURL.String(), {{if .HasBody}}body{{else}}nil{{end}})
+    if err != nil {
+        return nil, err
+    }
+
+    {{if .HasBody}}req.Header.Add("Content-Type", contentType){{end}}
+{{ if .HeaderParams }}
+    if params != nil {
+    {{range $paramIdx, $param := .HeaderParams}}
+        {{if .HasOptionalPointer}} if params.{{.GoName}} != nil { {{end}}
+        var headerParam{{$paramIdx}} string
+        {{if .IsPassThrough}}
+        headerParam{{$paramIdx}} = {{if .HasOptionalPointer}}*{{end}}params.{{.GoName}}
+        {{end}}
+        {{if .IsJson}}
+        var headerParamBuf{{$paramIdx}} []byte
+        headerParamBuf{{$paramIdx}}, err = json.Marshal({{if .HasOptionalPointer}}*{{end}}params.{{.GoName}})
+        if err != nil {
+            return nil, err
+        }
+        headerParam{{$paramIdx}} = string(headerParamBuf{{$paramIdx}})
+        {{end}}
+        {{if .IsStyled}}
+        headerParam{{$paramIdx}}, err = runtime.StyleParamWithLocation("{{.Style}}", {{.Explode}}, "{{.ParamName}}", runtime.ParamLocationHeader, {{if .HasOptionalPointer}}*{{end}}params.{{.GoName}})
+        if err != nil {
+            return nil, err
+        }
+        {{end}}
+        req.Header.Set("{{.ParamName}}", headerParam{{$paramIdx}})
+        {{if .HasOptionalPointer}}}{{end}}
+    {{end}}
+    }
+{{- end }}{{/* if .HeaderParams */}}
+
+{{ if .CookieParams }}
+    if params != nil {
+    {{range $paramIdx, $param := .CookieParams}}
+        {{if .HasOptionalPointer}} if params.{{.GoName}} != nil { {{end}}
+        var cookieParam{{$paramIdx}} string
+        {{if .IsPassThrough}}
+        cookieParam{{$paramIdx}} = {{if .HasOptionalPointer}}*{{end}}params.{{.GoName}}
+        {{end}}
+        {{if .IsJson}}
+        var cookieParamBuf{{$paramIdx}} []byte
+        cookieParamBuf{{$paramIdx}}, err = json.Marshal({{if .HasOptionalPointer}}*{{end}}params.{{.GoName}})
+        if err != nil {
+            return nil, err
+        }
+        cookieParam{{$paramIdx}} = url.QueryEscape(string(cookieParamBuf{{$paramIdx}}))
+        {{end}}
+        {{if .IsStyled}}
+        cookieParam{{$paramIdx}}, err = runtime.StyleParamWithLocation("simple", {{.Explode}}, "{{.ParamName}}", runtime.ParamLocationCookie, {{if .HasOptionalPointer}}*{{end}}params.{{.GoName}})
+        if err != nil {
+            return nil, err
+        }
+        {{end}}
+        cookie{{$paramIdx}} := &http.Cookie{
+            Name:"{{.ParamName}}",
+            Value:cookieParam{{$paramIdx}},
+        }
+        req.AddCookie(cookie{{$paramIdx}})
+        {{if .HasOptionalPointer}}}{{end}}
+    {{ end -}}
+    }
+{{- end }}{{/* if .CookieParams */}}
+    return req, nil
+}
+
+{{end}}{{/* Range */}}
+
+func (c *{{ $clientTypeName }}) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
+    for _, r := range c.RequestEditors {
+        if err := r(ctx, req); err != nil {
+            return err
+        }
+    }
+    for _, r := range additionalEditors {
+        if err := r(ctx, req); err != nil {
+            return err
+        }
+    }
+    return nil
+}
+
+// OperationMetadata contains metadata about an API operation derived from OpenAPI extensions.
+type OperationMetadata struct {
+	// Idempotent indicates whether the operation can be safely retried.
+	Idempotent bool
+	// HasSensitiveParams indicates whether any parameters contain sensitive data.
+	HasSensitiveParams bool
+}
+
+// operationMetadata maps operation IDs to their metadata.
+// This is generated from x-basecamp-* extensions in the OpenAPI spec.
+var operationMetadata = map[string]OperationMetadata{
+{{range . -}}
+{{$opid := .OperationId -}}
+{{$isIdempotent := false -}}
+{{$hasSensitive := false -}}
+{{if .Spec -}}
+{{if .Spec.Extensions -}}
+{{if index .Spec.Extensions "x-basecamp-idempotent" -}}
+{{$isIdempotent = true -}}
+{{end -}}
+{{if index .Spec.Extensions "x-basecamp-sensitive" -}}
+{{$hasSensitive = true -}}
+{{end -}}
+{{end -}}
+{{end -}}
+	"{{$opid}}": {Idempotent: {{$isIdempotent}}, HasSensitiveParams: {{$hasSensitive}}},
+{{end}}
+}
+
+// GetOperationMetadata returns metadata for the given operation ID.
+func GetOperationMetadata(operationId string) (OperationMetadata, bool) {
+	meta, ok := operationMetadata[operationId]
+	return meta, ok
+}
+
+// IsIdempotent returns whether the given operation is idempotent and safe to retry.
+func IsIdempotent(operationId string) bool {
+	if meta, ok := operationMetadata[operationId]; ok {
+		return meta.Idempotent
+	}
+	return false
+}
