@@ -13,11 +13,7 @@ import (
 	"time"
 )
 
-const (
-	maxRetries = 5
-	baseDelay  = 1 * time.Second
-	maxJitter  = 100 * time.Millisecond
-)
+// Note: Default retry/backoff values are now in http.go as exported constants.
 
 // DefaultUserAgent is the default User-Agent header value.
 const DefaultUserAgent = "basecamp-sdk-go/" + Version
@@ -30,6 +26,7 @@ type Client struct {
 	cache         *Cache
 	userAgent     string
 	logger        *slog.Logger
+	httpOpts      HTTPOptions
 
 	// Services
 	projects              *ProjectsService
@@ -116,26 +113,44 @@ func WithCache(cache *Cache) ClientOption {
 	}
 }
 
-// NewClient creates a new API client.
+// NewClient creates a new API client with spec-driven defaults.
+//
+// The client automatically:
+//   - Retries failed GET requests with exponential backoff
+//   - Does NOT retry POST/PUT/DELETE on 429/5xx (to avoid duplicating data)
+//   - Retries mutations once after successful 401 token refresh
+//   - Respects Retry-After headers on 429 responses
+//   - Follows pagination via Link headers
+//
+// Configuration options:
+//   - WithTimeout(d)      - Request timeout (default: 30s)
+//   - WithMaxRetries(n)   - Max retry attempts for GET (default: 5)
+//   - WithCache(c)        - Enable ETag-based caching
+//   - WithTransport(t)    - Custom http.RoundTripper
+//   - WithLogger(l)       - slog.Logger for debug output
 func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *Client {
 	c := &Client{
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-			Transport: &http.Transport{
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 10,
-				IdleConnTimeout:     90 * time.Second,
-			},
-		},
 		tokenProvider: tokenProvider,
 		cfg:           cfg,
 		userAgent:     DefaultUserAgent,
 		logger:        slog.New(discardHandler{}),
+		httpOpts:      DefaultHTTPOptions(),
 	}
 
-	// Apply options
+	// Apply options (may modify httpOpts)
 	for _, opt := range opts {
 		opt(c)
+	}
+
+	// Create HTTP client with configured options
+	transport := c.httpOpts.Transport
+	if transport == nil {
+		transport = newDefaultTransport()
+	}
+
+	c.httpClient = &http.Client{
+		Timeout:   c.httpOpts.Timeout,
+		Transport: transport,
 	}
 
 	// Initialize cache if enabled and not overridden
@@ -185,10 +200,9 @@ func (c *Client) Delete(ctx context.Context, path string) (*Response, error) {
 func (c *Client) GetAll(ctx context.Context, path string) ([]json.RawMessage, error) {
 	var allResults []json.RawMessage
 	url := c.buildURL(path)
-	maxPages := 10000
 	page := 0
 
-	for page = 1; page <= maxPages; page++ {
+	for page = 1; page <= c.httpOpts.MaxPages; page++ {
 		resp, err := c.doRequestURL(ctx, "GET", url, nil)
 		if err != nil {
 			return nil, err
@@ -209,8 +223,8 @@ func (c *Client) GetAll(ctx context.Context, path string) ([]json.RawMessage, er
 		url = nextURL
 	}
 
-	if page > maxPages {
-		c.logger.Warn("pagination capped", "maxPages", maxPages)
+	if page > c.httpOpts.MaxPages {
+		c.logger.Warn("pagination capped", "maxPages", c.httpOpts.MaxPages)
 	}
 
 	return allResults, nil
@@ -222,38 +236,62 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body any) (
 }
 
 func (c *Client) doRequestURL(ctx context.Context, method, url string, body any) (*Response, error) {
+	// Mutations (POST/PUT/DELETE): Don't retry on 429/5xx to avoid duplicating data.
+	// Only retry once after successful 401 token refresh.
+	if method != "GET" {
+		resp, err := c.singleRequest(ctx, method, url, body, 1)
+		if err == nil {
+			return resp, nil
+		}
+		// Only retry if this was a 401 that triggered successful token refresh
+		if apiErr, ok := err.(*Error); ok && apiErr.Retryable && apiErr.Code == CodeAuth {
+			c.logger.Debug("token refreshed, retrying mutation", "method", method)
+			return c.singleRequest(ctx, method, url, body, 2)
+		}
+		return nil, err
+	}
+
+	// GET requests: Full retry with exponential backoff
 	var attempt int
 	var lastErr error
 
-	for attempt = 1; attempt <= maxRetries; attempt++ {
+	for attempt = 1; attempt <= c.httpOpts.MaxRetries; attempt++ {
 		resp, err := c.singleRequest(ctx, method, url, body, attempt)
 		if err == nil {
 			return resp, nil
 		}
 
-		// Check if error is retryable
-		if apiErr, ok := err.(*Error); ok {
+		// Check for retryable error with server-specified delay
+		var delay time.Duration
+		if re, ok := err.(*retryableError); ok {
+			lastErr = re.err
+			if re.retryAfter > 0 {
+				// Use server-specified Retry-After delay
+				delay = re.retryAfter
+			} else {
+				delay = c.backoffDelay(attempt)
+			}
+		} else if apiErr, ok := err.(*Error); ok {
 			if !apiErr.Retryable {
 				return nil, err
 			}
 			lastErr = err
-
-			// Calculate backoff delay
-			delay := c.backoffDelay(attempt)
-			c.logger.Debug("retrying request", "attempt", attempt, "maxRetries", maxRetries, "delay", delay, "error", err)
-
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-time.After(delay):
-				continue
-			}
+			delay = c.backoffDelay(attempt)
+		} else {
+			return nil, err
 		}
 
-		return nil, err
+		c.logger.Debug("retrying request", "attempt", attempt, "maxRetries", c.httpOpts.MaxRetries, "delay", delay, "error", lastErr)
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(delay):
+			continue
+		}
 	}
 
-	return nil, fmt.Errorf("request failed after %d retries: %w", maxRetries, lastErr)
+	return nil, fmt.Errorf("request failed after %d retries: %w", c.httpOpts.MaxRetries, lastErr)
 }
 
 func (c *Client) singleRequest(ctx context.Context, method, url string, body any, attempt int) (*Response, error) {
@@ -429,10 +467,10 @@ func (c *Client) buildURL(path string) string {
 
 func (c *Client) backoffDelay(attempt int) time.Duration {
 	// Exponential backoff: base * 2^(attempt-1)
-	delay := baseDelay * time.Duration(1<<(attempt-1))
+	delay := c.httpOpts.BaseDelay * time.Duration(1<<(attempt-1))
 
-	// Add jitter (0-100ms)
-	jitter := time.Duration(rand.Int63n(int64(maxJitter)))
+	// Add jitter
+	jitter := time.Duration(rand.Int63n(int64(c.httpOpts.MaxJitter)))
 
 	return delay + jitter
 }
