@@ -449,3 +449,54 @@ func TestUpdateScheduleEntryRequest_MarshalPartial(t *testing.T) {
 		t.Error("expected participant_ids to be omitted")
 	}
 }
+
+func TestUpdateScheduleSettingsRequest_Marshal(t *testing.T) {
+	// Test with include_due_assignments set to true
+	req := UpdateScheduleSettingsRequest{
+		IncludeDueAssignments: true,
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal UpdateScheduleSettingsRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["include_due_assignments"] != true {
+		t.Errorf("expected include_due_assignments to be true, got %v", data["include_due_assignments"])
+	}
+
+	// Round-trip test
+	var roundtrip UpdateScheduleSettingsRequest
+	if err := json.Unmarshal(out, &roundtrip); err != nil {
+		t.Fatalf("failed to unmarshal round-trip: %v", err)
+	}
+
+	if roundtrip.IncludeDueAssignments != req.IncludeDueAssignments {
+		t.Errorf("expected IncludeDueAssignments %v, got %v", req.IncludeDueAssignments, roundtrip.IncludeDueAssignments)
+	}
+
+	// Test with include_due_assignments set to false
+	reqFalse := UpdateScheduleSettingsRequest{
+		IncludeDueAssignments: false,
+	}
+
+	outFalse, err := json.Marshal(reqFalse)
+	if err != nil {
+		t.Fatalf("failed to marshal UpdateScheduleSettingsRequest with false: %v", err)
+	}
+
+	var dataFalse map[string]interface{}
+	if err := json.Unmarshal(outFalse, &dataFalse); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	// The field should still be present even when false (no omitempty)
+	if dataFalse["include_due_assignments"] != false {
+		t.Errorf("expected include_due_assignments to be false, got %v", dataFalse["include_due_assignments"])
+	}
+}

@@ -91,6 +91,12 @@ type UpdateScheduleEntryRequest struct {
 	Notify bool `json:"notify,omitempty"`
 }
 
+// UpdateScheduleSettingsRequest specifies the parameters for updating schedule settings.
+type UpdateScheduleSettingsRequest struct {
+	// IncludeDueAssignments controls whether to-do due dates appear on the schedule.
+	IncludeDueAssignments bool `json:"include_due_assignments"`
+}
+
 // SchedulesService handles schedule operations.
 type SchedulesService struct {
 	client *Client
@@ -224,4 +230,55 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 	}
 
 	return &entry, nil
+}
+
+// GetEntryOccurrence returns a specific occurrence of a recurring schedule entry.
+// bucketID is the project ID, entryID is the schedule entry ID, date is the occurrence date (YYYY-MM-DD format).
+func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, entryID int64, date string) (*ScheduleEntry, error) {
+	if err := s.client.RequireAccount(); err != nil {
+		return nil, err
+	}
+
+	if date == "" {
+		return nil, ErrUsage("occurrence date is required")
+	}
+
+	path := fmt.Sprintf("/buckets/%d/schedule_entries/%d/occurrences/%s.json", bucketID, entryID, date)
+	resp, err := s.client.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	var entry ScheduleEntry
+	if err := resp.UnmarshalData(&entry); err != nil {
+		return nil, fmt.Errorf("failed to parse schedule entry occurrence: %w", err)
+	}
+
+	return &entry, nil
+}
+
+// UpdateSettings updates the settings for a schedule.
+// bucketID is the project ID, scheduleID is the schedule ID.
+// Returns the updated schedule.
+func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, scheduleID int64, req *UpdateScheduleSettingsRequest) (*Schedule, error) {
+	if err := s.client.RequireAccount(); err != nil {
+		return nil, err
+	}
+
+	if req == nil {
+		return nil, ErrUsage("update settings request is required")
+	}
+
+	path := fmt.Sprintf("/buckets/%d/schedules/%d.json", bucketID, scheduleID)
+	resp, err := s.client.Put(ctx, path, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var schedule Schedule
+	if err := resp.UnmarshalData(&schedule); err != nil {
+		return nil, fmt.Errorf("failed to parse schedule: %w", err)
+	}
+
+	return &schedule, nil
 }
