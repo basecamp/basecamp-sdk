@@ -9,6 +9,29 @@ permissions:
   contents: write
 
 jobs:
+  smithy:
+    name: Verify Smithy spec
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spec
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Smithy CLI
+        run: |
+          curl -L https://github.com/smithy-lang/smithy/releases/download/1.66.0/smithy-cli-linux-x86_64.tar.gz | tar xz
+          echo "$PWD/smithy-cli-1.66.0/bin" >> $GITHUB_PATH
+
+      - name: Validate Smithy spec
+        run: smithy validate
+
+      - name: Verify OpenAPI is up to date
+        run: |
+          smithy build
+          diff -q ../openapi.json build/smithy/openapi/openapi/Basecamp.openapi.json || \
+            (echo "::error::openapi.json is stale" && exit 1)
+
   test:
     name: Test before release
     runs-on: ubuntu-latest
@@ -33,7 +56,7 @@ jobs:
 
   release:
     name: Create Release
-    needs: test
+    needs: [smithy, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
