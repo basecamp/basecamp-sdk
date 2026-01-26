@@ -54,6 +54,7 @@ type Client struct {
 	schedules       *SchedulesService
 	forwards        *ForwardsService
 	recordings      *RecordingsService
+	checkins        *CheckinsService
 }
 
 // Response wraps an API response.
@@ -663,4 +664,12 @@ func (c *Client) Recordings() *RecordingsService {
 		c.recordings = NewRecordingsService(c)
 	}
 	return c.recordings
+}
+
+// Checkins returns the CheckinsService for automatic check-in operations.
+func (c *Client) Checkins() *CheckinsService {
+	if c.checkins == nil {
+		c.checkins = NewCheckinsService(c)
+	}
+	return c.checkins
 }
