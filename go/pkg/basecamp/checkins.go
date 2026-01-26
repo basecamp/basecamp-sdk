@@ -9,22 +9,22 @@ import (
 
 // Questionnaire represents a Basecamp automatic check-in questionnaire.
 type Questionnaire struct {
-	ID              int64     `json:"id"`
-	Status          string    `json:"status"`
-	VisibleToClients bool     `json:"visible_to_clients"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-	Title           string    `json:"title"`
-	InheritsStatus  bool      `json:"inherits_status"`
-	Type            string    `json:"type"`
-	URL             string    `json:"url"`
-	AppURL          string    `json:"app_url"`
-	BookmarkURL     string    `json:"bookmark_url"`
-	QuestionsURL    string    `json:"questions_url"`
-	QuestionsCount  int       `json:"questions_count"`
-	Name            string    `json:"name"`
-	Bucket          *Bucket   `json:"bucket,omitempty"`
-	Creator         *Person   `json:"creator,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title"`
+	InheritsStatus   bool      `json:"inherits_status"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url"`
+	QuestionsURL     string    `json:"questions_url"`
+	QuestionsCount   int       `json:"questions_count"`
+	Name             string    `json:"name"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
 }
 
 // QuestionSchedule represents the schedule configuration for a question.
@@ -42,48 +42,48 @@ type QuestionSchedule struct {
 
 // Question represents a Basecamp automatic check-in question.
 type Question struct {
-	ID              int64             `json:"id"`
-	Status          string            `json:"status"`
-	VisibleToClients bool             `json:"visible_to_clients"`
-	CreatedAt       time.Time         `json:"created_at"`
-	UpdatedAt       time.Time         `json:"updated_at"`
-	Title           string            `json:"title"`
-	InheritsStatus  bool              `json:"inherits_status"`
-	Type            string            `json:"type"`
-	URL             string            `json:"url"`
-	AppURL          string            `json:"app_url"`
-	BookmarkURL     string            `json:"bookmark_url"`
-	SubscriptionURL string            `json:"subscription_url"`
-	Parent          *Parent           `json:"parent,omitempty"`
-	Bucket          *Bucket           `json:"bucket,omitempty"`
-	Creator         *Person           `json:"creator,omitempty"`
-	Paused          bool              `json:"paused"`
-	Schedule        *QuestionSchedule `json:"schedule,omitempty"`
-	AnswersCount    int               `json:"answers_count"`
-	AnswersURL      string            `json:"answers_url"`
+	ID               int64             `json:"id"`
+	Status           string            `json:"status"`
+	VisibleToClients bool              `json:"visible_to_clients"`
+	CreatedAt        time.Time         `json:"created_at"`
+	UpdatedAt        time.Time         `json:"updated_at"`
+	Title            string            `json:"title"`
+	InheritsStatus   bool              `json:"inherits_status"`
+	Type             string            `json:"type"`
+	URL              string            `json:"url"`
+	AppURL           string            `json:"app_url"`
+	BookmarkURL      string            `json:"bookmark_url"`
+	SubscriptionURL  string            `json:"subscription_url"`
+	Parent           *Parent           `json:"parent,omitempty"`
+	Bucket           *Bucket           `json:"bucket,omitempty"`
+	Creator          *Person           `json:"creator,omitempty"`
+	Paused           bool              `json:"paused"`
+	Schedule         *QuestionSchedule `json:"schedule,omitempty"`
+	AnswersCount     int               `json:"answers_count"`
+	AnswersURL       string            `json:"answers_url"`
 }
 
 // QuestionAnswer represents an answer to a Basecamp check-in question.
 type QuestionAnswer struct {
-	ID              int64     `json:"id"`
-	Status          string    `json:"status"`
-	VisibleToClients bool     `json:"visible_to_clients"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-	Title           string    `json:"title"`
-	InheritsStatus  bool      `json:"inherits_status"`
-	Type            string    `json:"type"`
-	URL             string    `json:"url"`
-	AppURL          string    `json:"app_url"`
-	BookmarkURL     string    `json:"bookmark_url"`
-	SubscriptionURL string    `json:"subscription_url"`
-	CommentsCount   int       `json:"comments_count"`
-	CommentsURL     string    `json:"comments_url"`
-	Content         string    `json:"content"`
-	GroupOn         string    `json:"group_on"`
-	Parent          *Parent   `json:"parent,omitempty"`
-	Bucket          *Bucket   `json:"bucket,omitempty"`
-	Creator         *Person   `json:"creator,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title"`
+	InheritsStatus   bool      `json:"inherits_status"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url"`
+	SubscriptionURL  string    `json:"subscription_url"`
+	CommentsCount    int       `json:"comments_count"`
+	CommentsURL      string    `json:"comments_url"`
+	Content          string    `json:"content"`
+	GroupOn          string    `json:"group_on"`
+	Parent           *Parent   `json:"parent,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
 }
 
 // CreateQuestionRequest specifies the parameters for creating a question.

@@ -9,22 +9,22 @@ import (
 
 // CardTable represents a Basecamp card table (kanban board).
 type CardTable struct {
-	ID               int64         `json:"id"`
-	Status           string        `json:"status"`
-	VisibleToClients bool          `json:"visible_to_clients"`
-	CreatedAt        time.Time     `json:"created_at"`
-	UpdatedAt        time.Time     `json:"updated_at"`
-	Title            string        `json:"title"`
-	InheritsStatus   bool          `json:"inherits_status"`
-	Type             string        `json:"type"`
-	URL              string        `json:"url"`
-	AppURL           string        `json:"app_url"`
-	BookmarkURL      string        `json:"bookmark_url"`
-	SubscriptionURL  string        `json:"subscription_url"`
-	Bucket           *Bucket       `json:"bucket,omitempty"`
-	Creator          *Person       `json:"creator,omitempty"`
-	Subscribers      []Person      `json:"subscribers,omitempty"`
-	Lists            []CardColumn  `json:"lists,omitempty"`
+	ID               int64        `json:"id"`
+	Status           string       `json:"status"`
+	VisibleToClients bool         `json:"visible_to_clients"`
+	CreatedAt        time.Time    `json:"created_at"`
+	UpdatedAt        time.Time    `json:"updated_at"`
+	Title            string       `json:"title"`
+	InheritsStatus   bool         `json:"inherits_status"`
+	Type             string       `json:"type"`
+	URL              string       `json:"url"`
+	AppURL           string       `json:"app_url"`
+	BookmarkURL      string       `json:"bookmark_url"`
+	SubscriptionURL  string       `json:"subscription_url"`
+	Bucket           *Bucket      `json:"bucket,omitempty"`
+	Creator          *Person      `json:"creator,omitempty"`
+	Subscribers      []Person     `json:"subscribers,omitempty"`
+	Lists            []CardColumn `json:"lists,omitempty"`
 }
 
 // CardColumn represents a column in a card table.
@@ -54,35 +54,35 @@ type CardColumn struct {
 
 // Card represents a card in a card table column.
 type Card struct {
-	ID                     int64      `json:"id"`
-	Status                 string     `json:"status"`
-	VisibleToClients       bool       `json:"visible_to_clients"`
-	CreatedAt              time.Time  `json:"created_at"`
-	UpdatedAt              time.Time  `json:"updated_at"`
-	Title                  string     `json:"title"`
-	InheritsStatus         bool       `json:"inherits_status"`
-	Type                   string     `json:"type"`
-	URL                    string     `json:"url"`
-	AppURL                 string     `json:"app_url"`
-	BookmarkURL            string     `json:"bookmark_url"`
-	SubscriptionURL        string     `json:"subscription_url,omitempty"`
-	Position               int        `json:"position"`
-	Content                string     `json:"content,omitempty"`
-	Description            string     `json:"description,omitempty"`
-	DueOn                  string     `json:"due_on,omitempty"`
-	Completed              bool       `json:"completed"`
-	CompletedAt            *time.Time `json:"completed_at,omitempty"`
-	CommentsCount          int        `json:"comments_count"`
-	CommentsURL            string     `json:"comments_url,omitempty"`
-	CommentCount           int        `json:"comment_count"`
-	CompletionURL          string     `json:"completion_url,omitempty"`
-	Parent                 *Parent    `json:"parent,omitempty"`
-	Bucket                 *Bucket    `json:"bucket,omitempty"`
-	Creator                *Person    `json:"creator,omitempty"`
-	Completer              *Person    `json:"completer,omitempty"`
-	Assignees              []Person   `json:"assignees,omitempty"`
-	CompletionSubscribers  []Person   `json:"completion_subscribers,omitempty"`
-	Steps                  []CardStep `json:"steps,omitempty"`
+	ID                    int64      `json:"id"`
+	Status                string     `json:"status"`
+	VisibleToClients      bool       `json:"visible_to_clients"`
+	CreatedAt             time.Time  `json:"created_at"`
+	UpdatedAt             time.Time  `json:"updated_at"`
+	Title                 string     `json:"title"`
+	InheritsStatus        bool       `json:"inherits_status"`
+	Type                  string     `json:"type"`
+	URL                   string     `json:"url"`
+	AppURL                string     `json:"app_url"`
+	BookmarkURL           string     `json:"bookmark_url"`
+	SubscriptionURL       string     `json:"subscription_url,omitempty"`
+	Position              int        `json:"position"`
+	Content               string     `json:"content,omitempty"`
+	Description           string     `json:"description,omitempty"`
+	DueOn                 string     `json:"due_on,omitempty"`
+	Completed             bool       `json:"completed"`
+	CompletedAt           *time.Time `json:"completed_at,omitempty"`
+	CommentsCount         int        `json:"comments_count"`
+	CommentsURL           string     `json:"comments_url,omitempty"`
+	CommentCount          int        `json:"comment_count"`
+	CompletionURL         string     `json:"completion_url,omitempty"`
+	Parent                *Parent    `json:"parent,omitempty"`
+	Bucket                *Bucket    `json:"bucket,omitempty"`
+	Creator               *Person    `json:"creator,omitempty"`
+	Completer             *Person    `json:"completer,omitempty"`
+	Assignees             []Person   `json:"assignees,omitempty"`
+	CompletionSubscribers []Person   `json:"completion_subscribers,omitempty"`
+	Steps                 []CardStep `json:"steps,omitempty"`
 }
 
 // CardStep represents a step (checklist item) on a card.
