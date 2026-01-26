@@ -17,10 +17,10 @@ const (
 	maxRetries = 5
 	baseDelay  = 1 * time.Second
 	maxJitter  = 100 * time.Millisecond
-
-	// DefaultUserAgent is the default User-Agent header value.
-	DefaultUserAgent = "basecamp-sdk-go/1.0"
 )
+
+// DefaultUserAgent is the default User-Agent header value.
+var DefaultUserAgent = "basecamp-sdk-go/" + Version
 
 // Client is an HTTP client for the Basecamp API.
 type Client struct {
@@ -32,35 +32,35 @@ type Client struct {
 	logger        *slog.Logger
 
 	// Services
-	projects       *ProjectsService
-	todos          *TodosService
-	todosets       *TodosetsService
-	todolists      *TodolistsService
-	todolistGroups *TodolistGroupsService
-	people         *PeopleService
-	comments       *CommentsService
-	messages       *MessagesService
-	messageBoards  *MessageBoardsService
-	messageTypes   *MessageTypesService
-	webhooks       *WebhooksService
-	events         *EventsService
-	search          *SearchService
-	templates       *TemplatesService
-	tools           *ToolsService
-	lineup          *LineupService
-	subscriptions   *SubscriptionsService
-	campfires       *CampfiresService
-	timesheet       *TimesheetService
-	schedules       *SchedulesService
-	forwards        *ForwardsService
-	recordings      *RecordingsService
-	checkins        *CheckinsService
-	vaults          *VaultsService
-	documents       *DocumentsService
-	uploads         *UploadsService
-	cardTables      *CardTablesService
-	cards           *CardsService
-	cardColumns     *CardColumnsService
+	projects              *ProjectsService
+	todos                 *TodosService
+	todosets              *TodosetsService
+	todolists             *TodolistsService
+	todolistGroups        *TodolistGroupsService
+	people                *PeopleService
+	comments              *CommentsService
+	messages              *MessagesService
+	messageBoards         *MessageBoardsService
+	messageTypes          *MessageTypesService
+	webhooks              *WebhooksService
+	events                *EventsService
+	search                *SearchService
+	templates             *TemplatesService
+	tools                 *ToolsService
+	lineup                *LineupService
+	subscriptions         *SubscriptionsService
+	campfires             *CampfiresService
+	timesheet             *TimesheetService
+	schedules             *SchedulesService
+	forwards              *ForwardsService
+	recordings            *RecordingsService
+	checkins              *CheckinsService
+	vaults                *VaultsService
+	documents             *DocumentsService
+	uploads               *UploadsService
+	cardTables            *CardTablesService
+	cards                 *CardsService
+	cardColumns           *CardColumnsService
 	cardSteps             *CardStepsService
 	attachments           *AttachmentsService
 	clientApprovals       *ClientApprovalsService
