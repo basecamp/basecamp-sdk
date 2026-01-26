@@ -572,3 +572,93 @@ func TestCreateAnswerRequest_MarshalMinimal(t *testing.T) {
 		t.Error("expected group_on to be omitted")
 	}
 }
+
+func TestUpdateAnswerRequest_Marshal(t *testing.T) {
+	req := UpdateAnswerRequest{
+		Content: "<div>Updated: Today I finished the API documentation.</div>",
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal UpdateAnswerRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["content"] != "<div>Updated: Today I finished the API documentation.</div>" {
+		t.Errorf("unexpected content: %v", data["content"])
+	}
+
+	// Round-trip test
+	var roundtrip UpdateAnswerRequest
+	if err := json.Unmarshal(out, &roundtrip); err != nil {
+		t.Fatalf("failed to unmarshal round-trip: %v", err)
+	}
+
+	if roundtrip.Content != req.Content {
+		t.Errorf("expected content %q, got %q", req.Content, roundtrip.Content)
+	}
+}
+
+func TestCreateAnswerRequestWrapper_Marshal(t *testing.T) {
+	// Test that the wrapper correctly wraps the request for the API
+	// API expects: {"question_answer": {"content": "...", "group_on": "..."}}
+	req := &CreateAnswerRequest{
+		Content: "<div>Today I worked on the API documentation.</div>",
+		GroupOn: "2024-01-22",
+	}
+	wrapper := createAnswerRequestWrapper{QuestionAnswer: req}
+
+	out, err := json.Marshal(wrapper)
+	if err != nil {
+		t.Fatalf("failed to marshal wrapper: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	// Verify the structure is wrapped in "question_answer" key
+	questionAnswer, ok := data["question_answer"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected question_answer to be a map")
+	}
+	if questionAnswer["content"] != "<div>Today I worked on the API documentation.</div>" {
+		t.Errorf("unexpected content: %v", questionAnswer["content"])
+	}
+	if questionAnswer["group_on"] != "2024-01-22" {
+		t.Errorf("unexpected group_on: %v", questionAnswer["group_on"])
+	}
+}
+
+func TestUpdateAnswerRequestWrapper_Marshal(t *testing.T) {
+	// Test that the wrapper correctly wraps the request for the API
+	// API expects: {"question_answer": {"content": "..."}}
+	req := &UpdateAnswerRequest{
+		Content: "<div>My updated answer.</div>",
+	}
+	wrapper := updateAnswerRequestWrapper{QuestionAnswer: req}
+
+	out, err := json.Marshal(wrapper)
+	if err != nil {
+		t.Fatalf("failed to marshal wrapper: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	// Verify the structure is wrapped in "question_answer" key
+	questionAnswer, ok := data["question_answer"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected question_answer to be a map")
+	}
+	if questionAnswer["content"] != "<div>My updated answer.</div>" {
+		t.Errorf("unexpected content: %v", questionAnswer["content"])
+	}
+}

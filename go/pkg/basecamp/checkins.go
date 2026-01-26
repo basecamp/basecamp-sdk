@@ -108,6 +108,24 @@ type CreateAnswerRequest struct {
 	GroupOn string `json:"group_on,omitempty"`
 }
 
+// createAnswerRequestWrapper wraps the create request for the API.
+// The Basecamp API expects: {"question_answer": {"content": "...", "group_on": "..."}}
+type createAnswerRequestWrapper struct {
+	QuestionAnswer *CreateAnswerRequest `json:"question_answer"`
+}
+
+// UpdateAnswerRequest specifies the parameters for updating an answer.
+type UpdateAnswerRequest struct {
+	// Content is the updated answer content in HTML (required).
+	Content string `json:"content"`
+}
+
+// updateAnswerRequestWrapper wraps the update request for the API.
+// The Basecamp API expects: {"question_answer": {"content": "..."}}
+type updateAnswerRequestWrapper struct {
+	QuestionAnswer *UpdateAnswerRequest `json:"question_answer"`
+}
+
 // CheckinsService handles automatic check-in operations.
 type CheckinsService struct {
 	client *Client
@@ -298,8 +316,9 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 		return nil, ErrUsage("answer content is required")
 	}
 
+	wrapper := &createAnswerRequestWrapper{QuestionAnswer: req}
 	path := fmt.Sprintf("/buckets/%d/questions/%d/answers.json", bucketID, questionID)
-	resp, err := s.client.Post(ctx, path, req)
+	resp, err := s.client.Post(ctx, path, wrapper)
 	if err != nil {
 		return nil, err
 	}
@@ -310,4 +329,22 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 	}
 
 	return &answer, nil
+}
+
+// UpdateAnswer updates an existing question answer.
+// bucketID is the project ID, answerID is the answer ID.
+// Returns nil on success (204 No Content).
+func (s *CheckinsService) UpdateAnswer(ctx context.Context, bucketID, answerID int64, req *UpdateAnswerRequest) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	if req == nil || req.Content == "" {
+		return ErrUsage("answer content is required")
+	}
+
+	wrapper := &updateAnswerRequestWrapper{QuestionAnswer: req}
+	path := fmt.Sprintf("/buckets/%d/question_answers/%d.json", bucketID, answerID)
+	_, err := s.client.Put(ctx, path, wrapper)
+	return err
 }

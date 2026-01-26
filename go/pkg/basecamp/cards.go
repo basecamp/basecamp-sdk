@@ -515,6 +515,41 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, column
 	return &column, nil
 }
 
+// Watch subscribes the current user to the column.
+// bucketID is the project ID, columnID is the column ID.
+// Returns the updated subscription information.
+func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64) (*Subscription, error) {
+	if err := s.client.RequireAccount(); err != nil {
+		return nil, err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/subscription.json", bucketID, columnID)
+	resp, err := s.client.Post(ctx, path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var subscription Subscription
+	if err := resp.UnmarshalData(&subscription); err != nil {
+		return nil, fmt.Errorf("failed to parse subscription: %w", err)
+	}
+
+	return &subscription, nil
+}
+
+// Unwatch unsubscribes the current user from the column.
+// bucketID is the project ID, columnID is the column ID.
+// Returns nil on success (204 No Content).
+func (s *CardColumnsService) Unwatch(ctx context.Context, bucketID, columnID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/subscription.json", bucketID, columnID)
+	_, err := s.client.Delete(ctx, path)
+	return err
+}
+
 // CardStepsService handles card step operations.
 type CardStepsService struct {
 	client *Client
