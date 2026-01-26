@@ -1,0 +1,22 @@
+[
+  {
+    "id": 9007199254741433,
+    "active": true,
+    "created_at": "2022-11-22T15:58:38.851Z",
+    "updated_at": "2022-11-22T15:58:38.851Z",
+    "payload_url": "https://example.com/webhooks/basecamp",
+    "types": ["Todo", "Todolist"],
+    "url": "https://3.basecampapi.com/999999999/buckets/2085958500/webhooks/9007199254741433.json",
+    "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/webhooks/9007199254741433"
+  },
+  {
+    "id": 9007199254741434,
+    "active": false,
+    "created_at": "2022-11-22T16:00:00.000Z",
+    "updated_at": "2022-11-22T16:05:00.000Z",
+    "payload_url": "https://example.com/webhooks/comments",
+    "types": ["Comment"],
+    "url": "https://3.basecampapi.com/999999999/buckets/2085958500/webhooks/9007199254741434.json",
+    "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/webhooks/9007199254741434"
+  }
+]

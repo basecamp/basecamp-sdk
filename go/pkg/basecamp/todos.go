@@ -9,53 +9,53 @@ import (
 
 // Todo represents a Basecamp todo item.
 type Todo struct {
-	ID          int64     `json:"id"`
-	Status      string    `json:"status"`
-	VisibleTo   []int64   `json:"visible_to"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	Title       string    `json:"title"`
-	InheritsVis bool      `json:"inherits_status"`
-	Type        string    `json:"type"`
-	URL         string    `json:"url"`
-	AppURL      string    `json:"app_url"`
-	BookmarkURL string    `json:"bookmark_url"`
-	Parent      *Parent   `json:"parent,omitempty"`
-	Bucket      *Bucket   `json:"bucket,omitempty"`
-	Creator     *Person   `json:"creator,omitempty"`
-	Content     string    `json:"content"`
-	Description string    `json:"description"`
-	StartsOn    string    `json:"starts_on,omitempty"`
-	DueOn       string    `json:"due_on,omitempty"`
-	Completed   bool      `json:"completed"`
+	ID          int64      `json:"id"`
+	Status      string     `json:"status"`
+	VisibleTo   []int64    `json:"visible_to"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	Title       string     `json:"title"`
+	InheritsVis bool       `json:"inherits_status"`
+	Type        string     `json:"type"`
+	URL         string     `json:"url"`
+	AppURL      string     `json:"app_url"`
+	BookmarkURL string     `json:"bookmark_url"`
+	Parent      *Parent    `json:"parent,omitempty"`
+	Bucket      *Bucket    `json:"bucket,omitempty"`
+	Creator     *Person    `json:"creator,omitempty"`
+	Content     string     `json:"content"`
+	Description string     `json:"description"`
+	StartsOn    string     `json:"starts_on,omitempty"`
+	DueOn       string     `json:"due_on,omitempty"`
+	Completed   bool       `json:"completed"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
-	Completer   *Person   `json:"completer,omitempty"`
-	Assignees   []Person  `json:"assignees,omitempty"`
-	Position    int       `json:"position"`
+	Completer   *Person    `json:"completer,omitempty"`
+	Assignees   []Person   `json:"assignees,omitempty"`
+	Position    int        `json:"position"`
 }
 
 // Person represents a Basecamp user.
 type Person struct {
-	ID                 int64          `json:"id"`
-	AttachableSGID     string         `json:"attachable_sgid,omitempty"`
-	Name               string         `json:"name"`
-	EmailAddress       string         `json:"email_address,omitempty"`
-	PersonableType     string         `json:"personable_type,omitempty"`
-	Title              string         `json:"title,omitempty"`
-	Bio                string         `json:"bio,omitempty"`
-	Location           string         `json:"location,omitempty"`
-	CreatedAt          string         `json:"created_at,omitempty"`
-	UpdatedAt          string         `json:"updated_at,omitempty"`
-	Admin              bool           `json:"admin,omitempty"`
-	Owner              bool           `json:"owner,omitempty"`
-	Client             bool           `json:"client,omitempty"`
-	Employee           bool           `json:"employee,omitempty"`
-	TimeZone           string         `json:"time_zone,omitempty"`
-	AvatarURL          string         `json:"avatar_url,omitempty"`
-	CanPing            bool           `json:"can_ping,omitempty"`
-	Company            *PersonCompany `json:"company,omitempty"`
-	CanManageProjects  bool           `json:"can_manage_projects,omitempty"`
-	CanManagePeople    bool           `json:"can_manage_people,omitempty"`
+	ID                int64          `json:"id"`
+	AttachableSGID    string         `json:"attachable_sgid,omitempty"`
+	Name              string         `json:"name"`
+	EmailAddress      string         `json:"email_address,omitempty"`
+	PersonableType    string         `json:"personable_type,omitempty"`
+	Title             string         `json:"title,omitempty"`
+	Bio               string         `json:"bio,omitempty"`
+	Location          string         `json:"location,omitempty"`
+	CreatedAt         string         `json:"created_at,omitempty"`
+	UpdatedAt         string         `json:"updated_at,omitempty"`
+	Admin             bool           `json:"admin,omitempty"`
+	Owner             bool           `json:"owner,omitempty"`
+	Client            bool           `json:"client,omitempty"`
+	Employee          bool           `json:"employee,omitempty"`
+	TimeZone          string         `json:"time_zone,omitempty"`
+	AvatarURL         string         `json:"avatar_url,omitempty"`
+	CanPing           bool           `json:"can_ping,omitempty"`
+	Company           *PersonCompany `json:"company,omitempty"`
+	CanManageProjects bool           `json:"can_manage_projects,omitempty"`
+	CanManagePeople   bool           `json:"can_manage_people,omitempty"`
 }
 
 // PersonCompany represents a company associated with a person.
