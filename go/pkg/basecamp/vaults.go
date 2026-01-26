@@ -122,6 +122,17 @@ type UpdateUploadRequest struct {
 	BaseName string `json:"base_name,omitempty"`
 }
 
+// CreateUploadRequest specifies the parameters for creating an upload.
+type CreateUploadRequest struct {
+	// AttachableSGID is the signed global ID for an uploaded attachment (required).
+	// See the Create Attachment endpoint for how to upload files.
+	AttachableSGID string `json:"attachable_sgid"`
+	// Description is the upload description in HTML (optional).
+	Description string `json:"description,omitempty"`
+	// BaseName is the filename without extension (optional).
+	BaseName string `json:"base_name,omitempty"`
+}
+
 // VaultsService handles vault (folder) operations.
 type VaultsService struct {
 	client *Client
@@ -338,6 +349,19 @@ func (s *DocumentsService) Update(ctx context.Context, bucketID, documentID int6
 	return &document, nil
 }
 
+// Trash moves a document to the trash.
+// bucketID is the project ID, documentID is the document ID.
+// Trashed documents can be recovered from the trash.
+func (s *DocumentsService) Trash(ctx context.Context, bucketID, documentID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, documentID)
+	_, err := s.client.Put(ctx, path, nil)
+	return err
+}
+
 // UploadsService handles upload (file) operations.
 type UploadsService struct {
 	client *Client
@@ -418,4 +442,64 @@ func (s *UploadsService) Update(ctx context.Context, bucketID, uploadID int64, r
 	}
 
 	return &upload, nil
+}
+
+// Create creates a new upload in a vault.
+// bucketID is the project ID, vaultID is the vault ID.
+// The attachable_sgid must be obtained from the Create Attachment endpoint.
+// Returns the created upload.
+func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, req *CreateUploadRequest) (*Upload, error) {
+	if err := s.client.RequireAccount(); err != nil {
+		return nil, err
+	}
+
+	if req == nil || req.AttachableSGID == "" {
+		return nil, ErrUsage("upload attachable_sgid is required")
+	}
+
+	path := fmt.Sprintf("/buckets/%d/vaults/%d/uploads.json", bucketID, vaultID)
+	resp, err := s.client.Post(ctx, path, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var upload Upload
+	if err := resp.UnmarshalData(&upload); err != nil {
+		return nil, fmt.Errorf("failed to parse upload: %w", err)
+	}
+
+	return &upload, nil
+}
+
+// Trash moves an upload to the trash.
+// bucketID is the project ID, uploadID is the upload ID.
+// Trashed uploads can be recovered from the trash.
+func (s *UploadsService) Trash(ctx context.Context, bucketID, uploadID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, uploadID)
+	_, err := s.client.Put(ctx, path, nil)
+	return err
+}
+
+// ListVersions returns all versions of an upload.
+// bucketID is the project ID, uploadID is the upload ID.
+func (s *UploadsService) ListVersions(ctx context.Context, bucketID, uploadID int64) ([]Upload, error) {
+	if err := s.client.RequireAccount(); err != nil {
+		return nil, err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/uploads/%d/versions.json", bucketID, uploadID)
+	resp, err := s.client.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	var uploads []Upload
+	if err := resp.UnmarshalData(&uploads); err != nil {
+		return nil, err
+	}
+	return uploads, nil
 }

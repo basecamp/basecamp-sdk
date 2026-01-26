@@ -362,3 +362,23 @@ func TestForwardReply_UnmarshalGet(t *testing.T) {
 		t.Errorf("expected Creator.Company.Name 'Honcho Design', got %q", reply.Creator.Company.Name)
 	}
 }
+
+func TestCreateForwardReplyRequest_Marshal(t *testing.T) {
+	req := CreateForwardReplyRequest{
+		Content: "<div>This is my reply to the forwarded email.</div>",
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateForwardReplyRequest: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if result["content"] != "<div>This is my reply to the forwarded email.</div>" {
+		t.Errorf("unexpected content: %v", result["content"])
+	}
+}

@@ -1,0 +1,50 @@
+{
+  "id": 1069479566,
+  "status": "active",
+  "visible_to_clients": false,
+  "created_at": "2022-10-09T09:22:14.049Z",
+  "updated_at": "2022-11-22T08:24:14.926Z",
+  "title": "Project kickoff!",
+  "inherits_status": true,
+  "type": "Client::Correspondence",
+  "url": "https://3.basecampapi.com/195539477/buckets/2085958500/client/correspondences/1069479566.json",
+  "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/client/correspondences/1069479566",
+  "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NTY2P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--fbfbc7c9428986404e1713f3335033f80b3c0313.json",
+  "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479566/subscription.json",
+  "parent": {
+    "id": 1069479564,
+    "title": "The Clientside",
+    "type": "Client::Board",
+    "url": "https://3.basecampapi.com/195539477/buckets/2085958500/client/board.json",
+    "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/client/board.1069479564"
+  },
+  "bucket": {
+    "id": 2085958500,
+    "name": "The Leto Locator",
+    "type": "Project"
+  },
+  "creator": {
+    "id": 1049715929,
+    "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTI5P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--d5a066a78ea37eba00e6590336eb23dd6717760b",
+    "name": "Jay Edmonds",
+    "email_address": "jay@honchodesign.com",
+    "personable_type": "User",
+    "title": "Internal Marketing Assistant",
+    "bio": null,
+    "location": null,
+    "created_at": "2022-11-22T08:23:22.092Z",
+    "updated_at": "2022-11-22T08:23:22.092Z",
+    "admin": false,
+    "owner": false,
+    "client": false,
+    "employee": false,
+    "time_zone": "Etc/UTC",
+    "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBNlkkT4=--0f3c77d8c13069d514fd3f0ad694a67e426bad0f/avatar?v=1",
+    "can_manage_projects": true,
+    "can_manage_people": true
+  },
+  "content": "<div>Hi everyone! Welcome to the Basecamp that we'll be using to collaborate and manage the Leto Locator project.</div>",
+  "subject": "Project kickoff!",
+  "replies_count": 5,
+  "replies_url": "https://3.basecampapi.com/195539477/buckets/2085958500/client/recordings/1069479566/replies.json"
+}

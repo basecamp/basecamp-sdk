@@ -49,7 +49,12 @@
       "frequency": "every_day",
       "days": [1, 2, 3, 4, 5],
       "hour": 17,
-      "minute": 0
+      "minute": 0,
+      "week_instance": null,
+      "week_interval": null,
+      "month_interval": null,
+      "start_date": "2022-10-28",
+      "end_date": null
     },
     "answers_count": 5,
     "answers_url": "https://3.basecampapi.com/195539477/buckets/2085958499/questions/1069479410/answers.json"
@@ -108,7 +113,12 @@
       "frequency": "every_week",
       "days": [5],
       "hour": 16,
-      "minute": 0
+      "minute": 0,
+      "week_instance": null,
+      "week_interval": 1,
+      "month_interval": null,
+      "start_date": "2022-10-29",
+      "end_date": null
     },
     "answers_count": 3,
     "answers_url": "https://3.basecampapi.com/195539477/buckets/2085958499/questions/1069479420/answers.json"

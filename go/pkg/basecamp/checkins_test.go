@@ -182,6 +182,16 @@ func TestQuestion_UnmarshalList(t *testing.T) {
 	if q2.Schedule.Frequency != "every_week" {
 		t.Errorf("expected Schedule.Frequency 'every_week', got %q", q2.Schedule.Frequency)
 	}
+	// Verify week_interval is parsed correctly
+	if q2.Schedule.WeekInterval == nil {
+		t.Fatal("expected Schedule.WeekInterval to be non-nil for weekly question")
+	}
+	if *q2.Schedule.WeekInterval != 1 {
+		t.Errorf("expected Schedule.WeekInterval 1, got %d", *q2.Schedule.WeekInterval)
+	}
+	if q2.Schedule.StartDate != "2022-10-29" {
+		t.Errorf("expected Schedule.StartDate '2022-10-29', got %q", q2.Schedule.StartDate)
+	}
 	// Verify creator with company
 	if q2.Creator == nil {
 		t.Fatal("expected Creator to be non-nil for second question")
@@ -232,6 +242,16 @@ func TestQuestion_UnmarshalGet(t *testing.T) {
 	}
 	if question.Schedule.Frequency != "every_day" {
 		t.Errorf("expected Schedule.Frequency 'every_day', got %q", question.Schedule.Frequency)
+	}
+	if question.Schedule.StartDate != "2022-10-28" {
+		t.Errorf("expected Schedule.StartDate '2022-10-28', got %q", question.Schedule.StartDate)
+	}
+	// Verify null fields are nil pointers
+	if question.Schedule.WeekInstance != nil {
+		t.Errorf("expected Schedule.WeekInstance to be nil, got %v", *question.Schedule.WeekInstance)
+	}
+	if question.Schedule.EndDate != "" {
+		t.Errorf("expected Schedule.EndDate to be empty, got %q", question.Schedule.EndDate)
 	}
 }
 

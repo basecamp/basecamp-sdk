@@ -179,3 +179,41 @@ func (s *MessagesService) Unpin(ctx context.Context, bucketID, messageID int64) 
 	_, err := s.client.Delete(ctx, path)
 	return err
 }
+
+// Trash moves a message to the trash.
+// bucketID is the project ID, messageID is the message ID.
+// Trashed messages can be recovered from the trash.
+func (s *MessagesService) Trash(ctx context.Context, bucketID, messageID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, messageID)
+	_, err := s.client.Put(ctx, path, nil)
+	return err
+}
+
+// Archive moves a message to the archive.
+// bucketID is the project ID, messageID is the message ID.
+// Archived messages can be unarchived.
+func (s *MessagesService) Archive(ctx context.Context, bucketID, messageID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/archived.json", bucketID, messageID)
+	_, err := s.client.Put(ctx, path, nil)
+	return err
+}
+
+// Unarchive restores an archived message to active status.
+// bucketID is the project ID, messageID is the message ID.
+func (s *MessagesService) Unarchive(ctx context.Context, bucketID, messageID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/active.json", bucketID, messageID)
+	_, err := s.client.Put(ctx, path, nil)
+	return err
+}

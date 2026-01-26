@@ -29,11 +29,15 @@ type Questionnaire struct {
 
 // QuestionSchedule represents the schedule configuration for a question.
 type QuestionSchedule struct {
-	Frequency string `json:"frequency"`
-	Days      []int  `json:"days"`
-	Hour      int    `json:"hour"`
-	Minute    int    `json:"minute"`
-	StartDate string `json:"start_date,omitempty"`
+	Frequency     string `json:"frequency"`
+	Days          []int  `json:"days"`
+	Hour          int    `json:"hour"`
+	Minute        int    `json:"minute"`
+	WeekInstance  *int   `json:"week_instance,omitempty"`
+	WeekInterval  *int   `json:"week_interval,omitempty"`
+	MonthInterval *int   `json:"month_interval,omitempty"`
+	StartDate     string `json:"start_date,omitempty"`
+	EndDate       string `json:"end_date,omitempty"`
 }
 
 // Question represents a Basecamp automatic check-in question.

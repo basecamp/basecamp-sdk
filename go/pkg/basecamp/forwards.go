@@ -53,6 +53,12 @@ type ForwardReply struct {
 	Creator   *Person   `json:"creator,omitempty"`
 }
 
+// CreateForwardReplyRequest specifies the parameters for creating a reply to a forward.
+type CreateForwardReplyRequest struct {
+	// Content is the reply body in HTML (required).
+	Content string `json:"content"`
+}
+
 // ForwardsService handles email forward operations.
 type ForwardsService struct {
 	client *Client
@@ -164,6 +170,32 @@ func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, rep
 
 	path := fmt.Sprintf("/buckets/%d/inbox_forwards/%d/replies/%d.json", bucketID, forwardID, replyID)
 	resp, err := s.client.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	var reply ForwardReply
+	if err := resp.UnmarshalData(&reply); err != nil {
+		return nil, fmt.Errorf("failed to parse forward reply: %w", err)
+	}
+
+	return &reply, nil
+}
+
+// CreateReply creates a new reply to a forwarded email.
+// bucketID is the project ID, forwardID is the forward ID.
+// Returns the created reply.
+func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID int64, req *CreateForwardReplyRequest) (*ForwardReply, error) {
+	if err := s.client.RequireAccount(); err != nil {
+		return nil, err
+	}
+
+	if req == nil || req.Content == "" {
+		return nil, ErrUsage("reply content is required")
+	}
+
+	path := fmt.Sprintf("/buckets/%d/inbox_forwards/%d/replies.json", bucketID, forwardID)
+	resp, err := s.client.Post(ctx, path, req)
 	if err != nil {
 		return nil, err
 	}

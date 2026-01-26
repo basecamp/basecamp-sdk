@@ -344,6 +344,19 @@ func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int6
 	return err
 }
 
+// Trash moves a card to the trash.
+// bucketID is the project ID, cardID is the card ID.
+// Trashed cards can be recovered from the trash.
+func (s *CardsService) Trash(ctx context.Context, bucketID, cardID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, cardID)
+	_, err := s.client.Put(ctx, path, nil)
+	return err
+}
+
 // CardColumnsService handles card column operations.
 type CardColumnsService struct {
 	client *Client

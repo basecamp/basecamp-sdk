@@ -141,3 +141,29 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 
 	return &comment, nil
 }
+
+// Trash moves a comment to the trash.
+// bucketID is the project ID, commentID is the comment ID.
+// Trashed comments can be recovered from the trash.
+func (s *CommentsService) Trash(ctx context.Context, bucketID, commentID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, commentID)
+	_, err := s.client.Put(ctx, path, nil)
+	return err
+}
+
+// Delete permanently removes a comment.
+// bucketID is the project ID, commentID is the comment ID.
+// Note: This permanently deletes the comment. Use Trash for recoverable deletion.
+func (s *CommentsService) Delete(ctx context.Context, bucketID, commentID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/comments/%d.json", bucketID, commentID)
+	_, err := s.client.Delete(ctx, path)
+	return err
+}

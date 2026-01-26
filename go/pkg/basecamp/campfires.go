@@ -48,6 +48,36 @@ type CreateCampfireLineRequest struct {
 	Content string `json:"content"`
 }
 
+// Chatbot represents a Basecamp chatbot integration.
+type Chatbot struct {
+	ID          int64     `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	ServiceName string    `json:"service_name"`
+	CommandURL  string    `json:"command_url,omitempty"`
+	URL         string    `json:"url"`
+	AppURL      string    `json:"app_url"`
+	LinesURL    string    `json:"lines_url"`
+}
+
+// CreateChatbotRequest specifies the parameters for creating a chatbot.
+type CreateChatbotRequest struct {
+	// ServiceName is the chatbot name used to invoke queries and commands (required).
+	// No spaces, emoji or non-word characters are allowed.
+	ServiceName string `json:"service_name"`
+	// CommandURL is the HTTPS URL that Basecamp should call when the bot is addressed (optional).
+	CommandURL string `json:"command_url,omitempty"`
+}
+
+// UpdateChatbotRequest specifies the parameters for updating a chatbot.
+type UpdateChatbotRequest struct {
+	// ServiceName is the chatbot name used to invoke queries and commands (required).
+	// No spaces, emoji or non-word characters are allowed.
+	ServiceName string `json:"service_name"`
+	// CommandURL is the HTTPS URL that Basecamp should call when the bot is addressed (optional).
+	CommandURL string `json:"command_url,omitempty"`
+}
+
 // CampfiresService handles campfire operations.
 type CampfiresService struct {
 	client *Client
@@ -183,6 +213,116 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID,
 	}
 
 	path := fmt.Sprintf("/buckets/%d/chats/%d/lines/%d.json", bucketID, campfireID, lineID)
+	_, err := s.client.Delete(ctx, path)
+	return err
+}
+
+// ListChatbots returns all chatbots for a campfire.
+// bucketID is the project ID, campfireID is the campfire ID.
+// Note: Chatbots are account-wide but with basecamp-specific callback URLs.
+func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireID int64) ([]Chatbot, error) {
+	if err := s.client.RequireAccount(); err != nil {
+		return nil, err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/chats/%d/integrations.json", bucketID, campfireID)
+	resp, err := s.client.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	var chatbots []Chatbot
+	if err := resp.UnmarshalData(&chatbots); err != nil {
+		return nil, fmt.Errorf("failed to parse chatbots: %w", err)
+	}
+
+	return chatbots, nil
+}
+
+// GetChatbot returns a chatbot by ID.
+// bucketID is the project ID, campfireID is the campfire ID, chatbotID is the chatbot ID.
+func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64) (*Chatbot, error) {
+	if err := s.client.RequireAccount(); err != nil {
+		return nil, err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/chats/%d/integrations/%d.json", bucketID, campfireID, chatbotID)
+	resp, err := s.client.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	var chatbot Chatbot
+	if err := resp.UnmarshalData(&chatbot); err != nil {
+		return nil, fmt.Errorf("failed to parse chatbot: %w", err)
+	}
+
+	return &chatbot, nil
+}
+
+// CreateChatbot creates a new chatbot for a campfire.
+// bucketID is the project ID, campfireID is the campfire ID.
+// Note: Chatbots are account-wide and can only be managed by administrators.
+// Returns the created chatbot with its lines_url for posting.
+func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfireID int64, req *CreateChatbotRequest) (*Chatbot, error) {
+	if err := s.client.RequireAccount(); err != nil {
+		return nil, err
+	}
+
+	if req == nil || req.ServiceName == "" {
+		return nil, ErrUsage("chatbot service_name is required")
+	}
+
+	path := fmt.Sprintf("/buckets/%d/chats/%d/integrations.json", bucketID, campfireID)
+	resp, err := s.client.Post(ctx, path, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var chatbot Chatbot
+	if err := resp.UnmarshalData(&chatbot); err != nil {
+		return nil, fmt.Errorf("failed to parse chatbot: %w", err)
+	}
+
+	return &chatbot, nil
+}
+
+// UpdateChatbot updates an existing chatbot.
+// bucketID is the project ID, campfireID is the campfire ID, chatbotID is the chatbot ID.
+// Note: Updates to chatbots are account-wide.
+// Returns the updated chatbot.
+func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64, req *UpdateChatbotRequest) (*Chatbot, error) {
+	if err := s.client.RequireAccount(); err != nil {
+		return nil, err
+	}
+
+	if req == nil || req.ServiceName == "" {
+		return nil, ErrUsage("chatbot service_name is required")
+	}
+
+	path := fmt.Sprintf("/buckets/%d/chats/%d/integrations/%d.json", bucketID, campfireID, chatbotID)
+	resp, err := s.client.Put(ctx, path, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var chatbot Chatbot
+	if err := resp.UnmarshalData(&chatbot); err != nil {
+		return nil, fmt.Errorf("failed to parse chatbot: %w", err)
+	}
+
+	return &chatbot, nil
+}
+
+// DeleteChatbot deletes a chatbot.
+// bucketID is the project ID, campfireID is the campfire ID, chatbotID is the chatbot ID.
+// Note: Deleting a chatbot removes it from the entire account.
+func (s *CampfiresService) DeleteChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64) error {
+	if err := s.client.RequireAccount(); err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("/buckets/%d/chats/%d/integrations/%d.json", bucketID, campfireID, chatbotID)
 	_, err := s.client.Delete(ctx, path)
 	return err
 }
