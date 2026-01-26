@@ -100,6 +100,10 @@ func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (*
 // bucketID is the project ID.
 // Returns the created webhook.
 func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *CreateWebhookRequest) (*Webhook, error) {
+	if req == nil {
+		return nil, ErrUsage("webhook request is required")
+	}
+
 	if err := s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
