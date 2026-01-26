@@ -26,20 +26,20 @@ type Campfire struct {
 
 // CampfireLine represents a message in a Campfire chat.
 type CampfireLine struct {
-	ID               int64      `json:"id"`
-	Status           string     `json:"status"`
-	VisibleToClients bool       `json:"visible_to_clients"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Title            string     `json:"title"`
-	InheritsStatus   bool       `json:"inherits_status"`
-	Type             string     `json:"type"`
-	URL              string     `json:"url"`
-	AppURL           string     `json:"app_url"`
-	Content          string     `json:"content"`
-	Parent           *Parent    `json:"parent,omitempty"`
-	Bucket           *Bucket    `json:"bucket,omitempty"`
-	Creator          *Person    `json:"creator,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title"`
+	InheritsStatus   bool      `json:"inherits_status"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	Content          string    `json:"content"`
+	Parent           *Parent   `json:"parent,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
 }
 
 // CreateCampfireLineRequest specifies the parameters for creating a campfire line.

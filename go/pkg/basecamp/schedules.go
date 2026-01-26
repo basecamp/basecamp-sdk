@@ -30,29 +30,29 @@ type Schedule struct {
 
 // ScheduleEntry represents an event on a Basecamp schedule.
 type ScheduleEntry struct {
-	ID               int64      `json:"id"`
-	Status           string     `json:"status"`
-	VisibleToClients bool       `json:"visible_to_clients"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Title            string     `json:"title"`
-	Summary          string     `json:"summary"`
-	InheritsStatus   bool       `json:"inherits_status"`
-	Type             string     `json:"type"`
-	URL              string     `json:"url"`
-	AppURL           string     `json:"app_url"`
-	BookmarkURL      string     `json:"bookmark_url"`
-	SubscriptionURL  string     `json:"subscription_url"`
-	CommentsURL      string     `json:"comments_url"`
-	CommentsCount    int        `json:"comments_count"`
-	StartsAt         time.Time  `json:"starts_at"`
-	EndsAt           time.Time  `json:"ends_at"`
-	AllDay           bool       `json:"all_day"`
-	Description      string     `json:"description"`
-	Parent           *Parent    `json:"parent,omitempty"`
-	Bucket           *Bucket    `json:"bucket,omitempty"`
-	Creator          *Person    `json:"creator,omitempty"`
-	Participants     []Person   `json:"participants,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title"`
+	Summary          string    `json:"summary"`
+	InheritsStatus   bool      `json:"inherits_status"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url"`
+	SubscriptionURL  string    `json:"subscription_url"`
+	CommentsURL      string    `json:"comments_url"`
+	CommentsCount    int       `json:"comments_count"`
+	StartsAt         time.Time `json:"starts_at"`
+	EndsAt           time.Time `json:"ends_at"`
+	AllDay           bool      `json:"all_day"`
+	Description      string    `json:"description"`
+	Parent           *Parent   `json:"parent,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
+	Participants     []Person  `json:"participants,omitempty"`
 }
 
 // CreateScheduleEntryRequest specifies the parameters for creating a schedule entry.

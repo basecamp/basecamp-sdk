@@ -1,0 +1,395 @@
+package basecamp_test
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"log/slog"
+	"net/http"
+	"os"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+)
+
+func ExampleNewClient_staticToken() {
+	// Create a client with a static token (simplest authentication method)
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	// Use the client to make API calls
+	_ = client
+	fmt.Println("Client created with static token")
+	// Output: Client created with static token
+}
+
+func ExampleNewClient_oauth() {
+	// Create a client with OAuth authentication
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+
+	authMgr := basecamp.NewAuthManager(cfg, http.DefaultClient)
+	client := basecamp.NewClient(cfg, authMgr)
+
+	// Use the client to make API calls
+	_ = client
+	fmt.Println("Client created with OAuth")
+	// Output: Client created with OAuth
+}
+
+func ExampleNewClient_options() {
+	// Create a client with custom options
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token,
+		basecamp.WithUserAgent("my-app/1.0"),
+		basecamp.WithLogger(slog.Default()),
+	)
+
+	_ = client
+	fmt.Println("Client created with options")
+	// Output: Client created with options
+}
+
+func ExampleDefaultConfig() {
+	// Create a default configuration
+	cfg := basecamp.DefaultConfig()
+
+	// Override with environment variables
+	cfg.LoadConfigFromEnv()
+
+	// Or set values programmatically
+	cfg.AccountID = "12345"
+	cfg.ProjectID = "67890"
+	cfg.CacheEnabled = true
+
+	fmt.Println("Configuration ready")
+	// Output: Configuration ready
+}
+
+func ExampleProjectsService_List() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+
+	// List all active projects
+	projects, err := client.Projects().List(ctx, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, p := range projects {
+		fmt.Printf("Project: %s (ID: %d)\n", p.Name, p.ID)
+	}
+}
+
+func ExampleProjectsService_List_archived() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+
+	// List archived projects
+	projects, err := client.Projects().List(ctx, &basecamp.ProjectListOptions{
+		Status: basecamp.ProjectStatusArchived,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, p := range projects {
+		fmt.Printf("Archived: %s\n", p.Name)
+	}
+}
+
+func ExampleProjectsService_Create() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+
+	// Create a new project
+	project, err := client.Projects().Create(ctx, &basecamp.CreateProjectRequest{
+		Name:        "Q1 Planning",
+		Description: "Planning for the first quarter",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Created project: %s (ID: %d)\n", project.Name, project.ID)
+}
+
+func ExampleTodosService_List() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+	projectID := int64(123456)
+	todolistID := int64(789012)
+
+	// List all todos in a todolist
+	todos, err := client.Todos().List(ctx, projectID, todolistID, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, t := range todos {
+		status := "[ ]"
+		if t.Completed {
+			status = "[x]"
+		}
+		fmt.Printf("%s %s\n", status, t.Content)
+	}
+}
+
+func ExampleTodosService_Create() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+	projectID := int64(123456)
+	todolistID := int64(789012)
+
+	// Create a new todo with assignees and due date
+	todo, err := client.Todos().Create(ctx, projectID, todolistID, &basecamp.CreateTodoRequest{
+		Content:     "Review pull request",
+		Description: "<strong>Priority:</strong> High",
+		DueOn:       "2024-12-31",
+		AssigneeIDs: []int64{111, 222},
+		Notify:      true,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Created todo: %s (ID: %d)\n", todo.Content, todo.ID)
+}
+
+func ExampleTodosService_Complete() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+	projectID := int64(123456)
+	todoID := int64(789012)
+
+	// Mark a todo as complete
+	err := client.Todos().Complete(ctx, projectID, todoID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Todo completed")
+}
+
+func ExampleSearchService_Search() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+
+	// Search across the account
+	results, err := client.Search().Search(ctx, "quarterly report", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, r := range results {
+		fmt.Printf("[%s] %s\n", r.Type, r.Title)
+	}
+}
+
+func ExampleSearchService_Search_sorted() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+
+	// Search with results sorted by creation date
+	results, err := client.Search().Search(ctx, "meeting notes", &basecamp.SearchOptions{
+		Sort: "created_at",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, r := range results {
+		fmt.Printf("%s: %s\n", r.CreatedAt.Format("2006-01-02"), r.Title)
+	}
+}
+
+func ExampleMessagesService_Create() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+	projectID := int64(123456)
+	boardID := int64(789012)
+
+	// Create a message on a message board
+	message, err := client.Messages().Create(ctx, projectID, boardID, &basecamp.CreateMessageRequest{
+		Subject: "Weekly Update",
+		Content: "<p>Here's what we accomplished this week...</p>",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Posted: %s\n", message.Subject)
+}
+
+func ExamplePeopleService_List() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+
+	// List all people in the account
+	people, err := client.People().List(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, p := range people {
+		fmt.Printf("%s <%s>\n", p.Name, p.EmailAddress)
+	}
+}
+
+func ExampleClient_GetAll() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+
+	// GetAll automatically handles pagination
+	results, err := client.GetAll(ctx, "/projects.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Fetched %d projects across all pages\n", len(results))
+}
+
+func Example_errorHandling() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+
+	// Get a project that may not exist
+	project, err := client.Projects().Get(ctx, 999999999)
+	if err != nil {
+		var apiErr *basecamp.Error
+		if errors.As(err, &apiErr) {
+			switch apiErr.Code {
+			case basecamp.CodeNotFound:
+				fmt.Println("Project not found")
+			case basecamp.CodeAuth:
+				fmt.Println("Authentication required - please log in")
+			case basecamp.CodeForbidden:
+				fmt.Println("Access denied")
+			case basecamp.CodeRateLimit:
+				fmt.Println("Rate limited - try again later")
+			default:
+				fmt.Printf("API error: %s\n", apiErr.Message)
+			}
+		} else {
+			fmt.Printf("Error: %v\n", err)
+		}
+		return
+	}
+
+	fmt.Printf("Found project: %s\n", project.Name)
+}
+
+func ExampleWebhooksService_Create() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+	projectID := int64(123456)
+
+	// Create a webhook to receive notifications
+	webhook, err := client.Webhooks().Create(ctx, projectID, &basecamp.CreateWebhookRequest{
+		PayloadURL: "https://example.com/webhooks/basecamp",
+		Types:      []string{"Todo", "Comment"},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Webhook created: %s\n", webhook.PayloadURL)
+}
+
+func ExampleCommentsService_Create() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+	projectID := int64(123456)
+	recordingID := int64(789012) // Can be a todo, message, etc.
+
+	// Add a comment to any recording
+	comment, err := client.Comments().Create(ctx, projectID, recordingID, &basecamp.CreateCommentRequest{
+		Content: "<p>Looks good to me!</p>",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Comment added by %s\n", comment.Creator.Name)
+}
+
+func ExampleCampfiresService_CreateLine() {
+	cfg := basecamp.DefaultConfig()
+	cfg.AccountID = "12345"
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+	projectID := int64(123456)
+	campfireID := int64(789012)
+
+	// Post a message to a campfire (chat)
+	line, err := client.Campfires().CreateLine(ctx, projectID, campfireID, "Hello team!")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Message posted: %s\n", line.Content)
+}

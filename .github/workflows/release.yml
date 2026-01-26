@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'go/v*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Test before release
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Run tests with race detector
+        run: go test -race ./...
+
+  release:
+    name: Create Release
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Tag is in format go/v1.2.3, extract just v1.2.3
+          VERSION="${GITHUB_REF#refs/tags/go/}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Releasing version: $VERSION"
+
+      - name: Verify module version
+        working-directory: go
+        run: |
+          # Ensure go.mod exists and module path is correct
+          if ! grep -q "^module github.com/basecamp/basecamp-sdk/go" go.mod; then
+            echo "Error: go.mod module path mismatch"
+            exit 1
+          fi
+          echo "Module verification passed"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag for this module
+          PREV_TAG=$(git tag -l 'go/v*' --sort=-v:refname | sed -n '2p')
+          if [ -z "$PREV_TAG" ]; then
+            # First release, get all commits affecting go/
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -- go/)
+          else
+            # Get commits since previous tag
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- go/)
+          fi
+
+          # Write to file for multiline output
+          echo "## Changes" > changelog.md
+          echo "" >> changelog.md
+          if [ -z "$COMMITS" ]; then
+            echo "- Initial release" >> changelog.md
+          else
+            echo "$COMMITS" >> changelog.md
+          fi
+          echo "" >> changelog.md
+          echo "## Installation" >> changelog.md
+          echo "" >> changelog.md
+          echo '```' >> changelog.md
+          echo "go get github.com/basecamp/basecamp-sdk/go@${{ steps.version.outputs.version }}" >> changelog.md
+          echo '```' >> changelog.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Go SDK ${{ steps.version.outputs.version }}
+          body_path: changelog.md
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

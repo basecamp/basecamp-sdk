@@ -1,0 +1,373 @@
+# Basecamp Go SDK
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/basecamp/basecamp-sdk/go.svg)](https://pkg.go.dev/github.com/basecamp/basecamp-sdk/go)
+[![Test](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/basecamp/basecamp-sdk/go)](https://goreportcard.com/report/github.com/basecamp/basecamp-sdk/go)
+
+Official Go SDK for the [Basecamp 3 API](https://github.com/basecamp/bc3-api).
+
+## Features
+
+- Full coverage of 30+ Basecamp API services
+- OAuth 2.0 authentication with automatic token refresh
+- Static token authentication for simple integrations
+- ETag-based HTTP caching for efficient API usage
+- Automatic retry with exponential backoff
+- Pagination handling with `GetAll()`
+- Structured errors with CLI-friendly exit codes
+- Secure credential storage (system keyring with file fallback)
+
+## Installation
+
+```bash
+go get github.com/basecamp/basecamp-sdk/go
+```
+
+Requires Go 1.25 or later.
+
+## Quick Start
+
+### Using a Static Token
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
+
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+)
+
+func main() {
+    // Configure the client
+    cfg := basecamp.DefaultConfig()
+    cfg.AccountID = os.Getenv("BASECAMP_ACCOUNT_ID")
+
+    // Use a static token
+    token := &basecamp.StaticTokenProvider{
+        Token: os.Getenv("BASECAMP_TOKEN"),
+    }
+
+    client := basecamp.NewClient(cfg, token)
+
+    // List all projects
+    projects, err := client.Projects().List(context.Background(), nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    for _, p := range projects {
+        fmt.Printf("%d: %s\n", p.ID, p.Name)
+    }
+}
+```
+
+### Using OAuth 2.0
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "net/http"
+
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+)
+
+func main() {
+    cfg := basecamp.DefaultConfig()
+    cfg.AccountID = "your-account-id"
+
+    // AuthManager handles token storage and refresh
+    authMgr := basecamp.NewAuthManager(cfg, http.DefaultClient)
+    client := basecamp.NewClient(cfg, authMgr)
+
+    // List active projects
+    projects, err := client.Projects().List(context.Background(), &basecamp.ProjectListOptions{
+        Status: basecamp.ProjectStatusActive,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    for _, p := range projects {
+        fmt.Printf("%s (%d)\n", p.Name, p.ID)
+    }
+}
+```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `BASECAMP_ACCOUNT_ID` | Your Basecamp account ID | Yes |
+| `BASECAMP_TOKEN` | Static API token or OAuth access token | Yes (unless using OAuth flow) |
+| `BASECAMP_PROJECT_ID` | Default project ID | No |
+| `BASECAMP_TODOLIST_ID` | Default todolist ID | No |
+| `BASECAMP_BASE_URL` | API base URL | No (default: `https://3.basecampapi.com`) |
+| `BASECAMP_CACHE_DIR` | Cache directory path | No (default: `~/.cache/basecamp`) |
+| `BASECAMP_CACHE_ENABLED` | Enable HTTP caching | No (default: `true`) |
+| `BASECAMP_NO_KEYRING` | Disable system keyring | No |
+
+### Programmatic Configuration
+
+```go
+cfg := basecamp.DefaultConfig()
+cfg.AccountID = "12345"
+cfg.ProjectID = "67890"           // Optional default project
+cfg.CacheEnabled = true           // Enable ETag caching
+cfg.CacheDir = "/custom/cache"    // Custom cache location
+
+// Or load from environment
+cfg.LoadConfigFromEnv()
+
+// Or load from JSON file
+cfg, err := basecamp.LoadConfig("/path/to/config.json")
+```
+
+## API Coverage
+
+### Projects & Organization
+
+| Service | Methods |
+|---------|---------|
+| `Projects()` | List, Get, Create, Update, Trash |
+| `Templates()` | List, Get, CreateProject |
+| `Tools()` | Get, List, Update (enable/disable/reorder dock tools) |
+| `People()` | List, Get, ListPingable, Me, ListProjectPeople |
+
+### To-dos
+
+| Service | Methods |
+|---------|---------|
+| `Todos()` | List, Get, Create, Update, Trash, Complete, Uncomplete, Reposition |
+| `Todosets()` | Get |
+| `Todolists()` | List, Get, Create, Update, Trash |
+| `TodolistGroups()` | List, Get, Create, Reposition |
+
+### Messages & Communication
+
+| Service | Methods |
+|---------|---------|
+| `Messages()` | List, Get, Create, Update, Trash |
+| `MessageBoards()` | Get |
+| `MessageTypes()` | List, Get, Create, Update, Destroy |
+| `Comments()` | List, Get, Create, Update, Trash |
+| `Campfires()` | List, Get, ListLines, GetLine, CreateLine, DeleteLine, Chatbot CRUD |
+| `Forwards()` | List, Get |
+
+### Scheduling
+
+| Service | Methods |
+|---------|---------|
+| `Schedules()` | Get, ListEntries, GetEntry, CreateEntry, UpdateEntry, TrashEntry, GetEntryOccurrence, UpdateSettings |
+| `Lineup()` | List, Get, Create, Update, Delete |
+| `Checkins()` | Get, List, ListQuestions, GetQuestion, ListAnswers, GetAnswer, UpdateAnswer |
+
+### Files & Documents
+
+| Service | Methods |
+|---------|---------|
+| `Vaults()` | Get, List, Create, Update |
+| `Attachments()` | CreateUploadURL, Create |
+
+### Card Tables (Kanban)
+
+| Service | Methods |
+|---------|---------|
+| `CardTables()` | Get, ListColumns, GetColumn |
+| `Cards()` | List, Get, Create, Update, Move |
+| `CardColumns()` | List, Get, Create, Update, Watch, Unwatch |
+| `CardSteps()` | List, Get |
+
+### Reporting & Search
+
+| Service | Methods |
+|---------|---------|
+| `Timesheet()` | MyEntries, ProjectEntries |
+| `Search()` | Search |
+| `Events()` | List, ListForRecording |
+
+### Integrations
+
+| Service | Methods |
+|---------|---------|
+| `Webhooks()` | List, Get, Create, Update, Delete |
+| `Subscriptions()` | List, Subscribe, Unsubscribe, Update |
+| `Recordings()` | Archive, Unarchive, Trash |
+
+### Client Portal
+
+| Service | Methods |
+|---------|---------|
+| `ClientApprovals()` | Get, ListResponses, GetResponse |
+| `ClientCorrespondences()` | List, Get, Create, Update, Trash |
+
+## Working with Todos
+
+```go
+ctx := context.Background()
+
+// List todos in a todolist
+todos, err := client.Todos().List(ctx, projectID, todolistID, nil)
+
+// Create a todo
+todo, err := client.Todos().Create(ctx, projectID, todolistID, &basecamp.CreateTodoRequest{
+    Content:     "Review pull request",
+    Description: "Check the new authentication flow",
+    DueOn:       "2026-02-01",
+    AssigneeIDs: []int64{12345},
+})
+
+// Complete a todo
+err = client.Todos().Complete(ctx, projectID, todoID)
+
+// Reposition a todo
+err = client.Todos().Reposition(ctx, projectID, todoID, 1) // Move to first position
+```
+
+## Working with Messages
+
+```go
+ctx := context.Background()
+
+// Get the message board for a project
+board, err := client.MessageBoards().Get(ctx, projectID)
+
+// List messages
+messages, err := client.Messages().List(ctx, projectID, board.ID, nil)
+
+// Create a message
+msg, err := client.Messages().Create(ctx, projectID, board.ID, &basecamp.CreateMessageRequest{
+    Subject: "Weekly Update",
+    Content: "<p>Here's what we accomplished this week...</p>",
+})
+```
+
+## Working with Campfire
+
+```go
+ctx := context.Background()
+
+// List all campfires
+campfires, err := client.Campfires().List(ctx)
+
+// Send a message
+line, err := client.Campfires().CreateLine(ctx, projectID, campfireID, "Hello, team!")
+
+// List recent messages
+lines, err := client.Campfires().ListLines(ctx, projectID, campfireID)
+```
+
+## Working with Webhooks
+
+```go
+ctx := context.Background()
+
+// Create a webhook
+webhook, err := client.Webhooks().Create(ctx, projectID, &basecamp.CreateWebhookRequest{
+    PayloadURL: "https://example.com/webhook",
+    Types:      []string{"Todo", "Comment"},
+})
+
+// List webhooks
+webhooks, err := client.Webhooks().List(ctx, projectID)
+
+// Delete a webhook
+err = client.Webhooks().Delete(ctx, projectID, webhookID)
+```
+
+## Error Handling
+
+The SDK provides structured errors with codes for programmatic handling:
+
+```go
+projects, err := client.Projects().List(ctx, nil)
+if err != nil {
+    if apiErr, ok := err.(*basecamp.Error); ok {
+        switch apiErr.Code {
+        case basecamp.CodeNotFound:
+            // Handle not found
+        case basecamp.CodeAuth:
+            // Handle authentication error
+        case basecamp.CodeRateLimit:
+            // Handle rate limiting (SDK retries automatically)
+        case basecamp.CodeForbidden:
+            // Handle permission error
+        default:
+            // Handle other errors
+        }
+
+        // Errors include helpful hints
+        fmt.Printf("Error: %s\nHint: %s\n", apiErr.Message, apiErr.Hint)
+
+        // Use exit codes for CLI applications
+        os.Exit(apiErr.ExitCode())
+    }
+}
+```
+
+### Error Codes
+
+| Code | Meaning | Exit Code |
+|------|---------|-----------|
+| `usage` | Invalid arguments or configuration | 1 |
+| `not_found` | Resource not found | 2 |
+| `auth_required` | Authentication required | 3 |
+| `forbidden` | Access denied | 4 |
+| `rate_limit` | Rate limited (retryable) | 5 |
+| `network` | Network error (retryable) | 6 |
+| `api_error` | Server error | 7 |
+| `ambiguous` | Multiple matches found | 8 |
+
+## Caching
+
+The SDK automatically caches GET responses using ETags:
+
+```go
+// First request fetches from API
+projects, _ := client.Projects().List(ctx, nil)
+
+// Second request uses cached data if unchanged (304 Not Modified)
+projects, _ = client.Projects().List(ctx, nil)
+
+// Disable caching
+cfg := basecamp.DefaultConfig()
+cfg.CacheEnabled = false
+```
+
+## Custom HTTP Client
+
+```go
+httpClient := &http.Client{
+    Timeout: 60 * time.Second,
+    Transport: &http.Transport{
+        MaxIdleConns: 50,
+    },
+}
+
+client := basecamp.NewClient(cfg, token, basecamp.WithHTTPClient(httpClient))
+```
+
+## Logging
+
+Enable debug logging with a custom `slog` logger:
+
+```go
+logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+    Level: slog.LevelDebug,
+}))
+
+client := basecamp.NewClient(cfg, token, basecamp.WithLogger(logger))
+```
+
+## License
+
+MIT

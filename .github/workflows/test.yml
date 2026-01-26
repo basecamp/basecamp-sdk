@@ -86,3 +86,83 @@ jobs:
 
       - name: Test with race detector
         run: go test -race -v ./...
+
+  api-compat:
+    name: API Compatibility
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+
+      - name: Cache Go tools
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin
+          key: go-tools-${{ runner.os }}-apidiff-v0.9.0
+
+      - name: Install apidiff
+        run: |
+          command -v apidiff || go install golang.org/x/exp/cmd/apidiff@v0.0.0-20241217172543-b2144cdd0a67
+
+      - name: Check for breaking API changes
+        run: |
+          # Store the current commit SHA
+          PR_SHA="${{ github.event.pull_request.head.sha }}"
+          BASE_REF="${{ github.base_ref }}"
+
+          # Export the current (PR) API
+          apidiff -w pr.api ./pkg/basecamp
+
+          # Check out the base branch to compare against
+          git checkout "origin/${BASE_REF}" -- .
+
+          # Export the base API
+          apidiff -w base.api ./pkg/basecamp
+
+          # Restore the PR version using the stored SHA
+          git checkout "${PR_SHA}" -- .
+
+          # Compare APIs and report breaking changes
+          echo "## API Compatibility Check"
+          echo ""
+
+          if apidiff -incompatible base.api pr.api > breaking.txt 2>&1; then
+            if [ -s breaking.txt ]; then
+              echo "### Breaking Changes Detected"
+              echo ""
+              echo "The following incompatible API changes were found:"
+              echo ""
+              echo '```'
+              cat breaking.txt
+              echo '```'
+              echo ""
+              echo "If these changes are intentional, ensure they are documented in the changelog."
+              # Don't fail the build, just warn
+            else
+              echo "No breaking changes detected."
+            fi
+          else
+            echo "No breaking changes detected."
+          fi
+
+          # Also show all changes for reference
+          echo ""
+          echo "### All API Changes"
+          echo ""
+          if apidiff base.api pr.api > changes.txt 2>&1 && [ -s changes.txt ]; then
+            echo '```'
+            cat changes.txt
+            echo '```'
+          else
+            echo "No API changes detected."
+          fi
