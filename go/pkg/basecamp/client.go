@@ -45,6 +45,7 @@ type Client struct {
 	webhooks       *WebhooksService
 	events         *EventsService
 	search          *SearchService
+	templates       *TemplatesService
 }
 
 // Response wraps an API response.
@@ -582,4 +583,12 @@ func (c *Client) Search() *SearchService {
 		c.search = NewSearchService(c)
 	}
 	return c.search
+}
+
+// Templates returns the TemplatesService for template operations.
+func (c *Client) Templates() *TemplatesService {
+	if c.templates == nil {
+		c.templates = NewTemplatesService(c)
+	}
+	return c.templates
 }
