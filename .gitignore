@@ -1,2 +1,8 @@
 # Internal documentation (not for public consumption)
 docs/
+
+# Smithy build output (regenerate with: cd spec && smithy build)
+spec/build/
+
+# Claude Code session files
+.claude/

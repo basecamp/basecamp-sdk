@@ -8,8 +8,10 @@ use smithy.api#httpLabel
 use smithy.api#httpQuery
 use smithy.api#httpPayload
 use smithy.api#required
+use aws.protocols#restJson1
 
 /// Basecamp API
+@restJson1
 service Basecamp {
   version: "2026-01-25"
   operations: [
@@ -22,37 +24,28 @@ service Basecamp {
     GetTodo,
     CreateTodo,
     UpdateTodo,
-    TrashTodo,
     CompleteTodo,
     UncompleteTodo,
     GetTodoset,
     ListTodolists,
-    GetTodolist,
+    GetTodolistOrGroup,
     CreateTodolist,
-    UpdateTodolist,
-    TrashTodolist,
+    UpdateTodolistOrGroup,
     ListTodolistGroups,
-    GetTodolistGroup,
     CreateTodolistGroup,
-    UpdateTodolistGroup,
     RepositionTodolistGroup,
-    TrashTodolistGroup,
 
     // Batch 1 - Comments, Messages, MessageBoards, MessageTypes
     ListComments,
     GetComment,
     CreateComment,
     UpdateComment,
-    TrashComment,
     ListMessages,
     GetMessage,
     CreateMessage,
     UpdateMessage,
     PinMessage,
     UnpinMessage,
-    TrashMessage,
-    ArchiveMessage,
-    UnarchiveMessage,
     GetMessageBoard,
     ListMessageTypes,
     GetMessageType,
@@ -69,12 +62,10 @@ service Basecamp {
     GetDocument,
     CreateDocument,
     UpdateDocument,
-    TrashDocument,
     ListUploads,
     GetUpload,
     CreateUpload,
     UpdateUpload,
-    TrashUpload,
     ListUploadVersions,
     CreateAttachment,
 
@@ -86,7 +77,6 @@ service Basecamp {
     GetScheduleEntryOccurrence,
     CreateScheduleEntry,
     UpdateScheduleEntry,
-    TrashScheduleEntry,
     GetTimesheetReport,
     GetProjectTimesheet,
     GetRecordingTimesheet,
@@ -117,7 +107,6 @@ service Basecamp {
     CreateCard,
     UpdateCard,
     MoveCard,
-    TrashCard,
     GetCardColumn,
     CreateCardColumn,
     UpdateCardColumn,
@@ -125,14 +114,11 @@ service Basecamp {
     SetCardColumnColor,
     EnableCardColumnOnHold,
     DisableCardColumnOnHold,
-    WatchCardColumn,
-    UnwatchCardColumn,
     CreateCardStep,
     UpdateCardStep,
     CompleteCardStep,
     UncompleteCardStep,
     RepositionCardStep,
-    DeleteCardStep,
 
     // Batch 6 - People, Subscriptions (People & Access)
     ListPeople,
@@ -154,7 +140,9 @@ service Basecamp {
     ListClientReplies,
     GetClientReply,
 
-    // Batch 8 - Webhooks, Events, Recordings (Automation)
+    // Batch 8 - Webhooks, Events, Recordings (Automation & Lifecycle)
+    // Note: TrashRecording/ArchiveRecording/UnarchiveRecording are generic operations
+    // that work on any recording type (comments, messages, documents, cards, etc.)
     ListWebhooks,
     GetWebhook,
     CreateWebhook,
@@ -215,12 +203,12 @@ structure ListProjectsInput {
 }
 
 structure ListProjectsOutput {
-  @httpPayload
+
   projects: ProjectList
 }
 
 /// Get a single project by id
-@http(method: "GET", uri: "/projects/{projectId}.json")
+@http(method: "GET", uri: "/projects/{projectId}")
 operation GetProject {
   input: GetProjectInput
   output: GetProjectOutput
@@ -233,7 +221,7 @@ structure GetProjectInput {
 }
 
 structure GetProjectOutput {
-  @httpPayload
+
   project: Project
 }
 
@@ -251,12 +239,12 @@ structure CreateProjectInput {
 }
 
 structure CreateProjectOutput {
-  @httpPayload
+
   project: Project
 }
 
 /// Update an existing project
-@http(method: "PUT", uri: "/projects/{projectId}.json")
+@http(method: "PUT", uri: "/projects/{projectId}")
 operation UpdateProject {
   input: UpdateProjectInput
   output: UpdateProjectOutput
@@ -275,12 +263,12 @@ structure UpdateProjectInput {
 }
 
 structure UpdateProjectOutput {
-  @httpPayload
+
   project: Project
 }
 
 /// Trash a project (returns 204 No Content)
-@http(method: "DELETE", uri: "/projects/{projectId}.json")
+@http(method: "DELETE", uri: "/projects/{projectId}")
 operation TrashProject {
   input: TrashProjectInput
   output: TrashProjectOutput
@@ -385,12 +373,12 @@ structure ListTodosInput {
 }
 
 structure ListTodosOutput {
-  @httpPayload
-  todos: TodoList
+
+  todos: TodoItems
 }
 
 /// Get a single todo by id
-@http(method: "GET", uri: "/buckets/{projectId}/todos/{todoId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/todos/{todoId}")
 operation GetTodo {
   input: GetTodoInput
   output: GetTodoOutput
@@ -407,7 +395,7 @@ structure GetTodoInput {
 }
 
 structure GetTodoOutput {
-  @httpPayload
+
   todo: Todo
 }
 
@@ -439,12 +427,12 @@ structure CreateTodoInput {
 }
 
 structure CreateTodoOutput {
-  @httpPayload
+
   todo: Todo
 }
 
 /// Update an existing todo
-@http(method: "PUT", uri: "/buckets/{projectId}/todos/{todoId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/todos/{todoId}")
 operation UpdateTodo {
   input: UpdateTodoInput
   output: UpdateTodoOutput
@@ -469,12 +457,12 @@ structure UpdateTodoInput {
 }
 
 structure UpdateTodoOutput {
-  @httpPayload
+
   todo: Todo
 }
 
 /// Trash a todo (returns 204 No Content)
-@http(method: "DELETE", uri: "/buckets/{projectId}/todos/{todoId}.json")
+@http(method: "DELETE", uri: "/buckets/{projectId}/todos/{todoId}")
 operation TrashTodo {
   input: TrashTodoInput
   output: TrashTodoOutput
@@ -533,7 +521,7 @@ structure UncompleteTodoOutput {}
 // ===== Todoset Operations =====
 
 /// Get a todoset (container for todolists in a project)
-@http(method: "GET", uri: "/buckets/{projectId}/todosets/{todosetId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/todosets/{todosetId}")
 operation GetTodoset {
   input: GetTodosetInput
   output: GetTodosetOutput
@@ -550,7 +538,7 @@ structure GetTodosetInput {
 }
 
 structure GetTodosetOutput {
-  @httpPayload
+
   todoset: Todoset
 }
 
@@ -577,30 +565,37 @@ structure ListTodolistsInput {
 }
 
 structure ListTodolistsOutput {
-  @httpPayload
+
   todolists: TodolistList
 }
 
-/// Get a single todolist by id
-@http(method: "GET", uri: "/buckets/{projectId}/todolists/{todolistId}.json")
-operation GetTodolist {
-  input: GetTodolistInput
-  output: GetTodolistOutput
+/// Get a single todolist or todolist group by id
+/// The endpoint is polymorphic - the same URI returns either a Todolist or TodolistGroup
+@http(method: "GET", uri: "/buckets/{projectId}/todolists/{id}")
+operation GetTodolistOrGroup {
+  input: GetTodolistOrGroupInput
+  output: GetTodolistOrGroupOutput
 }
 
-structure GetTodolistInput {
+structure GetTodolistOrGroupInput {
   @required
   @httpLabel
   projectId: ProjectId
 
   @required
   @httpLabel
-  todolistId: TodolistId
+  id: Long
 }
 
-structure GetTodolistOutput {
-  @httpPayload
+structure GetTodolistOrGroupOutput {
+
+  result: TodolistOrGroup
+}
+
+/// Union type for polymorphic todolist endpoint
+union TodolistOrGroup {
   todolist: Todolist
+  group: TodolistGroup
 }
 
 /// Create a new todolist in a todoset
@@ -626,55 +621,43 @@ structure CreateTodolistInput {
 }
 
 structure CreateTodolistOutput {
-  @httpPayload
+
   todolist: Todolist
 }
 
-/// Update an existing todolist
-@http(method: "PUT", uri: "/buckets/{projectId}/todolists/{todolistId}.json")
-operation UpdateTodolist {
-  input: UpdateTodolistInput
-  output: UpdateTodolistOutput
+/// Update an existing todolist or todolist group
+/// The endpoint is polymorphic - updates either a Todolist or TodolistGroup
+@http(method: "PUT", uri: "/buckets/{projectId}/todolists/{id}")
+operation UpdateTodolistOrGroup {
+  input: UpdateTodolistOrGroupInput
+  output: UpdateTodolistOrGroupOutput
 }
 
-structure UpdateTodolistInput {
+structure UpdateTodolistOrGroupInput {
   @required
   @httpLabel
   projectId: ProjectId
 
   @required
   @httpLabel
-  todolistId: TodolistId
+  id: Long
 
+  /// Name (required for both Todolist and TodolistGroup)
   name: TodolistName
+
+  /// Description (Todolist only, ignored for groups)
   description: TodolistDescription
 }
 
-structure UpdateTodolistOutput {
-  @httpPayload
-  todolist: Todolist
+structure UpdateTodolistOrGroupOutput {
+
+  result: TodolistOrGroup
 }
-
-/// Trash a todolist
-@http(method: "PUT", uri: "/buckets/{projectId}/recordings/{todolistId}/status/trashed.json")
-operation TrashTodolist {
-  input: TrashTodolistInput
-  output: TrashTodolistOutput
-}
-
-structure TrashTodolistInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  todolistId: TodolistId
-}
-
-structure TrashTodolistOutput {}
 
 // ===== Todolist Group Operations =====
+// Note: GetTodolistGroup and UpdateTodolistGroup are consolidated into
+// GetTodolistOrGroup and UpdateTodolistOrGroup above (polymorphic endpoints)
+// TrashTodolist and TrashTodolistGroup use generic TrashRecording operation
 
 /// List groups in a todolist
 @http(method: "GET", uri: "/buckets/{projectId}/todolists/{todolistId}/groups.json")
@@ -694,30 +677,8 @@ structure ListTodolistGroupsInput {
 }
 
 structure ListTodolistGroupsOutput {
-  @httpPayload
+
   groups: TodolistGroupList
-}
-
-/// Get a single todolist group by id
-@http(method: "GET", uri: "/buckets/{projectId}/todolists/{groupId}.json")
-operation GetTodolistGroup {
-  input: GetTodolistGroupInput
-  output: GetTodolistGroupOutput
-}
-
-structure GetTodolistGroupInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  groupId: TodolistGroupId
-}
-
-structure GetTodolistGroupOutput {
-  @httpPayload
-  group: TodolistGroup
 }
 
 /// Create a new group in a todolist
@@ -741,31 +702,7 @@ structure CreateTodolistGroupInput {
 }
 
 structure CreateTodolistGroupOutput {
-  @httpPayload
-  group: TodolistGroup
-}
 
-/// Update an existing todolist group
-@http(method: "PUT", uri: "/buckets/{projectId}/todolists/{groupId}.json")
-operation UpdateTodolistGroup {
-  input: UpdateTodolistGroupInput
-  output: UpdateTodolistGroupOutput
-}
-
-structure UpdateTodolistGroupInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  groupId: TodolistGroupId
-
-  name: TodolistGroupName
-}
-
-structure UpdateTodolistGroupOutput {
-  @httpPayload
   group: TodolistGroup
 }
 
@@ -791,25 +728,6 @@ structure RepositionTodolistGroupInput {
 
 structure RepositionTodolistGroupOutput {}
 
-/// Trash a todolist group
-@http(method: "PUT", uri: "/buckets/{projectId}/recordings/{groupId}/status/trashed.json")
-operation TrashTodolistGroup {
-  input: TrashTodolistGroupInput
-  output: TrashTodolistGroupOutput
-}
-
-structure TrashTodolistGroupInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  groupId: TodolistGroupId
-}
-
-structure TrashTodolistGroupOutput {}
-
 // ===== Todo Shapes =====
 
 long TodoId
@@ -821,7 +739,7 @@ string TodoDescription
 @documentation("active|archived|trashed")
 string TodoStatus
 
-list TodoList {
+list TodoItems {
   member: Todo
 }
 
@@ -1029,12 +947,12 @@ structure ListCommentsInput {
 }
 
 structure ListCommentsOutput {
-  @httpPayload
+
   comments: CommentList
 }
 
 /// Get a single comment by id
-@http(method: "GET", uri: "/buckets/{projectId}/comments/{commentId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/comments/{commentId}")
 operation GetComment {
   input: GetCommentInput
   output: GetCommentOutput
@@ -1051,7 +969,7 @@ structure GetCommentInput {
 }
 
 structure GetCommentOutput {
-  @httpPayload
+
   comment: Comment
 }
 
@@ -1076,12 +994,12 @@ structure CreateCommentInput {
 }
 
 structure CreateCommentOutput {
-  @httpPayload
+
   comment: Comment
 }
 
 /// Update an existing comment
-@http(method: "PUT", uri: "/buckets/{projectId}/comments/{commentId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/comments/{commentId}")
 operation UpdateComment {
   input: UpdateCommentInput
   output: UpdateCommentOutput
@@ -1101,28 +1019,11 @@ structure UpdateCommentInput {
 }
 
 structure UpdateCommentOutput {
-  @httpPayload
+
   comment: Comment
 }
 
-/// Trash a comment
-@http(method: "PUT", uri: "/buckets/{projectId}/recordings/{commentId}/status/trashed.json")
-operation TrashComment {
-  input: TrashCommentInput
-  output: TrashCommentOutput
-}
-
-structure TrashCommentInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  commentId: CommentId
-}
-
-structure TrashCommentOutput {}
+// Note: Use TrashRecording to trash comments
 
 // ===== Message Operations (Batch 1) =====
 
@@ -1144,12 +1045,12 @@ structure ListMessagesInput {
 }
 
 structure ListMessagesOutput {
-  @httpPayload
+
   messages: MessageList
 }
 
 /// Get a single message by id
-@http(method: "GET", uri: "/buckets/{projectId}/messages/{messageId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/messages/{messageId}")
 operation GetMessage {
   input: GetMessageInput
   output: GetMessageOutput
@@ -1166,7 +1067,7 @@ structure GetMessageInput {
 }
 
 structure GetMessageOutput {
-  @httpPayload
+
   message: Message
 }
 
@@ -1198,12 +1099,12 @@ structure CreateMessageInput {
 }
 
 structure CreateMessageOutput {
-  @httpPayload
+
   message: Message
 }
 
 /// Update an existing message
-@http(method: "PUT", uri: "/buckets/{projectId}/messages/{messageId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/messages/{messageId}")
 operation UpdateMessage {
   input: UpdateMessageInput
   output: UpdateMessageOutput
@@ -1228,7 +1129,7 @@ structure UpdateMessageInput {
 }
 
 structure UpdateMessageOutput {
-  @httpPayload
+
   message: Message
 }
 
@@ -1270,67 +1171,12 @@ structure UnpinMessageInput {
 
 structure UnpinMessageOutput {}
 
-/// Trash a message
-@http(method: "PUT", uri: "/buckets/{projectId}/recordings/{messageId}/status/trashed.json")
-operation TrashMessage {
-  input: TrashMessageInput
-  output: TrashMessageOutput
-}
-
-structure TrashMessageInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  messageId: MessageId
-}
-
-structure TrashMessageOutput {}
-
-/// Archive a message
-@http(method: "PUT", uri: "/buckets/{projectId}/recordings/{messageId}/status/archived.json")
-operation ArchiveMessage {
-  input: ArchiveMessageInput
-  output: ArchiveMessageOutput
-}
-
-structure ArchiveMessageInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  messageId: MessageId
-}
-
-structure ArchiveMessageOutput {}
-
-/// Unarchive a message (restore to active)
-@http(method: "PUT", uri: "/buckets/{projectId}/recordings/{messageId}/status/active.json")
-operation UnarchiveMessage {
-  input: UnarchiveMessageInput
-  output: UnarchiveMessageOutput
-}
-
-structure UnarchiveMessageInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  messageId: MessageId
-}
-
-structure UnarchiveMessageOutput {}
+// Note: Use TrashRecording/ArchiveRecording/UnarchiveRecording for message lifecycle
 
 // ===== Message Board Operations (Batch 1) =====
 
 /// Get a message board
-@http(method: "GET", uri: "/buckets/{projectId}/message_boards/{boardId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/message_boards/{boardId}")
 operation GetMessageBoard {
   input: GetMessageBoardInput
   output: GetMessageBoardOutput
@@ -1347,7 +1193,7 @@ structure GetMessageBoardInput {
 }
 
 structure GetMessageBoardOutput {
-  @httpPayload
+
   message_board: MessageBoard
 }
 
@@ -1367,12 +1213,12 @@ structure ListMessageTypesInput {
 }
 
 structure ListMessageTypesOutput {
-  @httpPayload
+
   message_types: MessageTypeList
 }
 
 /// Get a single message type by id
-@http(method: "GET", uri: "/buckets/{projectId}/categories/{typeId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/categories/{typeId}")
 operation GetMessageType {
   input: GetMessageTypeInput
   output: GetMessageTypeOutput
@@ -1389,7 +1235,7 @@ structure GetMessageTypeInput {
 }
 
 structure GetMessageTypeOutput {
-  @httpPayload
+
   message_type: MessageType
 }
 
@@ -1413,12 +1259,12 @@ structure CreateMessageTypeInput {
 }
 
 structure CreateMessageTypeOutput {
-  @httpPayload
+
   message_type: MessageType
 }
 
 /// Update an existing message type
-@http(method: "PUT", uri: "/buckets/{projectId}/categories/{typeId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/categories/{typeId}")
 operation UpdateMessageType {
   input: UpdateMessageTypeInput
   output: UpdateMessageTypeOutput
@@ -1438,12 +1284,12 @@ structure UpdateMessageTypeInput {
 }
 
 structure UpdateMessageTypeOutput {
-  @httpPayload
+
   message_type: MessageType
 }
 
 /// Delete a message type
-@http(method: "DELETE", uri: "/buckets/{projectId}/categories/{typeId}.json")
+@http(method: "DELETE", uri: "/buckets/{projectId}/categories/{typeId}")
 operation DeleteMessageType {
   input: DeleteMessageTypeInput
   output: DeleteMessageTypeOutput
@@ -1481,12 +1327,12 @@ structure ListVaultsInput {
 }
 
 structure ListVaultsOutput {
-  @httpPayload
+
   vaults: VaultList
 }
 
 /// Get a single vault by id
-@http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}")
 operation GetVault {
   input: GetVaultInput
   output: GetVaultOutput
@@ -1503,7 +1349,7 @@ structure GetVaultInput {
 }
 
 structure GetVaultOutput {
-  @httpPayload
+
   vault: Vault
 }
 
@@ -1528,12 +1374,12 @@ structure CreateVaultInput {
 }
 
 structure CreateVaultOutput {
-  @httpPayload
+
   vault: Vault
 }
 
 /// Update an existing vault
-@http(method: "PUT", uri: "/buckets/{projectId}/vaults/{vaultId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/vaults/{vaultId}")
 operation UpdateVault {
   input: UpdateVaultInput
   output: UpdateVaultOutput
@@ -1552,7 +1398,7 @@ structure UpdateVaultInput {
 }
 
 structure UpdateVaultOutput {
-  @httpPayload
+
   vault: Vault
 }
 
@@ -1576,12 +1422,12 @@ structure ListDocumentsInput {
 }
 
 structure ListDocumentsOutput {
-  @httpPayload
+
   documents: DocumentList
 }
 
 /// Get a single document by id
-@http(method: "GET", uri: "/buckets/{projectId}/documents/{documentId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/documents/{documentId}")
 operation GetDocument {
   input: GetDocumentInput
   output: GetDocumentOutput
@@ -1598,7 +1444,7 @@ structure GetDocumentInput {
 }
 
 structure GetDocumentOutput {
-  @httpPayload
+
   document: Document
 }
 
@@ -1628,12 +1474,12 @@ structure CreateDocumentInput {
 }
 
 structure CreateDocumentOutput {
-  @httpPayload
+
   document: Document
 }
 
 /// Update an existing document
-@http(method: "PUT", uri: "/buckets/{projectId}/documents/{documentId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/documents/{documentId}")
 operation UpdateDocument {
   input: UpdateDocumentInput
   output: UpdateDocumentOutput
@@ -1653,28 +1499,11 @@ structure UpdateDocumentInput {
 }
 
 structure UpdateDocumentOutput {
-  @httpPayload
+
   document: Document
 }
 
-/// Trash a document
-@http(method: "PUT", uri: "/buckets/{projectId}/recordings/{documentId}/status/trashed.json")
-operation TrashDocument {
-  input: TrashDocumentInput
-  output: TrashDocumentOutput
-}
-
-structure TrashDocumentInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  documentId: DocumentId
-}
-
-structure TrashDocumentOutput {}
+// Note: Use TrashRecording to trash documents
 
 // ===== Upload Operations (Batch 2) =====
 
@@ -1696,12 +1525,12 @@ structure ListUploadsInput {
 }
 
 structure ListUploadsOutput {
-  @httpPayload
+
   uploads: UploadList
 }
 
 /// Get a single upload by id
-@http(method: "GET", uri: "/buckets/{projectId}/uploads/{uploadId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/uploads/{uploadId}")
 operation GetUpload {
   input: GetUploadInput
   output: GetUploadOutput
@@ -1718,7 +1547,7 @@ structure GetUploadInput {
 }
 
 structure GetUploadOutput {
-  @httpPayload
+
   upload: Upload
 }
 
@@ -1746,12 +1575,12 @@ structure CreateUploadInput {
 }
 
 structure CreateUploadOutput {
-  @httpPayload
+
   upload: Upload
 }
 
 /// Update an existing upload
-@http(method: "PUT", uri: "/buckets/{projectId}/uploads/{uploadId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/uploads/{uploadId}")
 operation UpdateUpload {
   input: UpdateUploadInput
   output: UpdateUploadOutput
@@ -1771,28 +1600,11 @@ structure UpdateUploadInput {
 }
 
 structure UpdateUploadOutput {
-  @httpPayload
+
   upload: Upload
 }
 
-/// Trash an upload
-@http(method: "PUT", uri: "/buckets/{projectId}/recordings/{uploadId}/status/trashed.json")
-operation TrashUpload {
-  input: TrashUploadInput
-  output: TrashUploadOutput
-}
-
-structure TrashUploadInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  uploadId: UploadId
-}
-
-structure TrashUploadOutput {}
+// Note: Use TrashRecording to trash uploads
 
 /// List versions of an upload
 @http(method: "GET", uri: "/buckets/{projectId}/uploads/{uploadId}/versions.json")
@@ -1812,7 +1624,7 @@ structure ListUploadVersionsInput {
 }
 
 structure ListUploadVersionsOutput {
-  @httpPayload
+
   uploads: UploadList
 }
 
@@ -1835,7 +1647,7 @@ structure CreateAttachmentInput {
   contentType: String
 
   @required
-  @httpPayload
+
   data: Blob
 }
 
@@ -1846,7 +1658,7 @@ structure CreateAttachmentOutput {
 // ===== Schedule Operations (Batch 3) =====
 
 /// Get a schedule
-@http(method: "GET", uri: "/buckets/{projectId}/schedules/{scheduleId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/schedules/{scheduleId}")
 operation GetSchedule {
   input: GetScheduleInput
   output: GetScheduleOutput
@@ -1863,12 +1675,12 @@ structure GetScheduleInput {
 }
 
 structure GetScheduleOutput {
-  @httpPayload
+
   schedule: Schedule
 }
 
 /// Update schedule settings
-@http(method: "PUT", uri: "/buckets/{projectId}/schedules/{scheduleId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/schedules/{scheduleId}")
 operation UpdateScheduleSettings {
   input: UpdateScheduleSettingsInput
   output: UpdateScheduleSettingsOutput
@@ -1888,7 +1700,7 @@ structure UpdateScheduleSettingsInput {
 }
 
 structure UpdateScheduleSettingsOutput {
-  @httpPayload
+
   schedule: Schedule
 }
 
@@ -1913,12 +1725,12 @@ structure ListScheduleEntriesInput {
 }
 
 structure ListScheduleEntriesOutput {
-  @httpPayload
+
   entries: ScheduleEntryList
 }
 
 /// Get a single schedule entry by id
-@http(method: "GET", uri: "/buckets/{projectId}/schedule_entries/{entryId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/schedule_entries/{entryId}")
 operation GetScheduleEntry {
   input: GetScheduleEntryInput
   output: GetScheduleEntryOutput
@@ -1935,12 +1747,12 @@ structure GetScheduleEntryInput {
 }
 
 structure GetScheduleEntryOutput {
-  @httpPayload
+
   entry: ScheduleEntry
 }
 
 /// Get a specific occurrence of a recurring schedule entry
-@http(method: "GET", uri: "/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}")
 operation GetScheduleEntryOccurrence {
   input: GetScheduleEntryOccurrenceInput
   output: GetScheduleEntryOccurrenceOutput
@@ -1961,7 +1773,7 @@ structure GetScheduleEntryOccurrenceInput {
 }
 
 structure GetScheduleEntryOccurrenceOutput {
-  @httpPayload
+
   entry: ScheduleEntry
 }
 
@@ -1997,12 +1809,12 @@ structure CreateScheduleEntryInput {
 }
 
 structure CreateScheduleEntryOutput {
-  @httpPayload
+
   entry: ScheduleEntry
 }
 
 /// Update an existing schedule entry
-@http(method: "PUT", uri: "/buckets/{projectId}/schedule_entries/{entryId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/schedule_entries/{entryId}")
 operation UpdateScheduleEntry {
   input: UpdateScheduleEntryInput
   output: UpdateScheduleEntryOutput
@@ -2027,28 +1839,11 @@ structure UpdateScheduleEntryInput {
 }
 
 structure UpdateScheduleEntryOutput {
-  @httpPayload
+
   entry: ScheduleEntry
 }
 
-/// Trash a schedule entry
-@http(method: "PUT", uri: "/buckets/{projectId}/recordings/{entryId}/status/trashed.json")
-operation TrashScheduleEntry {
-  input: TrashScheduleEntryInput
-  output: TrashScheduleEntryOutput
-}
-
-structure TrashScheduleEntryInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  entryId: ScheduleEntryId
-}
-
-structure TrashScheduleEntryOutput {}
+// Note: Use TrashRecording to trash schedule entries
 
 // ===== Timesheet Operations (Batch 3) =====
 
@@ -2071,7 +1866,7 @@ structure GetTimesheetReportInput {
 }
 
 structure GetTimesheetReportOutput {
-  @httpPayload
+
   entries: TimesheetEntryList
 }
 
@@ -2098,7 +1893,7 @@ structure GetProjectTimesheetInput {
 }
 
 structure GetProjectTimesheetOutput {
-  @httpPayload
+
   entries: TimesheetEntryList
 }
 
@@ -2129,7 +1924,7 @@ structure GetRecordingTimesheetInput {
 }
 
 structure GetRecordingTimesheetOutput {
-  @httpPayload
+
   entries: TimesheetEntryList
 }
 
@@ -2447,12 +2242,12 @@ operation ListCampfires {
 structure ListCampfiresInput {}
 
 structure ListCampfiresOutput {
-  @httpPayload
+
   campfires: CampfireList
 }
 
 /// Get a campfire by ID
-@http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}")
 operation GetCampfire {
   input: GetCampfireInput
   output: GetCampfireOutput
@@ -2469,7 +2264,7 @@ structure GetCampfireInput {
 }
 
 structure GetCampfireOutput {
-  @httpPayload
+
   campfire: Campfire
 }
 
@@ -2491,12 +2286,12 @@ structure ListCampfireLinesInput {
 }
 
 structure ListCampfireLinesOutput {
-  @httpPayload
+
   lines: CampfireLineList
 }
 
 /// Get a campfire line by ID
-@http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/lines/{lineId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/lines/{lineId}")
 operation GetCampfireLine {
   input: GetCampfireLineInput
   output: GetCampfireLineOutput
@@ -2517,7 +2312,7 @@ structure GetCampfireLineInput {
 }
 
 structure GetCampfireLineOutput {
-  @httpPayload
+
   line: CampfireLine
 }
 
@@ -2542,12 +2337,12 @@ structure CreateCampfireLineInput {
 }
 
 structure CreateCampfireLineOutput {
-  @httpPayload
+
   line: CampfireLine
 }
 
 /// Delete a campfire line
-@http(method: "DELETE", uri: "/buckets/{projectId}/chats/{campfireId}/lines/{lineId}.json")
+@http(method: "DELETE", uri: "/buckets/{projectId}/chats/{campfireId}/lines/{lineId}")
 operation DeleteCampfireLine {
   input: DeleteCampfireLineInput
   output: DeleteCampfireLineOutput
@@ -2589,12 +2384,12 @@ structure ListChatbotsInput {
 }
 
 structure ListChatbotsOutput {
-  @httpPayload
+
   chatbots: ChatbotList
 }
 
 /// Get a chatbot by ID
-@http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
 operation GetChatbot {
   input: GetChatbotInput
   output: GetChatbotOutput
@@ -2615,7 +2410,7 @@ structure GetChatbotInput {
 }
 
 structure GetChatbotOutput {
-  @httpPayload
+
   chatbot: Chatbot
 }
 
@@ -2642,12 +2437,12 @@ structure CreateChatbotInput {
 }
 
 structure CreateChatbotOutput {
-  @httpPayload
+
   chatbot: Chatbot
 }
 
 /// Update an existing chatbot
-@http(method: "PUT", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
 operation UpdateChatbot {
   input: UpdateChatbotInput
   output: UpdateChatbotOutput
@@ -2673,12 +2468,12 @@ structure UpdateChatbotInput {
 }
 
 structure UpdateChatbotOutput {
-  @httpPayload
+
   chatbot: Chatbot
 }
 
 /// Delete a chatbot
-@http(method: "DELETE", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}.json")
+@http(method: "DELETE", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
 operation DeleteChatbot {
   input: DeleteChatbotInput
   output: DeleteChatbotOutput
@@ -2703,7 +2498,7 @@ structure DeleteChatbotOutput {}
 // ===== Inbox Operations =====
 
 /// Get an inbox by ID
-@http(method: "GET", uri: "/buckets/{projectId}/inboxes/{inboxId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/inboxes/{inboxId}")
 operation GetInbox {
   input: GetInboxInput
   output: GetInboxOutput
@@ -2720,7 +2515,7 @@ structure GetInboxInput {
 }
 
 structure GetInboxOutput {
-  @httpPayload
+
   inbox: Inbox
 }
 
@@ -2744,12 +2539,12 @@ structure ListForwardsInput {
 }
 
 structure ListForwardsOutput {
-  @httpPayload
+
   forwards: ForwardList
 }
 
 /// Get a forward by ID
-@http(method: "GET", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}")
 operation GetForward {
   input: GetForwardInput
   output: GetForwardOutput
@@ -2766,7 +2561,7 @@ structure GetForwardInput {
 }
 
 structure GetForwardOutput {
-  @httpPayload
+
   forward: Forward
 }
 
@@ -2788,12 +2583,12 @@ structure ListForwardRepliesInput {
 }
 
 structure ListForwardRepliesOutput {
-  @httpPayload
+
   replies: ForwardReplyList
 }
 
 /// Get a forward reply by ID
-@http(method: "GET", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}")
 operation GetForwardReply {
   input: GetForwardReplyInput
   output: GetForwardReplyOutput
@@ -2814,7 +2609,7 @@ structure GetForwardReplyInput {
 }
 
 structure GetForwardReplyOutput {
-  @httpPayload
+
   reply: ForwardReply
 }
 
@@ -2839,7 +2634,7 @@ structure CreateForwardReplyInput {
 }
 
 structure CreateForwardReplyOutput {
-  @httpPayload
+
   reply: ForwardReply
 }
 
@@ -2991,7 +2786,7 @@ structure ForwardReply {
 // ===== CardTable Operations =====
 
 /// Get a card table by ID
-@http(method: "GET", uri: "/buckets/{projectId}/card_tables/{cardTableId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/card_tables/{cardTableId}")
 operation GetCardTable {
   input: GetCardTableInput
   output: GetCardTableOutput
@@ -3008,7 +2803,7 @@ structure GetCardTableInput {
 }
 
 structure GetCardTableOutput {
-  @httpPayload
+
   card_table: CardTable
 }
 
@@ -3032,12 +2827,12 @@ structure ListCardsInput {
 }
 
 structure ListCardsOutput {
-  @httpPayload
+
   cards: CardList
 }
 
 /// Get a card by ID
-@http(method: "GET", uri: "/buckets/{projectId}/card_tables/cards/{cardId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/card_tables/cards/{cardId}")
 operation GetCard {
   input: GetCardInput
   output: GetCardOutput
@@ -3054,7 +2849,7 @@ structure GetCardInput {
 }
 
 structure GetCardOutput {
-  @httpPayload
+
   card: Card
 }
 
@@ -3083,12 +2878,12 @@ structure CreateCardInput {
 }
 
 structure CreateCardOutput {
-  @httpPayload
+
   card: Card
 }
 
 /// Update an existing card
-@http(method: "PUT", uri: "/buckets/{projectId}/card_tables/cards/{cardId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/card_tables/cards/{cardId}")
 operation UpdateCard {
   input: UpdateCardInput
   output: UpdateCardOutput
@@ -3110,7 +2905,7 @@ structure UpdateCardInput {
 }
 
 structure UpdateCardOutput {
-  @httpPayload
+
   card: Card
 }
 
@@ -3136,29 +2931,12 @@ structure MoveCardInput {
 
 structure MoveCardOutput {}
 
-/// Trash a card
-@http(method: "PUT", uri: "/buckets/{projectId}/recordings/{cardId}/status/trashed.json")
-operation TrashCard {
-  input: TrashCardInput
-  output: TrashCardOutput
-}
-
-structure TrashCardInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  cardId: CardId
-}
-
-structure TrashCardOutput {}
+// Note: Use TrashRecording to trash cards
 
 // ===== CardColumn Operations =====
 
 /// Get a card column by ID
-@http(method: "GET", uri: "/buckets/{projectId}/card_tables/columns/{columnId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/card_tables/columns/{columnId}")
 operation GetCardColumn {
   input: GetCardColumnInput
   output: GetCardColumnOutput
@@ -3175,7 +2953,7 @@ structure GetCardColumnInput {
 }
 
 structure GetCardColumnOutput {
-  @httpPayload
+
   column: CardColumn
 }
 
@@ -3202,12 +2980,12 @@ structure CreateCardColumnInput {
 }
 
 structure CreateCardColumnOutput {
-  @httpPayload
+
   column: CardColumn
 }
 
 /// Update an existing column
-@http(method: "PUT", uri: "/buckets/{projectId}/card_tables/columns/{columnId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/card_tables/columns/{columnId}")
 operation UpdateCardColumn {
   input: UpdateCardColumnInput
   output: UpdateCardColumnOutput
@@ -3227,7 +3005,7 @@ structure UpdateCardColumnInput {
 }
 
 structure UpdateCardColumnOutput {
-  @httpPayload
+
   column: CardColumn
 }
 
@@ -3280,7 +3058,7 @@ structure SetCardColumnColorInput {
 }
 
 structure SetCardColumnColorOutput {
-  @httpPayload
+
   column: CardColumn
 }
 
@@ -3302,7 +3080,7 @@ structure EnableCardColumnOnHoldInput {
 }
 
 structure EnableCardColumnOnHoldOutput {
-  @httpPayload
+
   column: CardColumn
 }
 
@@ -3324,50 +3102,11 @@ structure DisableCardColumnOnHoldInput {
 }
 
 structure DisableCardColumnOnHoldOutput {
-  @httpPayload
+
   column: CardColumn
 }
 
-/// Watch (subscribe to) a card column
-@http(method: "POST", uri: "/buckets/{projectId}/recordings/{columnId}/subscription.json")
-operation WatchCardColumn {
-  input: WatchCardColumnInput
-  output: WatchCardColumnOutput
-}
-
-structure WatchCardColumnInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  columnId: CardColumnId
-}
-
-structure WatchCardColumnOutput {
-  @httpPayload
-  subscription: Subscription
-}
-
-/// Unwatch (unsubscribe from) a card column
-@http(method: "DELETE", uri: "/buckets/{projectId}/recordings/{columnId}/subscription.json")
-operation UnwatchCardColumn {
-  input: UnwatchCardColumnInput
-  output: UnwatchCardColumnOutput
-}
-
-structure UnwatchCardColumnInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  columnId: CardColumnId
-}
-
-structure UnwatchCardColumnOutput {}
+// Note: Use Subscribe/Unsubscribe for card column subscriptions
 
 // ===== CardStep Operations =====
 
@@ -3396,12 +3135,12 @@ structure CreateCardStepInput {
 }
 
 structure CreateCardStepOutput {
-  @httpPayload
+
   step: CardStep
 }
 
 /// Update an existing step
-@http(method: "PUT", uri: "/buckets/{projectId}/card_tables/steps/{stepId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/card_tables/steps/{stepId}")
 operation UpdateCardStep {
   input: UpdateCardStepInput
   output: UpdateCardStepOutput
@@ -3423,7 +3162,7 @@ structure UpdateCardStepInput {
 }
 
 structure UpdateCardStepOutput {
-  @httpPayload
+
   step: CardStep
 }
 
@@ -3445,7 +3184,7 @@ structure CompleteCardStepInput {
 }
 
 structure CompleteCardStepOutput {
-  @httpPayload
+
   step: CardStep
 }
 
@@ -3467,7 +3206,7 @@ structure UncompleteCardStepInput {
 }
 
 structure UncompleteCardStepOutput {
-  @httpPayload
+
   step: CardStep
 }
 
@@ -3497,24 +3236,7 @@ structure RepositionCardStepInput {
 
 structure RepositionCardStepOutput {}
 
-/// Delete a step (move to trash)
-@http(method: "PUT", uri: "/buckets/{projectId}/recordings/{stepId}/status/trashed.json")
-operation DeleteCardStep {
-  input: DeleteCardStepInput
-  output: DeleteCardStepOutput
-}
-
-structure DeleteCardStepInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  stepId: CardStepId
-}
-
-structure DeleteCardStepOutput {}
+// Note: Use TrashRecording to delete card steps
 
 // ===== CardTable Shapes =====
 
@@ -3650,12 +3372,12 @@ operation ListPeople {
 structure ListPeopleInput {}
 
 structure ListPeopleOutput {
-  @httpPayload
+
   people: PersonList
 }
 
 /// Get a person by ID
-@http(method: "GET", uri: "/people/{personId}.json")
+@http(method: "GET", uri: "/people/{personId}")
 operation GetPerson {
   input: GetPersonInput
   output: GetPersonOutput
@@ -3668,7 +3390,7 @@ structure GetPersonInput {
 }
 
 structure GetPersonOutput {
-  @httpPayload
+
   person: Person
 }
 
@@ -3682,7 +3404,7 @@ operation GetMyProfile {
 structure GetMyProfileInput {}
 
 structure GetMyProfileOutput {
-  @httpPayload
+
   person: Person
 }
 
@@ -3700,7 +3422,7 @@ structure ListProjectPeopleInput {
 }
 
 structure ListProjectPeopleOutput {
-  @httpPayload
+
   people: PersonList
 }
 
@@ -3714,7 +3436,7 @@ operation ListPingablePeople {
 structure ListPingablePeopleInput {}
 
 structure ListPingablePeopleOutput {
-  @httpPayload
+
   people: PersonList
 }
 
@@ -3751,7 +3473,7 @@ structure CreatePersonRequest {
 }
 
 structure UpdateProjectAccessOutput {
-  @httpPayload
+
   result: ProjectAccessResult
 }
 
@@ -3780,7 +3502,7 @@ structure GetSubscriptionInput {
 }
 
 structure GetSubscriptionOutput {
-  @httpPayload
+
   subscription: Subscription
 }
 
@@ -3802,7 +3524,7 @@ structure SubscribeInput {
 }
 
 structure SubscribeOutput {
-  @httpPayload
+
   subscription: Subscription
 }
 
@@ -3846,7 +3568,7 @@ structure UpdateSubscriptionInput {
 }
 
 structure UpdateSubscriptionOutput {
-  @httpPayload
+
   subscription: Subscription
 }
 
@@ -3879,12 +3601,12 @@ structure ListClientApprovalsInput {
 }
 
 structure ListClientApprovalsOutput {
-  @httpPayload
+
   approvals: ClientApprovalList
 }
 
 /// Get a single client approval by id
-@http(method: "GET", uri: "/buckets/{projectId}/client/approvals/{approvalId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/client/approvals/{approvalId}")
 operation GetClientApproval {
   input: GetClientApprovalInput
   output: GetClientApprovalOutput
@@ -3901,7 +3623,7 @@ structure GetClientApprovalInput {
 }
 
 structure GetClientApprovalOutput {
-  @httpPayload
+
   approval: ClientApproval
 }
 
@@ -3921,12 +3643,12 @@ structure ListClientCorrespondencesInput {
 }
 
 structure ListClientCorrespondencesOutput {
-  @httpPayload
+
   correspondences: ClientCorrespondenceList
 }
 
 /// Get a single client correspondence by id
-@http(method: "GET", uri: "/buckets/{projectId}/client/correspondences/{correspondenceId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/client/correspondences/{correspondenceId}")
 operation GetClientCorrespondence {
   input: GetClientCorrespondenceInput
   output: GetClientCorrespondenceOutput
@@ -3943,7 +3665,7 @@ structure GetClientCorrespondenceInput {
 }
 
 structure GetClientCorrespondenceOutput {
-  @httpPayload
+
   correspondence: ClientCorrespondence
 }
 
@@ -3967,12 +3689,12 @@ structure ListClientRepliesInput {
 }
 
 structure ListClientRepliesOutput {
-  @httpPayload
+
   replies: ClientReplyList
 }
 
 /// Get a single client reply by id
-@http(method: "GET", uri: "/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}")
 operation GetClientReply {
   input: GetClientReplyInput
   output: GetClientReplyOutput
@@ -3993,7 +3715,7 @@ structure GetClientReplyInput {
 }
 
 structure GetClientReplyOutput {
-  @httpPayload
+
   reply: ClientReply
 }
 
@@ -4129,12 +3851,12 @@ structure ListWebhooksInput {
 }
 
 structure ListWebhooksOutput {
-  @httpPayload
+
   webhooks: WebhookList
 }
 
 /// Get a single webhook by id
-@http(method: "GET", uri: "/buckets/{projectId}/webhooks/{webhookId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/webhooks/{webhookId}")
 operation GetWebhook {
   input: GetWebhookInput
   output: GetWebhookOutput
@@ -4151,7 +3873,7 @@ structure GetWebhookInput {
 }
 
 structure GetWebhookOutput {
-  @httpPayload
+
   webhook: Webhook
 }
 
@@ -4177,12 +3899,12 @@ structure CreateWebhookInput {
 }
 
 structure CreateWebhookOutput {
-  @httpPayload
+
   webhook: Webhook
 }
 
 /// Update an existing webhook
-@http(method: "PUT", uri: "/buckets/{projectId}/webhooks/{webhookId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/webhooks/{webhookId}")
 operation UpdateWebhook {
   input: UpdateWebhookInput
   output: UpdateWebhookOutput
@@ -4203,12 +3925,12 @@ structure UpdateWebhookInput {
 }
 
 structure UpdateWebhookOutput {
-  @httpPayload
+
   webhook: Webhook
 }
 
 /// Delete a webhook
-@http(method: "DELETE", uri: "/buckets/{projectId}/webhooks/{webhookId}.json")
+@http(method: "DELETE", uri: "/buckets/{projectId}/webhooks/{webhookId}")
 operation DeleteWebhook {
   input: DeleteWebhookInput
   output: DeleteWebhookOutput
@@ -4246,7 +3968,7 @@ structure ListEventsInput {
 }
 
 structure ListEventsOutput {
-  @httpPayload
+
   events: EventList
 }
 
@@ -4278,12 +4000,12 @@ structure ListRecordingsInput {
 }
 
 structure ListRecordingsOutput {
-  @httpPayload
+
   recordings: RecordingList
 }
 
 /// Get a single recording by id
-@http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}")
 operation GetRecording {
   input: GetRecordingInput
   output: GetRecordingOutput
@@ -4300,7 +4022,7 @@ structure GetRecordingInput {
 }
 
 structure GetRecordingOutput {
-  @httpPayload
+
   recording: Recording
 }
 
@@ -4382,7 +4104,7 @@ structure SetClientVisibilityInput {
 }
 
 structure SetClientVisibilityOutput {
-  @httpPayload
+
   recording: Recording
 }
 
@@ -4474,7 +4196,7 @@ structure Recording {
 // ===== Questionnaire Operations =====
 
 /// Get a questionnaire (automatic check-ins container) by id
-@http(method: "GET", uri: "/buckets/{projectId}/questionnaires/{questionnaireId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/questionnaires/{questionnaireId}")
 operation GetQuestionnaire {
   input: GetQuestionnaireInput
   output: GetQuestionnaireOutput
@@ -4491,7 +4213,7 @@ structure GetQuestionnaireInput {
 }
 
 structure GetQuestionnaireOutput {
-  @httpPayload
+
   questionnaire: Questionnaire
 }
 
@@ -4515,12 +4237,12 @@ structure ListQuestionsInput {
 }
 
 structure ListQuestionsOutput {
-  @httpPayload
+
   questions: QuestionList
 }
 
 /// Get a single question by id
-@http(method: "GET", uri: "/buckets/{projectId}/questions/{questionId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/questions/{questionId}")
 operation GetQuestion {
   input: GetQuestionInput
   output: GetQuestionOutput
@@ -4537,7 +4259,7 @@ structure GetQuestionInput {
 }
 
 structure GetQuestionOutput {
-  @httpPayload
+
   question: Question
 }
 
@@ -4565,12 +4287,12 @@ structure CreateQuestionInput {
 }
 
 structure CreateQuestionOutput {
-  @httpPayload
+
   question: Question
 }
 
 /// Update an existing question
-@http(method: "PUT", uri: "/buckets/{projectId}/questions/{questionId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/questions/{questionId}")
 operation UpdateQuestion {
   input: UpdateQuestionInput
   output: UpdateQuestionOutput
@@ -4591,7 +4313,7 @@ structure UpdateQuestionInput {
 }
 
 structure UpdateQuestionOutput {
-  @httpPayload
+
   question: Question
 }
 
@@ -4615,12 +4337,12 @@ structure ListAnswersInput {
 }
 
 structure ListAnswersOutput {
-  @httpPayload
+
   answers: QuestionAnswerList
 }
 
 /// Get a single answer by id
-@http(method: "GET", uri: "/buckets/{projectId}/question_answers/{answerId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/question_answers/{answerId}")
 operation GetAnswer {
   input: GetAnswerInput
   output: GetAnswerOutput
@@ -4637,7 +4359,7 @@ structure GetAnswerInput {
 }
 
 structure GetAnswerOutput {
-  @httpPayload
+
   answer: QuestionAnswer
 }
 
@@ -4658,7 +4380,7 @@ structure CreateAnswerInput {
   questionId: QuestionId
 
   @required
-  @httpPayload
+
   question_answer: QuestionAnswerPayload
 }
 
@@ -4670,12 +4392,12 @@ structure QuestionAnswerPayload {
 }
 
 structure CreateAnswerOutput {
-  @httpPayload
+
   answer: QuestionAnswer
 }
 
 /// Update an existing answer
-@http(method: "PUT", uri: "/buckets/{projectId}/question_answers/{answerId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/question_answers/{answerId}")
 operation UpdateAnswer {
   input: UpdateAnswerInput
   output: UpdateAnswerOutput
@@ -4691,7 +4413,7 @@ structure UpdateAnswerInput {
   answerId: AnswerId
 
   @required
-  @httpPayload
+
   question_answer: QuestionAnswerUpdatePayload
 }
 
@@ -4701,7 +4423,7 @@ structure QuestionAnswerUpdatePayload {
 }
 
 structure UpdateAnswerOutput {
-  @httpPayload
+
   answer: QuestionAnswer
 }
 
@@ -4827,7 +4549,7 @@ structure SearchInput {
 }
 
 structure SearchOutput {
-  @httpPayload
+
   results: SearchResultList
 }
 
@@ -4841,7 +4563,7 @@ operation GetSearchMetadata {
 structure GetSearchMetadataInput {}
 
 structure GetSearchMetadataOutput {
-  @httpPayload
+
   metadata: SearchMetadata
 }
 
@@ -4860,12 +4582,12 @@ structure ListTemplatesInput {
 }
 
 structure ListTemplatesOutput {
-  @httpPayload
+
   templates: TemplateList
 }
 
 /// Get a single template by id
-@http(method: "GET", uri: "/templates/{templateId}.json")
+@http(method: "GET", uri: "/templates/{templateId}")
 operation GetTemplate {
   input: GetTemplateInput
   output: GetTemplateOutput
@@ -4878,7 +4600,7 @@ structure GetTemplateInput {
 }
 
 structure GetTemplateOutput {
-  @httpPayload
+
   template: Template
 }
 
@@ -4897,12 +4619,12 @@ structure CreateTemplateInput {
 }
 
 structure CreateTemplateOutput {
-  @httpPayload
+
   template: Template
 }
 
 /// Update an existing template
-@http(method: "PUT", uri: "/templates/{templateId}.json")
+@http(method: "PUT", uri: "/templates/{templateId}")
 operation UpdateTemplate {
   input: UpdateTemplateInput
   output: UpdateTemplateOutput
@@ -4919,12 +4641,12 @@ structure UpdateTemplateInput {
 }
 
 structure UpdateTemplateOutput {
-  @httpPayload
+
   template: Template
 }
 
 /// Delete a template (trash it)
-@http(method: "DELETE", uri: "/templates/{templateId}.json")
+@http(method: "DELETE", uri: "/templates/{templateId}")
 operation DeleteTemplate {
   input: DeleteTemplateInput
   output: DeleteTemplateOutput
@@ -4957,12 +4679,12 @@ structure CreateProjectFromTemplateInput {
 }
 
 structure CreateProjectFromTemplateOutput {
-  @httpPayload
+
   construction: ProjectConstruction
 }
 
 /// Get the status of a project construction
-@http(method: "GET", uri: "/templates/{templateId}/project_constructions/{constructionId}.json")
+@http(method: "GET", uri: "/templates/{templateId}/project_constructions/{constructionId}")
 operation GetProjectConstruction {
   input: GetProjectConstructionInput
   output: GetProjectConstructionOutput
@@ -4979,14 +4701,14 @@ structure GetProjectConstructionInput {
 }
 
 structure GetProjectConstructionOutput {
-  @httpPayload
+
   construction: ProjectConstruction
 }
 
 // ===== Tool Operations =====
 
 /// Get a dock tool by id
-@http(method: "GET", uri: "/buckets/{projectId}/dock/tools/{toolId}.json")
+@http(method: "GET", uri: "/buckets/{projectId}/dock/tools/{toolId}")
 operation GetTool {
   input: GetToolInput
   output: GetToolOutput
@@ -5003,7 +4725,7 @@ structure GetToolInput {
 }
 
 structure GetToolOutput {
-  @httpPayload
+
   tool: Tool
 }
 
@@ -5025,12 +4747,12 @@ structure CloneToolInput {
 }
 
 structure CloneToolOutput {
-  @httpPayload
+
   tool: Tool
 }
 
 /// Update (rename) an existing tool
-@http(method: "PUT", uri: "/buckets/{projectId}/dock/tools/{toolId}.json")
+@http(method: "PUT", uri: "/buckets/{projectId}/dock/tools/{toolId}")
 operation UpdateTool {
   input: UpdateToolInput
   output: UpdateToolOutput
@@ -5050,12 +4772,12 @@ structure UpdateToolInput {
 }
 
 structure UpdateToolOutput {
-  @httpPayload
+
   tool: Tool
 }
 
 /// Delete a tool (trash it)
-@http(method: "DELETE", uri: "/buckets/{projectId}/dock/tools/{toolId}.json")
+@http(method: "DELETE", uri: "/buckets/{projectId}/dock/tools/{toolId}")
 operation DeleteTool {
   input: DeleteToolInput
   output: DeleteToolOutput
@@ -5157,12 +4879,12 @@ structure CreateLineupMarkerInput {
 }
 
 structure CreateLineupMarkerOutput {
-  @httpPayload
+
   marker: LineupMarker
 }
 
 /// Update an existing lineup marker
-@http(method: "PUT", uri: "/lineup/markers/{markerId}.json")
+@http(method: "PUT", uri: "/lineup/markers/{markerId}")
 operation UpdateLineupMarker {
   input: UpdateLineupMarkerInput
   output: UpdateLineupMarkerOutput
@@ -5181,12 +4903,12 @@ structure UpdateLineupMarkerInput {
 }
 
 structure UpdateLineupMarkerOutput {
-  @httpPayload
+
   marker: LineupMarker
 }
 
 /// Delete a lineup marker
-@http(method: "DELETE", uri: "/lineup/markers/{markerId}.json")
+@http(method: "DELETE", uri: "/lineup/markers/{markerId}")
 operation DeleteLineupMarker {
   input: DeleteLineupMarkerInput
   output: DeleteLineupMarkerOutput
