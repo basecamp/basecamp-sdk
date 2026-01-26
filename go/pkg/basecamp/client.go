@@ -65,6 +65,7 @@ type Client struct {
 	attachments           *AttachmentsService
 	clientApprovals       *ClientApprovalsService
 	clientCorrespondences *ClientCorrespondencesService
+	clientReplies         *ClientRepliesService
 }
 
 // Response wraps an API response.
@@ -765,4 +766,12 @@ func (c *Client) ClientCorrespondences() *ClientCorrespondencesService {
 		c.clientCorrespondences = NewClientCorrespondencesService(c)
 	}
 	return c.clientCorrespondences
+}
+
+// ClientReplies returns the ClientRepliesService for client reply operations.
+func (c *Client) ClientReplies() *ClientRepliesService {
+	if c.clientReplies == nil {
+		c.clientReplies = NewClientRepliesService(c)
+	}
+	return c.clientReplies
 }
