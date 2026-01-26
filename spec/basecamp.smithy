@@ -10,6 +10,11 @@ use smithy.api#httpPayload
 use smithy.api#required
 use smithy.api#readonly
 use smithy.api#idempotent
+use smithy.api#error
+use smithy.api#httpError
+use smithy.api#retryable
+use smithy.api#sensitive
+use smithy.api#deprecated
 use aws.protocols#restJson1
 
 /// Basecamp API
@@ -192,12 +197,69 @@ service Basecamp {
   ]
 }
 
+// ===== Error Shapes =====
+
+@error("client")
+@httpError(404)
+structure NotFoundError {
+  @required
+  error: String
+  message: String
+}
+
+@error("client")
+@httpError(422)
+structure ValidationError {
+  @required
+  error: String
+  message: String
+}
+
+@error("client")
+@retryable(throttling: true)
+@httpError(429)
+structure RateLimitError {
+  @required
+  error: String
+  message: String
+  retry_after: Integer
+}
+
+@error("client")
+@httpError(401)
+structure UnauthorizedError {
+  @required
+  error: String
+  message: String
+}
+
+@error("client")
+@httpError(403)
+structure ForbiddenError {
+  @required
+  error: String
+  message: String
+}
+
+@error("server")
+@retryable
+@httpError(500)
+structure InternalServerError {
+  @required
+  error: String
+  message: String
+}
+
 /// List projects (active by default; optionally archived/trashed)
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/projects.json")
 operation ListProjects {
   input: ListProjectsInput
   output: ListProjectsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListProjectsInput {
@@ -216,6 +278,7 @@ structure ListProjectsOutput {
 operation GetProject {
   input: GetProjectInput
   output: GetProjectOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetProjectInput {
@@ -234,6 +297,7 @@ structure GetProjectOutput {
 operation CreateProject {
   input: CreateProjectInput
   output: CreateProjectOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateProjectInput {
@@ -253,6 +317,7 @@ structure CreateProjectOutput {
 operation UpdateProject {
   input: UpdateProjectInput
   output: UpdateProjectOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateProjectInput {
@@ -278,6 +343,7 @@ structure UpdateProjectOutput {
 operation TrashProject {
   input: TrashProjectInput
   output: TrashProjectOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure TrashProjectInput {
@@ -288,7 +354,32 @@ structure TrashProjectInput {
 
 structure TrashProjectOutput {}
 
+
+// ===== Sensitive Types (PII) =====
+
+@sensitive
+string PersonName
+
+@sensitive
+string EmailAddress
+
+@sensitive
+string PersonTitle
+
+@sensitive
+string PersonBio
+
+@sensitive
+string PersonLocation
+
+@sensitive
+string AvatarUrl
+
+@sensitive
+string CompanyName
+
 // ===== Shapes =====
+
 
 long ProjectId
 string ProjectName
@@ -326,6 +417,7 @@ structure Project {
   dock: DockItemList
   bookmarked: Boolean
   client_company: ClientCompany
+  @deprecated(message: "Use Client Visibility feature instead", since: "2024-01")
   clientside: ClientSide
 }
 
@@ -348,6 +440,7 @@ structure ClientCompany {
   name: String
 }
 
+@deprecated(message: "Use Client Visibility feature instead", since: "2024-01")
 structure ClientSide {
   url: String
   app_url: String
@@ -356,11 +449,15 @@ structure ClientSide {
 // ===== Todo Operations =====
 
 /// List todos in a todolist
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/todolists/{todolistId}/todos.json")
 operation ListTodos {
   input: ListTodosInput
   output: ListTodosOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListTodosInput {
@@ -390,6 +487,7 @@ structure ListTodosOutput {
 operation GetTodo {
   input: GetTodoInput
   output: GetTodoOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetTodoInput {
@@ -412,6 +510,7 @@ structure GetTodoOutput {
 operation CreateTodo {
   input: CreateTodoInput
   output: CreateTodoOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateTodoInput {
@@ -445,6 +544,7 @@ structure CreateTodoOutput {
 operation UpdateTodo {
   input: UpdateTodoInput
   output: UpdateTodoOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateTodoInput {
@@ -476,6 +576,7 @@ structure UpdateTodoOutput {
 operation TrashTodo {
   input: TrashTodoInput
   output: TrashTodoOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure TrashTodoInput {
@@ -495,6 +596,7 @@ structure TrashTodoOutput {}
 operation CompleteTodo {
   input: CompleteTodoInput
   output: CompleteTodoOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CompleteTodoInput {
@@ -515,6 +617,7 @@ structure CompleteTodoOutput {}
 operation UncompleteTodo {
   input: UncompleteTodoInput
   output: UncompleteTodoOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UncompleteTodoInput {
@@ -537,6 +640,7 @@ structure UncompleteTodoOutput {}
 operation GetTodoset {
   input: GetTodosetInput
   output: GetTodosetOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetTodosetInput {
@@ -557,11 +661,15 @@ structure GetTodosetOutput {
 // ===== Todolist Operations =====
 
 /// List todolists in a todoset
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/todosets/{todosetId}/todolists.json")
 operation ListTodolists {
   input: ListTodolistsInput
   output: ListTodolistsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListTodolistsInput {
@@ -589,6 +697,7 @@ structure ListTodolistsOutput {
 operation GetTodolistOrGroup {
   input: GetTodolistOrGroupInput
   output: GetTodolistOrGroupOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetTodolistOrGroupInput {
@@ -617,6 +726,7 @@ union TodolistOrGroup {
 operation CreateTodolist {
   input: CreateTodolistInput
   output: CreateTodolistOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateTodolistInput {
@@ -646,6 +756,7 @@ structure CreateTodolistOutput {
 operation UpdateTodolistOrGroup {
   input: UpdateTodolistOrGroupInput
   output: UpdateTodolistOrGroupOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateTodolistOrGroupInput {
@@ -675,11 +786,15 @@ structure UpdateTodolistOrGroupOutput {
 // TrashTodolist and TrashTodolistGroup use generic TrashRecording operation
 
 /// List groups in a todolist
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/todolists/{todolistId}/groups.json")
 operation ListTodolistGroups {
   input: ListTodolistGroupsInput
   output: ListTodolistGroupsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListTodolistGroupsInput {
@@ -702,6 +817,7 @@ structure ListTodolistGroupsOutput {
 operation CreateTodolistGroup {
   input: CreateTodolistGroupInput
   output: CreateTodolistGroupOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateTodolistGroupInput {
@@ -728,6 +844,7 @@ structure CreateTodolistGroupOutput {
 operation RepositionTodolistGroup {
   input: RepositionTodolistGroupInput
   output: RepositionTodolistGroupOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure RepositionTodolistGroupInput {
@@ -810,12 +927,12 @@ structure TodoBucket {
 structure Person {
   id: PersonId
   attachable_sgid: String
-  name: String
-  email_address: String
+  name: PersonName
+  email_address: EmailAddress
   personable_type: String
-  title: String
-  bio: String
-  location: String
+  title: PersonTitle
+  bio: PersonBio
+  location: PersonLocation
   created_at: ISO8601Timestamp
   updated_at: ISO8601Timestamp
   admin: Boolean
@@ -823,7 +940,7 @@ structure Person {
   client: Boolean
   employee: Boolean
   time_zone: String
-  avatar_url: String
+  avatar_url: AvatarUrl
   company: PersonCompany
   can_manage_projects: Boolean
   can_manage_people: Boolean
@@ -831,7 +948,7 @@ structure Person {
 
 structure PersonCompany {
   id: Long
-  name: String
+  name: CompanyName
 }
 
 list PersonList {
@@ -947,11 +1064,15 @@ structure TodolistGroup {
 // ===== Comment Operations (Batch 1) =====
 
 /// List comments on a recording
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}/comments.json")
 operation ListComments {
   input: ListCommentsInput
   output: ListCommentsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListCommentsInput {
@@ -975,6 +1096,7 @@ structure ListCommentsOutput {
 operation GetComment {
   input: GetCommentInput
   output: GetCommentOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetCommentInput {
@@ -997,6 +1119,7 @@ structure GetCommentOutput {
 operation CreateComment {
   input: CreateCommentInput
   output: CreateCommentOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateCommentInput {
@@ -1023,6 +1146,7 @@ structure CreateCommentOutput {
 operation UpdateComment {
   input: UpdateCommentInput
   output: UpdateCommentOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateCommentInput {
@@ -1048,11 +1172,15 @@ structure UpdateCommentOutput {
 // ===== Message Operations (Batch 1) =====
 
 /// List messages on a message board
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/message_boards/{boardId}/messages.json")
 operation ListMessages {
   input: ListMessagesInput
   output: ListMessagesOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListMessagesInput {
@@ -1076,6 +1204,7 @@ structure ListMessagesOutput {
 operation GetMessage {
   input: GetMessageInput
   output: GetMessageOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetMessageInput {
@@ -1098,6 +1227,7 @@ structure GetMessageOutput {
 operation CreateMessage {
   input: CreateMessageInput
   output: CreateMessageOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateMessageInput {
@@ -1131,6 +1261,7 @@ structure CreateMessageOutput {
 operation UpdateMessage {
   input: UpdateMessageInput
   output: UpdateMessageOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateMessageInput {
@@ -1161,6 +1292,7 @@ structure UpdateMessageOutput {
 operation PinMessage {
   input: PinMessageInput
   output: PinMessageOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure PinMessageInput {
@@ -1181,6 +1313,7 @@ structure PinMessageOutput {}
 operation UnpinMessage {
   input: UnpinMessageInput
   output: UnpinMessageOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UnpinMessageInput {
@@ -1205,6 +1338,7 @@ structure UnpinMessageOutput {}
 operation GetMessageBoard {
   input: GetMessageBoardInput
   output: GetMessageBoardOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetMessageBoardInput {
@@ -1225,11 +1359,15 @@ structure GetMessageBoardOutput {
 // ===== Message Type Operations (Batch 1) =====
 
 /// List message types in a project
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/categories.json")
 operation ListMessageTypes {
   input: ListMessageTypesInput
   output: ListMessageTypesOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListMessageTypesInput {
@@ -1249,6 +1387,7 @@ structure ListMessageTypesOutput {
 operation GetMessageType {
   input: GetMessageTypeInput
   output: GetMessageTypeOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetMessageTypeInput {
@@ -1271,6 +1410,7 @@ structure GetMessageTypeOutput {
 operation CreateMessageType {
   input: CreateMessageTypeInput
   output: CreateMessageTypeOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateMessageTypeInput {
@@ -1296,6 +1436,7 @@ structure CreateMessageTypeOutput {
 operation UpdateMessageType {
   input: UpdateMessageTypeInput
   output: UpdateMessageTypeOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateMessageTypeInput {
@@ -1322,6 +1463,7 @@ structure UpdateMessageTypeOutput {
 operation DeleteMessageType {
   input: DeleteMessageTypeInput
   output: DeleteMessageTypeOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure DeleteMessageTypeInput {
@@ -1339,11 +1481,15 @@ structure DeleteMessageTypeOutput {}
 // ===== Vault Operations (Batch 2) =====
 
 /// List vaults (subfolders) in a vault
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}/vaults.json")
 operation ListVaults {
   input: ListVaultsInput
   output: ListVaultsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListVaultsInput {
@@ -1367,6 +1513,7 @@ structure ListVaultsOutput {
 operation GetVault {
   input: GetVaultInput
   output: GetVaultOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetVaultInput {
@@ -1389,6 +1536,7 @@ structure GetVaultOutput {
 operation CreateVault {
   input: CreateVaultInput
   output: CreateVaultOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateVaultInput {
@@ -1415,6 +1563,7 @@ structure CreateVaultOutput {
 operation UpdateVault {
   input: UpdateVaultInput
   output: UpdateVaultOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateVaultInput {
@@ -1437,11 +1586,15 @@ structure UpdateVaultOutput {
 // ===== Document Operations (Batch 2) =====
 
 /// List documents in a vault
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}/documents.json")
 operation ListDocuments {
   input: ListDocumentsInput
   output: ListDocumentsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListDocumentsInput {
@@ -1465,6 +1618,7 @@ structure ListDocumentsOutput {
 operation GetDocument {
   input: GetDocumentInput
   output: GetDocumentOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetDocumentInput {
@@ -1487,6 +1641,7 @@ structure GetDocumentOutput {
 operation CreateDocument {
   input: CreateDocumentInput
   output: CreateDocumentOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateDocumentInput {
@@ -1518,6 +1673,7 @@ structure CreateDocumentOutput {
 operation UpdateDocument {
   input: UpdateDocumentInput
   output: UpdateDocumentOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateDocumentInput {
@@ -1543,11 +1699,15 @@ structure UpdateDocumentOutput {
 // ===== Upload Operations (Batch 2) =====
 
 /// List uploads in a vault
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}/uploads.json")
 operation ListUploads {
   input: ListUploadsInput
   output: ListUploadsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListUploadsInput {
@@ -1571,6 +1731,7 @@ structure ListUploadsOutput {
 operation GetUpload {
   input: GetUploadInput
   output: GetUploadOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetUploadInput {
@@ -1593,6 +1754,7 @@ structure GetUploadOutput {
 operation CreateUpload {
   input: CreateUploadInput
   output: CreateUploadOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateUploadInput {
@@ -1622,6 +1784,7 @@ structure CreateUploadOutput {
 operation UpdateUpload {
   input: UpdateUploadInput
   output: UpdateUploadOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateUploadInput {
@@ -1645,11 +1808,15 @@ structure UpdateUploadOutput {
 // Note: Use TrashRecording to trash uploads
 
 /// List versions of an upload
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/uploads/{uploadId}/versions.json")
 operation ListUploadVersions {
   input: ListUploadVersionsInput
   output: ListUploadVersionsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListUploadVersionsInput {
@@ -1674,6 +1841,7 @@ structure ListUploadVersionsOutput {
 operation CreateAttachment {
   input: CreateAttachmentInput
   output: CreateAttachmentOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateAttachmentInput {
@@ -1702,6 +1870,7 @@ structure CreateAttachmentOutput {
 operation GetSchedule {
   input: GetScheduleInput
   output: GetScheduleOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetScheduleInput {
@@ -1725,6 +1894,7 @@ structure GetScheduleOutput {
 operation UpdateScheduleSettings {
   input: UpdateScheduleSettingsInput
   output: UpdateScheduleSettingsOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateScheduleSettingsInput {
@@ -1746,11 +1916,15 @@ structure UpdateScheduleSettingsOutput {
 }
 
 /// List entries on a schedule
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/schedules/{scheduleId}/entries.json")
 operation ListScheduleEntries {
   input: ListScheduleEntriesInput
   output: ListScheduleEntriesOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListScheduleEntriesInput {
@@ -1777,6 +1951,7 @@ structure ListScheduleEntriesOutput {
 operation GetScheduleEntry {
   input: GetScheduleEntryInput
   output: GetScheduleEntryOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetScheduleEntryInput {
@@ -1800,6 +1975,7 @@ structure GetScheduleEntryOutput {
 operation GetScheduleEntryOccurrence {
   input: GetScheduleEntryOccurrenceInput
   output: GetScheduleEntryOccurrenceOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetScheduleEntryOccurrenceInput {
@@ -1826,6 +2002,7 @@ structure GetScheduleEntryOccurrenceOutput {
 operation CreateScheduleEntry {
   input: CreateScheduleEntryInput
   output: CreateScheduleEntryOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateScheduleEntryInput {
@@ -1863,6 +2040,7 @@ structure CreateScheduleEntryOutput {
 operation UpdateScheduleEntry {
   input: UpdateScheduleEntryInput
   output: UpdateScheduleEntryOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateScheduleEntryInput {
@@ -1898,6 +2076,7 @@ structure UpdateScheduleEntryOutput {
 operation GetTimesheetReport {
   input: GetTimesheetReportInput
   output: GetTimesheetReportOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetTimesheetReportInput {
@@ -1922,6 +2101,7 @@ structure GetTimesheetReportOutput {
 operation GetProjectTimesheet {
   input: GetProjectTimesheetInput
   output: GetProjectTimesheetOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetProjectTimesheetInput {
@@ -1950,6 +2130,7 @@ structure GetProjectTimesheetOutput {
 operation GetRecordingTimesheet {
   input: GetRecordingTimesheetInput
   output: GetRecordingTimesheetOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetRecordingTimesheetInput {
@@ -2281,11 +2462,15 @@ structure TimesheetEntry {
 // ===== Campfire Operations =====
 
 /// List all campfires across the account
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/chats.json")
 operation ListCampfires {
   input: ListCampfiresInput
   output: ListCampfiresOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListCampfiresInput {}
@@ -2301,6 +2486,7 @@ structure ListCampfiresOutput {
 operation GetCampfire {
   input: GetCampfireInput
   output: GetCampfireOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetCampfireInput {
@@ -2319,11 +2505,15 @@ structure GetCampfireOutput {
 }
 
 /// List all lines (messages) in a campfire
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/lines.json")
 operation ListCampfireLines {
   input: ListCampfireLinesInput
   output: ListCampfireLinesOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListCampfireLinesInput {
@@ -2347,6 +2537,7 @@ structure ListCampfireLinesOutput {
 operation GetCampfireLine {
   input: GetCampfireLineInput
   output: GetCampfireLineOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetCampfireLineInput {
@@ -2373,6 +2564,7 @@ structure GetCampfireLineOutput {
 operation CreateCampfireLine {
   input: CreateCampfireLineInput
   output: CreateCampfireLineOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateCampfireLineInput {
@@ -2399,6 +2591,7 @@ structure CreateCampfireLineOutput {
 operation DeleteCampfireLine {
   input: DeleteCampfireLineInput
   output: DeleteCampfireLineOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure DeleteCampfireLineInput {
@@ -2420,11 +2613,15 @@ structure DeleteCampfireLineOutput {}
 // ===== Chatbot Operations =====
 
 /// List all chatbots for a campfire
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/integrations.json")
 operation ListChatbots {
   input: ListChatbotsInput
   output: ListChatbotsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListChatbotsInput {
@@ -2448,6 +2645,7 @@ structure ListChatbotsOutput {
 operation GetChatbot {
   input: GetChatbotInput
   output: GetChatbotOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetChatbotInput {
@@ -2474,6 +2672,7 @@ structure GetChatbotOutput {
 operation CreateChatbot {
   input: CreateChatbotInput
   output: CreateChatbotOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateChatbotInput {
@@ -2502,6 +2701,7 @@ structure CreateChatbotOutput {
 operation UpdateChatbot {
   input: UpdateChatbotInput
   output: UpdateChatbotOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateChatbotInput {
@@ -2534,6 +2734,7 @@ structure UpdateChatbotOutput {
 operation DeleteChatbot {
   input: DeleteChatbotInput
   output: DeleteChatbotOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure DeleteChatbotInput {
@@ -2560,6 +2761,7 @@ structure DeleteChatbotOutput {}
 operation GetInbox {
   input: GetInboxInput
   output: GetInboxOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetInboxInput {
@@ -2580,11 +2782,15 @@ structure GetInboxOutput {
 // ===== Forward Operations =====
 
 /// List all forwards in an inbox
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/inboxes/{inboxId}/forwards.json")
 operation ListForwards {
   input: ListForwardsInput
   output: ListForwardsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListForwardsInput {
@@ -2608,6 +2814,7 @@ structure ListForwardsOutput {
 operation GetForward {
   input: GetForwardInput
   output: GetForwardOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetForwardInput {
@@ -2626,11 +2833,15 @@ structure GetForwardOutput {
 }
 
 /// List all replies to a forward
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json")
 operation ListForwardReplies {
   input: ListForwardRepliesInput
   output: ListForwardRepliesOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListForwardRepliesInput {
@@ -2654,6 +2865,7 @@ structure ListForwardRepliesOutput {
 operation GetForwardReply {
   input: GetForwardReplyInput
   output: GetForwardReplyOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetForwardReplyInput {
@@ -2680,6 +2892,7 @@ structure GetForwardReplyOutput {
 operation CreateForwardReply {
   input: CreateForwardReplyInput
   output: CreateForwardReplyOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateForwardReplyInput {
@@ -2853,6 +3066,7 @@ structure ForwardReply {
 operation GetCardTable {
   input: GetCardTableInput
   output: GetCardTableOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetCardTableInput {
@@ -2873,11 +3087,15 @@ structure GetCardTableOutput {
 // ===== Card Operations =====
 
 /// List cards in a column
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/card_tables/lists/{columnId}/cards.json")
 operation ListCards {
   input: ListCardsInput
   output: ListCardsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListCardsInput {
@@ -2901,6 +3119,7 @@ structure ListCardsOutput {
 operation GetCard {
   input: GetCardInput
   output: GetCardOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetCardInput {
@@ -2923,6 +3142,7 @@ structure GetCardOutput {
 operation CreateCard {
   input: CreateCardInput
   output: CreateCardOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateCardInput {
@@ -2953,6 +3173,7 @@ structure CreateCardOutput {
 operation UpdateCard {
   input: UpdateCardInput
   output: UpdateCardOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateCardInput {
@@ -2980,6 +3201,7 @@ structure UpdateCardOutput {
 operation MoveCard {
   input: MoveCardInput
   output: MoveCardOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure MoveCardInput {
@@ -3007,6 +3229,7 @@ structure MoveCardOutput {}
 operation GetCardColumn {
   input: GetCardColumnInput
   output: GetCardColumnOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetCardColumnInput {
@@ -3029,6 +3252,7 @@ structure GetCardColumnOutput {
 operation CreateCardColumn {
   input: CreateCardColumnInput
   output: CreateCardColumnOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateCardColumnInput {
@@ -3057,6 +3281,7 @@ structure CreateCardColumnOutput {
 operation UpdateCardColumn {
   input: UpdateCardColumnInput
   output: UpdateCardColumnOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateCardColumnInput {
@@ -3082,6 +3307,7 @@ structure UpdateCardColumnOutput {
 operation MoveCardColumn {
   input: MoveCardColumnInput
   output: MoveCardColumnOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure MoveCardColumnInput {
@@ -3110,6 +3336,7 @@ structure MoveCardColumnOutput {}
 operation SetCardColumnColor {
   input: SetCardColumnColorInput
   output: SetCardColumnColorOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure SetCardColumnColorInput {
@@ -3136,6 +3363,7 @@ structure SetCardColumnColorOutput {
 operation EnableCardColumnOnHold {
   input: EnableCardColumnOnHoldInput
   output: EnableCardColumnOnHoldOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure EnableCardColumnOnHoldInput {
@@ -3159,6 +3387,7 @@ structure EnableCardColumnOnHoldOutput {
 operation DisableCardColumnOnHold {
   input: DisableCardColumnOnHoldInput
   output: DisableCardColumnOnHoldOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure DisableCardColumnOnHoldInput {
@@ -3185,6 +3414,7 @@ structure DisableCardColumnOnHoldOutput {
 operation CreateCardStep {
   input: CreateCardStepInput
   output: CreateCardStepOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateCardStepInput {
@@ -3215,6 +3445,7 @@ structure CreateCardStepOutput {
 operation UpdateCardStep {
   input: UpdateCardStepInput
   output: UpdateCardStepOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateCardStepInput {
@@ -3243,6 +3474,7 @@ structure UpdateCardStepOutput {
 operation CompleteCardStep {
   input: CompleteCardStepInput
   output: CompleteCardStepOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure CompleteCardStepInput {
@@ -3266,6 +3498,7 @@ structure CompleteCardStepOutput {
 operation UncompleteCardStep {
   input: UncompleteCardStepInput
   output: UncompleteCardStepOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UncompleteCardStepInput {
@@ -3288,6 +3521,7 @@ structure UncompleteCardStepOutput {
 operation RepositionCardStep {
   input: RepositionCardStepInput
   output: RepositionCardStepOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure RepositionCardStepInput {
@@ -3436,11 +3670,15 @@ structure CardStep {
 // ===== People Operations =====
 
 /// List all people visible to the current user
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/people.json")
 operation ListPeople {
   input: ListPeopleInput
   output: ListPeopleOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListPeopleInput {}
@@ -3456,6 +3694,7 @@ structure ListPeopleOutput {
 operation GetPerson {
   input: GetPersonInput
   output: GetPersonOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetPersonInput {
@@ -3475,6 +3714,7 @@ structure GetPersonOutput {
 operation GetMyProfile {
   input: GetMyProfileInput
   output: GetMyProfileOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetMyProfileInput {}
@@ -3485,11 +3725,15 @@ structure GetMyProfileOutput {
 }
 
 /// List all active people on a project
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/projects/{projectId}/people.json")
 operation ListProjectPeople {
   input: ListProjectPeopleInput
   output: ListProjectPeopleOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListProjectPeopleInput {
@@ -3504,11 +3748,15 @@ structure ListProjectPeopleOutput {
 }
 
 /// List all account users who can be pinged
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/circles/people.json")
 operation ListPingablePeople {
   input: ListPingablePeopleInput
   output: ListPingablePeopleOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListPingablePeopleInput {}
@@ -3524,6 +3772,7 @@ structure ListPingablePeopleOutput {
 operation UpdateProjectAccess {
   input: UpdateProjectAccessInput
   output: UpdateProjectAccessOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateProjectAccessInput {
@@ -3542,13 +3791,13 @@ list CreatePersonRequestList {
 
 structure CreatePersonRequest {
   @required
-  name: String
+  name: PersonName
 
   @required
-  email_address: String
+  email_address: EmailAddress
 
-  title: String
-  company_name: String
+  title: PersonTitle
+  company_name: CompanyName
 }
 
 structure UpdateProjectAccessOutput {
@@ -3569,6 +3818,7 @@ structure ProjectAccessResult {
 operation GetSubscription {
   input: GetSubscriptionInput
   output: GetSubscriptionOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetSubscriptionInput {
@@ -3591,6 +3841,7 @@ structure GetSubscriptionOutput {
 operation Subscribe {
   input: SubscribeInput
   output: SubscribeOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure SubscribeInput {
@@ -3614,6 +3865,7 @@ structure SubscribeOutput {
 operation Unsubscribe {
   input: UnsubscribeInput
   output: UnsubscribeOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UnsubscribeInput {
@@ -3634,6 +3886,7 @@ structure UnsubscribeOutput {}
 operation UpdateSubscription {
   input: UpdateSubscriptionInput
   output: UpdateSubscriptionOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateSubscriptionInput {
@@ -3670,11 +3923,15 @@ structure Subscription {
 // ===== Client Approval Operations =====
 
 /// List all client approvals in a project
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/client/approvals.json")
 operation ListClientApprovals {
   input: ListClientApprovalsInput
   output: ListClientApprovalsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListClientApprovalsInput {
@@ -3694,6 +3951,7 @@ structure ListClientApprovalsOutput {
 operation GetClientApproval {
   input: GetClientApprovalInput
   output: GetClientApprovalOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetClientApprovalInput {
@@ -3714,11 +3972,15 @@ structure GetClientApprovalOutput {
 // ===== Client Correspondence Operations =====
 
 /// List all client correspondences in a project
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/client/correspondences.json")
 operation ListClientCorrespondences {
   input: ListClientCorrespondencesInput
   output: ListClientCorrespondencesOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListClientCorrespondencesInput {
@@ -3738,6 +4000,7 @@ structure ListClientCorrespondencesOutput {
 operation GetClientCorrespondence {
   input: GetClientCorrespondenceInput
   output: GetClientCorrespondenceOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetClientCorrespondenceInput {
@@ -3758,11 +4021,15 @@ structure GetClientCorrespondenceOutput {
 // ===== Client Reply Operations =====
 
 /// List all client replies for a recording (correspondence or approval)
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/client/recordings/{recordingId}/replies.json")
 operation ListClientReplies {
   input: ListClientRepliesInput
   output: ListClientRepliesOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListClientRepliesInput {
@@ -3786,6 +4053,7 @@ structure ListClientRepliesOutput {
 operation GetClientReply {
   input: GetClientReplyInput
   output: GetClientReplyOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetClientReplyInput {
@@ -3926,11 +4194,15 @@ structure RecordingBucket {
 // ===== Webhook Operations =====
 
 /// List all webhooks for a project
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/webhooks.json")
 operation ListWebhooks {
   input: ListWebhooksInput
   output: ListWebhooksOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListWebhooksInput {
@@ -3950,6 +4222,7 @@ structure ListWebhooksOutput {
 operation GetWebhook {
   input: GetWebhookInput
   output: GetWebhookOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetWebhookInput {
@@ -3972,6 +4245,7 @@ structure GetWebhookOutput {
 operation CreateWebhook {
   input: CreateWebhookInput
   output: CreateWebhookOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateWebhookInput {
@@ -3999,6 +4273,7 @@ structure CreateWebhookOutput {
 operation UpdateWebhook {
   input: UpdateWebhookInput
   output: UpdateWebhookOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateWebhookInput {
@@ -4026,6 +4301,7 @@ structure UpdateWebhookOutput {
 operation DeleteWebhook {
   input: DeleteWebhookInput
   output: DeleteWebhookOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure DeleteWebhookInput {
@@ -4043,11 +4319,15 @@ structure DeleteWebhookOutput {}
 // ===== Event Operations =====
 
 /// List all events for a recording
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}/events.json")
 operation ListEvents {
   input: ListEventsInput
   output: ListEventsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListEventsInput {
@@ -4068,11 +4348,15 @@ structure ListEventsOutput {
 // ===== Recording Operations =====
 
 /// List recordings of a given type across projects
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/projects/recordings.json")
 operation ListRecordings {
   input: ListRecordingsInput
   output: ListRecordingsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListRecordingsInput {
@@ -4104,6 +4388,7 @@ structure ListRecordingsOutput {
 operation GetRecording {
   input: GetRecordingInput
   output: GetRecordingOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetRecordingInput {
@@ -4127,6 +4412,7 @@ structure GetRecordingOutput {
 operation TrashRecording {
   input: TrashRecordingInput
   output: TrashRecordingOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure TrashRecordingInput {
@@ -4147,6 +4433,7 @@ structure TrashRecordingOutput {}
 operation ArchiveRecording {
   input: ArchiveRecordingInput
   output: ArchiveRecordingOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure ArchiveRecordingInput {
@@ -4167,6 +4454,7 @@ structure ArchiveRecordingOutput {}
 operation UnarchiveRecording {
   input: UnarchiveRecordingInput
   output: UnarchiveRecordingOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UnarchiveRecordingInput {
@@ -4187,6 +4475,7 @@ structure UnarchiveRecordingOutput {}
 operation SetClientVisibility {
   input: SetClientVisibilityInput
   output: SetClientVisibilityOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure SetClientVisibilityInput {
@@ -4300,6 +4589,7 @@ structure Recording {
 operation GetQuestionnaire {
   input: GetQuestionnaireInput
   output: GetQuestionnaireOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetQuestionnaireInput {
@@ -4320,11 +4610,15 @@ structure GetQuestionnaireOutput {
 // ===== Question Operations =====
 
 /// List all questions in a questionnaire
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json")
 operation ListQuestions {
   input: ListQuestionsInput
   output: ListQuestionsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListQuestionsInput {
@@ -4348,6 +4642,7 @@ structure ListQuestionsOutput {
 operation GetQuestion {
   input: GetQuestionInput
   output: GetQuestionOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetQuestionInput {
@@ -4370,6 +4665,7 @@ structure GetQuestionOutput {
 operation CreateQuestion {
   input: CreateQuestionInput
   output: CreateQuestionOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateQuestionInput {
@@ -4399,6 +4695,7 @@ structure CreateQuestionOutput {
 operation UpdateQuestion {
   input: UpdateQuestionInput
   output: UpdateQuestionOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateQuestionInput {
@@ -4423,11 +4720,15 @@ structure UpdateQuestionOutput {
 // ===== Answer Operations =====
 
 /// List all answers for a question
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/buckets/{projectId}/questions/{questionId}/answers.json")
 operation ListAnswers {
   input: ListAnswersInput
   output: ListAnswersOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListAnswersInput {
@@ -4451,6 +4752,7 @@ structure ListAnswersOutput {
 operation GetAnswer {
   input: GetAnswerInput
   output: GetAnswerOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetAnswerInput {
@@ -4473,6 +4775,7 @@ structure GetAnswerOutput {
 operation CreateAnswer {
   input: CreateAnswerInput
   output: CreateAnswerOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateAnswerInput {
@@ -4507,6 +4810,7 @@ structure CreateAnswerOutput {
 operation UpdateAnswer {
   input: UpdateAnswerInput
   output: UpdateAnswerOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateAnswerInput {
@@ -4644,6 +4948,7 @@ structure QuestionAnswer {
 operation Search {
   input: SearchInput
   output: SearchOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure SearchInput {
@@ -4666,6 +4971,7 @@ structure SearchOutput {
 operation GetSearchMetadata {
   input: GetSearchMetadataInput
   output: GetSearchMetadataOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetSearchMetadataInput {}
@@ -4678,11 +4984,15 @@ structure GetSearchMetadataOutput {
 // ===== Template Operations =====
 
 /// List all templates visible to the current user
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
 @http(method: "GET", uri: "/templates.json")
 operation ListTemplates {
   input: ListTemplatesInput
   output: ListTemplatesOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ListTemplatesInput {
@@ -4701,6 +5011,7 @@ structure ListTemplatesOutput {
 operation GetTemplate {
   input: GetTemplateInput
   output: GetTemplateOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetTemplateInput {
@@ -4719,6 +5030,7 @@ structure GetTemplateOutput {
 operation CreateTemplate {
   input: CreateTemplateInput
   output: CreateTemplateOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateTemplateInput {
@@ -4739,6 +5051,7 @@ structure CreateTemplateOutput {
 operation UpdateTemplate {
   input: UpdateTemplateInput
   output: UpdateTemplateOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateTemplateInput {
@@ -4762,6 +5075,7 @@ structure UpdateTemplateOutput {
 operation DeleteTemplate {
   input: DeleteTemplateInput
   output: DeleteTemplateOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure DeleteTemplateInput {
@@ -4777,6 +5091,7 @@ structure DeleteTemplateOutput {}
 operation CreateProjectFromTemplate {
   input: CreateProjectFromTemplateInput
   output: CreateProjectFromTemplateOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateProjectFromTemplateInput {
@@ -4801,6 +5116,7 @@ structure CreateProjectFromTemplateOutput {
 operation GetProjectConstruction {
   input: GetProjectConstructionInput
   output: GetProjectConstructionOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetProjectConstructionInput {
@@ -4826,6 +5142,7 @@ structure GetProjectConstructionOutput {
 operation GetTool {
   input: GetToolInput
   output: GetToolOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure GetToolInput {
@@ -4848,6 +5165,7 @@ structure GetToolOutput {
 operation CloneTool {
   input: CloneToolInput
   output: CloneToolOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CloneToolInput {
@@ -4871,6 +5189,7 @@ structure CloneToolOutput {
 operation UpdateTool {
   input: UpdateToolInput
   output: UpdateToolOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateToolInput {
@@ -4897,6 +5216,7 @@ structure UpdateToolOutput {
 operation DeleteTool {
   input: DeleteToolInput
   output: DeleteToolOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure DeleteToolInput {
@@ -4916,6 +5236,7 @@ structure DeleteToolOutput {}
 operation EnableTool {
   input: EnableToolInput
   output: EnableToolOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure EnableToolInput {
@@ -4936,6 +5257,7 @@ structure EnableToolOutput {}
 operation DisableTool {
   input: DisableToolInput
   output: DisableToolOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure DisableToolInput {
@@ -4956,6 +5278,7 @@ structure DisableToolOutput {}
 operation RepositionTool {
   input: RepositionToolInput
   output: RepositionToolOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure RepositionToolInput {
@@ -4980,6 +5303,7 @@ structure RepositionToolOutput {}
 operation CreateLineupMarker {
   input: CreateLineupMarkerInput
   output: CreateLineupMarkerOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateLineupMarkerInput {
@@ -5007,6 +5331,7 @@ structure CreateLineupMarkerOutput {
 operation UpdateLineupMarker {
   input: UpdateLineupMarkerInput
   output: UpdateLineupMarkerOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateLineupMarkerInput {
@@ -5032,6 +5357,7 @@ structure UpdateLineupMarkerOutput {
 operation DeleteLineupMarker {
   input: DeleteLineupMarkerInput
   output: DeleteLineupMarkerOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure DeleteLineupMarkerInput {

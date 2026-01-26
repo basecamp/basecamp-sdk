@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "sources": ["basecamp.smithy"],
+  "sources": ["basecamp.smithy", "basecamp-traits.smithy", "overlays/"],
   "maven": {
     "dependencies": [
       "software.amazon.smithy:smithy-openapi:1.66.0",
@@ -14,7 +14,8 @@
           "service": "basecamp#Basecamp",
           "protocol": "aws.protocols#restJson1",
           "jsonContentType": "application/json",
-          "ignoreUnsupportedTraits": true
+          "ignoreUnsupportedTraits": true,
+          "tags": true
         }
       }
     }
