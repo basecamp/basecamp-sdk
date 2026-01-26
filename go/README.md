@@ -4,7 +4,7 @@
 [![Test](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/basecamp/basecamp-sdk/go)](https://goreportcard.com/report/github.com/basecamp/basecamp-sdk/go)
 
-Official Go SDK for the [Basecamp 4 API](https://github.com/basecamp/bc3-api).
+Official Go SDK for the [Basecamp 3 API](https://github.com/basecamp/bc3-api).
 
 ## Features
 
@@ -108,7 +108,7 @@ func main() {
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `BASECAMP_ACCOUNT_ID` | Your Basecamp account ID | Yes |
-| `BASECAMP_TOKEN` | OAuth access token | Yes (unless using OAuth flow) |
+| `BASECAMP_TOKEN` | Static API token or OAuth access token | Yes (unless using OAuth flow) |
 | `BASECAMP_PROJECT_ID` | Default project ID | No |
 | `BASECAMP_TODOLIST_ID` | Default todolist ID | No |
 | `BASECAMP_BASE_URL` | API base URL | No (default: `https://3.basecampapi.com`) |

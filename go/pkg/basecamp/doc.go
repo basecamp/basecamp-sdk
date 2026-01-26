@@ -161,7 +161,9 @@
 //
 // # Thread Safety
 //
-// The Client is safe for concurrent use by multiple goroutines.
-// Services obtained from the client (e.g., client.Projects()) share
-// the same underlying HTTP client and are also safe for concurrent use.
+// API operations on the Client and its services are safe for concurrent use
+// by multiple goroutines. However, service accessors (e.g., client.Projects())
+// use lazy initialization without synchronization. For concurrent use, either
+// access each service once before sharing the client across goroutines, or
+// call service methods directly (e.g., client.Projects().List()) which is safe.
 package basecamp

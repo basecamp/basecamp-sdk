@@ -20,7 +20,7 @@ const (
 )
 
 // DefaultUserAgent is the default User-Agent header value.
-var DefaultUserAgent = "basecamp-sdk-go/" + Version
+const DefaultUserAgent = "basecamp-sdk-go/" + Version
 
 // Client is an HTTP client for the Basecamp API.
 type Client struct {
