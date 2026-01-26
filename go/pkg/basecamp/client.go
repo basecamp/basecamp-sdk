@@ -55,6 +55,9 @@ type Client struct {
 	forwards        *ForwardsService
 	recordings      *RecordingsService
 	checkins        *CheckinsService
+	vaults          *VaultsService
+	documents       *DocumentsService
+	uploads         *UploadsService
 }
 
 // Response wraps an API response.
@@ -672,4 +675,28 @@ func (c *Client) Checkins() *CheckinsService {
 		c.checkins = NewCheckinsService(c)
 	}
 	return c.checkins
+}
+
+// Vaults returns the VaultsService for vault (folder) operations.
+func (c *Client) Vaults() *VaultsService {
+	if c.vaults == nil {
+		c.vaults = NewVaultsService(c)
+	}
+	return c.vaults
+}
+
+// Documents returns the DocumentsService for document operations.
+func (c *Client) Documents() *DocumentsService {
+	if c.documents == nil {
+		c.documents = NewDocumentsService(c)
+	}
+	return c.documents
+}
+
+// Uploads returns the UploadsService for upload (file) operations.
+func (c *Client) Uploads() *UploadsService {
+	if c.uploads == nil {
+		c.uploads = NewUploadsService(c)
+	}
+	return c.uploads
 }
