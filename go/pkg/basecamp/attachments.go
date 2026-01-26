@@ -1,11 +1,12 @@
 package basecamp
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"net/url"
 )
 
 // AttachmentResponse represents the response from creating an attachment.
@@ -48,8 +49,8 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 		return nil, ErrUsage("file data is required")
 	}
 
-	// Build URL with query parameter for filename
-	path := fmt.Sprintf("/attachments.json?name=%s", filename)
+	// Build URL with query parameter for filename (URL-encoded)
+	path := fmt.Sprintf("/attachments.json?name=%s", url.QueryEscape(filename))
 	url := s.client.buildURL(path)
 
 	// Get access token
@@ -59,7 +60,7 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 	}
 
 	// Create request with raw binary body
-	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(string(body)))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
