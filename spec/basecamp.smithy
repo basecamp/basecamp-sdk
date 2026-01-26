@@ -20,7 +20,7 @@ use aws.protocols#restJson1
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-01-25"
+  version: "2026-01-26"
   operations: [
     ListProjects,
     GetProject,
@@ -1854,7 +1854,7 @@ structure CreateAttachmentInput {
   contentType: String
 
   @required
-
+  @httpPayload
   data: Blob
 }
 
@@ -3430,8 +3430,7 @@ structure CreateCardStepInput {
   title: String
 
   due_on: ISO8601Date
-  @documentation("Comma-separated list of person IDs")
-  assignees: String
+  assignees: PersonIdList
 }
 
 structure CreateCardStepOutput {
@@ -3459,8 +3458,7 @@ structure UpdateCardStepInput {
 
   title: String
   due_on: ISO8601Date
-  @documentation("Comma-separated list of person IDs")
-  assignees: String
+  assignees: PersonIdList
 }
 
 structure UpdateCardStepOutput {
@@ -3591,7 +3589,7 @@ structure CardColumn {
   color: String
   description: String
   cards_count: Integer
-  comment_count: Integer
+  comments_count: Integer
   cards_url: String
   parent: RecordingParent
   bucket: TodoBucket
@@ -3624,7 +3622,6 @@ structure Card {
   completed_at: ISO8601Timestamp
   comments_count: Integer
   comments_url: String
-  comment_count: Integer
   completion_url: String
   parent: RecordingParent
   bucket: TodoBucket
@@ -4788,7 +4785,7 @@ structure CreateAnswerInput {
   questionId: QuestionId
 
   @required
-
+  @httpPayload
   question_answer: QuestionAnswerPayload
 }
 
@@ -4823,7 +4820,7 @@ structure UpdateAnswerInput {
   answerId: AnswerId
 
   @required
-
+  @httpPayload
   question_answer: QuestionAnswerUpdatePayload
 }
 

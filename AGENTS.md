@@ -36,7 +36,6 @@ structure GetResourceInput {
 }
 
 structure GetResourceOutput {
-  @httpPayload
   resource: Resource
 }
 ```

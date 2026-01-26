@@ -2,7 +2,7 @@
     "openapi": "3.0.2",
     "info": {
         "title": "Basecamp",
-        "version": "2026-01-25",
+        "version": "2026-01-26",
         "description": "Basecamp API"
     },
     "paths": {
@@ -12,9 +12,9 @@
                 "operationId": "CreateAttachment",
                 "requestBody": {
                     "content": {
-                        "application/json": {
+                        "application/octet-stream": {
                             "schema": {
-                                "$ref": "#/components/schemas/CreateAttachmentRequestContent"
+                                "$ref": "#/components/schemas/CreateAttachmentInputPayload"
                             }
                         }
                     },
@@ -4453,7 +4453,7 @@
                     }
                 },
                 "tags": [
-                    "Campfire"
+                    "Inboxes"
                 ]
             }
         },
@@ -4532,7 +4532,7 @@
                     }
                 },
                 "tags": [
-                    "Campfire"
+                    "Inboxes"
                 ]
             },
             "post": {
@@ -4629,7 +4629,7 @@
                     }
                 },
                 "tags": [
-                    "Campfire"
+                    "Inboxes"
                 ]
             }
         },
@@ -4716,7 +4716,7 @@
                     }
                 },
                 "tags": [
-                    "Campfire"
+                    "Inboxes"
                 ]
             }
         },
@@ -4795,7 +4795,7 @@
                     }
                 },
                 "tags": [
-                    "Campfire"
+                    "Inboxes"
                 ]
             }
         },
@@ -4874,7 +4874,7 @@
                     }
                 },
                 "tags": [
-                    "Campfire"
+                    "Inboxes"
                 ]
             }
         },
@@ -5393,7 +5393,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/UpdateAnswerRequestContent"
+                                "$ref": "#/components/schemas/QuestionAnswerUpdatePayload"
                             }
                         }
                     },
@@ -5999,7 +5999,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/CreateAnswerRequestContent"
+                                "$ref": "#/components/schemas/QuestionAnswerPayload"
                             }
                         }
                     },
@@ -13008,9 +13008,6 @@
                     "comments_url": {
                         "type": "string"
                     },
-                    "comment_count": {
-                        "type": "number"
-                    },
                     "completion_url": {
                         "type": "string"
                     },
@@ -13094,7 +13091,7 @@
                     "cards_count": {
                         "type": "number"
                     },
-                    "comment_count": {
+                    "comments_count": {
                         "type": "number"
                     },
                     "cards_url": {
@@ -13605,17 +13602,6 @@
                     }
                 }
             },
-            "CreateAnswerRequestContent": {
-                "type": "object",
-                "properties": {
-                    "question_answer": {
-                        "$ref": "#/components/schemas/QuestionAnswerPayload"
-                    }
-                },
-                "required": [
-                    "question_answer"
-                ]
-            },
             "CreateAnswerResponseContent": {
                 "type": "object",
                 "properties": {
@@ -13624,17 +13610,9 @@
                     }
                 }
             },
-            "CreateAttachmentRequestContent": {
-                "type": "object",
-                "properties": {
-                    "data": {
-                        "type": "string",
-                        "format": "byte"
-                    }
-                },
-                "required": [
-                    "data"
-                ]
+            "CreateAttachmentInputPayload": {
+                "type": "string",
+                "format": "byte"
             },
             "CreateAttachmentResponseContent": {
                 "type": "object",
@@ -13723,8 +13701,10 @@
                         "type": "string"
                     },
                     "assignees": {
-                        "type": "string",
-                        "description": "Comma-separated list of person IDs"
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
                     }
                 },
                 "required": [
@@ -16844,17 +16824,6 @@
                     }
                 }
             },
-            "UpdateAnswerRequestContent": {
-                "type": "object",
-                "properties": {
-                    "question_answer": {
-                        "$ref": "#/components/schemas/QuestionAnswerUpdatePayload"
-                    }
-                },
-                "required": [
-                    "question_answer"
-                ]
-            },
             "UpdateAnswerResponseContent": {
                 "type": "object",
                 "properties": {
@@ -16920,8 +16889,10 @@
                         "type": "string"
                     },
                     "assignees": {
-                        "type": "string",
-                        "description": "Comma-separated list of person IDs"
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
                     }
                 }
             },

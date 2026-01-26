@@ -20,7 +20,8 @@ jobs:
 
       - name: Install Smithy CLI
         run: |
-          curl -L https://github.com/smithy-lang/smithy/releases/download/1.66.0/smithy-cli-linux-x86_64.tar.gz | tar xz
+          curl -L -o smithy-cli.zip https://github.com/smithy-lang/smithy/releases/download/1.66.0/smithy-cli-linux-x86_64.zip
+          unzip -q smithy-cli.zip
           echo "$PWD/smithy-cli-1.66.0/bin" >> $GITHUB_PATH
 
       - name: Validate Smithy spec
