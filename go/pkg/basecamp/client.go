@@ -32,13 +32,16 @@ type Client struct {
 	verbose       bool
 
 	// Services
-	projects       *ProjectsService
-	todos          *TodosService
-	todosets       *TodosetsService
-	todolists      *TodolistsService
-	todolistGroups *TodolistGroupsService
-	people         *PeopleService
-	comments       *CommentsService
+	projects        *ProjectsService
+	todos           *TodosService
+	todosets        *TodosetsService
+	todolists       *TodolistsService
+	todolistGroups  *TodolistGroupsService
+	people          *PeopleService
+	comments        *CommentsService
+	messages        *MessagesService
+	messageBoards   *MessageBoardsService
+	messageTypes    *MessageTypesService
 }
 
 // Response wraps an API response.
@@ -528,4 +531,28 @@ func (c *Client) Comments() *CommentsService {
 		c.comments = NewCommentsService(c)
 	}
 	return c.comments
+}
+
+// Messages returns the MessagesService for message operations.
+func (c *Client) Messages() *MessagesService {
+	if c.messages == nil {
+		c.messages = NewMessagesService(c)
+	}
+	return c.messages
+}
+
+// MessageBoards returns the MessageBoardsService for message board operations.
+func (c *Client) MessageBoards() *MessageBoardsService {
+	if c.messageBoards == nil {
+		c.messageBoards = NewMessageBoardsService(c)
+	}
+	return c.messageBoards
+}
+
+// MessageTypes returns the MessageTypesService for message type operations.
+func (c *Client) MessageTypes() *MessageTypesService {
+	if c.messageTypes == nil {
+		c.messageTypes = NewMessageTypesService(c)
+	}
+	return c.messageTypes
 }
