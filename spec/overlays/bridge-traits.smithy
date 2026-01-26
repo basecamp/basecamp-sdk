@@ -3,8 +3,8 @@ $version: "2"
 namespace basecamp
 
 // ============================================================================
-// Projects Overlay (DEPRECATED)
+// Bridge Traits Overlay (DEPRECATED)
 // ============================================================================
-// Legacy traits have been superseded by bridge traits in basecamp.smithy.
+// All bridge traits are now applied directly in basecamp.smithy.
 // This file is kept empty to preserve overlay directory structure.
 // ============================================================================

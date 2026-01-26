@@ -1,5 +1,5 @@
 {
-    "openapi": "3.0.2",
+    "openapi": "3.1.0",
     "info": {
         "title": "Basecamp",
         "version": "2026-01-26",
@@ -102,7 +102,16 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 2000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/cards/{cardId}": {
@@ -181,7 +190,16 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing card",
@@ -277,7 +295,19 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/cards/{cardId}/moves.json": {
@@ -369,7 +399,16 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/cards/{cardId}/positions.json": {
@@ -461,7 +500,16 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/cards/{cardId}/steps.json": {
@@ -560,7 +608,16 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/columns/{columnId}": {
@@ -639,7 +696,16 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing column",
@@ -735,7 +801,19 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/columns/{columnId}/color.json": {
@@ -834,7 +912,19 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json": {
@@ -913,7 +1003,19 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Enable on-hold section in a column",
@@ -1000,7 +1102,16 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/lists/{columnId}/cards.json": {
@@ -1079,7 +1190,21 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a card in a column",
@@ -1176,7 +1301,16 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/steps/{stepId}": {
@@ -1274,7 +1408,19 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": {
@@ -1353,7 +1499,19 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Mark a step as completed",
@@ -1440,7 +1598,19 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/{cardTableId}": {
@@ -1519,7 +1689,16 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/{cardTableId}/columns.json": {
@@ -1618,7 +1797,16 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/card_tables/{cardTableId}/moves.json": {
@@ -1710,7 +1898,16 @@
                 },
                 "tags": [
                     "Card Tables"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/categories.json": {
@@ -1781,7 +1978,21 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new message type in a project",
@@ -1870,7 +2081,16 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/categories/{typeId}": {
@@ -1942,7 +2162,19 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "get": {
                 "description": "Get a single message type by id",
@@ -2019,7 +2251,16 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing message type",
@@ -2115,7 +2356,19 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/chats/{campfireId}": {
@@ -2194,7 +2447,16 @@
                 },
                 "tags": [
                     "Campfire"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/chats/{campfireId}/integrations.json": {
@@ -2273,7 +2535,21 @@
                 },
                 "tags": [
                     "Campfire"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new chatbot for a campfire",
@@ -2370,7 +2646,16 @@
                 },
                 "tags": [
                     "Campfire"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}": {
@@ -2450,7 +2735,19 @@
                 },
                 "tags": [
                     "Campfire"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "get": {
                 "description": "Get a chatbot by ID",
@@ -2535,7 +2832,16 @@
                 },
                 "tags": [
                     "Campfire"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing chatbot",
@@ -2640,7 +2946,19 @@
                 },
                 "tags": [
                     "Campfire"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/chats/{campfireId}/lines.json": {
@@ -2719,7 +3037,21 @@
                 },
                 "tags": [
                     "Campfire"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new line (message) in a campfire",
@@ -2816,7 +3148,16 @@
                 },
                 "tags": [
                     "Campfire"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/chats/{campfireId}/lines/{lineId}": {
@@ -2896,7 +3237,19 @@
                 },
                 "tags": [
                     "Campfire"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "get": {
                 "description": "Get a campfire line by ID",
@@ -2981,7 +3334,16 @@
                 },
                 "tags": [
                     "Campfire"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/client/approvals.json": {
@@ -3052,7 +3414,21 @@
                 },
                 "tags": [
                     "ClientFeatures"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/client/approvals/{approvalId}": {
@@ -3131,7 +3507,16 @@
                 },
                 "tags": [
                     "ClientFeatures"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/client/correspondences.json": {
@@ -3202,7 +3587,21 @@
                 },
                 "tags": [
                     "ClientFeatures"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/client/correspondences/{correspondenceId}": {
@@ -3281,7 +3680,16 @@
                 },
                 "tags": [
                     "ClientFeatures"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/client/recordings/{recordingId}/replies.json": {
@@ -3360,7 +3768,21 @@
                 },
                 "tags": [
                     "ClientFeatures"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}": {
@@ -3447,7 +3869,16 @@
                 },
                 "tags": [
                     "ClientFeatures"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/comments/{commentId}": {
@@ -3526,7 +3957,16 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing comment",
@@ -3623,7 +4063,19 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/dock/tools/{sourceToolId}/clone.json": {
@@ -3712,7 +4164,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/dock/tools/{toolId}": {
@@ -3784,7 +4245,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "get": {
                 "description": "Get a dock tool by id",
@@ -3861,7 +4334,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update (rename) an existing tool",
@@ -3958,7 +4440,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/dock/tools/{toolId}/position.json": {
@@ -4030,7 +4524,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Enable a tool (show it on the project dock)",
@@ -4110,7 +4616,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Reposition a tool on the project dock",
@@ -4200,7 +4715,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/documents/{documentId}": {
@@ -4279,7 +4806,16 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing document",
@@ -4375,7 +4911,19 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/inbox_forwards/{forwardId}": {
@@ -4454,7 +5002,16 @@
                 },
                 "tags": [
                     "Forwards"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json": {
@@ -4533,7 +5090,21 @@
                 },
                 "tags": [
                     "Forwards"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a reply to a forward",
@@ -4630,7 +5201,16 @@
                 },
                 "tags": [
                     "Forwards"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}": {
@@ -4717,7 +5297,16 @@
                 },
                 "tags": [
                     "Forwards"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/inboxes/{inboxId}": {
@@ -4796,7 +5385,16 @@
                 },
                 "tags": [
                     "Forwards"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/inboxes/{inboxId}/forwards.json": {
@@ -4875,7 +5473,21 @@
                 },
                 "tags": [
                     "Forwards"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/message_boards/{boardId}": {
@@ -4954,7 +5566,16 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/message_boards/{boardId}/messages.json": {
@@ -5033,7 +5654,21 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new message on a message board",
@@ -5130,7 +5765,16 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/messages/{messageId}": {
@@ -5209,7 +5853,16 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing message",
@@ -5305,7 +5958,19 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/question_answers/{answerId}": {
@@ -5384,7 +6049,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing answer",
@@ -5481,7 +6155,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/questionnaires/{questionnaireId}": {
@@ -5560,7 +6246,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json": {
@@ -5639,7 +6334,21 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new question in a questionnaire",
@@ -5736,7 +6445,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/questions/{questionId}": {
@@ -5815,7 +6533,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing question",
@@ -5911,7 +6638,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/questions/{questionId}/answers.json": {
@@ -5990,7 +6729,21 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new answer for a question",
@@ -6087,7 +6840,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/recordings/{messageId}/pin.json": {
@@ -6159,7 +6921,19 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Pin a message to the top of the message board",
@@ -6239,7 +7013,16 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/recordings/{recordingId}": {
@@ -6318,7 +7101,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/recordings/{recordingId}/client_visibility.json": {
@@ -6417,7 +7209,19 @@
                 },
                 "tags": [
                     "ClientFeatures"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/recordings/{recordingId}/comments.json": {
@@ -6496,7 +7300,21 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new comment on a recording",
@@ -6593,7 +7411,16 @@
                 },
                 "tags": [
                     "Messages"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/recordings/{recordingId}/events.json": {
@@ -6672,7 +7499,21 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/recordings/{recordingId}/status/active.json": {
@@ -6754,7 +7595,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/recordings/{recordingId}/status/archived.json": {
@@ -6836,7 +7689,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/recordings/{recordingId}/status/trashed.json": {
@@ -6932,7 +7797,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/recordings/{recordingId}/subscription.json": {
@@ -7004,7 +7881,19 @@
                 },
                 "tags": [
                     "People"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "get": {
                 "description": "Get subscription information for a recording",
@@ -7081,7 +7970,16 @@
                 },
                 "tags": [
                     "People"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Subscribe the current user to a recording",
@@ -7168,7 +8066,16 @@
                 },
                 "tags": [
                     "People"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update subscriptions by adding or removing specific users",
@@ -7321,7 +8228,19 @@
                 },
                 "tags": [
                     "People"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/recordings/{recordingId}/timesheet.json": {
@@ -7421,7 +8340,16 @@
                 },
                 "tags": [
                     "Schedule"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/schedule_entries/{entryId}": {
@@ -7500,7 +8428,16 @@
                 },
                 "tags": [
                     "Schedule"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing schedule entry",
@@ -7596,7 +8533,19 @@
                 },
                 "tags": [
                     "Schedule"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}": {
@@ -7683,7 +8632,16 @@
                 },
                 "tags": [
                     "Schedule"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/schedules/{scheduleId}": {
@@ -7762,7 +8720,16 @@
                 },
                 "tags": [
                     "Schedule"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update schedule settings",
@@ -7859,7 +8826,19 @@
                 },
                 "tags": [
                     "Schedule"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/schedules/{scheduleId}/entries.json": {
@@ -7947,7 +8926,21 @@
                 },
                 "tags": [
                     "Schedule"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new schedule entry",
@@ -8044,7 +9037,16 @@
                 },
                 "tags": [
                     "Schedule"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/timesheet.json": {
@@ -8136,7 +9138,16 @@
                 },
                 "tags": [
                     "Schedule"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/todolists/{groupId}/position.json": {
@@ -8228,7 +9239,19 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/todolists/{id}": {
@@ -8359,7 +9382,16 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing todolist or todolist group\nThe endpoint is polymorphic - updates either a Todolist or TodolistGroup",
@@ -8455,7 +9487,19 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/todolists/{todolistId}/groups.json": {
@@ -8534,7 +9578,21 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new group in a todolist",
@@ -8631,7 +9689,16 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/todolists/{todolistId}/todos.json": {
@@ -8726,7 +9793,21 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new todo in a todolist",
@@ -8823,7 +9904,16 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/todos/{todoId}": {
@@ -8895,7 +9985,19 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "get": {
                 "description": "Get a single todo by id",
@@ -8972,7 +10074,16 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing todo",
@@ -9068,7 +10179,19 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/todos/{todoId}/completion.json": {
@@ -9140,7 +10263,19 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Mark a todo as complete",
@@ -9220,7 +10355,19 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/todosets/{todosetId}": {
@@ -9299,7 +10446,16 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/todosets/{todosetId}/todolists.json": {
@@ -9387,7 +10543,21 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new todolist in a todoset",
@@ -9484,7 +10654,16 @@
                 },
                 "tags": [
                     "Todos"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/uploads/{uploadId}": {
@@ -9563,7 +10742,16 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing upload",
@@ -9659,7 +10847,19 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/uploads/{uploadId}/versions.json": {
@@ -9738,7 +10938,21 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/vaults/{vaultId}": {
@@ -9817,7 +11031,16 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing vault",
@@ -9913,7 +11136,19 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/vaults/{vaultId}/documents.json": {
@@ -9992,7 +11227,21 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new document in a vault",
@@ -10089,7 +11338,16 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/vaults/{vaultId}/uploads.json": {
@@ -10168,7 +11426,21 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new upload in a vault",
@@ -10265,7 +11537,16 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/vaults/{vaultId}/vaults.json": {
@@ -10344,7 +11625,21 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new vault (subfolder) in a vault",
@@ -10441,7 +11736,16 @@
                 },
                 "tags": [
                     "Files"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/webhooks.json": {
@@ -10512,7 +11816,21 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new webhook for a project",
@@ -10601,7 +11919,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/buckets/{projectId}/webhooks/{webhookId}": {
@@ -10673,7 +12000,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "get": {
                 "description": "Get a single webhook by id",
@@ -10750,7 +12089,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing webhook",
@@ -10846,7 +12194,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/chats.json": {
@@ -10907,7 +12267,21 @@
                 },
                 "tags": [
                     "Campfire"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/circles/people.json": {
@@ -10968,7 +12342,21 @@
                 },
                 "tags": [
                     "People"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/lineup/markers.json": {
@@ -11049,7 +12437,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/lineup/markers/{markerId}": {
@@ -11113,7 +12510,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing lineup marker",
@@ -11201,7 +12610,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/my/profile.json": {
@@ -11262,7 +12683,16 @@
                 },
                 "tags": [
                     "People"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/people.json": {
@@ -11323,7 +12753,21 @@
                 },
                 "tags": [
                     "People"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/people/{personId}": {
@@ -11394,7 +12838,16 @@
                 },
                 "tags": [
                     "People"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/projects.json": {
@@ -11466,7 +12919,21 @@
                 },
                 "tags": [
                     "Projects"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new project",
@@ -11545,7 +13012,16 @@
                 },
                 "tags": [
                     "Projects"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/projects/recordings.json": {
@@ -11686,7 +13162,21 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/projects/{projectId}": {
@@ -11750,7 +13240,19 @@
                 },
                 "tags": [
                     "Projects"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "get": {
                 "description": "Get a single project by id",
@@ -11819,7 +13321,16 @@
                 },
                 "tags": [
                     "Projects"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing project",
@@ -11908,7 +13419,19 @@
                 },
                 "tags": [
                     "Projects"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/projects/{projectId}/people.json": {
@@ -11979,7 +13502,21 @@
                 },
                 "tags": [
                     "People"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/projects/{projectId}/people/users.json": {
@@ -12136,7 +13673,19 @@
                 },
                 "tags": [
                     "People"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/reports/timesheet.json": {
@@ -12220,7 +13769,16 @@
                 },
                 "tags": [
                     "Schedule"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/search.json": {
@@ -12300,7 +13858,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/searches/metadata.json": {
@@ -12361,7 +13928,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/templates.json": {
@@ -12433,7 +14009,21 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-pagination": {
+                    "style": "link",
+                    "totalCountHeader": "X-Total-Count",
+                    "maxPageSize": 50
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "post": {
                 "description": "Create a new template",
@@ -12512,7 +14102,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/templates/{templateId}": {
@@ -12576,7 +14175,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "get": {
                 "description": "Get a single template by id",
@@ -12645,7 +14256,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             },
             "put": {
                 "description": "Update an existing template",
@@ -12733,7 +14353,19 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-idempotent": {
+                    "natural": true
+                },
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/templates/{templateId}/project_constructions.json": {
@@ -12824,7 +14456,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 2,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         },
         "/templates/{templateId}/project_constructions/{constructionId}": {
@@ -12903,7 +14544,16 @@
                 },
                 "tags": [
                     "Automation"
-                ]
+                ],
+                "x-basecamp-retry": {
+                    "maxAttempts": 3,
+                    "baseDelayMs": 1000,
+                    "backoff": "exponential",
+                    "retryOn": [
+                        429,
+                        503
+                    ]
+                }
             }
         }
     },
@@ -13595,6 +15245,7 @@
             },
             "ClientSide": {
                 "type": "object",
+                "deprecated": true,
                 "description": "This shape is deprecated since 2024-01: Use Client Visibility feature instead",
                 "properties": {
                     "url": {
@@ -13603,8 +15254,7 @@
                     "app_url": {
                         "type": "string"
                     }
-                },
-                "deprecated": true
+                }
             },
             "CloneToolResponseContent": {
                 "type": "object",
@@ -13682,7 +15332,7 @@
             },
             "CreateAttachmentInputPayload": {
                 "type": "string",
-                "format": "byte"
+                "contentEncoding": "byte"
             },
             "CreateAttachmentResponseContent": {
                 "type": "object",
@@ -15531,26 +17181,46 @@
                     },
                     "name": {
                         "type": "string",
-                        "format": "password"
+                        "format": "password",
+                        "x-basecamp-sensitive": {
+                            "category": "pii",
+                            "redact": true
+                        }
                     },
                     "email_address": {
                         "type": "string",
-                        "format": "password"
+                        "format": "password",
+                        "x-basecamp-sensitive": {
+                            "category": "pii",
+                            "redact": true
+                        }
                     },
                     "personable_type": {
                         "type": "string"
                     },
                     "title": {
                         "type": "string",
-                        "format": "password"
+                        "format": "password",
+                        "x-basecamp-sensitive": {
+                            "category": "pii",
+                            "redact": false
+                        }
                     },
                     "bio": {
                         "type": "string",
-                        "format": "password"
+                        "format": "password",
+                        "x-basecamp-sensitive": {
+                            "category": "pii",
+                            "redact": false
+                        }
                     },
                     "location": {
                         "type": "string",
-                        "format": "password"
+                        "format": "password",
+                        "x-basecamp-sensitive": {
+                            "category": "pii",
+                            "redact": false
+                        }
                     },
                     "created_at": {
                         "type": "string"
@@ -15575,7 +17245,11 @@
                     },
                     "avatar_url": {
                         "type": "string",
-                        "format": "password"
+                        "format": "password",
+                        "x-basecamp-sensitive": {
+                            "category": "pii",
+                            "redact": true
+                        }
                     },
                     "company": {
                         "$ref": "#/components/schemas/PersonCompany"
@@ -15650,7 +17324,8 @@
                         "$ref": "#/components/schemas/ClientCompany"
                     },
                     "clientside": {
-                        "$ref": "#/components/schemas/ClientSide"
+                        "$ref": "#/components/schemas/ClientSide",
+                        "deprecated": true
                     }
                 }
             },
