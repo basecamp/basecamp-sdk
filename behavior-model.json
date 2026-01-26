@@ -1,0 +1,1142 @@
+{
+  "$schema": "https://basecamp.com/schemas/behavior-model.json",
+  "version": "1.0.0",
+  "generated": true,
+  "operations": {
+    "ArchiveRecording": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "CloneTool": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CompleteCardStep": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "CompleteTodo": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateAnswer": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateAttachment": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateCampfireLine": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateCard": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateCardColumn": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateCardStep": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateChatbot": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateComment": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateDocument": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateForwardReply": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateLineupMarker": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateMessage": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateMessageType": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateProject": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateProjectFromTemplate": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateQuestion": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateScheduleEntry": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateTemplate": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateTodo": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateTodolist": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateTodolistGroup": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateUpload": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateVault": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "CreateWebhook": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "DeleteCampfireLine": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "DeleteChatbot": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "DeleteLineupMarker": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "DeleteMessageType": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "DeleteTemplate": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "DeleteTool": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "DeleteWebhook": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "DisableCardColumnOnHold": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "DisableTool": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "EnableCardColumnOnHold": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "EnableTool": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "GetAnswer": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetCampfire": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetCampfireLine": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetCard": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetCardColumn": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetCardTable": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetChatbot": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetClientApproval": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetClientCorrespondence": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetClientReply": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetComment": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetDocument": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetForward": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetForwardReply": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetInbox": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetMessage": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetMessageBoard": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetMessageType": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetMyProfile": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetPerson": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetProject": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetProjectConstruction": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetProjectTimesheet": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetQuestion": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetQuestionnaire": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetRecording": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetRecordingTimesheet": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetSchedule": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetScheduleEntry": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetScheduleEntryOccurrence": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetSearchMetadata": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetSubscription": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetTemplate": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetTimesheetReport": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetTodo": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetTodolistOrGroup": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetTodoset": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetTool": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetUpload": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetVault": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "GetWebhook": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListAnswers": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListCampfireLines": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListCampfires": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListCards": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListChatbots": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListClientApprovals": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListClientCorrespondences": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListClientReplies": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListComments": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListDocuments": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListEvents": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListForwardReplies": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListForwards": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListMessageTypes": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListMessages": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListPeople": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListPingablePeople": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListProjectPeople": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListProjects": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListQuestions": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListRecordings": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListScheduleEntries": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListTemplates": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListTodolistGroups": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListTodolists": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListTodos": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListUploadVersions": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListUploads": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListVaults": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "ListWebhooks": {
+      "readonly": true,
+      "pagination": {
+        "style": "link"
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "MoveCard": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "MoveCardColumn": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "PinMessage": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "RepositionCardStep": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "RepositionTodolistGroup": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "RepositionTool": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "Search": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_seconds": 1,
+        "backoff": "exp+jitter"
+      }
+    },
+    "SetCardColumnColor": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "SetClientVisibility": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "Subscribe": {
+      "retry": {
+        "max": 0
+      }
+    },
+    "TrashProject": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "TrashRecording": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "TrashTodo": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UnarchiveRecording": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UncompleteCardStep": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UncompleteTodo": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UnpinMessage": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "Unsubscribe": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateAnswer": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateCard": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateCardColumn": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateCardStep": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateChatbot": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateComment": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateDocument": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateLineupMarker": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateMessage": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateMessageType": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateProject": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateProjectAccess": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateQuestion": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateScheduleEntry": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateScheduleSettings": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateSubscription": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateTemplate": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateTodo": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateTodolistOrGroup": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateTool": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateUpload": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateVault": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    },
+    "UpdateWebhook": {
+      "idempotent": true,
+      "retry": {
+        "max": 0
+      }
+    }
+  },
+  "redaction": {
+    "Person": [
+      "$.name",
+      "$.email_address",
+      "$.title",
+      "$.bio",
+      "$.location",
+      "$.avatar_url"
+    ],
+    "PersonCompany": [
+      "$.name"
+    ],
+    "CreatePersonRequest": [
+      "$.name",
+      "$.email_address",
+      "$.title",
+      "$.company_name"
+    ]
+  },
+  "sensitiveTypes": [
+    "AvatarUrl",
+    "CompanyName",
+    "EmailAddress",
+    "PersonBio",
+    "PersonLocation",
+    "PersonName",
+    "PersonTitle"
+  ]
+}
