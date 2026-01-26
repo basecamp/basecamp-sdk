@@ -4,5 +4,8 @@ docs/
 # Smithy build output (regenerate with: cd spec && smithy build)
 spec/build/
 
+# Conformance test runner binary
+conformance/runner/go/conformance-runner
+
 # Claude Code session files
 .claude/
