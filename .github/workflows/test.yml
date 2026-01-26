@@ -116,7 +116,8 @@ jobs:
 
       - name: Check for breaking API changes
         run: |
-          # Get the base branch (usually main)
+          # Store the current commit SHA
+          PR_SHA="${{ github.event.pull_request.head.sha }}"
           BASE_REF="${{ github.base_ref }}"
 
           # Export the current (PR) API
@@ -128,8 +129,8 @@ jobs:
           # Export the base API
           apidiff -w base.api ./pkg/basecamp
 
-          # Restore the PR version
-          git checkout - -- .
+          # Restore the PR version using the stored SHA
+          git checkout "${PR_SHA}" -- .
 
           # Compare APIs and report breaking changes
           echo "## API Compatibility Check"
