@@ -1,0 +1,50 @@
+{
+  "id": 1069479360,
+  "status": "active",
+  "visible_to_clients": false,
+  "created_at": "2024-01-16T10:05:00.000-06:00",
+  "updated_at": "2024-01-18T11:00:00.000-06:00",
+  "title": "Set up OAuth providers",
+  "inherits_status": true,
+  "type": "Kanban::Step",
+  "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/steps/1069479360.json",
+  "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/steps/1069479360",
+  "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/step1.json",
+  "position": 1,
+  "due_on": "2024-01-20",
+  "completed": true,
+  "completed_at": "2024-01-18T11:00:00.000-06:00",
+  "parent": {
+    "id": 1069479350,
+    "title": "Implement user authentication",
+    "type": "Kanban::Card",
+    "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+    "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+  },
+  "bucket": {
+    "id": 2085958499,
+    "name": "The Leto Laptop",
+    "type": "Project"
+  },
+  "creator": {
+    "id": 1049715914,
+    "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--xyz456",
+    "name": "Victor Cooper",
+    "email_address": "victor@honchodesign.com",
+    "personable_type": "User",
+    "title": "Chief Strategist",
+    "admin": true,
+    "owner": true
+  },
+  "completer": {
+    "id": 1049715915,
+    "name": "Annie Bryan",
+    "email_address": "annie@honchodesign.com"
+  },
+  "assignees": [
+    {
+      "id": 1049715915,
+      "name": "Annie Bryan"
+    }
+  ]
+}

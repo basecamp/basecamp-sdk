@@ -1,0 +1,51 @@
+{
+  "id": 1069479347,
+  "status": "active",
+  "visible_to_clients": false,
+  "created_at": "2024-01-15T09:31:00.000-06:00",
+  "updated_at": "2024-01-20T14:45:00.000-06:00",
+  "title": "In Progress",
+  "inherits_status": true,
+  "type": "Kanban::Column",
+  "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/columns/1069479347.json",
+  "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/columns/1069479347",
+  "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/inprogress.json",
+  "position": 1,
+  "color": "blue",
+  "description": "Cards currently being worked on",
+  "cards_count": 2,
+  "comment_count": 0,
+  "cards_url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/lists/1069479347/cards.json",
+  "parent": {
+    "id": 1069479345,
+    "title": "Development Board",
+    "type": "Kanban::Board",
+    "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/1069479345.json",
+    "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/1069479345"
+  },
+  "bucket": {
+    "id": 2085958499,
+    "name": "The Leto Laptop",
+    "type": "Project"
+  },
+  "creator": {
+    "id": 1049715914,
+    "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--xyz456",
+    "name": "Victor Cooper",
+    "email_address": "victor@honchodesign.com",
+    "personable_type": "User",
+    "title": "Chief Strategist",
+    "admin": true,
+    "owner": true,
+    "client": false,
+    "employee": true,
+    "time_zone": "America/Chicago",
+    "avatar_url": "https://3.basecamp-static.com/avatar/123.jpg"
+  },
+  "subscribers": [
+    {
+      "id": 1049715914,
+      "name": "Victor Cooper"
+    }
+  ]
+}
