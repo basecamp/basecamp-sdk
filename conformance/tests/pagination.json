@@ -1,0 +1,62 @@
+[
+  {
+    "name": "List operation follows Link header pagination",
+    "description": "Verifies that list operations automatically follow rel=next links",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": "</projects.json?page=2>; rel=\"next\"",
+          "X-Total-Count": "75"
+        },
+        "body": {"projects": [{"id": 1}, {"id": 2}]}
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Link": "</projects.json?page=3>; rel=\"next\"",
+          "X-Total-Count": "75"
+        },
+        "body": {"projects": [{"id": 3}, {"id": 4}]}
+      },
+      {
+        "status": 200,
+        "headers": {
+          "X-Total-Count": "75"
+        },
+        "body": {"projects": [{"id": 5}]}
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 3},
+      {"type": "responseBody", "path": "length", "expected": 5},
+      {"type": "noError"}
+    ],
+    "tags": ["pagination", "link-header"]
+  },
+  {
+    "name": "Total count header is accessible",
+    "description": "Verifies that X-Total-Count header is parsed and accessible",
+    "operation": "ListTodos",
+    "method": "GET",
+    "path": "/buckets/{projectId}/todolists/{todolistId}/todos.json",
+    "pathParams": {"projectId": 12345, "todolistId": 67890},
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "X-Total-Count": "42"
+        },
+        "body": {"todos": []}
+      }
+    ],
+    "assertions": [
+      {"type": "headerValue", "path": "X-Total-Count", "expected": "42"},
+      {"type": "noError"}
+    ],
+    "tags": ["pagination", "total-count"]
+  }
+]

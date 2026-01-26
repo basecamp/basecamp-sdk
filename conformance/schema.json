@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basecamp.com/schemas/sdk-conformance-test.json",
+  "title": "SDK Conformance Test",
+  "description": "Schema for cross-language SDK conformance tests",
+  "type": "object",
+  "required": ["name", "operation", "assertions"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable test name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of what this test verifies"
+    },
+    "operation": {
+      "type": "string",
+      "description": "Operation ID from OpenAPI spec (e.g., ListProjects, GetTodo)"
+    },
+    "method": {
+      "type": "string",
+      "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+      "description": "HTTP method for the operation"
+    },
+    "path": {
+      "type": "string",
+      "description": "URL path pattern (e.g., /projects.json, /buckets/{projectId}/todos/{todoId})"
+    },
+    "pathParams": {
+      "type": "object",
+      "description": "Path parameter values for URL substitution",
+      "additionalProperties": {
+        "type": ["string", "number"]
+      }
+    },
+    "queryParams": {
+      "type": "object",
+      "description": "Query parameter values",
+      "additionalProperties": true
+    },
+    "requestBody": {
+      "type": "object",
+      "description": "Request body for POST/PUT/PATCH operations"
+    },
+    "mockResponses": {
+      "type": "array",
+      "description": "Sequence of mock responses for retry/error testing",
+      "items": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "integer",
+            "description": "HTTP status code"
+          },
+          "headers": {
+            "type": "object",
+            "description": "Response headers",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "body": {
+            "description": "Response body (string or object)"
+          },
+          "delay": {
+            "type": "integer",
+            "description": "Delay in milliseconds before responding"
+          }
+        }
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "description": "Assertions to verify behavior",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "requestCount",
+              "delayBetweenRequests",
+              "responseStatus",
+              "responseBody",
+              "headerPresent",
+              "headerValue",
+              "errorType",
+              "noError"
+            ]
+          },
+          "expected": {
+            "description": "Expected value for the assertion"
+          },
+          "min": {
+            "type": "number",
+            "description": "Minimum value (for range assertions)"
+          },
+          "max": {
+            "type": "number",
+            "description": "Maximum value (for range assertions)"
+          },
+          "path": {
+            "type": "string",
+            "description": "JSONPath or dot-notation path for nested value assertions"
+          }
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "description": "Tags for filtering tests (e.g., retry, pagination, idempotent)",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+[
+  {
+    "name": "PUT operation is naturally idempotent",
+    "description": "Verifies that PUT operations can be safely retried",
+    "operation": "UpdateProject",
+    "method": "PUT",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "requestBody": {"name": "Updated Name"},
+    "mockResponses": [
+      {"status": 503},
+      {"status": 200, "body": {"id": 12345, "name": "Updated Name"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "noError"}
+    ],
+    "tags": ["idempotent", "put"]
+  },
+  {
+    "name": "DELETE operation is naturally idempotent",
+    "description": "Verifies that DELETE operations can be safely retried",
+    "operation": "TrashProject",
+    "method": "PUT",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 503},
+      {"status": 204}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "noError"}
+    ],
+    "tags": ["idempotent", "delete"]
+  },
+  {
+    "name": "POST operation not automatically retried on 5xx without explicit config",
+    "description": "Verifies that non-idempotent POST respects retry limits",
+    "operation": "CreateTodo",
+    "method": "POST",
+    "path": "/buckets/{projectId}/todolists/{todolistId}/todos.json",
+    "pathParams": {"projectId": 12345, "todolistId": 67890},
+    "requestBody": {"content": "New todo", "due_on": "2024-01-01"},
+    "mockResponses": [
+      {"status": 503},
+      {"status": 503},
+      {"status": 503}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 3},
+      {"type": "errorType", "expected": "api_error"}
+    ],
+    "tags": ["idempotent", "post", "non-idempotent"]
+  }
+]

@@ -1,0 +1,72 @@
+[
+  {
+    "name": "GET operation retries on 503",
+    "description": "Verifies that GET operations automatically retry on 503 Service Unavailable with exponential backoff",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {"status": 503},
+      {"status": 503},
+      {"status": 200, "body": {"projects": []}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 3},
+      {"type": "delayBetweenRequests", "min": 1000},
+      {"type": "noError"}
+    ],
+    "tags": ["retry", "503"]
+  },
+  {
+    "name": "GET operation retries on 429 with Retry-After",
+    "description": "Verifies that 429 responses respect the Retry-After header",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 429, "headers": {"Retry-After": "2"}},
+      {"status": 200, "body": {"id": 12345, "name": "Test Project"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "delayBetweenRequests", "min": 2000},
+      {"type": "noError"}
+    ],
+    "tags": ["retry", "429", "rate-limit"]
+  },
+  {
+    "name": "POST operation limited to 2 retry attempts",
+    "description": "Verifies that POST operations only retry up to 2 times (not 3 like GET)",
+    "operation": "CreateProject",
+    "method": "POST",
+    "path": "/projects.json",
+    "requestBody": {"name": "New Project"},
+    "mockResponses": [
+      {"status": 503},
+      {"status": 503},
+      {"status": 503}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 3},
+      {"type": "errorType", "expected": "api_error"}
+    ],
+    "tags": ["retry", "post"]
+  },
+  {
+    "name": "Non-retryable error not retried",
+    "description": "Verifies that 404 errors are not retried",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 99999},
+    "mockResponses": [
+      {"status": 404, "body": {"error": "Not found"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "errorType", "expected": "not_found"}
+    ],
+    "tags": ["retry", "404"]
+  }
+]
