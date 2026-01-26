@@ -49,6 +49,7 @@ type Client struct {
 	tools           *ToolsService
 	lineup          *LineupService
 	subscriptions   *SubscriptionsService
+	campfires       *CampfiresService
 }
 
 // Response wraps an API response.
@@ -618,4 +619,12 @@ func (c *Client) Subscriptions() *SubscriptionsService {
 		c.subscriptions = NewSubscriptionsService(c)
 	}
 	return c.subscriptions
+}
+
+// Campfires returns the CampfiresService for campfire chat operations.
+func (c *Client) Campfires() *CampfiresService {
+	if c.campfires == nil {
+		c.campfires = NewCampfiresService(c)
+	}
+	return c.campfires
 }
