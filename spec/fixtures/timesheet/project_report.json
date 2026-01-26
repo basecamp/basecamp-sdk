@@ -1,0 +1,72 @@
+[
+  {
+    "id": 9007199254741001,
+    "date": "2024-01-15",
+    "hours": "2.5",
+    "description": "Worked on project setup and initial planning",
+    "billable_status": "billable",
+    "created_at": "2024-01-15T10:30:00.000Z",
+    "updated_at": "2024-01-15T10:30:00.000Z",
+    "creator": {
+      "id": 1049715914,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+      "name": "Victor Cooper",
+      "email_address": "victor@honchodesign.com",
+      "personable_type": "User",
+      "title": "Chief Strategist",
+      "admin": true,
+      "owner": true,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar"
+    },
+    "parent": {
+      "id": 1069479345,
+      "title": "Design homepage mockups",
+      "type": "Todo",
+      "url": "https://3.basecampapi.com/195539477/buckets/2085958499/todos/1069479345.json",
+      "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/todos/1069479345"
+    },
+    "bucket": {
+      "id": 2085958499,
+      "name": "The Leto Laptop",
+      "type": "Project"
+    }
+  },
+  {
+    "id": 9007199254741002,
+    "date": "2024-01-16",
+    "hours": "4.0",
+    "description": "Implemented core features",
+    "billable_status": "billable",
+    "created_at": "2024-01-16T14:00:00.000Z",
+    "updated_at": "2024-01-16T14:00:00.000Z",
+    "creator": {
+      "id": 1049715915,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--eeffgghhii",
+      "name": "Annie Bryan",
+      "email_address": "annie@honchodesign.com",
+      "personable_type": "User",
+      "title": "Central Markets Manager",
+      "admin": false,
+      "owner": false,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--avatar",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      }
+    },
+    "parent": {
+      "id": 1069479346,
+      "title": "Write documentation",
+      "type": "Todo",
+      "url": "https://3.basecampapi.com/195539477/buckets/2085958499/todos/1069479346.json",
+      "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/todos/1069479346"
+    },
+    "bucket": {
+      "id": 2085958499,
+      "name": "The Leto Laptop",
+      "type": "Project"
+    }
+  }
+]
