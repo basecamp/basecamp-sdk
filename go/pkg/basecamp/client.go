@@ -51,6 +51,7 @@ type Client struct {
 	subscriptions   *SubscriptionsService
 	campfires       *CampfiresService
 	timesheet       *TimesheetService
+	schedules       *SchedulesService
 }
 
 // Response wraps an API response.
@@ -636,4 +637,12 @@ func (c *Client) Timesheet() *TimesheetService {
 		c.timesheet = NewTimesheetService(c)
 	}
 	return c.timesheet
+}
+
+// Schedules returns the SchedulesService for schedule operations.
+func (c *Client) Schedules() *SchedulesService {
+	if c.schedules == nil {
+		c.schedules = NewSchedulesService(c)
+	}
+	return c.schedules
 }
