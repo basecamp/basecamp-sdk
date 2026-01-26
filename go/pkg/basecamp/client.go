@@ -47,6 +47,7 @@ type Client struct {
 	search          *SearchService
 	templates       *TemplatesService
 	tools           *ToolsService
+	lineup          *LineupService
 }
 
 // Response wraps an API response.
@@ -600,4 +601,12 @@ func (c *Client) Tools() *ToolsService {
 		c.tools = NewToolsService(c)
 	}
 	return c.tools
+}
+
+// Lineup returns the LineupService for lineup marker operations.
+func (c *Client) Lineup() *LineupService {
+	if c.lineup == nil {
+		c.lineup = NewLineupService(c)
+	}
+	return c.lineup
 }
