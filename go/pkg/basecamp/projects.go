@@ -28,13 +28,13 @@ type Project struct {
 
 // DockItem represents a tool in a project's dock.
 type DockItem struct {
-	ID       int64   `json:"id"`
-	Title    string  `json:"title"`
-	Name     string  `json:"name"`
-	Enabled  bool    `json:"enabled"`
-	Position *int    `json:"position"`
-	URL      string  `json:"url"`
-	AppURL   string  `json:"app_url"`
+	ID       int64  `json:"id"`
+	Title    string `json:"title"`
+	Name     string `json:"name"`
+	Enabled  bool   `json:"enabled"`
+	Position *int   `json:"position"`
+	URL      string `json:"url"`
+	AppURL   string `json:"app_url"`
 }
 
 // ClientCompany represents a client company associated with a project.

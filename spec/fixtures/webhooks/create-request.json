@@ -1,0 +1,5 @@
+{
+  "payload_url": "https://example.com/webhooks/new",
+  "types": ["Todo", "Comment", "Message"],
+  "active": true
+}

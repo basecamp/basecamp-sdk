@@ -32,16 +32,17 @@ type Client struct {
 	verbose       bool
 
 	// Services
-	projects        *ProjectsService
-	todos           *TodosService
-	todosets        *TodosetsService
-	todolists       *TodolistsService
-	todolistGroups  *TodolistGroupsService
-	people          *PeopleService
-	comments        *CommentsService
-	messages        *MessagesService
-	messageBoards   *MessageBoardsService
-	messageTypes    *MessageTypesService
+	projects       *ProjectsService
+	todos          *TodosService
+	todosets       *TodosetsService
+	todolists      *TodolistsService
+	todolistGroups *TodolistGroupsService
+	people         *PeopleService
+	comments       *CommentsService
+	messages       *MessagesService
+	messageBoards  *MessageBoardsService
+	messageTypes   *MessageTypesService
+	webhooks       *WebhooksService
 }
 
 // Response wraps an API response.
@@ -555,4 +556,12 @@ func (c *Client) MessageTypes() *MessageTypesService {
 		c.messageTypes = NewMessageTypesService(c)
 	}
 	return c.messageTypes
+}
+
+// Webhooks returns the WebhooksService for webhook operations.
+func (c *Client) Webhooks() *WebhooksService {
+	if c.webhooks == nil {
+		c.webhooks = NewWebhooksService(c)
+	}
+	return c.webhooks
 }
