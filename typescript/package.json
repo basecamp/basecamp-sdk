@@ -22,7 +22,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src --ignore-pattern 'src/generated/**'"
   },
   "keywords": [
     "basecamp",
@@ -47,6 +48,7 @@
     "@types/node": "^22.0.0",
     "msw": "^2.7.0",
     "openapi-typescript": "^7.5.0",
+    "oxlint": "^1.42.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
