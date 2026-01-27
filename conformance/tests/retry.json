@@ -36,22 +36,20 @@
     "tags": ["retry", "429", "rate-limit"]
   },
   {
-    "name": "POST operation limited to 2 retry attempts",
-    "description": "Verifies that POST operations only retry up to 2 times (not 3 like GET)",
+    "name": "POST operation does NOT retry (not idempotent)",
+    "description": "Verifies that POST operations do NOT retry since they are not idempotent",
     "operation": "CreateProject",
     "method": "POST",
     "path": "/projects.json",
     "requestBody": {"name": "New Project"},
     "mockResponses": [
-      {"status": 503},
-      {"status": 503},
       {"status": 503}
     ],
     "assertions": [
-      {"type": "requestCount", "expected": 3},
-      {"type": "errorType", "expected": "api_error"}
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 503}
     ],
-    "tags": ["retry", "post"]
+    "tags": ["no-retry", "post"]
   },
   {
     "name": "Non-retryable error not retried",
@@ -65,7 +63,7 @@
     ],
     "assertions": [
       {"type": "requestCount", "expected": 1},
-      {"type": "errorType", "expected": "not_found"}
+      {"type": "statusCode", "expected": 404}
     ],
     "tags": ["retry", "404"]
   }

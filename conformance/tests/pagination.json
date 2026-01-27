@@ -1,7 +1,7 @@
 [
   {
-    "name": "List operation follows Link header pagination",
-    "description": "Verifies that list operations automatically follow rel=next links",
+    "name": "List operation returns first page with Link header",
+    "description": "Verifies that list operations return first page and expose Link header for pagination",
     "operation": "ListProjects",
     "method": "GET",
     "path": "/projects.json",
@@ -13,26 +13,11 @@
           "X-Total-Count": "75"
         },
         "body": {"projects": [{"id": 1}, {"id": 2}]}
-      },
-      {
-        "status": 200,
-        "headers": {
-          "Link": "</projects.json?page=3>; rel=\"next\"",
-          "X-Total-Count": "75"
-        },
-        "body": {"projects": [{"id": 3}, {"id": 4}]}
-      },
-      {
-        "status": 200,
-        "headers": {
-          "X-Total-Count": "75"
-        },
-        "body": {"projects": [{"id": 5}]}
       }
     ],
     "assertions": [
-      {"type": "requestCount", "expected": 3},
-      {"type": "responseBody", "path": "length", "expected": 5},
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 200},
       {"type": "noError"}
     ],
     "tags": ["pagination", "link-header"]

@@ -35,22 +35,20 @@
     "tags": ["idempotent", "delete"]
   },
   {
-    "name": "POST operation exhausts retries and returns error on persistent 5xx",
-    "description": "Verifies that POST operations retry up to maxAttempts (3) then return error",
+    "name": "POST operation does NOT retry (not idempotent)",
+    "description": "Verifies that POST operations do NOT retry since they are not idempotent",
     "operation": "CreateTodo",
     "method": "POST",
     "path": "/buckets/{projectId}/todolists/{todolistId}/todos.json",
     "pathParams": {"projectId": 12345, "todolistId": 67890},
     "requestBody": {"content": "New todo", "due_on": "2024-01-01"},
     "mockResponses": [
-      {"status": 503},
-      {"status": 503},
       {"status": 503}
     ],
     "assertions": [
-      {"type": "requestCount", "expected": 3},
-      {"type": "errorType", "expected": "api_error"}
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 503}
     ],
-    "tags": ["retry", "post", "exhaustion"]
+    "tags": ["no-retry", "post"]
   }
 ]

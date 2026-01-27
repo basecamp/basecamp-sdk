@@ -20,6 +20,13 @@
           "version": "3.1.0"
         }
       }
+    },
+    "ast": {
+      "plugins": {
+        "model": {
+          "service": "basecamp#Basecamp"
+        }
+      }
     }
   }
 }

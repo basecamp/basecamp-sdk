@@ -939,7 +939,8 @@
     "ListAnswers": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -954,7 +955,8 @@
     "ListCampfireLines": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -969,7 +971,8 @@
     "ListCampfires": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -984,7 +987,8 @@
     "ListCards": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -999,7 +1003,8 @@
     "ListChatbots": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1014,7 +1019,8 @@
     "ListClientApprovals": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1029,7 +1035,8 @@
     "ListClientCorrespondences": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1044,7 +1051,8 @@
     "ListClientReplies": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1059,7 +1067,8 @@
     "ListComments": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1074,7 +1083,8 @@
     "ListDocuments": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1089,7 +1099,8 @@
     "ListEvents": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1104,7 +1115,8 @@
     "ListForwardReplies": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1119,7 +1131,8 @@
     "ListForwards": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1134,7 +1147,8 @@
     "ListMessageTypes": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1149,7 +1163,8 @@
     "ListMessages": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1164,7 +1179,8 @@
     "ListPeople": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1179,7 +1195,8 @@
     "ListPingablePeople": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1194,7 +1211,8 @@
     "ListProjectPeople": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1209,7 +1227,8 @@
     "ListProjects": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1224,7 +1243,8 @@
     "ListQuestions": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1239,7 +1259,8 @@
     "ListRecordings": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1254,7 +1275,8 @@
     "ListScheduleEntries": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1269,7 +1291,8 @@
     "ListTemplates": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1284,7 +1307,8 @@
     "ListTodolistGroups": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1299,7 +1323,8 @@
     "ListTodolists": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1314,7 +1339,8 @@
     "ListTodos": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1329,7 +1355,8 @@
     "ListUploadVersions": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1344,7 +1371,8 @@
     "ListUploads": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1359,7 +1387,8 @@
     "ListVaults": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1374,7 +1403,8 @@
     "ListWebhooks": {
       "readonly": true,
       "pagination": {
-        "style": "link"
+        "style": "link",
+        "maxPageSize": 50
       },
       "retry": {
         "max": 3,
@@ -1875,6 +1905,12 @@
     }
   },
   "redaction": {
+    "CreatePersonRequest": [
+      "$.name",
+      "$.email_address",
+      "$.title",
+      "$.company_name"
+    ],
     "Person": [
       "$.name",
       "$.email_address",
@@ -1885,12 +1921,6 @@
     ],
     "PersonCompany": [
       "$.name"
-    ],
-    "CreatePersonRequest": [
-      "$.name",
-      "$.email_address",
-      "$.title",
-      "$.company_name"
     ]
   },
   "sensitiveTypes": [

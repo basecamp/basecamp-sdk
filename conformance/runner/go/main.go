@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,6 +14,8 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // TestCase represents a single conformance test.
@@ -157,15 +160,68 @@ func runTest(tc TestCase) TestResult {
 	}))
 	defer server.Close()
 
-	// Note: In a real implementation, we would use the SDK client here
-	// For now, we just validate the test structure
-	_ = server.URL
+	// Create SDK client pointing to mock server
+	client, err := generated.NewClient(server.URL)
+	if err != nil {
+		return TestResult{
+			Name:    tc.Name,
+			Passed:  false,
+			Message: fmt.Sprintf("Failed to create SDK client: %v", err),
+		}
+	}
 
-	// Simulate SDK call by making HTTP requests
-	// This is a simplified version - real tests would use the actual SDK
-	for range tc.MockResponses {
-		// Simulate the SDK making requests
-		time.Sleep(10 * time.Millisecond)
+	// Execute the appropriate SDK method based on the test operation
+	ctx := context.Background()
+	var sdkErr error
+	var sdkResp *http.Response
+
+	switch tc.Operation {
+	case "ListProjects":
+		sdkResp, sdkErr = client.ListProjects(ctx, nil)
+
+	case "GetProject":
+		projectId := getFloatParam(tc.PathParams, "projectId")
+		sdkResp, sdkErr = client.GetProject(ctx, float32(projectId))
+
+	case "UpdateProject":
+		projectId := getFloatParam(tc.PathParams, "projectId")
+		body := generated.UpdateProjectJSONRequestBody{
+			Name: getStringParam(tc.RequestBody, "name"),
+		}
+		sdkResp, sdkErr = client.UpdateProject(ctx, float32(projectId), body)
+
+	case "CreateProject":
+		body := generated.CreateProjectJSONRequestBody{
+			Name: getStringParam(tc.RequestBody, "name"),
+		}
+		sdkResp, sdkErr = client.CreateProject(ctx, body)
+
+	case "TrashProject":
+		projectId := getFloatParam(tc.PathParams, "projectId")
+		sdkResp, sdkErr = client.TrashProject(ctx, float32(projectId))
+
+	case "CreateTodo":
+		projectId := getFloatParam(tc.PathParams, "projectId")
+		todolistId := getFloatParam(tc.PathParams, "todolistId")
+		body := generated.CreateTodoJSONRequestBody{
+			Content: getStringParam(tc.RequestBody, "content"),
+		}
+		if dueOn, ok := tc.RequestBody["due_on"].(string); ok {
+			body.DueOn = &dueOn
+		}
+		sdkResp, sdkErr = client.CreateTodo(ctx, float32(projectId), float32(todolistId), body)
+
+	case "ListTodos":
+		projectId := getFloatParam(tc.PathParams, "projectId")
+		todolistId := getFloatParam(tc.PathParams, "todolistId")
+		sdkResp, sdkErr = client.ListTodos(ctx, float32(projectId), float32(todolistId), nil)
+
+	default:
+		return TestResult{
+			Name:    tc.Name,
+			Passed:  false,
+			Message: fmt.Sprintf("Unknown operation: %s", tc.Operation),
+		}
 	}
 
 	// Run assertions
@@ -173,25 +229,89 @@ func runTest(tc TestCase) TestResult {
 		switch assertion.Type {
 		case "requestCount":
 			expected := int32(assertion.Expected.(float64))
-			if int32(len(tc.MockResponses)) != expected {
-				// In real implementation, would check actual request count
+			actual := atomic.LoadInt32(&requestCount)
+			if actual != expected {
+				return TestResult{
+					Name:    tc.Name,
+					Passed:  false,
+					Message: fmt.Sprintf("Expected %d requests, got %d", expected, actual),
+				}
 			}
 
 		case "delayBetweenRequests":
-			// Would verify timing between requests
+			if len(requestTimes) >= 2 {
+				delay := requestTimes[1].Sub(requestTimes[0])
+				minDelay := time.Duration(assertion.Min) * time.Millisecond
+				if delay < minDelay {
+					return TestResult{
+						Name:    tc.Name,
+						Passed:  false,
+						Message: fmt.Sprintf("Expected delay >= %v, got %v", minDelay, delay),
+					}
+				}
+			}
 
 		case "noError":
-			// Would verify no error was returned
+			if sdkErr != nil {
+				return TestResult{
+					Name:    tc.Name,
+					Passed:  false,
+					Message: fmt.Sprintf("Expected no error, got: %v", sdkErr),
+				}
+			}
 
 		case "errorType":
-			// Would verify specific error type
+			if sdkErr == nil {
+				return TestResult{
+					Name:    tc.Name,
+					Passed:  false,
+					Message: fmt.Sprintf("Expected error type %v, but got no error", assertion.Expected),
+				}
+			}
+			// For now, just verify an error occurred - detailed error type checking can be enhanced
+
+		case "statusCode":
+			expected := int(assertion.Expected.(float64))
+			if sdkResp == nil {
+				return TestResult{
+					Name:    tc.Name,
+					Passed:  false,
+					Message: fmt.Sprintf("Expected status code %d, but got no response", expected),
+				}
+			}
+			if sdkResp.StatusCode != expected {
+				return TestResult{
+					Name:    tc.Name,
+					Passed:  false,
+					Message: fmt.Sprintf("Expected status code %d, got %d", expected, sdkResp.StatusCode),
+				}
+			}
 		}
 	}
 
-	// For now, pass if the test structure is valid
 	return TestResult{
 		Name:    tc.Name,
 		Passed:  true,
-		Message: "Test structure validated (actual SDK integration pending)",
+		Message: "All assertions passed",
 	}
+}
+
+// getFloatParam extracts a float64 parameter from a map
+func getFloatParam(params map[string]interface{}, key string) float64 {
+	if val, ok := params[key]; ok {
+		if f, ok := val.(float64); ok {
+			return f
+		}
+	}
+	return 0
+}
+
+// getStringParam extracts a string parameter from a map
+func getStringParam(params map[string]interface{}, key string) string {
+	if val, ok := params[key]; ok {
+		if s, ok := val.(string); ok {
+			return s
+		}
+	}
+	return ""
 }

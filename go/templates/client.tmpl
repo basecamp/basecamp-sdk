@@ -199,10 +199,20 @@ func (c *{{ $clientTypeName }}) doWithRetry(ctx context.Context, buildRequest fu
 		// Close body before retry
 		_ = resp.Body.Close()
 
+		// For 429 responses, respect Retry-After header if present
+		retryDelay := delay
+		if resp.StatusCode == http.StatusTooManyRequests {
+			if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
+				if seconds, err := strconv.Atoi(retryAfter); err == nil && seconds > 0 {
+					retryDelay = time.Duration(seconds) * time.Second
+				}
+			}
+		}
+
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(delay + time.Duration(rand.Int63n(int64(100*time.Millisecond)))):
+		case <-time.After(retryDelay + time.Duration(rand.Int63n(int64(100*time.Millisecond)))):
 		}
 		delay = time.Duration(float64(delay) * c.RetryConfig.Multiplier)
 		if delay > c.RetryConfig.MaxDelay {
@@ -238,9 +248,11 @@ type ClientInterface interface {
 {{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
-{{/* Check for x-basecamp-idempotent extension */}}
+{{/* Check for x-basecamp-idempotent extension or GET/HEAD methods (always safe to retry) */}}
 {{$isIdempotent := false -}}
-{{if .Spec -}}
+{{if or (eq .Method "GET") (eq .Method "HEAD") -}}
+{{$isIdempotent = true -}}
+{{else if .Spec -}}
 {{if .Spec.Extensions -}}
 {{if index .Spec.Extensions "x-basecamp-idempotent" -}}
 {{$isIdempotent = true -}}
@@ -492,16 +504,23 @@ type OperationMetadata struct {
 
 // operationMetadata maps operation IDs to their metadata.
 // This is generated from x-basecamp-* extensions in the OpenAPI spec.
+// GET/HEAD operations are always considered idempotent for retry purposes.
 var operationMetadata = map[string]OperationMetadata{
 {{range . -}}
 {{$opid := .OperationId -}}
 {{$isIdempotent := false -}}
 {{$hasSensitive := false -}}
-{{if .Spec -}}
+{{if or (eq .Method "GET") (eq .Method "HEAD") -}}
+{{$isIdempotent = true -}}
+{{else if .Spec -}}
 {{if .Spec.Extensions -}}
 {{if index .Spec.Extensions "x-basecamp-idempotent" -}}
 {{$isIdempotent = true -}}
 {{end -}}
+{{end -}}
+{{end -}}
+{{if .Spec -}}
+{{if .Spec.Extensions -}}
 {{if index .Spec.Extensions "x-basecamp-sensitive" -}}
 {{$hasSensitive = true -}}
 {{end -}}

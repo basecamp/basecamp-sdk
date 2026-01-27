@@ -13,6 +13,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -2585,10 +2586,20 @@ func (c *Client) doWithRetry(ctx context.Context, buildRequest func() (*http.Req
 		// Close body before retry
 		_ = resp.Body.Close()
 
+		// For 429 responses, respect Retry-After header if present
+		retryDelay := delay
+		if resp.StatusCode == http.StatusTooManyRequests {
+			if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
+				if seconds, err := strconv.Atoi(retryAfter); err == nil && seconds > 0 {
+					retryDelay = time.Duration(seconds) * time.Second
+				}
+			}
+		}
+
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(delay + time.Duration(rand.Int63n(int64(100*time.Millisecond)))):
+		case <-time.After(retryDelay + time.Duration(rand.Int63n(int64(100*time.Millisecond)))):
 		}
 		delay = time.Duration(float64(delay) * c.RetryConfig.Multiplier)
 		if delay > c.RetryConfig.MaxDelay {
@@ -3180,19 +3191,13 @@ func (c *Client) CreateAttachmentWithBody(ctx context.Context, params *CreateAtt
 
 }
 
-// GetCard executes the GetCard operation.
+// GetCard is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetCard(ctx context.Context, projectId float32, cardId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetCardRequest(c.Server, projectId, cardId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetCardRequest(c.Server, projectId, cardId)
+	}, true, "GetCard", reqEditors...)
 
 }
 
@@ -3304,19 +3309,13 @@ func (c *Client) CreateCardStep(ctx context.Context, projectId float32, cardId f
 
 }
 
-// GetCardColumn executes the GetCardColumn operation.
+// GetCardColumn is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetCardColumn(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetCardColumnRequest(c.Server, projectId, columnId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetCardColumnRequest(c.Server, projectId, columnId)
+	}, true, "GetCardColumn", reqEditors...)
 
 }
 
@@ -3382,19 +3381,13 @@ func (c *Client) EnableCardColumnOnHold(ctx context.Context, projectId float32, 
 
 }
 
-// ListCards executes the ListCards operation.
+// ListCards is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListCards(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListCardsRequest(c.Server, projectId, columnId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListCardsRequest(c.Server, projectId, columnId)
+	}, true, "ListCards", reqEditors...)
 
 }
 
@@ -3466,19 +3459,13 @@ func (c *Client) CompleteCardStep(ctx context.Context, projectId float32, stepId
 
 }
 
-// GetCardTable executes the GetCardTable operation.
+// GetCardTable is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetCardTable(ctx context.Context, projectId float32, cardTableId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetCardTableRequest(c.Server, projectId, cardTableId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetCardTableRequest(c.Server, projectId, cardTableId)
+	}, true, "GetCardTable", reqEditors...)
 
 }
 
@@ -3542,19 +3529,13 @@ func (c *Client) MoveCardColumn(ctx context.Context, projectId float32, cardTabl
 
 }
 
-// ListMessageTypes executes the ListMessageTypes operation.
+// ListMessageTypes is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListMessageTypes(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListMessageTypesRequest(c.Server, projectId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListMessageTypesRequest(c.Server, projectId)
+	}, true, "ListMessageTypes", reqEditors...)
 
 }
 
@@ -3598,19 +3579,13 @@ func (c *Client) DeleteMessageType(ctx context.Context, projectId float32, typeI
 
 }
 
-// GetMessageType executes the GetMessageType operation.
+// GetMessageType is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetMessageType(ctx context.Context, projectId float32, typeId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetMessageTypeRequest(c.Server, projectId, typeId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetMessageTypeRequest(c.Server, projectId, typeId)
+	}, true, "GetMessageType", reqEditors...)
 
 }
 
@@ -3632,35 +3607,23 @@ func (c *Client) UpdateMessageType(ctx context.Context, projectId float32, typeI
 
 }
 
-// GetCampfire executes the GetCampfire operation.
+// GetCampfire is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetCampfire(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetCampfireRequest(c.Server, projectId, campfireId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetCampfireRequest(c.Server, projectId, campfireId)
+	}, true, "GetCampfire", reqEditors...)
 
 }
 
-// ListChatbots executes the ListChatbots operation.
+// ListChatbots is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListChatbots(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListChatbotsRequest(c.Server, projectId, campfireId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListChatbotsRequest(c.Server, projectId, campfireId)
+	}, true, "ListChatbots", reqEditors...)
 
 }
 
@@ -3704,19 +3667,13 @@ func (c *Client) DeleteChatbot(ctx context.Context, projectId float32, campfireI
 
 }
 
-// GetChatbot executes the GetChatbot operation.
+// GetChatbot is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetChatbot(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetChatbotRequest(c.Server, projectId, campfireId, chatbotId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetChatbotRequest(c.Server, projectId, campfireId, chatbotId)
+	}, true, "GetChatbot", reqEditors...)
 
 }
 
@@ -3738,19 +3695,13 @@ func (c *Client) UpdateChatbot(ctx context.Context, projectId float32, campfireI
 
 }
 
-// ListCampfireLines executes the ListCampfireLines operation.
+// ListCampfireLines is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListCampfireLines(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListCampfireLinesRequest(c.Server, projectId, campfireId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListCampfireLinesRequest(c.Server, projectId, campfireId)
+	}, true, "ListCampfireLines", reqEditors...)
 
 }
 
@@ -3794,131 +3745,83 @@ func (c *Client) DeleteCampfireLine(ctx context.Context, projectId float32, camp
 
 }
 
-// GetCampfireLine executes the GetCampfireLine operation.
+// GetCampfireLine is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetCampfireLine(ctx context.Context, projectId float32, campfireId float32, lineId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetCampfireLineRequest(c.Server, projectId, campfireId, lineId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetCampfireLineRequest(c.Server, projectId, campfireId, lineId)
+	}, true, "GetCampfireLine", reqEditors...)
 
 }
 
-// ListClientApprovals executes the ListClientApprovals operation.
+// ListClientApprovals is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListClientApprovals(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListClientApprovalsRequest(c.Server, projectId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListClientApprovalsRequest(c.Server, projectId)
+	}, true, "ListClientApprovals", reqEditors...)
 
 }
 
-// GetClientApproval executes the GetClientApproval operation.
+// GetClientApproval is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetClientApproval(ctx context.Context, projectId float32, approvalId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetClientApprovalRequest(c.Server, projectId, approvalId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetClientApprovalRequest(c.Server, projectId, approvalId)
+	}, true, "GetClientApproval", reqEditors...)
 
 }
 
-// ListClientCorrespondences executes the ListClientCorrespondences operation.
+// ListClientCorrespondences is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListClientCorrespondences(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListClientCorrespondencesRequest(c.Server, projectId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListClientCorrespondencesRequest(c.Server, projectId)
+	}, true, "ListClientCorrespondences", reqEditors...)
 
 }
 
-// GetClientCorrespondence executes the GetClientCorrespondence operation.
+// GetClientCorrespondence is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetClientCorrespondence(ctx context.Context, projectId float32, correspondenceId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetClientCorrespondenceRequest(c.Server, projectId, correspondenceId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetClientCorrespondenceRequest(c.Server, projectId, correspondenceId)
+	}, true, "GetClientCorrespondence", reqEditors...)
 
 }
 
-// ListClientReplies executes the ListClientReplies operation.
+// ListClientReplies is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListClientReplies(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListClientRepliesRequest(c.Server, projectId, recordingId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListClientRepliesRequest(c.Server, projectId, recordingId)
+	}, true, "ListClientReplies", reqEditors...)
 
 }
 
-// GetClientReply executes the GetClientReply operation.
+// GetClientReply is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetClientReply(ctx context.Context, projectId float32, recordingId float32, replyId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetClientReplyRequest(c.Server, projectId, recordingId, replyId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetClientReplyRequest(c.Server, projectId, recordingId, replyId)
+	}, true, "GetClientReply", reqEditors...)
 
 }
 
-// GetComment executes the GetComment operation.
+// GetComment is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetComment(ctx context.Context, projectId float32, commentId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetCommentRequest(c.Server, projectId, commentId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetCommentRequest(c.Server, projectId, commentId)
+	}, true, "GetComment", reqEditors...)
 
 }
 
@@ -3966,19 +3869,13 @@ func (c *Client) DeleteTool(ctx context.Context, projectId float32, toolId float
 
 }
 
-// GetTool executes the GetTool operation.
+// GetTool is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetTool(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetToolRequest(c.Server, projectId, toolId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetToolRequest(c.Server, projectId, toolId)
+	}, true, "GetTool", reqEditors...)
 
 }
 
@@ -4044,19 +3941,13 @@ func (c *Client) RepositionTool(ctx context.Context, projectId float32, toolId f
 
 }
 
-// GetDocument executes the GetDocument operation.
+// GetDocument is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetDocument(ctx context.Context, projectId float32, documentId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetDocumentRequest(c.Server, projectId, documentId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetDocumentRequest(c.Server, projectId, documentId)
+	}, true, "GetDocument", reqEditors...)
 
 }
 
@@ -4078,35 +3969,23 @@ func (c *Client) UpdateDocument(ctx context.Context, projectId float32, document
 
 }
 
-// GetForward executes the GetForward operation.
+// GetForward is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetForward(ctx context.Context, projectId float32, forwardId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetForwardRequest(c.Server, projectId, forwardId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetForwardRequest(c.Server, projectId, forwardId)
+	}, true, "GetForward", reqEditors...)
 
 }
 
-// ListForwardReplies executes the ListForwardReplies operation.
+// ListForwardReplies is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListForwardReplies(ctx context.Context, projectId float32, forwardId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListForwardRepliesRequest(c.Server, projectId, forwardId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListForwardRepliesRequest(c.Server, projectId, forwardId)
+	}, true, "ListForwardReplies", reqEditors...)
 
 }
 
@@ -4140,83 +4019,53 @@ func (c *Client) CreateForwardReply(ctx context.Context, projectId float32, forw
 
 }
 
-// GetForwardReply executes the GetForwardReply operation.
+// GetForwardReply is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetForwardReply(ctx context.Context, projectId float32, forwardId float32, replyId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetForwardReplyRequest(c.Server, projectId, forwardId, replyId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetForwardReplyRequest(c.Server, projectId, forwardId, replyId)
+	}, true, "GetForwardReply", reqEditors...)
 
 }
 
-// GetInbox executes the GetInbox operation.
+// GetInbox is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetInbox(ctx context.Context, projectId float32, inboxId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetInboxRequest(c.Server, projectId, inboxId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetInboxRequest(c.Server, projectId, inboxId)
+	}, true, "GetInbox", reqEditors...)
 
 }
 
-// ListForwards executes the ListForwards operation.
+// ListForwards is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListForwards(ctx context.Context, projectId float32, inboxId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListForwardsRequest(c.Server, projectId, inboxId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListForwardsRequest(c.Server, projectId, inboxId)
+	}, true, "ListForwards", reqEditors...)
 
 }
 
-// GetMessageBoard executes the GetMessageBoard operation.
+// GetMessageBoard is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetMessageBoard(ctx context.Context, projectId float32, boardId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetMessageBoardRequest(c.Server, projectId, boardId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetMessageBoardRequest(c.Server, projectId, boardId)
+	}, true, "GetMessageBoard", reqEditors...)
 
 }
 
-// ListMessages executes the ListMessages operation.
+// ListMessages is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListMessages(ctx context.Context, projectId float32, boardId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListMessagesRequest(c.Server, projectId, boardId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListMessagesRequest(c.Server, projectId, boardId)
+	}, true, "ListMessages", reqEditors...)
 
 }
 
@@ -4250,19 +4099,13 @@ func (c *Client) CreateMessage(ctx context.Context, projectId float32, boardId f
 
 }
 
-// GetMessage executes the GetMessage operation.
+// GetMessage is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetMessage(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetMessageRequest(c.Server, projectId, messageId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetMessageRequest(c.Server, projectId, messageId)
+	}, true, "GetMessage", reqEditors...)
 
 }
 
@@ -4284,19 +4127,13 @@ func (c *Client) UpdateMessage(ctx context.Context, projectId float32, messageId
 
 }
 
-// GetAnswer executes the GetAnswer operation.
+// GetAnswer is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetAnswer(ctx context.Context, projectId float32, answerId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetAnswerRequest(c.Server, projectId, answerId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetAnswerRequest(c.Server, projectId, answerId)
+	}, true, "GetAnswer", reqEditors...)
 
 }
 
@@ -4318,35 +4155,23 @@ func (c *Client) UpdateAnswer(ctx context.Context, projectId float32, answerId f
 
 }
 
-// GetQuestionnaire executes the GetQuestionnaire operation.
+// GetQuestionnaire is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetQuestionnaire(ctx context.Context, projectId float32, questionnaireId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetQuestionnaireRequest(c.Server, projectId, questionnaireId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetQuestionnaireRequest(c.Server, projectId, questionnaireId)
+	}, true, "GetQuestionnaire", reqEditors...)
 
 }
 
-// ListQuestions executes the ListQuestions operation.
+// ListQuestions is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListQuestions(ctx context.Context, projectId float32, questionnaireId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListQuestionsRequest(c.Server, projectId, questionnaireId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListQuestionsRequest(c.Server, projectId, questionnaireId)
+	}, true, "ListQuestions", reqEditors...)
 
 }
 
@@ -4380,19 +4205,13 @@ func (c *Client) CreateQuestion(ctx context.Context, projectId float32, question
 
 }
 
-// GetQuestion executes the GetQuestion operation.
+// GetQuestion is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetQuestion(ctx context.Context, projectId float32, questionId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetQuestionRequest(c.Server, projectId, questionId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetQuestionRequest(c.Server, projectId, questionId)
+	}, true, "GetQuestion", reqEditors...)
 
 }
 
@@ -4414,19 +4233,13 @@ func (c *Client) UpdateQuestion(ctx context.Context, projectId float32, question
 
 }
 
-// ListAnswers executes the ListAnswers operation.
+// ListAnswers is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListAnswers(ctx context.Context, projectId float32, questionId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListAnswersRequest(c.Server, projectId, questionId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListAnswersRequest(c.Server, projectId, questionId)
+	}, true, "ListAnswers", reqEditors...)
 
 }
 
@@ -4486,19 +4299,13 @@ func (c *Client) PinMessage(ctx context.Context, projectId float32, messageId fl
 
 }
 
-// GetRecording executes the GetRecording operation.
+// GetRecording is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetRecording(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetRecordingRequest(c.Server, projectId, recordingId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetRecordingRequest(c.Server, projectId, recordingId)
+	}, true, "GetRecording", reqEditors...)
 
 }
 
@@ -4520,19 +4327,13 @@ func (c *Client) SetClientVisibility(ctx context.Context, projectId float32, rec
 
 }
 
-// ListComments executes the ListComments operation.
+// ListComments is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListComments(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListCommentsRequest(c.Server, projectId, recordingId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListCommentsRequest(c.Server, projectId, recordingId)
+	}, true, "ListComments", reqEditors...)
 
 }
 
@@ -4566,19 +4367,13 @@ func (c *Client) CreateComment(ctx context.Context, projectId float32, recording
 
 }
 
-// ListEvents executes the ListEvents operation.
+// ListEvents is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListEvents(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListEventsRequest(c.Server, projectId, recordingId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListEventsRequest(c.Server, projectId, recordingId)
+	}, true, "ListEvents", reqEditors...)
 
 }
 
@@ -4622,19 +4417,13 @@ func (c *Client) Unsubscribe(ctx context.Context, projectId float32, recordingId
 
 }
 
-// GetSubscription executes the GetSubscription operation.
+// GetSubscription is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetSubscription(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetSubscriptionRequest(c.Server, projectId, recordingId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetSubscriptionRequest(c.Server, projectId, recordingId)
+	}, true, "GetSubscription", reqEditors...)
 
 }
 
@@ -4672,35 +4461,23 @@ func (c *Client) UpdateSubscription(ctx context.Context, projectId float32, reco
 
 }
 
-// GetRecordingTimesheet executes the GetRecordingTimesheet operation.
+// GetRecordingTimesheet is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetRecordingTimesheet(ctx context.Context, projectId float32, recordingId float32, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetRecordingTimesheetRequest(c.Server, projectId, recordingId, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetRecordingTimesheetRequest(c.Server, projectId, recordingId, params)
+	}, true, "GetRecordingTimesheet", reqEditors...)
 
 }
 
-// GetScheduleEntry executes the GetScheduleEntry operation.
+// GetScheduleEntry is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetScheduleEntry(ctx context.Context, projectId float32, entryId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetScheduleEntryRequest(c.Server, projectId, entryId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetScheduleEntryRequest(c.Server, projectId, entryId)
+	}, true, "GetScheduleEntry", reqEditors...)
 
 }
 
@@ -4722,35 +4499,23 @@ func (c *Client) UpdateScheduleEntry(ctx context.Context, projectId float32, ent
 
 }
 
-// GetScheduleEntryOccurrence executes the GetScheduleEntryOccurrence operation.
+// GetScheduleEntryOccurrence is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetScheduleEntryOccurrence(ctx context.Context, projectId float32, entryId float32, date string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetScheduleEntryOccurrenceRequest(c.Server, projectId, entryId, date)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetScheduleEntryOccurrenceRequest(c.Server, projectId, entryId, date)
+	}, true, "GetScheduleEntryOccurrence", reqEditors...)
 
 }
 
-// GetSchedule executes the GetSchedule operation.
+// GetSchedule is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetSchedule(ctx context.Context, projectId float32, scheduleId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetScheduleRequest(c.Server, projectId, scheduleId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetScheduleRequest(c.Server, projectId, scheduleId)
+	}, true, "GetSchedule", reqEditors...)
 
 }
 
@@ -4772,19 +4537,13 @@ func (c *Client) UpdateScheduleSettings(ctx context.Context, projectId float32, 
 
 }
 
-// ListScheduleEntries executes the ListScheduleEntries operation.
+// ListScheduleEntries is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListScheduleEntries(ctx context.Context, projectId float32, scheduleId float32, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListScheduleEntriesRequest(c.Server, projectId, scheduleId, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListScheduleEntriesRequest(c.Server, projectId, scheduleId, params)
+	}, true, "ListScheduleEntries", reqEditors...)
 
 }
 
@@ -4818,19 +4577,13 @@ func (c *Client) CreateScheduleEntry(ctx context.Context, projectId float32, sch
 
 }
 
-// GetProjectTimesheet executes the GetProjectTimesheet operation.
+// GetProjectTimesheet is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetProjectTimesheet(ctx context.Context, projectId float32, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetProjectTimesheetRequest(c.Server, projectId, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetProjectTimesheetRequest(c.Server, projectId, params)
+	}, true, "GetProjectTimesheet", reqEditors...)
 
 }
 
@@ -4852,19 +4605,13 @@ func (c *Client) RepositionTodolistGroup(ctx context.Context, projectId float32,
 
 }
 
-// GetTodolistOrGroup executes the GetTodolistOrGroup operation.
+// GetTodolistOrGroup is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetTodolistOrGroup(ctx context.Context, projectId float32, id float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetTodolistOrGroupRequest(c.Server, projectId, id)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetTodolistOrGroupRequest(c.Server, projectId, id)
+	}, true, "GetTodolistOrGroup", reqEditors...)
 
 }
 
@@ -4886,19 +4633,13 @@ func (c *Client) UpdateTodolistOrGroup(ctx context.Context, projectId float32, i
 
 }
 
-// ListTodolistGroups executes the ListTodolistGroups operation.
+// ListTodolistGroups is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListTodolistGroups(ctx context.Context, projectId float32, todolistId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListTodolistGroupsRequest(c.Server, projectId, todolistId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListTodolistGroupsRequest(c.Server, projectId, todolistId)
+	}, true, "ListTodolistGroups", reqEditors...)
 
 }
 
@@ -4932,19 +4673,13 @@ func (c *Client) CreateTodolistGroup(ctx context.Context, projectId float32, tod
 
 }
 
-// ListTodos executes the ListTodos operation.
+// ListTodos is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListTodos(ctx context.Context, projectId float32, todolistId float32, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListTodosRequest(c.Server, projectId, todolistId, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListTodosRequest(c.Server, projectId, todolistId, params)
+	}, true, "ListTodos", reqEditors...)
 
 }
 
@@ -4988,19 +4723,13 @@ func (c *Client) TrashTodo(ctx context.Context, projectId float32, todoId float3
 
 }
 
-// GetTodo executes the GetTodo operation.
+// GetTodo is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetTodo(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetTodoRequest(c.Server, projectId, todoId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetTodoRequest(c.Server, projectId, todoId)
+	}, true, "GetTodo", reqEditors...)
 
 }
 
@@ -5042,35 +4771,23 @@ func (c *Client) CompleteTodo(ctx context.Context, projectId float32, todoId flo
 
 }
 
-// GetTodoset executes the GetTodoset operation.
+// GetTodoset is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetTodoset(ctx context.Context, projectId float32, todosetId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetTodosetRequest(c.Server, projectId, todosetId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetTodosetRequest(c.Server, projectId, todosetId)
+	}, true, "GetTodoset", reqEditors...)
 
 }
 
-// ListTodolists executes the ListTodolists operation.
+// ListTodolists is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListTodolists(ctx context.Context, projectId float32, todosetId float32, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListTodolistsRequest(c.Server, projectId, todosetId, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListTodolistsRequest(c.Server, projectId, todosetId, params)
+	}, true, "ListTodolists", reqEditors...)
 
 }
 
@@ -5104,19 +4821,13 @@ func (c *Client) CreateTodolist(ctx context.Context, projectId float32, todosetI
 
 }
 
-// GetUpload executes the GetUpload operation.
+// GetUpload is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetUpload(ctx context.Context, projectId float32, uploadId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetUploadRequest(c.Server, projectId, uploadId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetUploadRequest(c.Server, projectId, uploadId)
+	}, true, "GetUpload", reqEditors...)
 
 }
 
@@ -5138,35 +4849,23 @@ func (c *Client) UpdateUpload(ctx context.Context, projectId float32, uploadId f
 
 }
 
-// ListUploadVersions executes the ListUploadVersions operation.
+// ListUploadVersions is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListUploadVersions(ctx context.Context, projectId float32, uploadId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListUploadVersionsRequest(c.Server, projectId, uploadId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListUploadVersionsRequest(c.Server, projectId, uploadId)
+	}, true, "ListUploadVersions", reqEditors...)
 
 }
 
-// GetVault executes the GetVault operation.
+// GetVault is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetVault(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetVaultRequest(c.Server, projectId, vaultId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetVaultRequest(c.Server, projectId, vaultId)
+	}, true, "GetVault", reqEditors...)
 
 }
 
@@ -5188,19 +4887,13 @@ func (c *Client) UpdateVault(ctx context.Context, projectId float32, vaultId flo
 
 }
 
-// ListDocuments executes the ListDocuments operation.
+// ListDocuments is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListDocuments(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListDocumentsRequest(c.Server, projectId, vaultId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListDocumentsRequest(c.Server, projectId, vaultId)
+	}, true, "ListDocuments", reqEditors...)
 
 }
 
@@ -5234,19 +4927,13 @@ func (c *Client) CreateDocument(ctx context.Context, projectId float32, vaultId 
 
 }
 
-// ListUploads executes the ListUploads operation.
+// ListUploads is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListUploads(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListUploadsRequest(c.Server, projectId, vaultId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListUploadsRequest(c.Server, projectId, vaultId)
+	}, true, "ListUploads", reqEditors...)
 
 }
 
@@ -5280,19 +4967,13 @@ func (c *Client) CreateUpload(ctx context.Context, projectId float32, vaultId fl
 
 }
 
-// ListVaults executes the ListVaults operation.
+// ListVaults is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListVaults(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListVaultsRequest(c.Server, projectId, vaultId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListVaultsRequest(c.Server, projectId, vaultId)
+	}, true, "ListVaults", reqEditors...)
 
 }
 
@@ -5326,19 +5007,13 @@ func (c *Client) CreateVault(ctx context.Context, projectId float32, vaultId flo
 
 }
 
-// ListWebhooks executes the ListWebhooks operation.
+// ListWebhooks is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListWebhooks(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListWebhooksRequest(c.Server, projectId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListWebhooksRequest(c.Server, projectId)
+	}, true, "ListWebhooks", reqEditors...)
 
 }
 
@@ -5382,19 +5057,13 @@ func (c *Client) DeleteWebhook(ctx context.Context, projectId float32, webhookId
 
 }
 
-// GetWebhook executes the GetWebhook operation.
+// GetWebhook is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetWebhook(ctx context.Context, projectId float32, webhookId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetWebhookRequest(c.Server, projectId, webhookId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetWebhookRequest(c.Server, projectId, webhookId)
+	}, true, "GetWebhook", reqEditors...)
 
 }
 
@@ -5416,35 +5085,23 @@ func (c *Client) UpdateWebhook(ctx context.Context, projectId float32, webhookId
 
 }
 
-// ListCampfires executes the ListCampfires operation.
+// ListCampfires is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListCampfires(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListCampfiresRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListCampfiresRequest(c.Server)
+	}, true, "ListCampfires", reqEditors...)
 
 }
 
-// ListPingablePeople executes the ListPingablePeople operation.
+// ListPingablePeople is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListPingablePeople(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListPingablePeopleRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListPingablePeopleRequest(c.Server)
+	}, true, "ListPingablePeople", reqEditors...)
 
 }
 
@@ -5506,67 +5163,43 @@ func (c *Client) UpdateLineupMarker(ctx context.Context, markerId float32, body 
 
 }
 
-// GetMyProfile executes the GetMyProfile operation.
+// GetMyProfile is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetMyProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetMyProfileRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetMyProfileRequest(c.Server)
+	}, true, "GetMyProfile", reqEditors...)
 
 }
 
-// ListPeople executes the ListPeople operation.
+// ListPeople is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListPeople(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListPeopleRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListPeopleRequest(c.Server)
+	}, true, "ListPeople", reqEditors...)
 
 }
 
-// GetPerson executes the GetPerson operation.
+// GetPerson is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetPerson(ctx context.Context, personId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetPersonRequest(c.Server, personId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetPersonRequest(c.Server, personId)
+	}, true, "GetPerson", reqEditors...)
 
 }
 
-// ListProjects executes the ListProjects operation.
+// ListProjects is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListProjects(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListProjectsRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListProjectsRequest(c.Server, params)
+	}, true, "ListProjects", reqEditors...)
 
 }
 
@@ -5600,19 +5233,13 @@ func (c *Client) CreateProject(ctx context.Context, body CreateProjectJSONReques
 
 }
 
-// ListRecordings executes the ListRecordings operation.
+// ListRecordings is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListRecordings(ctx context.Context, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListRecordingsRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListRecordingsRequest(c.Server, params)
+	}, true, "ListRecordings", reqEditors...)
 
 }
 
@@ -5626,19 +5253,13 @@ func (c *Client) TrashProject(ctx context.Context, projectId float32, reqEditors
 
 }
 
-// GetProject executes the GetProject operation.
+// GetProject is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetProject(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetProjectRequest(c.Server, projectId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetProjectRequest(c.Server, projectId)
+	}, true, "GetProject", reqEditors...)
 
 }
 
@@ -5660,19 +5281,13 @@ func (c *Client) UpdateProject(ctx context.Context, projectId float32, body Upda
 
 }
 
-// ListProjectPeople executes the ListProjectPeople operation.
+// ListProjectPeople is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListProjectPeople(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListProjectPeopleRequest(c.Server, projectId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListProjectPeopleRequest(c.Server, projectId)
+	}, true, "ListProjectPeople", reqEditors...)
 
 }
 
@@ -5694,67 +5309,43 @@ func (c *Client) UpdateProjectAccess(ctx context.Context, projectId float32, bod
 
 }
 
-// GetTimesheetReport executes the GetTimesheetReport operation.
+// GetTimesheetReport is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetTimesheetReport(ctx context.Context, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetTimesheetReportRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetTimesheetReportRequest(c.Server, params)
+	}, true, "GetTimesheetReport", reqEditors...)
 
 }
 
-// Search executes the Search operation.
+// Search is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) Search(ctx context.Context, params *SearchParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewSearchRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewSearchRequest(c.Server, params)
+	}, true, "Search", reqEditors...)
 
 }
 
-// GetSearchMetadata executes the GetSearchMetadata operation.
+// GetSearchMetadata is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetSearchMetadata(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetSearchMetadataRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetSearchMetadataRequest(c.Server)
+	}, true, "GetSearchMetadata", reqEditors...)
 
 }
 
-// ListTemplates executes the ListTemplates operation.
+// ListTemplates is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListTemplates(ctx context.Context, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewListTemplatesRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListTemplatesRequest(c.Server, params)
+	}, true, "ListTemplates", reqEditors...)
 
 }
 
@@ -5798,19 +5389,13 @@ func (c *Client) DeleteTemplate(ctx context.Context, templateId float32, reqEdit
 
 }
 
-// GetTemplate executes the GetTemplate operation.
+// GetTemplate is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetTemplate(ctx context.Context, templateId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetTemplateRequest(c.Server, templateId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetTemplateRequest(c.Server, templateId)
+	}, true, "GetTemplate", reqEditors...)
 
 }
 
@@ -5862,19 +5447,13 @@ func (c *Client) CreateProjectFromTemplate(ctx context.Context, templateId float
 
 }
 
-// GetProjectConstruction executes the GetProjectConstruction operation.
+// GetProjectConstruction is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetProjectConstruction(ctx context.Context, templateId float32, constructionId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewGetProjectConstructionRequest(c.Server, templateId, constructionId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetProjectConstructionRequest(c.Server, templateId, constructionId)
+	}, true, "GetProjectConstruction", reqEditors...)
 
 }
 
@@ -12946,158 +12525,159 @@ type OperationMetadata struct {
 
 // operationMetadata maps operation IDs to their metadata.
 // This is generated from x-basecamp-* extensions in the OpenAPI spec.
+// GET/HEAD operations are always considered idempotent for retry purposes.
 var operationMetadata = map[string]OperationMetadata{
 	"CreateAttachment":           {Idempotent: false, HasSensitiveParams: false},
-	"GetCard":                    {Idempotent: false, HasSensitiveParams: false},
+	"GetCard":                    {Idempotent: true, HasSensitiveParams: false},
 	"UpdateCard":                 {Idempotent: true, HasSensitiveParams: false},
 	"MoveCard":                   {Idempotent: false, HasSensitiveParams: false},
 	"RepositionCardStep":         {Idempotent: false, HasSensitiveParams: false},
 	"CreateCardStep":             {Idempotent: false, HasSensitiveParams: false},
-	"GetCardColumn":              {Idempotent: false, HasSensitiveParams: false},
+	"GetCardColumn":              {Idempotent: true, HasSensitiveParams: false},
 	"UpdateCardColumn":           {Idempotent: true, HasSensitiveParams: false},
 	"SetCardColumnColor":         {Idempotent: true, HasSensitiveParams: false},
 	"DisableCardColumnOnHold":    {Idempotent: true, HasSensitiveParams: false},
 	"EnableCardColumnOnHold":     {Idempotent: false, HasSensitiveParams: false},
-	"ListCards":                  {Idempotent: false, HasSensitiveParams: false},
+	"ListCards":                  {Idempotent: true, HasSensitiveParams: false},
 	"CreateCard":                 {Idempotent: false, HasSensitiveParams: false},
 	"UpdateCardStep":             {Idempotent: true, HasSensitiveParams: false},
 	"UncompleteCardStep":         {Idempotent: true, HasSensitiveParams: false},
 	"CompleteCardStep":           {Idempotent: true, HasSensitiveParams: false},
-	"GetCardTable":               {Idempotent: false, HasSensitiveParams: false},
+	"GetCardTable":               {Idempotent: true, HasSensitiveParams: false},
 	"CreateCardColumn":           {Idempotent: false, HasSensitiveParams: false},
 	"MoveCardColumn":             {Idempotent: false, HasSensitiveParams: false},
-	"ListMessageTypes":           {Idempotent: false, HasSensitiveParams: false},
+	"ListMessageTypes":           {Idempotent: true, HasSensitiveParams: false},
 	"CreateMessageType":          {Idempotent: false, HasSensitiveParams: false},
 	"DeleteMessageType":          {Idempotent: true, HasSensitiveParams: false},
-	"GetMessageType":             {Idempotent: false, HasSensitiveParams: false},
+	"GetMessageType":             {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMessageType":          {Idempotent: true, HasSensitiveParams: false},
-	"GetCampfire":                {Idempotent: false, HasSensitiveParams: false},
-	"ListChatbots":               {Idempotent: false, HasSensitiveParams: false},
+	"GetCampfire":                {Idempotent: true, HasSensitiveParams: false},
+	"ListChatbots":               {Idempotent: true, HasSensitiveParams: false},
 	"CreateChatbot":              {Idempotent: false, HasSensitiveParams: false},
 	"DeleteChatbot":              {Idempotent: true, HasSensitiveParams: false},
-	"GetChatbot":                 {Idempotent: false, HasSensitiveParams: false},
+	"GetChatbot":                 {Idempotent: true, HasSensitiveParams: false},
 	"UpdateChatbot":              {Idempotent: true, HasSensitiveParams: false},
-	"ListCampfireLines":          {Idempotent: false, HasSensitiveParams: false},
+	"ListCampfireLines":          {Idempotent: true, HasSensitiveParams: false},
 	"CreateCampfireLine":         {Idempotent: false, HasSensitiveParams: false},
 	"DeleteCampfireLine":         {Idempotent: true, HasSensitiveParams: false},
-	"GetCampfireLine":            {Idempotent: false, HasSensitiveParams: false},
-	"ListClientApprovals":        {Idempotent: false, HasSensitiveParams: false},
-	"GetClientApproval":          {Idempotent: false, HasSensitiveParams: false},
-	"ListClientCorrespondences":  {Idempotent: false, HasSensitiveParams: false},
-	"GetClientCorrespondence":    {Idempotent: false, HasSensitiveParams: false},
-	"ListClientReplies":          {Idempotent: false, HasSensitiveParams: false},
-	"GetClientReply":             {Idempotent: false, HasSensitiveParams: false},
-	"GetComment":                 {Idempotent: false, HasSensitiveParams: false},
+	"GetCampfireLine":            {Idempotent: true, HasSensitiveParams: false},
+	"ListClientApprovals":        {Idempotent: true, HasSensitiveParams: false},
+	"GetClientApproval":          {Idempotent: true, HasSensitiveParams: false},
+	"ListClientCorrespondences":  {Idempotent: true, HasSensitiveParams: false},
+	"GetClientCorrespondence":    {Idempotent: true, HasSensitiveParams: false},
+	"ListClientReplies":          {Idempotent: true, HasSensitiveParams: false},
+	"GetClientReply":             {Idempotent: true, HasSensitiveParams: false},
+	"GetComment":                 {Idempotent: true, HasSensitiveParams: false},
 	"UpdateComment":              {Idempotent: true, HasSensitiveParams: false},
 	"CloneTool":                  {Idempotent: false, HasSensitiveParams: false},
 	"DeleteTool":                 {Idempotent: true, HasSensitiveParams: false},
-	"GetTool":                    {Idempotent: false, HasSensitiveParams: false},
+	"GetTool":                    {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTool":                 {Idempotent: true, HasSensitiveParams: false},
 	"DisableTool":                {Idempotent: true, HasSensitiveParams: false},
 	"EnableTool":                 {Idempotent: false, HasSensitiveParams: false},
 	"RepositionTool":             {Idempotent: true, HasSensitiveParams: false},
-	"GetDocument":                {Idempotent: false, HasSensitiveParams: false},
+	"GetDocument":                {Idempotent: true, HasSensitiveParams: false},
 	"UpdateDocument":             {Idempotent: true, HasSensitiveParams: false},
-	"GetForward":                 {Idempotent: false, HasSensitiveParams: false},
-	"ListForwardReplies":         {Idempotent: false, HasSensitiveParams: false},
+	"GetForward":                 {Idempotent: true, HasSensitiveParams: false},
+	"ListForwardReplies":         {Idempotent: true, HasSensitiveParams: false},
 	"CreateForwardReply":         {Idempotent: false, HasSensitiveParams: false},
-	"GetForwardReply":            {Idempotent: false, HasSensitiveParams: false},
-	"GetInbox":                   {Idempotent: false, HasSensitiveParams: false},
-	"ListForwards":               {Idempotent: false, HasSensitiveParams: false},
-	"GetMessageBoard":            {Idempotent: false, HasSensitiveParams: false},
-	"ListMessages":               {Idempotent: false, HasSensitiveParams: false},
+	"GetForwardReply":            {Idempotent: true, HasSensitiveParams: false},
+	"GetInbox":                   {Idempotent: true, HasSensitiveParams: false},
+	"ListForwards":               {Idempotent: true, HasSensitiveParams: false},
+	"GetMessageBoard":            {Idempotent: true, HasSensitiveParams: false},
+	"ListMessages":               {Idempotent: true, HasSensitiveParams: false},
 	"CreateMessage":              {Idempotent: false, HasSensitiveParams: false},
-	"GetMessage":                 {Idempotent: false, HasSensitiveParams: false},
+	"GetMessage":                 {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMessage":              {Idempotent: true, HasSensitiveParams: false},
-	"GetAnswer":                  {Idempotent: false, HasSensitiveParams: false},
+	"GetAnswer":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateAnswer":               {Idempotent: true, HasSensitiveParams: false},
-	"GetQuestionnaire":           {Idempotent: false, HasSensitiveParams: false},
-	"ListQuestions":              {Idempotent: false, HasSensitiveParams: false},
+	"GetQuestionnaire":           {Idempotent: true, HasSensitiveParams: false},
+	"ListQuestions":              {Idempotent: true, HasSensitiveParams: false},
 	"CreateQuestion":             {Idempotent: false, HasSensitiveParams: false},
-	"GetQuestion":                {Idempotent: false, HasSensitiveParams: false},
+	"GetQuestion":                {Idempotent: true, HasSensitiveParams: false},
 	"UpdateQuestion":             {Idempotent: true, HasSensitiveParams: false},
-	"ListAnswers":                {Idempotent: false, HasSensitiveParams: false},
+	"ListAnswers":                {Idempotent: true, HasSensitiveParams: false},
 	"CreateAnswer":               {Idempotent: false, HasSensitiveParams: false},
 	"UnpinMessage":               {Idempotent: true, HasSensitiveParams: false},
 	"PinMessage":                 {Idempotent: false, HasSensitiveParams: false},
-	"GetRecording":               {Idempotent: false, HasSensitiveParams: false},
+	"GetRecording":               {Idempotent: true, HasSensitiveParams: false},
 	"SetClientVisibility":        {Idempotent: true, HasSensitiveParams: false},
-	"ListComments":               {Idempotent: false, HasSensitiveParams: false},
+	"ListComments":               {Idempotent: true, HasSensitiveParams: false},
 	"CreateComment":              {Idempotent: false, HasSensitiveParams: false},
-	"ListEvents":                 {Idempotent: false, HasSensitiveParams: false},
+	"ListEvents":                 {Idempotent: true, HasSensitiveParams: false},
 	"UnarchiveRecording":         {Idempotent: true, HasSensitiveParams: false},
 	"ArchiveRecording":           {Idempotent: true, HasSensitiveParams: false},
 	"TrashRecording":             {Idempotent: true, HasSensitiveParams: false},
 	"Unsubscribe":                {Idempotent: true, HasSensitiveParams: false},
-	"GetSubscription":            {Idempotent: false, HasSensitiveParams: false},
+	"GetSubscription":            {Idempotent: true, HasSensitiveParams: false},
 	"Subscribe":                  {Idempotent: false, HasSensitiveParams: false},
 	"UpdateSubscription":         {Idempotent: true, HasSensitiveParams: false},
-	"GetRecordingTimesheet":      {Idempotent: false, HasSensitiveParams: false},
-	"GetScheduleEntry":           {Idempotent: false, HasSensitiveParams: false},
+	"GetRecordingTimesheet":      {Idempotent: true, HasSensitiveParams: false},
+	"GetScheduleEntry":           {Idempotent: true, HasSensitiveParams: false},
 	"UpdateScheduleEntry":        {Idempotent: true, HasSensitiveParams: false},
-	"GetScheduleEntryOccurrence": {Idempotent: false, HasSensitiveParams: false},
-	"GetSchedule":                {Idempotent: false, HasSensitiveParams: false},
+	"GetScheduleEntryOccurrence": {Idempotent: true, HasSensitiveParams: false},
+	"GetSchedule":                {Idempotent: true, HasSensitiveParams: false},
 	"UpdateScheduleSettings":     {Idempotent: true, HasSensitiveParams: false},
-	"ListScheduleEntries":        {Idempotent: false, HasSensitiveParams: false},
+	"ListScheduleEntries":        {Idempotent: true, HasSensitiveParams: false},
 	"CreateScheduleEntry":        {Idempotent: false, HasSensitiveParams: false},
-	"GetProjectTimesheet":        {Idempotent: false, HasSensitiveParams: false},
+	"GetProjectTimesheet":        {Idempotent: true, HasSensitiveParams: false},
 	"RepositionTodolistGroup":    {Idempotent: true, HasSensitiveParams: false},
-	"GetTodolistOrGroup":         {Idempotent: false, HasSensitiveParams: false},
+	"GetTodolistOrGroup":         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTodolistOrGroup":      {Idempotent: true, HasSensitiveParams: false},
-	"ListTodolistGroups":         {Idempotent: false, HasSensitiveParams: false},
+	"ListTodolistGroups":         {Idempotent: true, HasSensitiveParams: false},
 	"CreateTodolistGroup":        {Idempotent: false, HasSensitiveParams: false},
-	"ListTodos":                  {Idempotent: false, HasSensitiveParams: false},
+	"ListTodos":                  {Idempotent: true, HasSensitiveParams: false},
 	"CreateTodo":                 {Idempotent: false, HasSensitiveParams: false},
 	"TrashTodo":                  {Idempotent: true, HasSensitiveParams: false},
-	"GetTodo":                    {Idempotent: false, HasSensitiveParams: false},
+	"GetTodo":                    {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTodo":                 {Idempotent: true, HasSensitiveParams: false},
 	"UncompleteTodo":             {Idempotent: true, HasSensitiveParams: false},
 	"CompleteTodo":               {Idempotent: true, HasSensitiveParams: false},
-	"GetTodoset":                 {Idempotent: false, HasSensitiveParams: false},
-	"ListTodolists":              {Idempotent: false, HasSensitiveParams: false},
+	"GetTodoset":                 {Idempotent: true, HasSensitiveParams: false},
+	"ListTodolists":              {Idempotent: true, HasSensitiveParams: false},
 	"CreateTodolist":             {Idempotent: false, HasSensitiveParams: false},
-	"GetUpload":                  {Idempotent: false, HasSensitiveParams: false},
+	"GetUpload":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateUpload":               {Idempotent: true, HasSensitiveParams: false},
-	"ListUploadVersions":         {Idempotent: false, HasSensitiveParams: false},
-	"GetVault":                   {Idempotent: false, HasSensitiveParams: false},
+	"ListUploadVersions":         {Idempotent: true, HasSensitiveParams: false},
+	"GetVault":                   {Idempotent: true, HasSensitiveParams: false},
 	"UpdateVault":                {Idempotent: true, HasSensitiveParams: false},
-	"ListDocuments":              {Idempotent: false, HasSensitiveParams: false},
+	"ListDocuments":              {Idempotent: true, HasSensitiveParams: false},
 	"CreateDocument":             {Idempotent: false, HasSensitiveParams: false},
-	"ListUploads":                {Idempotent: false, HasSensitiveParams: false},
+	"ListUploads":                {Idempotent: true, HasSensitiveParams: false},
 	"CreateUpload":               {Idempotent: false, HasSensitiveParams: false},
-	"ListVaults":                 {Idempotent: false, HasSensitiveParams: false},
+	"ListVaults":                 {Idempotent: true, HasSensitiveParams: false},
 	"CreateVault":                {Idempotent: false, HasSensitiveParams: false},
-	"ListWebhooks":               {Idempotent: false, HasSensitiveParams: false},
+	"ListWebhooks":               {Idempotent: true, HasSensitiveParams: false},
 	"CreateWebhook":              {Idempotent: false, HasSensitiveParams: false},
 	"DeleteWebhook":              {Idempotent: true, HasSensitiveParams: false},
-	"GetWebhook":                 {Idempotent: false, HasSensitiveParams: false},
+	"GetWebhook":                 {Idempotent: true, HasSensitiveParams: false},
 	"UpdateWebhook":              {Idempotent: true, HasSensitiveParams: false},
-	"ListCampfires":              {Idempotent: false, HasSensitiveParams: false},
-	"ListPingablePeople":         {Idempotent: false, HasSensitiveParams: false},
+	"ListCampfires":              {Idempotent: true, HasSensitiveParams: false},
+	"ListPingablePeople":         {Idempotent: true, HasSensitiveParams: false},
 	"CreateLineupMarker":         {Idempotent: false, HasSensitiveParams: false},
 	"DeleteLineupMarker":         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateLineupMarker":         {Idempotent: true, HasSensitiveParams: false},
-	"GetMyProfile":               {Idempotent: false, HasSensitiveParams: false},
-	"ListPeople":                 {Idempotent: false, HasSensitiveParams: false},
-	"GetPerson":                  {Idempotent: false, HasSensitiveParams: false},
-	"ListProjects":               {Idempotent: false, HasSensitiveParams: false},
+	"GetMyProfile":               {Idempotent: true, HasSensitiveParams: false},
+	"ListPeople":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetPerson":                  {Idempotent: true, HasSensitiveParams: false},
+	"ListProjects":               {Idempotent: true, HasSensitiveParams: false},
 	"CreateProject":              {Idempotent: false, HasSensitiveParams: false},
-	"ListRecordings":             {Idempotent: false, HasSensitiveParams: false},
+	"ListRecordings":             {Idempotent: true, HasSensitiveParams: false},
 	"TrashProject":               {Idempotent: true, HasSensitiveParams: false},
-	"GetProject":                 {Idempotent: false, HasSensitiveParams: false},
+	"GetProject":                 {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProject":              {Idempotent: true, HasSensitiveParams: false},
-	"ListProjectPeople":          {Idempotent: false, HasSensitiveParams: false},
+	"ListProjectPeople":          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProjectAccess":        {Idempotent: true, HasSensitiveParams: false},
-	"GetTimesheetReport":         {Idempotent: false, HasSensitiveParams: false},
-	"Search":                     {Idempotent: false, HasSensitiveParams: false},
-	"GetSearchMetadata":          {Idempotent: false, HasSensitiveParams: false},
-	"ListTemplates":              {Idempotent: false, HasSensitiveParams: false},
+	"GetTimesheetReport":         {Idempotent: true, HasSensitiveParams: false},
+	"Search":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetSearchMetadata":          {Idempotent: true, HasSensitiveParams: false},
+	"ListTemplates":              {Idempotent: true, HasSensitiveParams: false},
 	"CreateTemplate":             {Idempotent: false, HasSensitiveParams: false},
 	"DeleteTemplate":             {Idempotent: true, HasSensitiveParams: false},
-	"GetTemplate":                {Idempotent: false, HasSensitiveParams: false},
+	"GetTemplate":                {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTemplate":             {Idempotent: true, HasSensitiveParams: false},
 	"CreateProjectFromTemplate":  {Idempotent: false, HasSensitiveParams: false},
-	"GetProjectConstruction":     {Idempotent: false, HasSensitiveParams: false},
+	"GetProjectConstruction":     {Idempotent: true, HasSensitiveParams: false},
 }
 
 // GetOperationMetadata returns metadata for the given operation ID.
