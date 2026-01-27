@@ -204,7 +204,9 @@ jobs:
           apidiff -w pr.api ./pkg/basecamp
 
           # Check out the base branch to compare against
+          # Use git clean to remove files added in the PR that don't exist on base
           git checkout "origin/${BASE_REF}" -- .
+          git clean -fd
 
           # Export the base API
           apidiff -w base.api ./pkg/basecamp
