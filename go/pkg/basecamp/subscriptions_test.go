@@ -1,11 +1,20 @@
 package basecamp
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+// unmarshalSubsWithNumbers decodes JSON into a map preserving numbers as json.Number.
+func unmarshalSubsWithNumbers(data []byte) (map[string]interface{}, error) {
+	var result map[string]interface{}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	return result, decoder.Decode(&result)
+}
 
 func subscriptionsFixturesDir() string {
 	return filepath.Join("..", "..", "..", "spec", "fixtures", "subscriptions")
@@ -167,8 +176,8 @@ func TestUpdateSubscriptionRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateSubscriptionRequest: %v", err)
 	}
 
-	var data map[string]interface{}
-	if err := json.Unmarshal(out, &data); err != nil {
+	data, err := unmarshalSubsWithNumbers(out)
+	if err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
@@ -179,7 +188,8 @@ func TestUpdateSubscriptionRequest_Marshal(t *testing.T) {
 	if len(subs) != 1 {
 		t.Errorf("expected 1 subscription, got %d", len(subs))
 	}
-	if int64(subs[0].(float64)) != 1049715916 {
+	subID, _ := subs[0].(json.Number).Int64()
+	if subID != 1049715916 {
 		t.Errorf("expected subscription ID 1049715916, got %v", subs[0])
 	}
 
@@ -190,7 +200,8 @@ func TestUpdateSubscriptionRequest_Marshal(t *testing.T) {
 	if len(unsubs) != 1 {
 		t.Errorf("expected 1 unsubscription, got %d", len(unsubs))
 	}
-	if int64(unsubs[0].(float64)) != 1049715923 {
+	unsubID, _ := unsubs[0].(json.Number).Int64()
+	if unsubID != 1049715923 {
 		t.Errorf("expected unsubscription ID 1049715923, got %v", unsubs[0])
 	}
 

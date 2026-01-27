@@ -1,11 +1,21 @@
 package basecamp
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+// unmarshalCardsWithNumbers decodes JSON into a map preserving numbers as json.Number
+// which can be cleanly converted to int64 without float64 precision loss.
+func unmarshalCardsWithNumbers(data []byte) (map[string]interface{}, error) {
+	var result map[string]interface{}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	return result, decoder.Decode(&result)
+}
 
 func cardsFixturesDir() string {
 	return filepath.Join("..", "..", "..", "spec", "fixtures", "cards")
@@ -486,12 +496,13 @@ func TestMoveCardRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal MoveCardRequest: %v", err)
 	}
 
-	var data map[string]interface{}
-	if err := json.Unmarshal(out, &data); err != nil {
+	data, err := unmarshalCardsWithNumbers(out)
+	if err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
-	if data["column_id"] != float64(1069479348) {
+	columnID, _ := data["column_id"].(json.Number).Int64()
+	if columnID != 1069479348 {
 		t.Errorf("unexpected column_id: %v", data["column_id"])
 	}
 }
@@ -552,18 +563,21 @@ func TestMoveColumnRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal MoveColumnRequest: %v", err)
 	}
 
-	var data map[string]interface{}
-	if err := json.Unmarshal(out, &data); err != nil {
+	data, err := unmarshalCardsWithNumbers(out)
+	if err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
-	if data["source_id"] != float64(1069479347) {
+	sourceID, _ := data["source_id"].(json.Number).Int64()
+	if sourceID != 1069479347 {
 		t.Errorf("unexpected source_id: %v", data["source_id"])
 	}
-	if data["target_id"] != float64(1069479348) {
+	targetID, _ := data["target_id"].(json.Number).Int64()
+	if targetID != 1069479348 {
 		t.Errorf("unexpected target_id: %v", data["target_id"])
 	}
-	if data["position"] != float64(1) {
+	position, _ := data["position"].(json.Number).Int64()
+	if position != 1 {
 		t.Errorf("unexpected position: %v", data["position"])
 	}
 }
