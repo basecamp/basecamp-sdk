@@ -114,13 +114,13 @@ func TestDerefHelpers(t *testing.T) {
 		t.Error("DerefString failed for nil")
 	}
 
-	// Test DerefFloat32
-	f := float32(3.14)
-	if DerefFloat32(&f) != 3.14 {
-		t.Error("DerefFloat32 failed for non-nil")
+	// Test DerefInt64
+	i64 := int64(9007199254740993)
+	if DerefInt64(&i64) != 9007199254740993 {
+		t.Error("DerefInt64 failed for non-nil")
 	}
-	if DerefFloat32(nil) != 0 {
-		t.Error("DerefFloat32 failed for nil")
+	if DerefInt64(nil) != 0 {
+		t.Error("DerefInt64 failed for nil")
 	}
 
 	// Test DerefBool
@@ -148,9 +148,9 @@ func TestPtrHelpers(t *testing.T) {
 		t.Error("PtrString failed")
 	}
 
-	f := PtrFloat32(2.5)
-	if *f != 2.5 {
-		t.Error("PtrFloat32 failed")
+	i64 := PtrInt64(9007199254740993)
+	if *i64 != 9007199254740993 {
+		t.Error("PtrInt64 failed")
 	}
 
 	b := PtrBool(true)
@@ -218,11 +218,11 @@ func TestParseTimestampPtr(t *testing.T) {
 }
 
 func TestPersonFromGenerated(t *testing.T) {
-	id := float32(123)
+	id := int64(123)
 	name := "John Doe"
 	email := "john@example.com"
 	admin := true
-	companyId := float32(456)
+	companyId := int64(456)
 	companyName := "Acme Inc"
 
 	g := &generated.Person{
@@ -272,14 +272,14 @@ func TestPersonFromGenerated_Nil(t *testing.T) {
 }
 
 func TestTodoFromGenerated(t *testing.T) {
-	id := float32(789)
+	id := int64(789)
 	title := "Test Todo"
 	content := "Do something"
 	completed := true
 	status := "active"
 	createdAt := "2024-01-15T10:30:00Z"
 
-	creatorId := float32(123)
+	creatorId := int64(123)
 	creatorName := "Jane Doe"
 
 	g := &generated.Todo{
@@ -327,14 +327,14 @@ func TestTodoFromGenerated(t *testing.T) {
 }
 
 func TestProjectFromGenerated(t *testing.T) {
-	id := float32(999)
+	id := int64(999)
 	name := "Test Project"
 	description := "A test project"
 	status := "active"
 	bookmarked := true
 	createdAt := "2024-01-15T10:30:00Z"
 
-	dockId := float32(1)
+	dockId := int64(1)
 	dockTitle := "Messages"
 	dockEnabled := true
 
@@ -378,8 +378,8 @@ func TestProjectFromGenerated(t *testing.T) {
 
 func TestSliceConverters(t *testing.T) {
 	// Test TodosFromGenerated
-	id1 := float32(1)
-	id2 := float32(2)
+	id1 := int64(1)
+	id2 := int64(2)
 	title1 := "Todo 1"
 	title2 := "Todo 2"
 

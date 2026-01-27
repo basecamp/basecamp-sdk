@@ -256,10 +256,16 @@ func DerefString(p *string) string {
 	return *p
 }
 
-// DerefFloat32 safely dereferences a float32 pointer, returning 0 if nil.
-// NOTE: The generated code uses float32 for numeric IDs due to OpenAPI type mapping.
-// This loses precision for IDs > 16M. See TODO in BridgeListTodos for fix tracking.
-func DerefFloat32(p *float32) float32 {
+// DerefInt64 safely dereferences an int64 pointer, returning 0 if nil.
+func DerefInt64(p *int64) int64 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+// DerefInt32 safely dereferences an int32 pointer, returning 0 if nil.
+func DerefInt32(p *int32) int32 {
 	if p == nil {
 		return 0
 	}
@@ -287,9 +293,9 @@ func PtrString(s string) *string {
 	return &s
 }
 
-// PtrFloat32 returns a pointer to the given float32.
-func PtrFloat32(f float32) *float32 {
-	return &f
+// PtrInt64 returns a pointer to the given int64.
+func PtrInt64(i int64) *int64 {
+	return &i
 }
 
 // PtrBool returns a pointer to the given bool.
@@ -338,7 +344,7 @@ func TodoFromGenerated(g *generated.Todo) *Todo {
 	}
 
 	t := &Todo{
-		ID:          int64(DerefFloat32(g.Id)),
+		ID:          DerefInt64(g.Id),
 		Status:      DerefString(g.Status),
 		Title:       DerefString(g.Title),
 		Content:     DerefString(g.Content),
@@ -349,7 +355,7 @@ func TodoFromGenerated(g *generated.Todo) *Todo {
 		BookmarkURL: DerefString(g.BookmarkUrl),
 		DueOn:       DerefString(g.DueOn),
 		StartsOn:    DerefString(g.StartsOn),
-		Position:    int(DerefFloat32(g.Position)),
+		Position:    int(DerefInt32(g.Position)),
 		InheritsVis: DerefBool(g.InheritsStatus),
 		Type:        DerefString(g.Type),
 		CreatedAt:   ParseTimestamp(g.CreatedAt),
@@ -385,7 +391,7 @@ func PersonFromGenerated(g *generated.Person) *Person {
 	}
 
 	p := &Person{
-		ID:             int64(DerefFloat32(g.Id)),
+		ID:             DerefInt64(g.Id),
 		Name:           DerefString(g.Name),
 		EmailAddress:   DerefString(g.EmailAddress),
 		PersonableType: DerefString(g.PersonableType),
@@ -405,7 +411,7 @@ func PersonFromGenerated(g *generated.Person) *Person {
 	// Convert company if present
 	if g.Company != nil {
 		p.Company = &PersonCompany{
-			ID:   int64(DerefFloat32(g.Company.Id)),
+			ID:   DerefInt64(g.Company.Id),
 			Name: DerefString(g.Company.Name),
 		}
 	}
@@ -420,7 +426,7 @@ func ParentFromGenerated(g *generated.TodoParent) *Parent {
 	}
 
 	return &Parent{
-		ID:     int64(DerefFloat32(g.Id)),
+		ID:     DerefInt64(g.Id),
 		Title:  DerefString(g.Title),
 		Type:   DerefString(g.Type),
 		URL:    DerefString(g.Url),
@@ -435,7 +441,7 @@ func BucketFromGenerated(g *generated.TodoBucket) *Bucket {
 	}
 
 	return &Bucket{
-		ID:   int64(DerefFloat32(g.Id)),
+		ID:   DerefInt64(g.Id),
 		Name: DerefString(g.Name),
 		Type: DerefString(g.Type),
 	}
@@ -448,7 +454,7 @@ func ProjectFromGenerated(g *generated.Project) *Project {
 	}
 
 	p := &Project{
-		ID:             int64(DerefFloat32(g.Id)),
+		ID:             DerefInt64(g.Id),
 		Name:           DerefString(g.Name),
 		Description:    DerefString(g.Description),
 		Status:         DerefString(g.Status),
@@ -467,7 +473,7 @@ func ProjectFromGenerated(g *generated.Project) *Project {
 		p.Dock = make([]DockItem, len(*g.Dock))
 		for i, d := range *g.Dock {
 			p.Dock[i] = DockItem{
-				ID:      int64(DerefFloat32(d.Id)),
+				ID:      DerefInt64(d.Id),
 				Title:   DerefString(d.Title),
 				Name:    DerefString(d.Name),
 				Enabled: DerefBool(d.Enabled),
@@ -475,7 +481,7 @@ func ProjectFromGenerated(g *generated.Project) *Project {
 				AppURL:  DerefString(d.AppUrl),
 			}
 			if d.Position != nil {
-				pos := int(DerefFloat32(d.Position))
+				pos := int(DerefInt32(d.Position))
 				p.Dock[i].Position = &pos
 			}
 		}
@@ -484,7 +490,7 @@ func ProjectFromGenerated(g *generated.Project) *Project {
 	// Convert client company
 	if g.ClientCompany != nil {
 		p.ClientCompany = &ClientCompany{
-			ID:   int64(DerefFloat32(g.ClientCompany.Id)),
+			ID:   DerefInt64(g.ClientCompany.Id),
 			Name: DerefString(g.ClientCompany.Name),
 		}
 	}
@@ -593,7 +599,7 @@ func (b *BridgeClient) BridgeListProjects(ctx context.Context, status *string) (
 
 // BridgeGetProject uses the bridge to get a single project.
 func (b *BridgeClient) BridgeGetProject(ctx context.Context, projectId int64) (*Project, error) {
-	resp, err := b.gen.GetProjectWithResponse(ctx, float32(projectId))
+	resp, err := b.gen.GetProjectWithResponse(ctx, projectId)
 	if err != nil {
 		return nil, ErrNetwork(err)
 	}
@@ -615,9 +621,7 @@ func (b *BridgeClient) BridgeListTodos(ctx context.Context, projectId, todolistI
 		Status: status,
 	}
 
-	// TODO: float32 conversions lose precision for IDs > 16M. Fix by updating
-	// Smithy spec to generate type: integer, format: int64 in OpenAPI.
-	resp, err := b.gen.ListTodosWithResponse(ctx, float32(projectId), float32(todolistId), params)
+	resp, err := b.gen.ListTodosWithResponse(ctx, projectId, todolistId, params)
 	if err != nil {
 		return nil, ErrNetwork(err)
 	}
@@ -635,7 +639,7 @@ func (b *BridgeClient) BridgeListTodos(ctx context.Context, projectId, todolistI
 
 // BridgeGetTodo uses the bridge to get a single todo.
 func (b *BridgeClient) BridgeGetTodo(ctx context.Context, projectId, todoId int64) (*Todo, error) {
-	resp, err := b.gen.GetTodoWithResponse(ctx, float32(projectId), float32(todoId))
+	resp, err := b.gen.GetTodoWithResponse(ctx, projectId, todoId)
 	if err != nil {
 		return nil, ErrNetwork(err)
 	}
@@ -653,7 +657,7 @@ func (b *BridgeClient) BridgeGetTodo(ctx context.Context, projectId, todoId int6
 
 // BridgeCompleteTodo uses the bridge to mark a todo as complete.
 func (b *BridgeClient) BridgeCompleteTodo(ctx context.Context, projectId, todoId int64) error {
-	resp, err := b.gen.CompleteTodoWithResponse(ctx, float32(projectId), float32(todoId))
+	resp, err := b.gen.CompleteTodoWithResponse(ctx, projectId, todoId)
 	if err != nil {
 		return ErrNetwork(err)
 	}
@@ -663,7 +667,7 @@ func (b *BridgeClient) BridgeCompleteTodo(ctx context.Context, projectId, todoId
 
 // BridgeUncompleteTodo uses the bridge to mark a todo as incomplete.
 func (b *BridgeClient) BridgeUncompleteTodo(ctx context.Context, projectId, todoId int64) error {
-	resp, err := b.gen.UncompleteTodoWithResponse(ctx, float32(projectId), float32(todoId))
+	resp, err := b.gen.UncompleteTodoWithResponse(ctx, projectId, todoId)
 	if err != nil {
 		return ErrNetwork(err)
 	}
