@@ -17,6 +17,12 @@ use smithy.api#sensitive
 use smithy.api#deprecated
 use aws.protocols#restJson1
 
+// Bridge traits for OpenAPI x-basecamp-* extensions
+use basecamp.traits#basecampRetry
+use basecamp.traits#basecampPagination
+use basecamp.traits#basecampIdempotent
+use basecamp.traits#basecampSensitive
+
 /// Basecamp API
 @restJson1
 service Basecamp {
@@ -256,6 +262,8 @@ structure InternalServerError {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/projects.json")
 operation ListProjects {
   input: ListProjectsInput
@@ -275,6 +283,7 @@ structure ListProjectsOutput {
 
 /// Get a single project by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/projects/{projectId}")
 operation GetProject {
   input: GetProjectInput
@@ -294,6 +303,7 @@ structure GetProjectOutput {
 }
 
 /// Create a new project
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/projects.json")
 operation CreateProject {
   input: CreateProjectInput
@@ -314,6 +324,8 @@ structure CreateProjectOutput {
 
 /// Update an existing project
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/projects/{projectId}")
 operation UpdateProject {
   input: UpdateProjectInput
@@ -340,6 +352,8 @@ structure UpdateProjectOutput {
 
 /// Trash a project (returns 204 No Content)
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/projects/{projectId}")
 operation TrashProject {
   input: TrashProjectInput
@@ -454,6 +468,8 @@ structure ClientSide {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/todolists/{todolistId}/todos.json")
 operation ListTodos {
   input: ListTodosInput
@@ -484,6 +500,7 @@ structure ListTodosOutput {
 
 /// Get a single todo by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/todos/{todoId}")
 operation GetTodo {
   input: GetTodoInput
@@ -507,6 +524,7 @@ structure GetTodoOutput {
 }
 
 /// Create a new todo in a todolist
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/todolists/{todolistId}/todos.json")
 operation CreateTodo {
   input: CreateTodoInput
@@ -541,6 +559,8 @@ structure CreateTodoOutput {
 
 /// Update an existing todo
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/todos/{todoId}")
 operation UpdateTodo {
   input: UpdateTodoInput
@@ -573,6 +593,8 @@ structure UpdateTodoOutput {
 
 /// Trash a todo (returns 204 No Content)
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/todos/{todoId}")
 operation TrashTodo {
   input: TrashTodoInput
@@ -593,6 +615,8 @@ structure TrashTodoInput {
 structure TrashTodoOutput {}
 
 /// Mark a todo as complete
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "POST", uri: "/buckets/{projectId}/todos/{todoId}/completion.json")
 operation CompleteTodo {
   input: CompleteTodoInput
@@ -614,6 +638,8 @@ structure CompleteTodoOutput {}
 
 /// Mark a todo as incomplete
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/todos/{todoId}/completion.json")
 operation UncompleteTodo {
   input: UncompleteTodoInput
@@ -637,6 +663,7 @@ structure UncompleteTodoOutput {}
 
 /// Get a todoset (container for todolists in a project)
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/todosets/{todosetId}")
 operation GetTodoset {
   input: GetTodosetInput
@@ -666,6 +693,8 @@ structure GetTodosetOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/todosets/{todosetId}/todolists.json")
 operation ListTodolists {
   input: ListTodolistsInput
@@ -694,6 +723,7 @@ structure ListTodolistsOutput {
 /// Get a single todolist or todolist group by id
 /// The endpoint is polymorphic - the same URI returns either a Todolist or TodolistGroup
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/todolists/{id}")
 operation GetTodolistOrGroup {
   input: GetTodolistOrGroupInput
@@ -723,6 +753,7 @@ union TodolistOrGroup {
 }
 
 /// Create a new todolist in a todoset
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/todosets/{todosetId}/todolists.json")
 operation CreateTodolist {
   input: CreateTodolistInput
@@ -753,6 +784,8 @@ structure CreateTodolistOutput {
 /// Update an existing todolist or todolist group
 /// The endpoint is polymorphic - updates either a Todolist or TodolistGroup
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/todolists/{id}")
 operation UpdateTodolistOrGroup {
   input: UpdateTodolistOrGroupInput
@@ -791,6 +824,8 @@ structure UpdateTodolistOrGroupOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/todolists/{todolistId}/groups.json")
 operation ListTodolistGroups {
   input: ListTodolistGroupsInput
@@ -814,6 +849,7 @@ structure ListTodolistGroupsOutput {
 }
 
 /// Create a new group in a todolist
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/todolists/{todolistId}/groups.json")
 operation CreateTodolistGroup {
   input: CreateTodolistGroupInput
@@ -841,6 +877,8 @@ structure CreateTodolistGroupOutput {
 
 /// Reposition a todolist group
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/todolists/{groupId}/position.json")
 operation RepositionTodolistGroup {
   input: RepositionTodolistGroupInput
@@ -928,12 +966,24 @@ structure TodoBucket {
 structure Person {
   id: PersonId
   attachable_sgid: String
+
+  @basecampSensitive(category: "pii", redact: true)
   name: PersonName
+
+  @basecampSensitive(category: "pii", redact: true)
   email_address: EmailAddress
+
   personable_type: String
+
+  @basecampSensitive(category: "pii", redact: false)
   title: PersonTitle
+
+  @basecampSensitive(category: "pii", redact: false)
   bio: PersonBio
+
+  @basecampSensitive(category: "pii", redact: false)
   location: PersonLocation
+
   created_at: ISO8601Timestamp
   updated_at: ISO8601Timestamp
   admin: Boolean
@@ -941,7 +991,10 @@ structure Person {
   client: Boolean
   employee: Boolean
   time_zone: String
+
+  @basecampSensitive(category: "pii", redact: true)
   avatar_url: AvatarUrl
+
   company: PersonCompany
   can_manage_projects: Boolean
   can_manage_people: Boolean
@@ -1069,6 +1122,8 @@ structure TodolistGroup {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}/comments.json")
 operation ListComments {
   input: ListCommentsInput
@@ -1093,6 +1148,7 @@ structure ListCommentsOutput {
 
 /// Get a single comment by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/comments/{commentId}")
 operation GetComment {
   input: GetCommentInput
@@ -1116,6 +1172,7 @@ structure GetCommentOutput {
 }
 
 /// Create a new comment on a recording
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/recordings/{recordingId}/comments.json")
 operation CreateComment {
   input: CreateCommentInput
@@ -1143,6 +1200,8 @@ structure CreateCommentOutput {
 
 /// Update an existing comment
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/comments/{commentId}")
 operation UpdateComment {
   input: UpdateCommentInput
@@ -1177,6 +1236,8 @@ structure UpdateCommentOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/message_boards/{boardId}/messages.json")
 operation ListMessages {
   input: ListMessagesInput
@@ -1201,6 +1262,7 @@ structure ListMessagesOutput {
 
 /// Get a single message by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/messages/{messageId}")
 operation GetMessage {
   input: GetMessageInput
@@ -1224,6 +1286,7 @@ structure GetMessageOutput {
 }
 
 /// Create a new message on a message board
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/message_boards/{boardId}/messages.json")
 operation CreateMessage {
   input: CreateMessageInput
@@ -1258,6 +1321,8 @@ structure CreateMessageOutput {
 
 /// Update an existing message
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/messages/{messageId}")
 operation UpdateMessage {
   input: UpdateMessageInput
@@ -1289,6 +1354,7 @@ structure UpdateMessageOutput {
 }
 
 /// Pin a message to the top of the message board
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/recordings/{messageId}/pin.json")
 operation PinMessage {
   input: PinMessageInput
@@ -1310,6 +1376,8 @@ structure PinMessageOutput {}
 
 /// Unpin a message from the message board
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/recordings/{messageId}/pin.json")
 operation UnpinMessage {
   input: UnpinMessageInput
@@ -1335,6 +1403,7 @@ structure UnpinMessageOutput {}
 
 /// Get a message board
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/message_boards/{boardId}")
 operation GetMessageBoard {
   input: GetMessageBoardInput
@@ -1364,6 +1433,8 @@ structure GetMessageBoardOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/categories.json")
 operation ListMessageTypes {
   input: ListMessageTypesInput
@@ -1384,6 +1455,7 @@ structure ListMessageTypesOutput {
 
 /// Get a single message type by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/categories/{typeId}")
 operation GetMessageType {
   input: GetMessageTypeInput
@@ -1407,6 +1479,7 @@ structure GetMessageTypeOutput {
 }
 
 /// Create a new message type in a project
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/categories.json")
 operation CreateMessageType {
   input: CreateMessageTypeInput
@@ -1433,6 +1506,8 @@ structure CreateMessageTypeOutput {
 
 /// Update an existing message type
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/categories/{typeId}")
 operation UpdateMessageType {
   input: UpdateMessageTypeInput
@@ -1460,6 +1535,8 @@ structure UpdateMessageTypeOutput {
 
 /// Delete a message type
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/categories/{typeId}")
 operation DeleteMessageType {
   input: DeleteMessageTypeInput
@@ -1486,6 +1563,8 @@ structure DeleteMessageTypeOutput {}
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}/vaults.json")
 operation ListVaults {
   input: ListVaultsInput
@@ -1510,6 +1589,7 @@ structure ListVaultsOutput {
 
 /// Get a single vault by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}")
 operation GetVault {
   input: GetVaultInput
@@ -1533,6 +1613,7 @@ structure GetVaultOutput {
 }
 
 /// Create a new vault (subfolder) in a vault
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/vaults/{vaultId}/vaults.json")
 operation CreateVault {
   input: CreateVaultInput
@@ -1560,6 +1641,8 @@ structure CreateVaultOutput {
 
 /// Update an existing vault
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/vaults/{vaultId}")
 operation UpdateVault {
   input: UpdateVaultInput
@@ -1591,6 +1674,8 @@ structure UpdateVaultOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}/documents.json")
 operation ListDocuments {
   input: ListDocumentsInput
@@ -1615,6 +1700,7 @@ structure ListDocumentsOutput {
 
 /// Get a single document by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/documents/{documentId}")
 operation GetDocument {
   input: GetDocumentInput
@@ -1638,6 +1724,7 @@ structure GetDocumentOutput {
 }
 
 /// Create a new document in a vault
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/vaults/{vaultId}/documents.json")
 operation CreateDocument {
   input: CreateDocumentInput
@@ -1670,6 +1757,8 @@ structure CreateDocumentOutput {
 
 /// Update an existing document
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/documents/{documentId}")
 operation UpdateDocument {
   input: UpdateDocumentInput
@@ -1704,6 +1793,8 @@ structure UpdateDocumentOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/vaults/{vaultId}/uploads.json")
 operation ListUploads {
   input: ListUploadsInput
@@ -1728,6 +1819,7 @@ structure ListUploadsOutput {
 
 /// Get a single upload by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/uploads/{uploadId}")
 operation GetUpload {
   input: GetUploadInput
@@ -1751,6 +1843,7 @@ structure GetUploadOutput {
 }
 
 /// Create a new upload in a vault
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/vaults/{vaultId}/uploads.json")
 operation CreateUpload {
   input: CreateUploadInput
@@ -1781,6 +1874,8 @@ structure CreateUploadOutput {
 
 /// Update an existing upload
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/uploads/{uploadId}")
 operation UpdateUpload {
   input: UpdateUploadInput
@@ -1813,6 +1908,8 @@ structure UpdateUploadOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/uploads/{uploadId}/versions.json")
 operation ListUploadVersions {
   input: ListUploadVersionsInput
@@ -1838,6 +1935,7 @@ structure ListUploadVersionsOutput {
 // ===== Attachment Operations (Batch 2) =====
 
 /// Create an attachment (upload a file for embedding)
+@basecampRetry(maxAttempts: 3, baseDelayMs: 2000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/attachments.json")
 operation CreateAttachment {
   input: CreateAttachmentInput
@@ -1867,6 +1965,7 @@ structure CreateAttachmentOutput {
 
 /// Get a schedule
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/schedules/{scheduleId}")
 operation GetSchedule {
   input: GetScheduleInput
@@ -1891,6 +1990,8 @@ structure GetScheduleOutput {
 
 /// Update schedule settings
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/schedules/{scheduleId}")
 operation UpdateScheduleSettings {
   input: UpdateScheduleSettingsInput
@@ -1921,6 +2022,8 @@ structure UpdateScheduleSettingsOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/schedules/{scheduleId}/entries.json")
 operation ListScheduleEntries {
   input: ListScheduleEntriesInput
@@ -1948,6 +2051,7 @@ structure ListScheduleEntriesOutput {
 
 /// Get a single schedule entry by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/schedule_entries/{entryId}")
 operation GetScheduleEntry {
   input: GetScheduleEntryInput
@@ -1972,6 +2076,7 @@ structure GetScheduleEntryOutput {
 
 /// Get a specific occurrence of a recurring schedule entry
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}")
 operation GetScheduleEntryOccurrence {
   input: GetScheduleEntryOccurrenceInput
@@ -1999,6 +2104,7 @@ structure GetScheduleEntryOccurrenceOutput {
 }
 
 /// Create a new schedule entry
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/schedules/{scheduleId}/entries.json")
 operation CreateScheduleEntry {
   input: CreateScheduleEntryInput
@@ -2037,6 +2143,8 @@ structure CreateScheduleEntryOutput {
 
 /// Update an existing schedule entry
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/schedule_entries/{entryId}")
 operation UpdateScheduleEntry {
   input: UpdateScheduleEntryInput
@@ -2073,6 +2181,7 @@ structure UpdateScheduleEntryOutput {
 
 /// Get account-wide timesheet report
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/reports/timesheet.json")
 operation GetTimesheetReport {
   input: GetTimesheetReportInput
@@ -2098,6 +2207,7 @@ structure GetTimesheetReportOutput {
 
 /// Get timesheet for a specific project
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/timesheet.json")
 operation GetProjectTimesheet {
   input: GetProjectTimesheetInput
@@ -2127,6 +2237,7 @@ structure GetProjectTimesheetOutput {
 
 /// Get timesheet for a specific recording
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}/timesheet.json")
 operation GetRecordingTimesheet {
   input: GetRecordingTimesheetInput
@@ -2467,6 +2578,8 @@ structure TimesheetEntry {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/chats.json")
 operation ListCampfires {
   input: ListCampfiresInput
@@ -2483,6 +2596,7 @@ structure ListCampfiresOutput {
 
 /// Get a campfire by ID
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}")
 operation GetCampfire {
   input: GetCampfireInput
@@ -2510,6 +2624,8 @@ structure GetCampfireOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/lines.json")
 operation ListCampfireLines {
   input: ListCampfireLinesInput
@@ -2534,6 +2650,7 @@ structure ListCampfireLinesOutput {
 
 /// Get a campfire line by ID
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/lines/{lineId}")
 operation GetCampfireLine {
   input: GetCampfireLineInput
@@ -2561,6 +2678,7 @@ structure GetCampfireLineOutput {
 }
 
 /// Create a new line (message) in a campfire
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/chats/{campfireId}/lines.json")
 operation CreateCampfireLine {
   input: CreateCampfireLineInput
@@ -2588,6 +2706,8 @@ structure CreateCampfireLineOutput {
 
 /// Delete a campfire line
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/chats/{campfireId}/lines/{lineId}")
 operation DeleteCampfireLine {
   input: DeleteCampfireLineInput
@@ -2618,6 +2738,8 @@ structure DeleteCampfireLineOutput {}
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/integrations.json")
 operation ListChatbots {
   input: ListChatbotsInput
@@ -2642,6 +2764,7 @@ structure ListChatbotsOutput {
 
 /// Get a chatbot by ID
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
 operation GetChatbot {
   input: GetChatbotInput
@@ -2669,6 +2792,7 @@ structure GetChatbotOutput {
 }
 
 /// Create a new chatbot for a campfire
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/chats/{campfireId}/integrations.json")
 operation CreateChatbot {
   input: CreateChatbotInput
@@ -2698,6 +2822,8 @@ structure CreateChatbotOutput {
 
 /// Update an existing chatbot
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
 operation UpdateChatbot {
   input: UpdateChatbotInput
@@ -2731,6 +2857,8 @@ structure UpdateChatbotOutput {
 
 /// Delete a chatbot
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
 operation DeleteChatbot {
   input: DeleteChatbotInput
@@ -2758,6 +2886,7 @@ structure DeleteChatbotOutput {}
 
 /// Get an inbox by ID
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/inboxes/{inboxId}")
 operation GetInbox {
   input: GetInboxInput
@@ -2787,6 +2916,8 @@ structure GetInboxOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/inboxes/{inboxId}/forwards.json")
 operation ListForwards {
   input: ListForwardsInput
@@ -2811,6 +2942,7 @@ structure ListForwardsOutput {
 
 /// Get a forward by ID
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}")
 operation GetForward {
   input: GetForwardInput
@@ -2838,6 +2970,8 @@ structure GetForwardOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json")
 operation ListForwardReplies {
   input: ListForwardRepliesInput
@@ -2862,6 +2996,7 @@ structure ListForwardRepliesOutput {
 
 /// Get a forward reply by ID
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}")
 operation GetForwardReply {
   input: GetForwardReplyInput
@@ -2889,6 +3024,7 @@ structure GetForwardReplyOutput {
 }
 
 /// Create a reply to a forward
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json")
 operation CreateForwardReply {
   input: CreateForwardReplyInput
@@ -3063,6 +3199,7 @@ structure ForwardReply {
 
 /// Get a card table by ID
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/card_tables/{cardTableId}")
 operation GetCardTable {
   input: GetCardTableInput
@@ -3092,6 +3229,8 @@ structure GetCardTableOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/card_tables/lists/{columnId}/cards.json")
 operation ListCards {
   input: ListCardsInput
@@ -3116,6 +3255,7 @@ structure ListCardsOutput {
 
 /// Get a card by ID
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/card_tables/cards/{cardId}")
 operation GetCard {
   input: GetCardInput
@@ -3139,6 +3279,7 @@ structure GetCardOutput {
 }
 
 /// Create a card in a column
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/card_tables/lists/{columnId}/cards.json")
 operation CreateCard {
   input: CreateCardInput
@@ -3170,6 +3311,8 @@ structure CreateCardOutput {
 
 /// Update an existing card
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/card_tables/cards/{cardId}")
 operation UpdateCard {
   input: UpdateCardInput
@@ -3198,6 +3341,7 @@ structure UpdateCardOutput {
 }
 
 /// Move a card to a different column
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/card_tables/cards/{cardId}/moves.json")
 operation MoveCard {
   input: MoveCardInput
@@ -3226,6 +3370,7 @@ structure MoveCardOutput {}
 
 /// Get a card column by ID
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/card_tables/columns/{columnId}")
 operation GetCardColumn {
   input: GetCardColumnInput
@@ -3249,6 +3394,7 @@ structure GetCardColumnOutput {
 }
 
 /// Create a column in a card table
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/card_tables/{cardTableId}/columns.json")
 operation CreateCardColumn {
   input: CreateCardColumnInput
@@ -3278,6 +3424,8 @@ structure CreateCardColumnOutput {
 
 /// Update an existing column
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/card_tables/columns/{columnId}")
 operation UpdateCardColumn {
   input: UpdateCardColumnInput
@@ -3304,6 +3452,7 @@ structure UpdateCardColumnOutput {
 }
 
 /// Move a column within a card table
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/card_tables/{cardTableId}/moves.json")
 operation MoveCardColumn {
   input: MoveCardColumnInput
@@ -3333,6 +3482,8 @@ structure MoveCardColumnOutput {}
 
 /// Set the color of a column
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/card_tables/columns/{columnId}/color.json")
 operation SetCardColumnColor {
   input: SetCardColumnColorInput
@@ -3360,6 +3511,7 @@ structure SetCardColumnColorOutput {
 }
 
 /// Enable on-hold section in a column
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json")
 operation EnableCardColumnOnHold {
   input: EnableCardColumnOnHoldInput
@@ -3384,6 +3536,8 @@ structure EnableCardColumnOnHoldOutput {
 
 /// Disable on-hold section in a column
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json")
 operation DisableCardColumnOnHold {
   input: DisableCardColumnOnHoldInput
@@ -3411,6 +3565,7 @@ structure DisableCardColumnOnHoldOutput {
 // ===== CardStep Operations =====
 
 /// Create a step on a card
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/card_tables/cards/{cardId}/steps.json")
 operation CreateCardStep {
   input: CreateCardStepInput
@@ -3441,6 +3596,8 @@ structure CreateCardStepOutput {
 
 /// Update an existing step
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/card_tables/steps/{stepId}")
 operation UpdateCardStep {
   input: UpdateCardStepInput
@@ -3469,6 +3626,8 @@ structure UpdateCardStepOutput {
 
 /// Mark a step as completed
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/card_tables/steps/{stepId}/completions.json")
 operation CompleteCardStep {
   input: CompleteCardStepInput
@@ -3493,6 +3652,8 @@ structure CompleteCardStepOutput {
 
 /// Mark a step as incomplete
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/card_tables/steps/{stepId}/completions.json")
 operation UncompleteCardStep {
   input: UncompleteCardStepInput
@@ -3516,6 +3677,7 @@ structure UncompleteCardStepOutput {
 }
 
 /// Reposition a step within a card
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/card_tables/cards/{cardId}/positions.json")
 operation RepositionCardStep {
   input: RepositionCardStepInput
@@ -3672,6 +3834,8 @@ structure CardStep {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/people.json")
 operation ListPeople {
   input: ListPeopleInput
@@ -3688,6 +3852,7 @@ structure ListPeopleOutput {
 
 /// Get a person by ID
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/people/{personId}")
 operation GetPerson {
   input: GetPersonInput
@@ -3708,6 +3873,7 @@ structure GetPersonOutput {
 
 /// Get the current authenticated user's profile
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/my/profile.json")
 operation GetMyProfile {
   input: GetMyProfileInput
@@ -3727,6 +3893,8 @@ structure GetMyProfileOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/projects/{projectId}/people.json")
 operation ListProjectPeople {
   input: ListProjectPeopleInput
@@ -3750,6 +3918,8 @@ structure ListProjectPeopleOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/circles/people.json")
 operation ListPingablePeople {
   input: ListPingablePeopleInput
@@ -3766,6 +3936,8 @@ structure ListPingablePeopleOutput {
 
 /// Update project access (grant/revoke/create people)
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/projects/{projectId}/people/users.json")
 operation UpdateProjectAccess {
   input: UpdateProjectAccessInput
@@ -3812,6 +3984,7 @@ structure ProjectAccessResult {
 
 /// Get subscription information for a recording
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}/subscription.json")
 operation GetSubscription {
   input: GetSubscriptionInput
@@ -3835,6 +4008,7 @@ structure GetSubscriptionOutput {
 }
 
 /// Subscribe the current user to a recording
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/recordings/{recordingId}/subscription.json")
 operation Subscribe {
   input: SubscribeInput
@@ -3859,6 +4033,8 @@ structure SubscribeOutput {
 
 /// Unsubscribe the current user from a recording
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/recordings/{recordingId}/subscription.json")
 operation Unsubscribe {
   input: UnsubscribeInput
@@ -3880,6 +4056,8 @@ structure UnsubscribeOutput {}
 
 /// Update subscriptions by adding or removing specific users
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/recordings/{recordingId}/subscription.json")
 operation UpdateSubscription {
   input: UpdateSubscriptionInput
@@ -3925,6 +4103,8 @@ structure Subscription {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/client/approvals.json")
 operation ListClientApprovals {
   input: ListClientApprovalsInput
@@ -3945,6 +4125,7 @@ structure ListClientApprovalsOutput {
 
 /// Get a single client approval by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/client/approvals/{approvalId}")
 operation GetClientApproval {
   input: GetClientApprovalInput
@@ -3974,6 +4155,8 @@ structure GetClientApprovalOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/client/correspondences.json")
 operation ListClientCorrespondences {
   input: ListClientCorrespondencesInput
@@ -3994,6 +4177,7 @@ structure ListClientCorrespondencesOutput {
 
 /// Get a single client correspondence by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/client/correspondences/{correspondenceId}")
 operation GetClientCorrespondence {
   input: GetClientCorrespondenceInput
@@ -4023,6 +4207,8 @@ structure GetClientCorrespondenceOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/client/recordings/{recordingId}/replies.json")
 operation ListClientReplies {
   input: ListClientRepliesInput
@@ -4047,6 +4233,7 @@ structure ListClientRepliesOutput {
 
 /// Get a single client reply by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}")
 operation GetClientReply {
   input: GetClientReplyInput
@@ -4196,6 +4383,8 @@ structure RecordingBucket {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/webhooks.json")
 operation ListWebhooks {
   input: ListWebhooksInput
@@ -4216,6 +4405,7 @@ structure ListWebhooksOutput {
 
 /// Get a single webhook by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/webhooks/{webhookId}")
 operation GetWebhook {
   input: GetWebhookInput
@@ -4239,6 +4429,7 @@ structure GetWebhookOutput {
 }
 
 /// Create a new webhook for a project
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/webhooks.json")
 operation CreateWebhook {
   input: CreateWebhookInput
@@ -4267,6 +4458,8 @@ structure CreateWebhookOutput {
 
 /// Update an existing webhook
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/webhooks/{webhookId}")
 operation UpdateWebhook {
   input: UpdateWebhookInput
@@ -4295,6 +4488,8 @@ structure UpdateWebhookOutput {
 
 /// Delete a webhook
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/webhooks/{webhookId}")
 operation DeleteWebhook {
   input: DeleteWebhookInput
@@ -4321,6 +4516,8 @@ structure DeleteWebhookOutput {}
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}/events.json")
 operation ListEvents {
   input: ListEventsInput
@@ -4350,6 +4547,8 @@ structure ListEventsOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/projects/recordings.json")
 operation ListRecordings {
   input: ListRecordingsInput
@@ -4382,6 +4581,7 @@ structure ListRecordingsOutput {
 
 /// Get a single recording by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/recordings/{recordingId}")
 operation GetRecording {
   input: GetRecordingInput
@@ -4406,6 +4606,8 @@ structure GetRecordingOutput {
 
 /// Trash a recording
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/recordings/{recordingId}/status/trashed.json")
 operation TrashRecording {
   input: TrashRecordingInput
@@ -4427,6 +4629,8 @@ structure TrashRecordingOutput {}
 
 /// Archive a recording
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/recordings/{recordingId}/status/archived.json")
 operation ArchiveRecording {
   input: ArchiveRecordingInput
@@ -4448,6 +4652,8 @@ structure ArchiveRecordingOutput {}
 
 /// Unarchive a recording (restore to active status)
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/recordings/{recordingId}/status/active.json")
 operation UnarchiveRecording {
   input: UnarchiveRecordingInput
@@ -4469,6 +4675,8 @@ structure UnarchiveRecordingOutput {}
 
 /// Set client visibility for a recording
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/recordings/{recordingId}/client_visibility.json")
 operation SetClientVisibility {
   input: SetClientVisibilityInput
@@ -4583,6 +4791,7 @@ structure Recording {
 
 /// Get a questionnaire (automatic check-ins container) by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/questionnaires/{questionnaireId}")
 operation GetQuestionnaire {
   input: GetQuestionnaireInput
@@ -4612,6 +4821,8 @@ structure GetQuestionnaireOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json")
 operation ListQuestions {
   input: ListQuestionsInput
@@ -4636,6 +4847,7 @@ structure ListQuestionsOutput {
 
 /// Get a single question by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/questions/{questionId}")
 operation GetQuestion {
   input: GetQuestionInput
@@ -4659,6 +4871,7 @@ structure GetQuestionOutput {
 }
 
 /// Create a new question in a questionnaire
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json")
 operation CreateQuestion {
   input: CreateQuestionInput
@@ -4689,6 +4902,8 @@ structure CreateQuestionOutput {
 
 /// Update an existing question
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/questions/{questionId}")
 operation UpdateQuestion {
   input: UpdateQuestionInput
@@ -4722,6 +4937,8 @@ structure UpdateQuestionOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/buckets/{projectId}/questions/{questionId}/answers.json")
 operation ListAnswers {
   input: ListAnswersInput
@@ -4746,6 +4963,7 @@ structure ListAnswersOutput {
 
 /// Get a single answer by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/question_answers/{answerId}")
 operation GetAnswer {
   input: GetAnswerInput
@@ -4769,6 +4987,7 @@ structure GetAnswerOutput {
 }
 
 /// Create a new answer for a question
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/questions/{questionId}/answers.json")
 operation CreateAnswer {
   input: CreateAnswerInput
@@ -4804,6 +5023,8 @@ structure CreateAnswerOutput {
 
 /// Update an existing answer
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/question_answers/{answerId}")
 operation UpdateAnswer {
   input: UpdateAnswerInput
@@ -4942,6 +5163,7 @@ structure QuestionAnswer {
 
 /// Search for content across the account
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/search.json")
 operation Search {
   input: SearchInput
@@ -4965,6 +5187,7 @@ structure SearchOutput {
 
 /// Get search metadata (available filter options)
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/searches/metadata.json")
 operation GetSearchMetadata {
   input: GetSearchMetadataInput
@@ -4986,6 +5209,8 @@ structure GetSearchMetadataOutput {
 /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
 /// to fetch additional pages. X-Total-Count header provides total count.
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/templates.json")
 operation ListTemplates {
   input: ListTemplatesInput
@@ -5005,6 +5230,7 @@ structure ListTemplatesOutput {
 
 /// Get a single template by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/templates/{templateId}")
 operation GetTemplate {
   input: GetTemplateInput
@@ -5024,6 +5250,7 @@ structure GetTemplateOutput {
 }
 
 /// Create a new template
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/templates.json")
 operation CreateTemplate {
   input: CreateTemplateInput
@@ -5045,6 +5272,8 @@ structure CreateTemplateOutput {
 
 /// Update an existing template
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/templates/{templateId}")
 operation UpdateTemplate {
   input: UpdateTemplateInput
@@ -5069,6 +5298,8 @@ structure UpdateTemplateOutput {
 
 /// Delete a template (trash it)
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/templates/{templateId}")
 operation DeleteTemplate {
   input: DeleteTemplateInput
@@ -5085,6 +5316,7 @@ structure DeleteTemplateInput {
 structure DeleteTemplateOutput {}
 
 /// Create a project from a template (asynchronous)
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/templates/{templateId}/project_constructions.json")
 operation CreateProjectFromTemplate {
   input: CreateProjectFromTemplateInput
@@ -5110,6 +5342,7 @@ structure CreateProjectFromTemplateOutput {
 
 /// Get the status of a project construction
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/templates/{templateId}/project_constructions/{constructionId}")
 operation GetProjectConstruction {
   input: GetProjectConstructionInput
@@ -5136,6 +5369,7 @@ structure GetProjectConstructionOutput {
 
 /// Get a dock tool by id
 @readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/buckets/{projectId}/dock/tools/{toolId}")
 operation GetTool {
   input: GetToolInput
@@ -5159,6 +5393,7 @@ structure GetToolOutput {
 }
 
 /// Clone an existing tool to create a new one
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/dock/tools/{sourceToolId}/clone.json")
 operation CloneTool {
   input: CloneToolInput
@@ -5183,6 +5418,8 @@ structure CloneToolOutput {
 
 /// Update (rename) an existing tool
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/dock/tools/{toolId}")
 operation UpdateTool {
   input: UpdateToolInput
@@ -5210,6 +5447,8 @@ structure UpdateToolOutput {
 
 /// Delete a tool (trash it)
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/dock/tools/{toolId}")
 operation DeleteTool {
   input: DeleteToolInput
@@ -5230,6 +5469,7 @@ structure DeleteToolInput {
 structure DeleteToolOutput {}
 
 /// Enable a tool (show it on the project dock)
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/buckets/{projectId}/dock/tools/{toolId}/position.json")
 operation EnableTool {
   input: EnableToolInput
@@ -5251,6 +5491,8 @@ structure EnableToolOutput {}
 
 /// Disable a tool (hide it from the project dock)
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/buckets/{projectId}/dock/tools/{toolId}/position.json")
 operation DisableTool {
   input: DisableToolInput
@@ -5272,6 +5514,8 @@ structure DisableToolOutput {}
 
 /// Reposition a tool on the project dock
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/buckets/{projectId}/dock/tools/{toolId}/position.json")
 operation RepositionTool {
   input: RepositionToolInput
@@ -5297,6 +5541,7 @@ structure RepositionToolOutput {}
 // ===== Lineup Marker Operations =====
 
 /// Create a new lineup marker
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/lineup/markers.json")
 operation CreateLineupMarker {
   input: CreateLineupMarkerInput
@@ -5325,6 +5570,8 @@ structure CreateLineupMarkerOutput {
 
 /// Update an existing lineup marker
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/lineup/markers/{markerId}")
 operation UpdateLineupMarker {
   input: UpdateLineupMarkerInput
@@ -5351,6 +5598,8 @@ structure UpdateLineupMarkerOutput {
 
 /// Delete a lineup marker
 @idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/lineup/markers/{markerId}")
 operation DeleteLineupMarker {
   input: DeleteLineupMarkerInput

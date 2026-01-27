@@ -39,8 +39,8 @@ jobs:
           fi
           echo "openapi.json is up to date"
 
-  test:
-    name: Tests
+  test-go:
+    name: Go Tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -58,6 +58,58 @@ jobs:
 
       - name: Test
         run: go test -v ./...
+
+  test-typescript:
+    name: TypeScript Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: typescript/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  conformance:
+    name: Conformance Tests
+    runs-on: ubuntu-latest
+    needs: [test-go, test-typescript]
+    defaults:
+      run:
+        working-directory: conformance/runner/go
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+
+      - name: Build conformance runner
+        run: go build -o conformance-runner .
+
+      - name: Run conformance tests
+        run: ./conformance-runner
 
   lint:
     name: Lint
@@ -154,8 +206,20 @@ jobs:
           # Export the current (PR) API
           apidiff -w pr.api ./pkg/basecamp
 
+          # Find files added in PR that don't exist on base branch
+          # These need to be removed after checkout since git checkout doesn't remove them
+          # Strip 'go/' prefix since we're running from go/ directory
+          ADDED_FILES=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}" -- . 2>/dev/null | sed 's|^go/||' || true)
+
           # Check out the base branch to compare against
           git checkout "origin/${BASE_REF}" -- .
+
+          # Remove files that were added in PR (they don't exist on base)
+          if [ -n "$ADDED_FILES" ]; then
+            echo "Removing files added in PR:"
+            echo "$ADDED_FILES"
+            echo "$ADDED_FILES" | xargs rm -f
+          fi
 
           # Export the base API
           apidiff -w base.api ./pkg/basecamp

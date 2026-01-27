@@ -1,0 +1,26 @@
+{{range .Types}}
+{{ if .Schema.Description }}{{ toGoComment .Schema.Description .TypeName  }}{{ else }}// {{.TypeName}} defines model for {{.JsonName}}.{{ end }}
+type {{.TypeName}} {{if .IsAlias }}={{end}} {{.Schema.TypeDecl}}
+{{end}}
+
+// SensitiveString is a string type that redacts its value in logs.
+// Used for fields marked with x-basecamp-sensitive in the OpenAPI spec.
+type SensitiveString string
+
+// String returns a redacted representation for logging.
+func (s SensitiveString) String() string {
+	if len(s) == 0 {
+		return ""
+	}
+	return "[REDACTED]"
+}
+
+// LogValue implements slog.LogValuer to redact sensitive values in structured logs.
+func (s SensitiveString) LogValue() slog.Value {
+	return slog.StringValue(s.String())
+}
+
+// Value returns the actual string value when needed for API calls.
+func (s SensitiveString) Value() string {
+	return string(s)
+}

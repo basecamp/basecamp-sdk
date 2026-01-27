@@ -4,6 +4,7 @@
   "maven": {
     "dependencies": [
       "software.amazon.smithy:smithy-openapi:1.66.0",
+      "software.amazon.smithy:smithy-openapi-traits:1.66.0",
       "software.amazon.smithy:smithy-aws-traits:1.66.0"
     ]
   },
@@ -15,7 +16,15 @@
           "protocol": "aws.protocols#restJson1",
           "jsonContentType": "application/json",
           "ignoreUnsupportedTraits": true,
-          "tags": true
+          "tags": true,
+          "version": "3.1.0"
+        }
+      }
+    },
+    "ast": {
+      "plugins": {
+        "model": {
+          "service": "basecamp#Basecamp"
         }
       }
     }
