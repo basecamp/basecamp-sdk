@@ -1,11 +1,20 @@
 package basecamp
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+// unmarshalCheckinsWithNumbers decodes JSON into a map preserving numbers as json.Number.
+func unmarshalCheckinsWithNumbers(data []byte) (map[string]interface{}, error) {
+	var result map[string]interface{}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	return result, decoder.Decode(&result)
+}
 
 func checkinsFixturesDir() string {
 	return filepath.Join("..", "..", "..", "spec", "fixtures", "checkins")
@@ -416,8 +425,8 @@ func TestCreateQuestionRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateQuestionRequest: %v", err)
 	}
 
-	var data map[string]interface{}
-	if err := json.Unmarshal(out, &data); err != nil {
+	data, err := unmarshalCheckinsWithNumbers(out)
+	if err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
@@ -432,10 +441,12 @@ func TestCreateQuestionRequest_Marshal(t *testing.T) {
 	if schedule["frequency"] != "every_day" {
 		t.Errorf("unexpected frequency: %v", schedule["frequency"])
 	}
-	if schedule["hour"] != float64(17) {
+	hour, _ := schedule["hour"].(json.Number).Int64()
+	if hour != 17 {
 		t.Errorf("unexpected hour: %v", schedule["hour"])
 	}
-	if schedule["minute"] != float64(0) {
+	minute, _ := schedule["minute"].(json.Number).Int64()
+	if minute != 0 {
 		t.Errorf("unexpected minute: %v", schedule["minute"])
 	}
 

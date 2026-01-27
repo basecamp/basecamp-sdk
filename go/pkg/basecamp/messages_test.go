@@ -1,11 +1,21 @@
 package basecamp
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+// unmarshalWithNumbers decodes JSON into a map preserving numbers as json.Number
+// which can be cleanly converted to int64 without float64 precision loss.
+func unmarshalWithNumbers(data []byte) (map[string]interface{}, error) {
+	var result map[string]interface{}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	return result, decoder.Decode(&result)
+}
 
 func messagesFixturesDir() string {
 	return filepath.Join("..", "..", "..", "spec", "fixtures", "messages")
@@ -212,8 +222,8 @@ func TestCreateMessageRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateMessageRequest: %v", err)
 	}
 
-	var data map[string]interface{}
-	if err := json.Unmarshal(out, &data); err != nil {
+	data, err := unmarshalWithNumbers(out)
+	if err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
@@ -227,7 +237,8 @@ func TestCreateMessageRequest_Marshal(t *testing.T) {
 		t.Errorf("unexpected status: %v", data["status"])
 	}
 	// CategoryID should be serialized as category_id
-	if data["category_id"] != float64(1069479340) {
+	categoryID, _ := data["category_id"].(json.Number).Int64()
+	if categoryID != 1069479340 {
 		t.Errorf("unexpected category_id: %v", data["category_id"])
 	}
 
@@ -292,8 +303,8 @@ func TestUpdateMessageRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateMessageRequest: %v", err)
 	}
 
-	var data map[string]interface{}
-	if err := json.Unmarshal(out, &data); err != nil {
+	data, err := unmarshalWithNumbers(out)
+	if err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
@@ -306,7 +317,8 @@ func TestUpdateMessageRequest_Marshal(t *testing.T) {
 	if data["status"] != "drafted" {
 		t.Errorf("unexpected status: %v", data["status"])
 	}
-	if data["category_id"] != float64(1069479341) {
+	categoryID, _ := data["category_id"].(json.Number).Int64()
+	if categoryID != 1069479341 {
 		t.Errorf("unexpected category_id: %v", data["category_id"])
 	}
 
