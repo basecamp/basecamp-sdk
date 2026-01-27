@@ -40,6 +40,7 @@ smithy-clean:
 # Generate behavior model from Smithy spec
 behavior-model:
 	@echo "==> Generating behavior model..."
+	@cd spec && smithy build
 	./scripts/generate-behavior-model
 	@echo "Updated behavior-model.json"
 
