@@ -131,7 +131,7 @@ func isRetryableStatus(statusCode int) bool {
 }
 
 // doWithRetry executes a request with retry logic for idempotent operations.
-func (c *{{ $clientTypeName }}) doWithRetry(ctx context.Context, buildRequest func() (*http.Request, error), isIdempotent bool, operationId string) (*http.Response, error) {
+func (c *{{ $clientTypeName }}) doWithRetry(ctx context.Context, buildRequest func() (*http.Request, error), isIdempotent bool, operationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	maxAttempts := 1
 	if isIdempotent {
 		maxAttempts = c.RetryConfig.MaxRetries + 1
@@ -147,7 +147,7 @@ func (c *{{ $clientTypeName }}) doWithRetry(ctx context.Context, buildRequest fu
 			return nil, err
 		}
 		req = req.WithContext(ctx)
-		if err := c.applyEditors(ctx, req, nil); err != nil {
+		if err := c.applyEditors(ctx, req, reqEditors); err != nil {
 			return nil, err
 		}
 
@@ -257,7 +257,7 @@ func (c *{{ $clientTypeName }}) {{$opid}}{{if .HasBody}}WithBody{{end}}(ctx cont
 {{if $isIdempotent}}
     return c.doWithRetry(ctx, func() (*http.Request, error) {
         return New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(c.Server{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}{{if .HasBody}}, contentType, body{{end}})
-    }, true, "{{$opid}}")
+    }, true, "{{$opid}}", reqEditors...)
 {{else}}
     req, err := New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(c.Server{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}{{if .HasBody}}, contentType, body{{end}})
     if err != nil {
@@ -277,7 +277,7 @@ func (c *{{ $clientTypeName }}) {{$opid}}{{.Suffix}}(ctx context.Context{{genPar
 {{if $isIdempotent}}
     return c.doWithRetry(ctx, func() (*http.Request, error) {
         return New{{$opid}}Request{{.Suffix}}(c.Server{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body)
-    }, true, "{{$opid}}")
+    }, true, "{{$opid}}", reqEditors...)
 {{else}}
     req, err := New{{$opid}}Request{{.Suffix}}(c.Server{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body)
     if err != nil {

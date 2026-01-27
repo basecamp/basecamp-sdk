@@ -113,8 +113,19 @@ interface CacheEntry {
   body: string;
 }
 
+const MAX_CACHE_ENTRIES = 1000;
+
 function createCacheMiddleware(): Middleware {
+  // Use Map for insertion-order iteration (approximates LRU)
   const cache = new Map<string, CacheEntry>();
+
+  const evictOldest = () => {
+    if (cache.size >= MAX_CACHE_ENTRIES) {
+      // Delete oldest entry (first key in insertion order)
+      const firstKey = cache.keys().next().value;
+      if (firstKey) cache.delete(firstKey);
+    }
+  };
 
   return {
     async onRequest({ request }) {
@@ -151,6 +162,7 @@ function createCacheMiddleware(): Middleware {
         const etag = response.headers.get("ETag");
         if (etag) {
           const body = await response.clone().text();
+          evictOldest();
           cache.set(cacheKey, { etag, body });
         }
       }
@@ -225,8 +237,16 @@ function createRetryMiddleware(): Middleware {
       // Use default retry config (operation-specific config would come from metadata)
       const retryConfig = DEFAULT_RETRY_CONFIG;
 
+      const requestId = request.headers.get("X-Request-Id");
+
+      // Helper to clean up cached body
+      const cleanupBody = () => {
+        if (requestId) bodyCache.delete(requestId);
+      };
+
       // Check if status code should trigger retry
       if (!retryConfig.retryOn.includes(response.status)) {
+        cleanupBody();
         return response;
       }
 
@@ -237,6 +257,7 @@ function createRetryMiddleware(): Middleware {
       // Check if we've exhausted retries (maxAttempts is total attempts, not retries)
       // With maxAttempts=3: attempt 0 (initial), 1 (retry 1), 2 (retry 2) = 3 total
       if (attempt >= retryConfig.maxAttempts - 1) {
+        cleanupBody();
         return response;
       }
 
@@ -264,7 +285,6 @@ function createRetryMiddleware(): Middleware {
       await sleep(delay);
 
       // Get cached body for methods that may have one
-      const requestId = request.headers.get("X-Request-Id");
       let body: ArrayBuffer | null = null;
       if (requestId && bodyCache.has(requestId)) {
         const cachedBody = bodyCache.get(requestId);

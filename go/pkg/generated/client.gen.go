@@ -2517,7 +2517,7 @@ func isRetryableStatus(statusCode int) bool {
 }
 
 // doWithRetry executes a request with retry logic for idempotent operations.
-func (c *Client) doWithRetry(ctx context.Context, buildRequest func() (*http.Request, error), isIdempotent bool, operationId string) (*http.Response, error) {
+func (c *Client) doWithRetry(ctx context.Context, buildRequest func() (*http.Request, error), isIdempotent bool, operationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	maxAttempts := 1
 	if isIdempotent {
 		maxAttempts = c.RetryConfig.MaxRetries + 1
@@ -2533,7 +2533,7 @@ func (c *Client) doWithRetry(ctx context.Context, buildRequest func() (*http.Req
 			return nil, err
 		}
 		req = req.WithContext(ctx)
-		if err := c.applyEditors(ctx, req, nil); err != nil {
+		if err := c.applyEditors(ctx, req, reqEditors); err != nil {
 			return nil, err
 		}
 
@@ -3202,7 +3202,7 @@ func (c *Client) UpdateCardWithBody(ctx context.Context, projectId float32, card
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardRequestWithBody(c.Server, projectId, cardId, contentType, body)
-	}, true, "UpdateCard")
+	}, true, "UpdateCard", reqEditors...)
 
 }
 
@@ -3210,7 +3210,7 @@ func (c *Client) UpdateCard(ctx context.Context, projectId float32, cardId float
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardRequest(c.Server, projectId, cardId, body)
-	}, true, "UpdateCard")
+	}, true, "UpdateCard", reqEditors...)
 
 }
 
@@ -3326,7 +3326,7 @@ func (c *Client) UpdateCardColumnWithBody(ctx context.Context, projectId float32
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardColumnRequestWithBody(c.Server, projectId, columnId, contentType, body)
-	}, true, "UpdateCardColumn")
+	}, true, "UpdateCardColumn", reqEditors...)
 
 }
 
@@ -3334,7 +3334,7 @@ func (c *Client) UpdateCardColumn(ctx context.Context, projectId float32, column
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardColumnRequest(c.Server, projectId, columnId, body)
-	}, true, "UpdateCardColumn")
+	}, true, "UpdateCardColumn", reqEditors...)
 
 }
 
@@ -3344,7 +3344,7 @@ func (c *Client) SetCardColumnColorWithBody(ctx context.Context, projectId float
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewSetCardColumnColorRequestWithBody(c.Server, projectId, columnId, contentType, body)
-	}, true, "SetCardColumnColor")
+	}, true, "SetCardColumnColor", reqEditors...)
 
 }
 
@@ -3352,7 +3352,7 @@ func (c *Client) SetCardColumnColor(ctx context.Context, projectId float32, colu
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewSetCardColumnColorRequest(c.Server, projectId, columnId, body)
-	}, true, "SetCardColumnColor")
+	}, true, "SetCardColumnColor", reqEditors...)
 
 }
 
@@ -3362,7 +3362,7 @@ func (c *Client) DisableCardColumnOnHold(ctx context.Context, projectId float32,
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDisableCardColumnOnHoldRequest(c.Server, projectId, columnId)
-	}, true, "DisableCardColumnOnHold")
+	}, true, "DisableCardColumnOnHold", reqEditors...)
 
 }
 
@@ -3434,7 +3434,7 @@ func (c *Client) UpdateCardStepWithBody(ctx context.Context, projectId float32, 
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardStepRequestWithBody(c.Server, projectId, stepId, contentType, body)
-	}, true, "UpdateCardStep")
+	}, true, "UpdateCardStep", reqEditors...)
 
 }
 
@@ -3442,7 +3442,7 @@ func (c *Client) UpdateCardStep(ctx context.Context, projectId float32, stepId f
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardStepRequest(c.Server, projectId, stepId, body)
-	}, true, "UpdateCardStep")
+	}, true, "UpdateCardStep", reqEditors...)
 
 }
 
@@ -3452,7 +3452,7 @@ func (c *Client) UncompleteCardStep(ctx context.Context, projectId float32, step
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUncompleteCardStepRequest(c.Server, projectId, stepId)
-	}, true, "UncompleteCardStep")
+	}, true, "UncompleteCardStep", reqEditors...)
 
 }
 
@@ -3462,7 +3462,7 @@ func (c *Client) CompleteCardStep(ctx context.Context, projectId float32, stepId
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewCompleteCardStepRequest(c.Server, projectId, stepId)
-	}, true, "CompleteCardStep")
+	}, true, "CompleteCardStep", reqEditors...)
 
 }
 
@@ -3594,7 +3594,7 @@ func (c *Client) DeleteMessageType(ctx context.Context, projectId float32, typeI
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteMessageTypeRequest(c.Server, projectId, typeId)
-	}, true, "DeleteMessageType")
+	}, true, "DeleteMessageType", reqEditors...)
 
 }
 
@@ -3620,7 +3620,7 @@ func (c *Client) UpdateMessageTypeWithBody(ctx context.Context, projectId float3
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateMessageTypeRequestWithBody(c.Server, projectId, typeId, contentType, body)
-	}, true, "UpdateMessageType")
+	}, true, "UpdateMessageType", reqEditors...)
 
 }
 
@@ -3628,7 +3628,7 @@ func (c *Client) UpdateMessageType(ctx context.Context, projectId float32, typeI
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateMessageTypeRequest(c.Server, projectId, typeId, body)
-	}, true, "UpdateMessageType")
+	}, true, "UpdateMessageType", reqEditors...)
 
 }
 
@@ -3700,7 +3700,7 @@ func (c *Client) DeleteChatbot(ctx context.Context, projectId float32, campfireI
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteChatbotRequest(c.Server, projectId, campfireId, chatbotId)
-	}, true, "DeleteChatbot")
+	}, true, "DeleteChatbot", reqEditors...)
 
 }
 
@@ -3726,7 +3726,7 @@ func (c *Client) UpdateChatbotWithBody(ctx context.Context, projectId float32, c
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateChatbotRequestWithBody(c.Server, projectId, campfireId, chatbotId, contentType, body)
-	}, true, "UpdateChatbot")
+	}, true, "UpdateChatbot", reqEditors...)
 
 }
 
@@ -3734,7 +3734,7 @@ func (c *Client) UpdateChatbot(ctx context.Context, projectId float32, campfireI
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateChatbotRequest(c.Server, projectId, campfireId, chatbotId, body)
-	}, true, "UpdateChatbot")
+	}, true, "UpdateChatbot", reqEditors...)
 
 }
 
@@ -3790,7 +3790,7 @@ func (c *Client) DeleteCampfireLine(ctx context.Context, projectId float32, camp
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteCampfireLineRequest(c.Server, projectId, campfireId, lineId)
-	}, true, "DeleteCampfireLine")
+	}, true, "DeleteCampfireLine", reqEditors...)
 
 }
 
@@ -3928,7 +3928,7 @@ func (c *Client) UpdateCommentWithBody(ctx context.Context, projectId float32, c
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCommentRequestWithBody(c.Server, projectId, commentId, contentType, body)
-	}, true, "UpdateComment")
+	}, true, "UpdateComment", reqEditors...)
 
 }
 
@@ -3936,7 +3936,7 @@ func (c *Client) UpdateComment(ctx context.Context, projectId float32, commentId
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCommentRequest(c.Server, projectId, commentId, body)
-	}, true, "UpdateComment")
+	}, true, "UpdateComment", reqEditors...)
 
 }
 
@@ -3962,7 +3962,7 @@ func (c *Client) DeleteTool(ctx context.Context, projectId float32, toolId float
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteToolRequest(c.Server, projectId, toolId)
-	}, true, "DeleteTool")
+	}, true, "DeleteTool", reqEditors...)
 
 }
 
@@ -3988,7 +3988,7 @@ func (c *Client) UpdateToolWithBody(ctx context.Context, projectId float32, tool
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateToolRequestWithBody(c.Server, projectId, toolId, contentType, body)
-	}, true, "UpdateTool")
+	}, true, "UpdateTool", reqEditors...)
 
 }
 
@@ -3996,7 +3996,7 @@ func (c *Client) UpdateTool(ctx context.Context, projectId float32, toolId float
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateToolRequest(c.Server, projectId, toolId, body)
-	}, true, "UpdateTool")
+	}, true, "UpdateTool", reqEditors...)
 
 }
 
@@ -4006,7 +4006,7 @@ func (c *Client) DisableTool(ctx context.Context, projectId float32, toolId floa
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDisableToolRequest(c.Server, projectId, toolId)
-	}, true, "DisableTool")
+	}, true, "DisableTool", reqEditors...)
 
 }
 
@@ -4032,7 +4032,7 @@ func (c *Client) RepositionToolWithBody(ctx context.Context, projectId float32, 
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewRepositionToolRequestWithBody(c.Server, projectId, toolId, contentType, body)
-	}, true, "RepositionTool")
+	}, true, "RepositionTool", reqEditors...)
 
 }
 
@@ -4040,7 +4040,7 @@ func (c *Client) RepositionTool(ctx context.Context, projectId float32, toolId f
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewRepositionToolRequest(c.Server, projectId, toolId, body)
-	}, true, "RepositionTool")
+	}, true, "RepositionTool", reqEditors...)
 
 }
 
@@ -4066,7 +4066,7 @@ func (c *Client) UpdateDocumentWithBody(ctx context.Context, projectId float32, 
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateDocumentRequestWithBody(c.Server, projectId, documentId, contentType, body)
-	}, true, "UpdateDocument")
+	}, true, "UpdateDocument", reqEditors...)
 
 }
 
@@ -4074,7 +4074,7 @@ func (c *Client) UpdateDocument(ctx context.Context, projectId float32, document
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateDocumentRequest(c.Server, projectId, documentId, body)
-	}, true, "UpdateDocument")
+	}, true, "UpdateDocument", reqEditors...)
 
 }
 
@@ -4272,7 +4272,7 @@ func (c *Client) UpdateMessageWithBody(ctx context.Context, projectId float32, m
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateMessageRequestWithBody(c.Server, projectId, messageId, contentType, body)
-	}, true, "UpdateMessage")
+	}, true, "UpdateMessage", reqEditors...)
 
 }
 
@@ -4280,7 +4280,7 @@ func (c *Client) UpdateMessage(ctx context.Context, projectId float32, messageId
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateMessageRequest(c.Server, projectId, messageId, body)
-	}, true, "UpdateMessage")
+	}, true, "UpdateMessage", reqEditors...)
 
 }
 
@@ -4306,7 +4306,7 @@ func (c *Client) UpdateAnswerWithBody(ctx context.Context, projectId float32, an
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateAnswerRequestWithBody(c.Server, projectId, answerId, contentType, body)
-	}, true, "UpdateAnswer")
+	}, true, "UpdateAnswer", reqEditors...)
 
 }
 
@@ -4314,7 +4314,7 @@ func (c *Client) UpdateAnswer(ctx context.Context, projectId float32, answerId f
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateAnswerRequest(c.Server, projectId, answerId, body)
-	}, true, "UpdateAnswer")
+	}, true, "UpdateAnswer", reqEditors...)
 
 }
 
@@ -4402,7 +4402,7 @@ func (c *Client) UpdateQuestionWithBody(ctx context.Context, projectId float32, 
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateQuestionRequestWithBody(c.Server, projectId, questionId, contentType, body)
-	}, true, "UpdateQuestion")
+	}, true, "UpdateQuestion", reqEditors...)
 
 }
 
@@ -4410,7 +4410,7 @@ func (c *Client) UpdateQuestion(ctx context.Context, projectId float32, question
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateQuestionRequest(c.Server, projectId, questionId, body)
-	}, true, "UpdateQuestion")
+	}, true, "UpdateQuestion", reqEditors...)
 
 }
 
@@ -4466,7 +4466,7 @@ func (c *Client) UnpinMessage(ctx context.Context, projectId float32, messageId 
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUnpinMessageRequest(c.Server, projectId, messageId)
-	}, true, "UnpinMessage")
+	}, true, "UnpinMessage", reqEditors...)
 
 }
 
@@ -4508,7 +4508,7 @@ func (c *Client) SetClientVisibilityWithBody(ctx context.Context, projectId floa
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewSetClientVisibilityRequestWithBody(c.Server, projectId, recordingId, contentType, body)
-	}, true, "SetClientVisibility")
+	}, true, "SetClientVisibility", reqEditors...)
 
 }
 
@@ -4516,7 +4516,7 @@ func (c *Client) SetClientVisibility(ctx context.Context, projectId float32, rec
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewSetClientVisibilityRequest(c.Server, projectId, recordingId, body)
-	}, true, "SetClientVisibility")
+	}, true, "SetClientVisibility", reqEditors...)
 
 }
 
@@ -4588,7 +4588,7 @@ func (c *Client) UnarchiveRecording(ctx context.Context, projectId float32, reco
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUnarchiveRecordingRequest(c.Server, projectId, recordingId)
-	}, true, "UnarchiveRecording")
+	}, true, "UnarchiveRecording", reqEditors...)
 
 }
 
@@ -4598,7 +4598,7 @@ func (c *Client) ArchiveRecording(ctx context.Context, projectId float32, record
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewArchiveRecordingRequest(c.Server, projectId, recordingId)
-	}, true, "ArchiveRecording")
+	}, true, "ArchiveRecording", reqEditors...)
 
 }
 
@@ -4608,7 +4608,7 @@ func (c *Client) TrashRecording(ctx context.Context, projectId float32, recordin
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewTrashRecordingRequest(c.Server, projectId, recordingId)
-	}, true, "TrashRecording")
+	}, true, "TrashRecording", reqEditors...)
 
 }
 
@@ -4618,7 +4618,7 @@ func (c *Client) Unsubscribe(ctx context.Context, projectId float32, recordingId
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUnsubscribeRequest(c.Server, projectId, recordingId)
-	}, true, "Unsubscribe")
+	}, true, "Unsubscribe", reqEditors...)
 
 }
 
@@ -4660,7 +4660,7 @@ func (c *Client) UpdateSubscriptionWithBody(ctx context.Context, projectId float
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateSubscriptionRequestWithBody(c.Server, projectId, recordingId, contentType, body)
-	}, true, "UpdateSubscription")
+	}, true, "UpdateSubscription", reqEditors...)
 
 }
 
@@ -4668,7 +4668,7 @@ func (c *Client) UpdateSubscription(ctx context.Context, projectId float32, reco
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateSubscriptionRequest(c.Server, projectId, recordingId, body)
-	}, true, "UpdateSubscription")
+	}, true, "UpdateSubscription", reqEditors...)
 
 }
 
@@ -4710,7 +4710,7 @@ func (c *Client) UpdateScheduleEntryWithBody(ctx context.Context, projectId floa
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateScheduleEntryRequestWithBody(c.Server, projectId, entryId, contentType, body)
-	}, true, "UpdateScheduleEntry")
+	}, true, "UpdateScheduleEntry", reqEditors...)
 
 }
 
@@ -4718,7 +4718,7 @@ func (c *Client) UpdateScheduleEntry(ctx context.Context, projectId float32, ent
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateScheduleEntryRequest(c.Server, projectId, entryId, body)
-	}, true, "UpdateScheduleEntry")
+	}, true, "UpdateScheduleEntry", reqEditors...)
 
 }
 
@@ -4760,7 +4760,7 @@ func (c *Client) UpdateScheduleSettingsWithBody(ctx context.Context, projectId f
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateScheduleSettingsRequestWithBody(c.Server, projectId, scheduleId, contentType, body)
-	}, true, "UpdateScheduleSettings")
+	}, true, "UpdateScheduleSettings", reqEditors...)
 
 }
 
@@ -4768,7 +4768,7 @@ func (c *Client) UpdateScheduleSettings(ctx context.Context, projectId float32, 
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateScheduleSettingsRequest(c.Server, projectId, scheduleId, body)
-	}, true, "UpdateScheduleSettings")
+	}, true, "UpdateScheduleSettings", reqEditors...)
 
 }
 
@@ -4840,7 +4840,7 @@ func (c *Client) RepositionTodolistGroupWithBody(ctx context.Context, projectId 
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewRepositionTodolistGroupRequestWithBody(c.Server, projectId, groupId, contentType, body)
-	}, true, "RepositionTodolistGroup")
+	}, true, "RepositionTodolistGroup", reqEditors...)
 
 }
 
@@ -4848,7 +4848,7 @@ func (c *Client) RepositionTodolistGroup(ctx context.Context, projectId float32,
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewRepositionTodolistGroupRequest(c.Server, projectId, groupId, body)
-	}, true, "RepositionTodolistGroup")
+	}, true, "RepositionTodolistGroup", reqEditors...)
 
 }
 
@@ -4874,7 +4874,7 @@ func (c *Client) UpdateTodolistOrGroupWithBody(ctx context.Context, projectId fl
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTodolistOrGroupRequestWithBody(c.Server, projectId, id, contentType, body)
-	}, true, "UpdateTodolistOrGroup")
+	}, true, "UpdateTodolistOrGroup", reqEditors...)
 
 }
 
@@ -4882,7 +4882,7 @@ func (c *Client) UpdateTodolistOrGroup(ctx context.Context, projectId float32, i
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTodolistOrGroupRequest(c.Server, projectId, id, body)
-	}, true, "UpdateTodolistOrGroup")
+	}, true, "UpdateTodolistOrGroup", reqEditors...)
 
 }
 
@@ -4984,7 +4984,7 @@ func (c *Client) TrashTodo(ctx context.Context, projectId float32, todoId float3
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewTrashTodoRequest(c.Server, projectId, todoId)
-	}, true, "TrashTodo")
+	}, true, "TrashTodo", reqEditors...)
 
 }
 
@@ -5010,7 +5010,7 @@ func (c *Client) UpdateTodoWithBody(ctx context.Context, projectId float32, todo
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTodoRequestWithBody(c.Server, projectId, todoId, contentType, body)
-	}, true, "UpdateTodo")
+	}, true, "UpdateTodo", reqEditors...)
 
 }
 
@@ -5018,7 +5018,7 @@ func (c *Client) UpdateTodo(ctx context.Context, projectId float32, todoId float
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTodoRequest(c.Server, projectId, todoId, body)
-	}, true, "UpdateTodo")
+	}, true, "UpdateTodo", reqEditors...)
 
 }
 
@@ -5028,7 +5028,7 @@ func (c *Client) UncompleteTodo(ctx context.Context, projectId float32, todoId f
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUncompleteTodoRequest(c.Server, projectId, todoId)
-	}, true, "UncompleteTodo")
+	}, true, "UncompleteTodo", reqEditors...)
 
 }
 
@@ -5038,7 +5038,7 @@ func (c *Client) CompleteTodo(ctx context.Context, projectId float32, todoId flo
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewCompleteTodoRequest(c.Server, projectId, todoId)
-	}, true, "CompleteTodo")
+	}, true, "CompleteTodo", reqEditors...)
 
 }
 
@@ -5126,7 +5126,7 @@ func (c *Client) UpdateUploadWithBody(ctx context.Context, projectId float32, up
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateUploadRequestWithBody(c.Server, projectId, uploadId, contentType, body)
-	}, true, "UpdateUpload")
+	}, true, "UpdateUpload", reqEditors...)
 
 }
 
@@ -5134,7 +5134,7 @@ func (c *Client) UpdateUpload(ctx context.Context, projectId float32, uploadId f
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateUploadRequest(c.Server, projectId, uploadId, body)
-	}, true, "UpdateUpload")
+	}, true, "UpdateUpload", reqEditors...)
 
 }
 
@@ -5176,7 +5176,7 @@ func (c *Client) UpdateVaultWithBody(ctx context.Context, projectId float32, vau
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateVaultRequestWithBody(c.Server, projectId, vaultId, contentType, body)
-	}, true, "UpdateVault")
+	}, true, "UpdateVault", reqEditors...)
 
 }
 
@@ -5184,7 +5184,7 @@ func (c *Client) UpdateVault(ctx context.Context, projectId float32, vaultId flo
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateVaultRequest(c.Server, projectId, vaultId, body)
-	}, true, "UpdateVault")
+	}, true, "UpdateVault", reqEditors...)
 
 }
 
@@ -5378,7 +5378,7 @@ func (c *Client) DeleteWebhook(ctx context.Context, projectId float32, webhookId
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteWebhookRequest(c.Server, projectId, webhookId)
-	}, true, "DeleteWebhook")
+	}, true, "DeleteWebhook", reqEditors...)
 
 }
 
@@ -5404,7 +5404,7 @@ func (c *Client) UpdateWebhookWithBody(ctx context.Context, projectId float32, w
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateWebhookRequestWithBody(c.Server, projectId, webhookId, contentType, body)
-	}, true, "UpdateWebhook")
+	}, true, "UpdateWebhook", reqEditors...)
 
 }
 
@@ -5412,7 +5412,7 @@ func (c *Client) UpdateWebhook(ctx context.Context, projectId float32, webhookId
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateWebhookRequest(c.Server, projectId, webhookId, body)
-	}, true, "UpdateWebhook")
+	}, true, "UpdateWebhook", reqEditors...)
 
 }
 
@@ -5484,7 +5484,7 @@ func (c *Client) DeleteLineupMarker(ctx context.Context, markerId float32, reqEd
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteLineupMarkerRequest(c.Server, markerId)
-	}, true, "DeleteLineupMarker")
+	}, true, "DeleteLineupMarker", reqEditors...)
 
 }
 
@@ -5494,7 +5494,7 @@ func (c *Client) UpdateLineupMarkerWithBody(ctx context.Context, markerId float3
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateLineupMarkerRequestWithBody(c.Server, markerId, contentType, body)
-	}, true, "UpdateLineupMarker")
+	}, true, "UpdateLineupMarker", reqEditors...)
 
 }
 
@@ -5502,7 +5502,7 @@ func (c *Client) UpdateLineupMarker(ctx context.Context, markerId float32, body 
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateLineupMarkerRequest(c.Server, markerId, body)
-	}, true, "UpdateLineupMarker")
+	}, true, "UpdateLineupMarker", reqEditors...)
 
 }
 
@@ -5622,7 +5622,7 @@ func (c *Client) TrashProject(ctx context.Context, projectId float32, reqEditors
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewTrashProjectRequest(c.Server, projectId)
-	}, true, "TrashProject")
+	}, true, "TrashProject", reqEditors...)
 
 }
 
@@ -5648,7 +5648,7 @@ func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId float32, c
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateProjectRequestWithBody(c.Server, projectId, contentType, body)
-	}, true, "UpdateProject")
+	}, true, "UpdateProject", reqEditors...)
 
 }
 
@@ -5656,7 +5656,7 @@ func (c *Client) UpdateProject(ctx context.Context, projectId float32, body Upda
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateProjectRequest(c.Server, projectId, body)
-	}, true, "UpdateProject")
+	}, true, "UpdateProject", reqEditors...)
 
 }
 
@@ -5682,7 +5682,7 @@ func (c *Client) UpdateProjectAccessWithBody(ctx context.Context, projectId floa
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateProjectAccessRequestWithBody(c.Server, projectId, contentType, body)
-	}, true, "UpdateProjectAccess")
+	}, true, "UpdateProjectAccess", reqEditors...)
 
 }
 
@@ -5690,7 +5690,7 @@ func (c *Client) UpdateProjectAccess(ctx context.Context, projectId float32, bod
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateProjectAccessRequest(c.Server, projectId, body)
-	}, true, "UpdateProjectAccess")
+	}, true, "UpdateProjectAccess", reqEditors...)
 
 }
 
@@ -5794,7 +5794,7 @@ func (c *Client) DeleteTemplate(ctx context.Context, templateId float32, reqEdit
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteTemplateRequest(c.Server, templateId)
-	}, true, "DeleteTemplate")
+	}, true, "DeleteTemplate", reqEditors...)
 
 }
 
@@ -5820,7 +5820,7 @@ func (c *Client) UpdateTemplateWithBody(ctx context.Context, templateId float32,
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTemplateRequestWithBody(c.Server, templateId, contentType, body)
-	}, true, "UpdateTemplate")
+	}, true, "UpdateTemplate", reqEditors...)
 
 }
 
@@ -5828,7 +5828,7 @@ func (c *Client) UpdateTemplate(ctx context.Context, templateId float32, body Up
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTemplateRequest(c.Server, templateId, body)
-	}, true, "UpdateTemplate")
+	}, true, "UpdateTemplate", reqEditors...)
 
 }
 

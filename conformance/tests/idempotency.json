@@ -35,8 +35,8 @@
     "tags": ["idempotent", "delete"]
   },
   {
-    "name": "POST operation not automatically retried on 5xx without explicit config",
-    "description": "Verifies that non-idempotent POST respects retry limits",
+    "name": "POST operation exhausts retries and returns error on persistent 5xx",
+    "description": "Verifies that POST operations retry up to maxAttempts (3) then return error",
     "operation": "CreateTodo",
     "method": "POST",
     "path": "/buckets/{projectId}/todolists/{todolistId}/todos.json",
@@ -51,6 +51,6 @@
       {"type": "requestCount", "expected": 3},
       {"type": "errorType", "expected": "api_error"}
     ],
-    "tags": ["idempotent", "post", "non-idempotent"]
+    "tags": ["retry", "post", "exhaustion"]
   }
 ]
