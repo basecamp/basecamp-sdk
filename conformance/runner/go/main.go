@@ -184,15 +184,15 @@ func runTest(tc TestCase) TestResult {
 		sdkResp, sdkErr = client.ListProjects(ctx, nil)
 
 	case "GetProject":
-		projectId := getFloatParam(tc.PathParams, "projectId")
-		sdkResp, sdkErr = client.GetProject(ctx, float32(projectId))
+		projectId := getInt64Param(tc.PathParams, "projectId")
+		sdkResp, sdkErr = client.GetProject(ctx, projectId)
 
 	case "UpdateProject":
-		projectId := getFloatParam(tc.PathParams, "projectId")
+		projectId := getInt64Param(tc.PathParams, "projectId")
 		body := generated.UpdateProjectJSONRequestBody{
 			Name: getStringParam(tc.RequestBody, "name"),
 		}
-		sdkResp, sdkErr = client.UpdateProject(ctx, float32(projectId), body)
+		sdkResp, sdkErr = client.UpdateProject(ctx, projectId, body)
 
 	case "CreateProject":
 		body := generated.CreateProjectJSONRequestBody{
@@ -201,24 +201,24 @@ func runTest(tc TestCase) TestResult {
 		sdkResp, sdkErr = client.CreateProject(ctx, body)
 
 	case "TrashProject":
-		projectId := getFloatParam(tc.PathParams, "projectId")
-		sdkResp, sdkErr = client.TrashProject(ctx, float32(projectId))
+		projectId := getInt64Param(tc.PathParams, "projectId")
+		sdkResp, sdkErr = client.TrashProject(ctx, projectId)
 
 	case "CreateTodo":
-		projectId := getFloatParam(tc.PathParams, "projectId")
-		todolistId := getFloatParam(tc.PathParams, "todolistId")
+		projectId := getInt64Param(tc.PathParams, "projectId")
+		todolistId := getInt64Param(tc.PathParams, "todolistId")
 		body := generated.CreateTodoJSONRequestBody{
 			Content: getStringParam(tc.RequestBody, "content"),
 		}
 		if dueOn, ok := tc.RequestBody["due_on"].(string); ok {
 			body.DueOn = &dueOn
 		}
-		sdkResp, sdkErr = client.CreateTodo(ctx, float32(projectId), float32(todolistId), body)
+		sdkResp, sdkErr = client.CreateTodo(ctx, projectId, todolistId, body)
 
 	case "ListTodos":
-		projectId := getFloatParam(tc.PathParams, "projectId")
-		todolistId := getFloatParam(tc.PathParams, "todolistId")
-		sdkResp, sdkErr = client.ListTodos(ctx, float32(projectId), float32(todolistId), nil)
+		projectId := getInt64Param(tc.PathParams, "projectId")
+		todolistId := getInt64Param(tc.PathParams, "todolistId")
+		sdkResp, sdkErr = client.ListTodos(ctx, projectId, todolistId, nil)
 
 	default:
 		return TestResult{
@@ -299,11 +299,11 @@ func runTest(tc TestCase) TestResult {
 	}
 }
 
-// getFloatParam extracts a float64 parameter from a map
-func getFloatParam(params map[string]interface{}, key string) float64 {
+// getInt64Param extracts an int64 parameter from a map (JSON numbers are float64)
+func getInt64Param(params map[string]interface{}, key string) int64 {
 	if val, ok := params[key]; ok {
 		if f, ok := val.(float64); ok {
-			return f
+			return int64(f)
 		}
 	}
 	return 0
