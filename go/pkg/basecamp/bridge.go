@@ -257,6 +257,8 @@ func DerefString(p *string) string {
 }
 
 // DerefFloat32 safely dereferences a float32 pointer, returning 0 if nil.
+// NOTE: The generated code uses float32 for numeric IDs due to OpenAPI type mapping.
+// This loses precision for IDs > 16M. See TODO in BridgeListTodos for fix tracking.
 func DerefFloat32(p *float32) float32 {
 	if p == nil {
 		return 0
@@ -613,6 +615,8 @@ func (b *BridgeClient) BridgeListTodos(ctx context.Context, projectId, todolistI
 		Status: status,
 	}
 
+	// TODO: float32 conversions lose precision for IDs > 16M. Fix by updating
+	// Smithy spec to generate type: integer, format: int64 in OpenAPI.
 	resp, err := b.gen.ListTodosWithResponse(ctx, float32(projectId), float32(todolistId), params)
 	if err != nil {
 		return nil, ErrNetwork(err)

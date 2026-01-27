@@ -24,6 +24,7 @@ def extract_operations_with_traits(content: str) -> dict[str, dict[str, Any]]:
 
     Looks for patterns like:
         @readonly
+        @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
         @http(method: "GET", uri: "/projects.json")
         operation ListProjects { ... }
     """
@@ -31,9 +32,33 @@ def extract_operations_with_traits(content: str) -> dict[str, dict[str, Any]]:
 
     # Pattern to match operation definitions with preceding traits
     # We look for trait annotations followed by operation declarations
+    # Updated to capture multi-line trait blocks including those with complex arguments
     operation_pattern = re.compile(
-        r'((?:@[a-zA-Z]+(?:\([^)]*\))?\s*\n)*)'  # Capture traits
+        r'((?:@[a-zA-Z]+(?:\([^)]*\))?\s*\n?)*)'  # Capture traits
         r'operation\s+(\w+)\s*\{',  # Capture operation name
+        re.MULTILINE
+    )
+
+    # Pattern for @basecampRetry trait with its parameters
+    retry_pattern = re.compile(
+        r'@basecampRetry\(\s*'
+        r'maxAttempts:\s*(\d+)\s*,\s*'
+        r'baseDelayMs:\s*(\d+)\s*,\s*'
+        r'backoff:\s*"(\w+)"\s*,\s*'
+        r'retryOn:\s*\[([^\]]+)\]'
+        r'\s*\)',
+        re.MULTILINE
+    )
+
+    # Pattern for @basecampIdempotent trait
+    idempotent_pattern = re.compile(r'@basecampIdempotent(?:\([^)]*\))?')
+
+    # Pattern for @basecampPagination trait
+    pagination_pattern = re.compile(
+        r'@basecampPagination\(\s*'
+        r'style:\s*"(\w+)"'
+        r'(?:\s*,\s*maxPageSize:\s*(\d+))?'
+        r'\s*\)',
         re.MULTILINE
     )
 
@@ -43,13 +68,37 @@ def extract_operations_with_traits(content: str) -> dict[str, dict[str, Any]]:
 
         op_info = {}
 
-        # Check for @readonly trait
+        # Check for @readonly trait (standard Smithy)
         if '@readonly' in traits_block:
             op_info['readonly'] = True
 
-        # Check for @idempotent trait
+        # Check for @idempotent trait (standard Smithy)
         if '@idempotent' in traits_block:
             op_info['idempotent'] = True
+
+        # Check for @basecampIdempotent trait (custom)
+        if idempotent_pattern.search(traits_block):
+            op_info['idempotent'] = True
+
+        # Extract @basecampRetry trait parameters
+        retry_match = retry_pattern.search(traits_block)
+        if retry_match:
+            retry_on_str = retry_match.group(4)
+            retry_on = [int(x.strip()) for x in retry_on_str.split(',') if x.strip()]
+            op_info['retry'] = {
+                'max': int(retry_match.group(1)),
+                'base_delay_ms': int(retry_match.group(2)),
+                'backoff': retry_match.group(3),
+                'retry_on': retry_on
+            }
+
+        # Extract @basecampPagination trait parameters
+        pagination_match = pagination_pattern.search(traits_block)
+        if pagination_match:
+            pagination_info = {'style': pagination_match.group(1)}
+            if pagination_match.group(2):
+                pagination_info['maxPageSize'] = int(pagination_match.group(2))
+            op_info['pagination'] = pagination_info
 
         operations[op_name] = op_info
 
