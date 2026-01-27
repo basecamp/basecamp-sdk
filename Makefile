@@ -40,13 +40,13 @@ smithy-clean:
 # Generate behavior model from Smithy spec
 behavior-model:
 	@echo "==> Generating behavior model..."
-	python3 scripts/generate-behavior-model.py
+	./scripts/generate-behavior-model
 	@echo "Updated behavior-model.json"
 
 # Check that behavior-model.json is up to date
 behavior-model-check:
 	@echo "==> Checking behavior model freshness..."
-	@python3 scripts/generate-behavior-model.py spec behavior-model.json.tmp
+	@./scripts/generate-behavior-model spec/build/smithy/source/model/model.json behavior-model.json.tmp
 	@diff -q behavior-model.json behavior-model.json.tmp > /dev/null 2>&1 || \
 		(rm -f behavior-model.json.tmp && echo "ERROR: behavior-model.json is out of date. Run 'make behavior-model'" && exit 1)
 	@rm -f behavior-model.json.tmp
