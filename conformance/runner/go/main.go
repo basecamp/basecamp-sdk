@@ -12,7 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -120,24 +120,28 @@ func loadTests(filename string) ([]TestCase, error) {
 }
 
 func runTest(tc TestCase) TestResult {
-	// Track request count and timing
-	var requestCount int32
+	// Track request count and timing with mutex protection for thread safety
+	var mu sync.Mutex
+	var requestCount int
 	var requestTimes []time.Time
 
 	// Create mock server that serves responses in sequence
 	responseIndex := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&requestCount, 1)
+		mu.Lock()
+		requestCount++
 		requestTimes = append(requestTimes, time.Now())
+		idx := responseIndex
+		responseIndex++
+		mu.Unlock()
 
-		if responseIndex >= len(tc.MockResponses) {
+		if idx >= len(tc.MockResponses) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(`{"error": "No more mock responses"}`))
 			return
 		}
 
-		resp := tc.MockResponses[responseIndex]
-		responseIndex++
+		resp := tc.MockResponses[idx]
 
 		// Apply delay if specified
 		if resp.Delay > 0 {
@@ -224,17 +228,16 @@ func runTest(tc TestCase) TestResult {
 		}
 	}
 
-	// Run assertions
+	// Run assertions (server is closed, safe to read without mutex)
 	for _, assertion := range tc.Assertions {
 		switch assertion.Type {
 		case "requestCount":
-			expected := int32(assertion.Expected.(float64))
-			actual := atomic.LoadInt32(&requestCount)
-			if actual != expected {
+			expected := int(assertion.Expected.(float64))
+			if requestCount != expected {
 				return TestResult{
 					Name:    tc.Name,
 					Passed:  false,
-					Message: fmt.Sprintf("Expected %d requests, got %d", expected, actual),
+					Message: fmt.Sprintf("Expected %d requests, got %d", expected, requestCount),
 				}
 			}
 
