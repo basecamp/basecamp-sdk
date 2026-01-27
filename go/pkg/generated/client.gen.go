@@ -27,10 +27,10 @@ type Campfire struct {
 	Bucket           *TodoBucket `json:"bucket,omitempty"`
 	CreatedAt        *string     `json:"created_at,omitempty"`
 	Creator          *Person     `json:"creator,omitempty"`
-	Id               *float32    `json:"id,omitempty"`
+	Id               *int64      `json:"id,omitempty"`
 	InheritsStatus   *bool       `json:"inherits_status,omitempty"`
 	LinesUrl         *string     `json:"lines_url,omitempty"`
-	Position         *float32    `json:"position,omitempty"`
+	Position         *int32      `json:"position,omitempty"`
 	Status           *string     `json:"status,omitempty"`
 	SubscriptionUrl  *string     `json:"subscription_url,omitempty"`
 	Title            *string     `json:"title,omitempty"`
@@ -49,7 +49,7 @@ type CampfireLine struct {
 	Content          *string          `json:"content,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
 	Status           *string          `json:"status,omitempty"`
@@ -66,7 +66,7 @@ type Card struct {
 	Assignees             *[]Person        `json:"assignees,omitempty"`
 	BookmarkUrl           *string          `json:"bookmark_url,omitempty"`
 	Bucket                *TodoBucket      `json:"bucket,omitempty"`
-	CommentsCount         *float32         `json:"comments_count,omitempty"`
+	CommentsCount         *int32           `json:"comments_count,omitempty"`
 	CommentsUrl           *string          `json:"comments_url,omitempty"`
 	Completed             *bool            `json:"completed,omitempty"`
 	CompletedAt           *string          `json:"completed_at,omitempty"`
@@ -78,10 +78,10 @@ type Card struct {
 	Creator               *Person          `json:"creator,omitempty"`
 	Description           *string          `json:"description,omitempty"`
 	DueOn                 *string          `json:"due_on,omitempty"`
-	Id                    *float32         `json:"id,omitempty"`
+	Id                    *int64           `json:"id,omitempty"`
 	InheritsStatus        *bool            `json:"inherits_status,omitempty"`
 	Parent                *RecordingParent `json:"parent,omitempty"`
-	Position              *float32         `json:"position,omitempty"`
+	Position              *int32           `json:"position,omitempty"`
 	Status                *string          `json:"status,omitempty"`
 	Steps                 *[]CardStep      `json:"steps,omitempty"`
 	SubscriptionUrl       *string          `json:"subscription_url,omitempty"`
@@ -97,17 +97,17 @@ type CardColumn struct {
 	AppUrl           *string          `json:"app_url,omitempty"`
 	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
 	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	CardsCount       *float32         `json:"cards_count,omitempty"`
+	CardsCount       *int32           `json:"cards_count,omitempty"`
 	CardsUrl         *string          `json:"cards_url,omitempty"`
 	Color            *string          `json:"color,omitempty"`
-	CommentsCount    *float32         `json:"comments_count,omitempty"`
+	CommentsCount    *int32           `json:"comments_count,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
 	Description      *string          `json:"description,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
-	Position         *float32         `json:"position,omitempty"`
+	Position         *int32           `json:"position,omitempty"`
 	Status           *string          `json:"status,omitempty"`
 	Subscribers      *[]Person        `json:"subscribers,omitempty"`
 	Title            *string          `json:"title,omitempty"`
@@ -130,10 +130,10 @@ type CardStep struct {
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
 	DueOn            *string          `json:"due_on,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
-	Position         *float32         `json:"position,omitempty"`
+	Position         *int32           `json:"position,omitempty"`
 	Status           *string          `json:"status,omitempty"`
 	Title            *string          `json:"title,omitempty"`
 	Type             *string          `json:"type,omitempty"`
@@ -149,7 +149,7 @@ type CardTable struct {
 	Bucket           *TodoBucket   `json:"bucket,omitempty"`
 	CreatedAt        *string       `json:"created_at,omitempty"`
 	Creator          *Person       `json:"creator,omitempty"`
-	Id               *float32      `json:"id,omitempty"`
+	Id               *int64        `json:"id,omitempty"`
 	InheritsStatus   *bool         `json:"inherits_status,omitempty"`
 	Lists            *[]CardColumn `json:"lists,omitempty"`
 	Status           *string       `json:"status,omitempty"`
@@ -164,14 +164,14 @@ type CardTable struct {
 
 // Chatbot defines model for Chatbot.
 type Chatbot struct {
-	AppUrl      *string  `json:"app_url,omitempty"`
-	CommandUrl  *string  `json:"command_url,omitempty"`
-	CreatedAt   *string  `json:"created_at,omitempty"`
-	Id          *float32 `json:"id,omitempty"`
-	LinesUrl    *string  `json:"lines_url,omitempty"`
-	ServiceName *string  `json:"service_name,omitempty"`
-	UpdatedAt   *string  `json:"updated_at,omitempty"`
-	Url         *string  `json:"url,omitempty"`
+	AppUrl      *string `json:"app_url,omitempty"`
+	CommandUrl  *string `json:"command_url,omitempty"`
+	CreatedAt   *string `json:"created_at,omitempty"`
+	Id          *int64  `json:"id,omitempty"`
+	LinesUrl    *string `json:"lines_url,omitempty"`
+	ServiceName *string `json:"service_name,omitempty"`
+	UpdatedAt   *string `json:"updated_at,omitempty"`
+	Url         *string `json:"url,omitempty"`
 }
 
 // ClientApproval defines model for ClientApproval.
@@ -185,10 +185,10 @@ type ClientApproval struct {
 	CreatedAt        *string                   `json:"created_at,omitempty"`
 	Creator          *Person                   `json:"creator,omitempty"`
 	DueOn            *string                   `json:"due_on,omitempty"`
-	Id               *float32                  `json:"id,omitempty"`
+	Id               *int64                    `json:"id,omitempty"`
 	InheritsStatus   *bool                     `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent          `json:"parent,omitempty"`
-	RepliesCount     *float32                  `json:"replies_count,omitempty"`
+	RepliesCount     *int32                    `json:"replies_count,omitempty"`
 	RepliesUrl       *string                   `json:"replies_url,omitempty"`
 	Responses        *[]ClientApprovalResponse `json:"responses,omitempty"`
 	Status           *string                   `json:"status,omitempty"`
@@ -210,7 +210,7 @@ type ClientApprovalResponse struct {
 	Content          *string          `json:"content,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
 	Status           *string          `json:"status,omitempty"`
@@ -222,8 +222,8 @@ type ClientApprovalResponse struct {
 
 // ClientCompany defines model for ClientCompany.
 type ClientCompany struct {
-	Id   *float32 `json:"id,omitempty"`
-	Name *string  `json:"name,omitempty"`
+	Id   *int64  `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
 }
 
 // ClientCorrespondence defines model for ClientCorrespondence.
@@ -234,10 +234,10 @@ type ClientCorrespondence struct {
 	Content          *string          `json:"content,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
-	RepliesCount     *float32         `json:"replies_count,omitempty"`
+	RepliesCount     *int32           `json:"replies_count,omitempty"`
 	RepliesUrl       *string          `json:"replies_url,omitempty"`
 	Status           *string          `json:"status,omitempty"`
 	Subject          *string          `json:"subject,omitempty"`
@@ -257,7 +257,7 @@ type ClientReply struct {
 	Content          *string          `json:"content,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
 	Status           *string          `json:"status,omitempty"`
@@ -287,7 +287,7 @@ type Comment struct {
 	Content          *string          `json:"content,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
 	Status           *string          `json:"status,omitempty"`
@@ -352,9 +352,9 @@ type CreateCardResponseContent struct {
 
 // CreateCardStepRequestContent defines model for CreateCardStepRequestContent.
 type CreateCardStepRequestContent struct {
-	Assignees *[]float32 `json:"assignees,omitempty"`
-	DueOn     *string    `json:"due_on,omitempty"`
-	Title     string     `json:"title"`
+	Assignees *[]int64 `json:"assignees,omitempty"`
+	DueOn     *string  `json:"due_on,omitempty"`
+	Title     string   `json:"title"`
 }
 
 // CreateCardStepResponseContent defines model for CreateCardStepResponseContent.
@@ -423,8 +423,8 @@ type CreateLineupMarkerResponseContent struct {
 
 // CreateMessageRequestContent defines model for CreateMessageRequestContent.
 type CreateMessageRequestContent struct {
-	CategoryId *float32 `json:"category_id,omitempty"`
-	Content    *string  `json:"content,omitempty"`
+	CategoryId *int64  `json:"category_id,omitempty"`
+	Content    *string `json:"content,omitempty"`
 
 	// Status active|drafted
 	Status  *string `json:"status,omitempty"`
@@ -490,13 +490,13 @@ type CreateQuestionResponseContent struct {
 
 // CreateScheduleEntryRequestContent defines model for CreateScheduleEntryRequestContent.
 type CreateScheduleEntryRequestContent struct {
-	AllDay         *bool      `json:"all_day,omitempty"`
-	Description    *string    `json:"description,omitempty"`
-	EndsAt         string     `json:"ends_at"`
-	Notify         *bool      `json:"notify,omitempty"`
-	ParticipantIds *[]float32 `json:"participant_ids,omitempty"`
-	StartsAt       string     `json:"starts_at"`
-	Summary        string     `json:"summary"`
+	AllDay         *bool    `json:"all_day,omitempty"`
+	Description    *string  `json:"description,omitempty"`
+	EndsAt         string   `json:"ends_at"`
+	Notify         *bool    `json:"notify,omitempty"`
+	ParticipantIds *[]int64 `json:"participant_ids,omitempty"`
+	StartsAt       string   `json:"starts_at"`
+	Summary        string   `json:"summary"`
 }
 
 // CreateScheduleEntryResponseContent defines model for CreateScheduleEntryResponseContent.
@@ -517,13 +517,13 @@ type CreateTemplateResponseContent struct {
 
 // CreateTodoRequestContent defines model for CreateTodoRequestContent.
 type CreateTodoRequestContent struct {
-	AssigneeIds             *[]float32 `json:"assignee_ids,omitempty"`
-	CompletionSubscriberIds *[]float32 `json:"completion_subscriber_ids,omitempty"`
-	Content                 string     `json:"content"`
-	Description             *string    `json:"description,omitempty"`
-	DueOn                   *string    `json:"due_on,omitempty"`
-	Notify                  *bool      `json:"notify,omitempty"`
-	StartsOn                *string    `json:"starts_on,omitempty"`
+	AssigneeIds             *[]int64 `json:"assignee_ids,omitempty"`
+	CompletionSubscriberIds *[]int64 `json:"completion_subscriber_ids,omitempty"`
+	Content                 string   `json:"content"`
+	Description             *string  `json:"description,omitempty"`
+	DueOn                   *string  `json:"due_on,omitempty"`
+	Notify                  *bool    `json:"notify,omitempty"`
+	StartsOn                *string  `json:"starts_on,omitempty"`
 }
 
 // CreateTodoResponseContent defines model for CreateTodoResponseContent.
@@ -593,13 +593,13 @@ type DisableCardColumnOnHoldResponseContent struct {
 
 // DockItem defines model for DockItem.
 type DockItem struct {
-	AppUrl   *string  `json:"app_url,omitempty"`
-	Enabled  *bool    `json:"enabled,omitempty"`
-	Id       *float32 `json:"id,omitempty"`
-	Name     *string  `json:"name,omitempty"`
-	Position *float32 `json:"position,omitempty"`
-	Title    *string  `json:"title,omitempty"`
-	Url      *string  `json:"url,omitempty"`
+	AppUrl   *string `json:"app_url,omitempty"`
+	Enabled  *bool   `json:"enabled,omitempty"`
+	Id       *int64  `json:"id,omitempty"`
+	Name     *string `json:"name,omitempty"`
+	Position *int32  `json:"position,omitempty"`
+	Title    *string `json:"title,omitempty"`
+	Url      *string `json:"url,omitempty"`
 }
 
 // Document defines model for Document.
@@ -607,15 +607,15 @@ type Document struct {
 	AppUrl           *string          `json:"app_url,omitempty"`
 	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
 	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	CommentsCount    *float32         `json:"comments_count,omitempty"`
+	CommentsCount    *int32           `json:"comments_count,omitempty"`
 	CommentsUrl      *string          `json:"comments_url,omitempty"`
 	Content          *string          `json:"content,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
-	Position         *float32         `json:"position,omitempty"`
+	Position         *int32           `json:"position,omitempty"`
 	Status           *string          `json:"status,omitempty"`
 	SubscriptionUrl  *string          `json:"subscription_url,omitempty"`
 	Title            *string          `json:"title,omitempty"`
@@ -636,15 +636,15 @@ type Event struct {
 	CreatedAt   *string       `json:"created_at,omitempty"`
 	Creator     *Person       `json:"creator,omitempty"`
 	Details     *EventDetails `json:"details,omitempty"`
-	Id          *float32      `json:"id,omitempty"`
-	RecordingId *float32      `json:"recording_id,omitempty"`
+	Id          *int64        `json:"id,omitempty"`
+	RecordingId *int64        `json:"recording_id,omitempty"`
 }
 
 // EventDetails defines model for EventDetails.
 type EventDetails struct {
-	AddedPersonIds       *[]float32 `json:"added_person_ids,omitempty"`
-	NotifiedRecipientIds *[]float32 `json:"notified_recipient_ids,omitempty"`
-	RemovedPersonIds     *[]float32 `json:"removed_person_ids,omitempty"`
+	AddedPersonIds       *[]int64 `json:"added_person_ids,omitempty"`
+	NotifiedRecipientIds *[]int64 `json:"notified_recipient_ids,omitempty"`
+	RemovedPersonIds     *[]int64 `json:"removed_person_ids,omitempty"`
 }
 
 // ForbiddenErrorResponseContent defines model for ForbiddenErrorResponseContent.
@@ -662,10 +662,10 @@ type Forward struct {
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
 	From             *string          `json:"from,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
-	RepliesCount     *float32         `json:"replies_count,omitempty"`
+	RepliesCount     *int32           `json:"replies_count,omitempty"`
 	RepliesUrl       *string          `json:"replies_url,omitempty"`
 	Status           *string          `json:"status,omitempty"`
 	Subject          *string          `json:"subject,omitempty"`
@@ -685,7 +685,7 @@ type ForwardReply struct {
 	Content          *string          `json:"content,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
 	Status           *string          `json:"status,omitempty"`
@@ -909,11 +909,11 @@ type Inbox struct {
 	Bucket           *TodoBucket `json:"bucket,omitempty"`
 	CreatedAt        *string     `json:"created_at,omitempty"`
 	Creator          *Person     `json:"creator,omitempty"`
-	ForwardsCount    *float32    `json:"forwards_count,omitempty"`
+	ForwardsCount    *int32      `json:"forwards_count,omitempty"`
 	ForwardsUrl      *string     `json:"forwards_url,omitempty"`
-	Id               *float32    `json:"id,omitempty"`
+	Id               *int64      `json:"id,omitempty"`
 	InheritsStatus   *bool       `json:"inherits_status,omitempty"`
-	Position         *float32    `json:"position,omitempty"`
+	Position         *int32      `json:"position,omitempty"`
 	Status           *string     `json:"status,omitempty"`
 	Title            *string     `json:"title,omitempty"`
 	Type             *string     `json:"type,omitempty"`
@@ -937,7 +937,7 @@ type LineupMarker struct {
 	Creator     *Person          `json:"creator,omitempty"`
 	Description *string          `json:"description,omitempty"`
 	EndsOn      *string          `json:"ends_on,omitempty"`
-	Id          *float32         `json:"id,omitempty"`
+	Id          *int64           `json:"id,omitempty"`
 	Parent      *RecordingParent `json:"parent,omitempty"`
 	StartsOn    *string          `json:"starts_on,omitempty"`
 	Status      *string          `json:"status,omitempty"`
@@ -1103,12 +1103,12 @@ type Message struct {
 	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
 	Bucket           *TodoBucket      `json:"bucket,omitempty"`
 	Category         *MessageType     `json:"category,omitempty"`
-	CommentsCount    *float32         `json:"comments_count,omitempty"`
+	CommentsCount    *int32           `json:"comments_count,omitempty"`
 	CommentsUrl      *string          `json:"comments_url,omitempty"`
 	Content          *string          `json:"content,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
 	Status           *string          `json:"status,omitempty"`
@@ -1129,11 +1129,11 @@ type MessageBoard struct {
 	Bucket           *TodoBucket `json:"bucket,omitempty"`
 	CreatedAt        *string     `json:"created_at,omitempty"`
 	Creator          *Person     `json:"creator,omitempty"`
-	Id               *float32    `json:"id,omitempty"`
+	Id               *int64      `json:"id,omitempty"`
 	InheritsStatus   *bool       `json:"inherits_status,omitempty"`
-	MessagesCount    *float32    `json:"messages_count,omitempty"`
+	MessagesCount    *int32      `json:"messages_count,omitempty"`
 	MessagesUrl      *string     `json:"messages_url,omitempty"`
-	Position         *float32    `json:"position,omitempty"`
+	Position         *int32      `json:"position,omitempty"`
 	Status           *string     `json:"status,omitempty"`
 	Title            *string     `json:"title,omitempty"`
 	Type             *string     `json:"type,omitempty"`
@@ -1144,23 +1144,23 @@ type MessageBoard struct {
 
 // MessageType defines model for MessageType.
 type MessageType struct {
-	CreatedAt *string  `json:"created_at,omitempty"`
-	Icon      *string  `json:"icon,omitempty"`
-	Id        *float32 `json:"id,omitempty"`
-	Name      *string  `json:"name,omitempty"`
-	UpdatedAt *string  `json:"updated_at,omitempty"`
+	CreatedAt *string `json:"created_at,omitempty"`
+	Icon      *string `json:"icon,omitempty"`
+	Id        *int64  `json:"id,omitempty"`
+	Name      *string `json:"name,omitempty"`
+	UpdatedAt *string `json:"updated_at,omitempty"`
 }
 
 // MoveCardColumnRequestContent defines model for MoveCardColumnRequestContent.
 type MoveCardColumnRequestContent struct {
-	Position *float32 `json:"position,omitempty"`
-	SourceId float32  `json:"source_id"`
-	TargetId float32  `json:"target_id"`
+	Position *int32 `json:"position,omitempty"`
+	SourceId int64  `json:"source_id"`
+	TargetId int64  `json:"target_id"`
 }
 
 // MoveCardRequestContent defines model for MoveCardRequestContent.
 type MoveCardRequestContent struct {
-	ColumnId float32 `json:"column_id"`
+	ColumnId int64 `json:"column_id"`
 }
 
 // NotFoundErrorResponseContent defines model for NotFoundErrorResponseContent.
@@ -1182,7 +1182,7 @@ type Person struct {
 	CreatedAt         *string        `json:"created_at,omitempty"`
 	EmailAddress      *string        `json:"email_address,omitempty"`
 	Employee          *bool          `json:"employee,omitempty"`
-	Id                *float32       `json:"id,omitempty"`
+	Id                *int64         `json:"id,omitempty"`
 	Location          *string        `json:"location,omitempty"`
 	Name              *string        `json:"name,omitempty"`
 	Owner             *bool          `json:"owner,omitempty"`
@@ -1194,8 +1194,8 @@ type Person struct {
 
 // PersonCompany defines model for PersonCompany.
 type PersonCompany struct {
-	Id   *float32 `json:"id,omitempty"`
-	Name *string  `json:"name,omitempty"`
+	Id   *int64  `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
 }
 
 // Project defines model for Project.
@@ -1212,7 +1212,7 @@ type Project struct {
 	CreatedAt   *string     `json:"created_at,omitempty"`
 	Description *string     `json:"description,omitempty"`
 	Dock        *[]DockItem `json:"dock,omitempty"`
-	Id          *float32    `json:"id,omitempty"`
+	Id          *int64      `json:"id,omitempty"`
 	Name        *string     `json:"name,omitempty"`
 	Purpose     *string     `json:"purpose,omitempty"`
 
@@ -1230,7 +1230,7 @@ type ProjectAccessResult struct {
 
 // ProjectConstruction defines model for ProjectConstruction.
 type ProjectConstruction struct {
-	Id      *float32 `json:"id,omitempty"`
+	Id      *int64   `json:"id,omitempty"`
 	Project *Project `json:"project,omitempty"`
 	Status  *string  `json:"status,omitempty"`
 	Url     *string  `json:"url,omitempty"`
@@ -1238,14 +1238,14 @@ type ProjectConstruction struct {
 
 // Question defines model for Question.
 type Question struct {
-	AnswersCount     *float32          `json:"answers_count,omitempty"`
+	AnswersCount     *int32            `json:"answers_count,omitempty"`
 	AnswersUrl       *string           `json:"answers_url,omitempty"`
 	AppUrl           *string           `json:"app_url,omitempty"`
 	BookmarkUrl      *string           `json:"bookmark_url,omitempty"`
 	Bucket           *RecordingBucket  `json:"bucket,omitempty"`
 	CreatedAt        *string           `json:"created_at,omitempty"`
 	Creator          *Person           `json:"creator,omitempty"`
-	Id               *float32          `json:"id,omitempty"`
+	Id               *int64            `json:"id,omitempty"`
 	InheritsStatus   *bool             `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent  `json:"parent,omitempty"`
 	Paused           *bool             `json:"paused,omitempty"`
@@ -1264,13 +1264,13 @@ type QuestionAnswer struct {
 	AppUrl           *string          `json:"app_url,omitempty"`
 	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
 	Bucket           *RecordingBucket `json:"bucket,omitempty"`
-	CommentsCount    *float32         `json:"comments_count,omitempty"`
+	CommentsCount    *int32           `json:"comments_count,omitempty"`
 	CommentsUrl      *string          `json:"comments_url,omitempty"`
 	Content          *string          `json:"content,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
 	GroupOn          *string          `json:"group_on,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
 	Status           *string          `json:"status,omitempty"`
@@ -1295,15 +1295,15 @@ type QuestionAnswerUpdatePayload struct {
 
 // QuestionSchedule defines model for QuestionSchedule.
 type QuestionSchedule struct {
-	Days          *[]float32 `json:"days,omitempty"`
-	EndDate       *string    `json:"end_date,omitempty"`
-	Frequency     *string    `json:"frequency,omitempty"`
-	Hour          *float32   `json:"hour,omitempty"`
-	Minute        *float32   `json:"minute,omitempty"`
-	MonthInterval *float32   `json:"month_interval,omitempty"`
-	StartDate     *string    `json:"start_date,omitempty"`
-	WeekInstance  *float32   `json:"week_instance,omitempty"`
-	WeekInterval  *float32   `json:"week_interval,omitempty"`
+	Days          *[]int32 `json:"days,omitempty"`
+	EndDate       *string  `json:"end_date,omitempty"`
+	Frequency     *string  `json:"frequency,omitempty"`
+	Hour          *int32   `json:"hour,omitempty"`
+	Minute        *int32   `json:"minute,omitempty"`
+	MonthInterval *int32   `json:"month_interval,omitempty"`
+	StartDate     *string  `json:"start_date,omitempty"`
+	WeekInstance  *int32   `json:"week_instance,omitempty"`
+	WeekInterval  *int32   `json:"week_interval,omitempty"`
 }
 
 // Questionnaire defines model for Questionnaire.
@@ -1313,10 +1313,10 @@ type Questionnaire struct {
 	Bucket           *RecordingBucket `json:"bucket,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Name             *string          `json:"name,omitempty"`
-	QuestionsCount   *float32         `json:"questions_count,omitempty"`
+	QuestionsCount   *int32           `json:"questions_count,omitempty"`
 	QuestionsUrl     *string          `json:"questions_url,omitempty"`
 	Status           *string          `json:"status,omitempty"`
 	Title            *string          `json:"title,omitempty"`
@@ -1328,9 +1328,9 @@ type Questionnaire struct {
 
 // RateLimitErrorResponseContent defines model for RateLimitErrorResponseContent.
 type RateLimitErrorResponseContent struct {
-	Error      string   `json:"error"`
-	Message    *string  `json:"message,omitempty"`
-	RetryAfter *float32 `json:"retry_after,omitempty"`
+	Error      string  `json:"error"`
+	Message    *string `json:"message,omitempty"`
+	RetryAfter *int32  `json:"retry_after,omitempty"`
 }
 
 // Recording defines model for Recording.
@@ -1340,7 +1340,7 @@ type Recording struct {
 	Bucket           *RecordingBucket `json:"bucket,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
 	Status           *string          `json:"status,omitempty"`
@@ -1353,35 +1353,35 @@ type Recording struct {
 
 // RecordingBucket defines model for RecordingBucket.
 type RecordingBucket struct {
-	Id   *float32 `json:"id,omitempty"`
-	Name *string  `json:"name,omitempty"`
-	Type *string  `json:"type,omitempty"`
+	Id   *int64  `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
+	Type *string `json:"type,omitempty"`
 }
 
 // RecordingParent defines model for RecordingParent.
 type RecordingParent struct {
-	AppUrl *string  `json:"app_url,omitempty"`
-	Id     *float32 `json:"id,omitempty"`
-	Title  *string  `json:"title,omitempty"`
-	Type   *string  `json:"type,omitempty"`
-	Url    *string  `json:"url,omitempty"`
+	AppUrl *string `json:"app_url,omitempty"`
+	Id     *int64  `json:"id,omitempty"`
+	Title  *string `json:"title,omitempty"`
+	Type   *string `json:"type,omitempty"`
+	Url    *string `json:"url,omitempty"`
 }
 
 // RepositionCardStepRequestContent defines model for RepositionCardStepRequestContent.
 type RepositionCardStepRequestContent struct {
 	// Position 0-indexed position
-	Position float32 `json:"position"`
-	SourceId float32 `json:"source_id"`
+	Position int32 `json:"position"`
+	SourceId int64 `json:"source_id"`
 }
 
 // RepositionTodolistGroupRequestContent defines model for RepositionTodolistGroupRequestContent.
 type RepositionTodolistGroupRequestContent struct {
-	Position float32 `json:"position"`
+	Position int32 `json:"position"`
 }
 
 // RepositionToolRequestContent defines model for RepositionToolRequestContent.
 type RepositionToolRequestContent struct {
-	Position float32 `json:"position"`
+	Position int32 `json:"position"`
 }
 
 // Schedule defines model for Schedule.
@@ -1391,12 +1391,12 @@ type Schedule struct {
 	Bucket                *TodoBucket `json:"bucket,omitempty"`
 	CreatedAt             *string     `json:"created_at,omitempty"`
 	Creator               *Person     `json:"creator,omitempty"`
-	EntriesCount          *float32    `json:"entries_count,omitempty"`
+	EntriesCount          *int32      `json:"entries_count,omitempty"`
 	EntriesUrl            *string     `json:"entries_url,omitempty"`
-	Id                    *float32    `json:"id,omitempty"`
+	Id                    *int64      `json:"id,omitempty"`
 	IncludeDueAssignments *bool       `json:"include_due_assignments,omitempty"`
 	InheritsStatus        *bool       `json:"inherits_status,omitempty"`
-	Position              *float32    `json:"position,omitempty"`
+	Position              *int32      `json:"position,omitempty"`
 	Status                *string     `json:"status,omitempty"`
 	Title                 *string     `json:"title,omitempty"`
 	Type                  *string     `json:"type,omitempty"`
@@ -1417,13 +1417,13 @@ type ScheduleEntry struct {
 	AppUrl           *string          `json:"app_url,omitempty"`
 	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
 	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	CommentsCount    *float32         `json:"comments_count,omitempty"`
+	CommentsCount    *int32           `json:"comments_count,omitempty"`
 	CommentsUrl      *string          `json:"comments_url,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
 	Description      *string          `json:"description,omitempty"`
 	EndsAt           *string          `json:"ends_at,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
 	Participants     *[]Person        `json:"participants,omitempty"`
@@ -1445,8 +1445,8 @@ type SearchMetadata struct {
 
 // SearchProject defines model for SearchProject.
 type SearchProject struct {
-	Id   *float32 `json:"id,omitempty"`
-	Name *string  `json:"name,omitempty"`
+	Id   *int64  `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
 }
 
 // SearchResponseContent defines model for SearchResponseContent.
@@ -1463,7 +1463,7 @@ type SearchResult struct {
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
 	Description      *string          `json:"description,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
 	Status           *string          `json:"status,omitempty"`
@@ -1503,7 +1503,7 @@ type SubscribeResponseContent struct {
 
 // Subscription defines model for Subscription.
 type Subscription struct {
-	Count       *float32  `json:"count,omitempty"`
+	Count       *int32    `json:"count,omitempty"`
 	Subscribed  *bool     `json:"subscribed,omitempty"`
 	Subscribers *[]Person `json:"subscribers,omitempty"`
 	Url         *string   `json:"url,omitempty"`
@@ -1515,7 +1515,7 @@ type Template struct {
 	CreatedAt   *string     `json:"created_at,omitempty"`
 	Description *string     `json:"description,omitempty"`
 	Dock        *[]DockItem `json:"dock,omitempty"`
-	Id          *float32    `json:"id,omitempty"`
+	Id          *int64      `json:"id,omitempty"`
 	Name        *string     `json:"name,omitempty"`
 	Status      *string     `json:"status,omitempty"`
 	UpdatedAt   *string     `json:"updated_at,omitempty"`
@@ -1532,7 +1532,7 @@ type TimesheetEntry struct {
 	Date             *string          `json:"date,omitempty"`
 	Description      *string          `json:"description,omitempty"`
 	Hours            *string          `json:"hours,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
 	Status           *string          `json:"status,omitempty"`
@@ -1549,7 +1549,7 @@ type Todo struct {
 	Assignees             *[]Person   `json:"assignees,omitempty"`
 	BookmarkUrl           *string     `json:"bookmark_url,omitempty"`
 	Bucket                *TodoBucket `json:"bucket,omitempty"`
-	CommentsCount         *float32    `json:"comments_count,omitempty"`
+	CommentsCount         *int32      `json:"comments_count,omitempty"`
 	CommentsUrl           *string     `json:"comments_url,omitempty"`
 	Completed             *bool       `json:"completed,omitempty"`
 	CompletionSubscribers *[]Person   `json:"completion_subscribers,omitempty"`
@@ -1559,10 +1559,10 @@ type Todo struct {
 	Creator               *Person     `json:"creator,omitempty"`
 	Description           *string     `json:"description,omitempty"`
 	DueOn                 *string     `json:"due_on,omitempty"`
-	Id                    *float32    `json:"id,omitempty"`
+	Id                    *int64      `json:"id,omitempty"`
 	InheritsStatus        *bool       `json:"inherits_status,omitempty"`
 	Parent                *TodoParent `json:"parent,omitempty"`
-	Position              *float32    `json:"position,omitempty"`
+	Position              *int32      `json:"position,omitempty"`
 	StartsOn              *string     `json:"starts_on,omitempty"`
 
 	// Status active|archived|trashed
@@ -1577,18 +1577,18 @@ type Todo struct {
 
 // TodoBucket defines model for TodoBucket.
 type TodoBucket struct {
-	Id   *float32 `json:"id,omitempty"`
-	Name *string  `json:"name,omitempty"`
-	Type *string  `json:"type,omitempty"`
+	Id   *int64  `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
+	Type *string `json:"type,omitempty"`
 }
 
 // TodoParent defines model for TodoParent.
 type TodoParent struct {
-	AppUrl *string  `json:"app_url,omitempty"`
-	Id     *float32 `json:"id,omitempty"`
-	Title  *string  `json:"title,omitempty"`
-	Type   *string  `json:"type,omitempty"`
-	Url    *string  `json:"url,omitempty"`
+	AppUrl *string `json:"app_url,omitempty"`
+	Id     *int64  `json:"id,omitempty"`
+	Title  *string `json:"title,omitempty"`
+	Type   *string `json:"type,omitempty"`
+	Url    *string `json:"url,omitempty"`
 }
 
 // Todolist defines model for Todolist.
@@ -1597,7 +1597,7 @@ type Todolist struct {
 	AppUrl         *string     `json:"app_url,omitempty"`
 	BookmarkUrl    *string     `json:"bookmark_url,omitempty"`
 	Bucket         *TodoBucket `json:"bucket,omitempty"`
-	CommentsCount  *float32    `json:"comments_count,omitempty"`
+	CommentsCount  *int32      `json:"comments_count,omitempty"`
 	CommentsUrl    *string     `json:"comments_url,omitempty"`
 	Completed      *bool       `json:"completed,omitempty"`
 	CompletedRatio *string     `json:"completed_ratio,omitempty"`
@@ -1605,11 +1605,11 @@ type Todolist struct {
 	Creator        *Person     `json:"creator,omitempty"`
 	Description    *string     `json:"description,omitempty"`
 	GroupsUrl      *string     `json:"groups_url,omitempty"`
-	Id             *float32    `json:"id,omitempty"`
+	Id             *int64      `json:"id,omitempty"`
 	InheritsStatus *bool       `json:"inherits_status,omitempty"`
 	Name           *string     `json:"name,omitempty"`
 	Parent         *TodoParent `json:"parent,omitempty"`
-	Position       *float32    `json:"position,omitempty"`
+	Position       *int32      `json:"position,omitempty"`
 
 	// Status active|archived|trashed
 	Status           *string `json:"status,omitempty"`
@@ -1628,17 +1628,17 @@ type TodolistGroup struct {
 	AppUrl           *string     `json:"app_url,omitempty"`
 	BookmarkUrl      *string     `json:"bookmark_url,omitempty"`
 	Bucket           *TodoBucket `json:"bucket,omitempty"`
-	CommentsCount    *float32    `json:"comments_count,omitempty"`
+	CommentsCount    *int32      `json:"comments_count,omitempty"`
 	CommentsUrl      *string     `json:"comments_url,omitempty"`
 	Completed        *bool       `json:"completed,omitempty"`
 	CompletedRatio   *string     `json:"completed_ratio,omitempty"`
 	CreatedAt        *string     `json:"created_at,omitempty"`
 	Creator          *Person     `json:"creator,omitempty"`
-	Id               *float32    `json:"id,omitempty"`
+	Id               *int64      `json:"id,omitempty"`
 	InheritsStatus   *bool       `json:"inherits_status,omitempty"`
 	Name             *string     `json:"name,omitempty"`
 	Parent           *TodoParent `json:"parent,omitempty"`
-	Position         *float32    `json:"position,omitempty"`
+	Position         *int32      `json:"position,omitempty"`
 	Status           *string     `json:"status,omitempty"`
 	SubscriptionUrl  *string     `json:"subscription_url,omitempty"`
 	Title            *string     `json:"title,omitempty"`
@@ -1671,19 +1671,19 @@ type Todoset struct {
 	BookmarkUrl       *string     `json:"bookmark_url,omitempty"`
 	Bucket            *TodoBucket `json:"bucket,omitempty"`
 	Completed         *bool       `json:"completed,omitempty"`
-	CompletedCount    *float32    `json:"completed_count,omitempty"`
+	CompletedCount    *int32      `json:"completed_count,omitempty"`
 	CompletedRatio    *string     `json:"completed_ratio,omitempty"`
 	CreatedAt         *string     `json:"created_at,omitempty"`
 	Creator           *Person     `json:"creator,omitempty"`
-	Id                *float32    `json:"id,omitempty"`
+	Id                *int64      `json:"id,omitempty"`
 	InheritsStatus    *bool       `json:"inherits_status,omitempty"`
 	Name              *string     `json:"name,omitempty"`
-	OnScheduleCount   *float32    `json:"on_schedule_count,omitempty"`
-	OverScheduleCount *float32    `json:"over_schedule_count,omitempty"`
-	Position          *float32    `json:"position,omitempty"`
+	OnScheduleCount   *int32      `json:"on_schedule_count,omitempty"`
+	OverScheduleCount *int32      `json:"over_schedule_count,omitempty"`
+	Position          *int32      `json:"position,omitempty"`
 	Status            *string     `json:"status,omitempty"`
 	Title             *string     `json:"title,omitempty"`
-	TodolistsCount    *float32    `json:"todolists_count,omitempty"`
+	TodolistsCount    *int32      `json:"todolists_count,omitempty"`
 	TodolistsUrl      *string     `json:"todolists_url,omitempty"`
 	Type              *string     `json:"type,omitempty"`
 	UpdatedAt         *string     `json:"updated_at,omitempty"`
@@ -1697,9 +1697,9 @@ type Tool struct {
 	Bucket    *RecordingBucket `json:"bucket,omitempty"`
 	CreatedAt *string          `json:"created_at,omitempty"`
 	Enabled   *bool            `json:"enabled,omitempty"`
-	Id        *float32         `json:"id,omitempty"`
+	Id        *int64           `json:"id,omitempty"`
 	Name      *string          `json:"name,omitempty"`
-	Position  *float32         `json:"position,omitempty"`
+	Position  *int32           `json:"position,omitempty"`
 	Status    *string          `json:"status,omitempty"`
 	Title     *string          `json:"title,omitempty"`
 	UpdatedAt *string          `json:"updated_at,omitempty"`
@@ -1735,10 +1735,10 @@ type UpdateCardColumnResponseContent struct {
 
 // UpdateCardRequestContent defines model for UpdateCardRequestContent.
 type UpdateCardRequestContent struct {
-	AssigneeIds *[]float32 `json:"assignee_ids,omitempty"`
-	Content     *string    `json:"content,omitempty"`
-	DueOn       *string    `json:"due_on,omitempty"`
-	Title       *string    `json:"title,omitempty"`
+	AssigneeIds *[]int64 `json:"assignee_ids,omitempty"`
+	Content     *string  `json:"content,omitempty"`
+	DueOn       *string  `json:"due_on,omitempty"`
+	Title       *string  `json:"title,omitempty"`
 }
 
 // UpdateCardResponseContent defines model for UpdateCardResponseContent.
@@ -1748,9 +1748,9 @@ type UpdateCardResponseContent struct {
 
 // UpdateCardStepRequestContent defines model for UpdateCardStepRequestContent.
 type UpdateCardStepRequestContent struct {
-	Assignees *[]float32 `json:"assignees,omitempty"`
-	DueOn     *string    `json:"due_on,omitempty"`
-	Title     *string    `json:"title,omitempty"`
+	Assignees *[]int64 `json:"assignees,omitempty"`
+	DueOn     *string  `json:"due_on,omitempty"`
+	Title     *string  `json:"title,omitempty"`
 }
 
 // UpdateCardStepResponseContent defines model for UpdateCardStepResponseContent.
@@ -1806,8 +1806,8 @@ type UpdateLineupMarkerResponseContent struct {
 
 // UpdateMessageRequestContent defines model for UpdateMessageRequestContent.
 type UpdateMessageRequestContent struct {
-	CategoryId *float32 `json:"category_id,omitempty"`
-	Content    *string  `json:"content,omitempty"`
+	CategoryId *int64  `json:"category_id,omitempty"`
+	Content    *string `json:"content,omitempty"`
 
 	// Status active|drafted
 	Status  *string `json:"status,omitempty"`
@@ -1833,8 +1833,8 @@ type UpdateMessageTypeResponseContent struct {
 // UpdateProjectAccessRequestContent defines model for UpdateProjectAccessRequestContent.
 type UpdateProjectAccessRequestContent struct {
 	Create *[]CreatePersonRequest `json:"create,omitempty"`
-	Grant  *[]float32             `json:"grant,omitempty"`
-	Revoke *[]float32             `json:"revoke,omitempty"`
+	Grant  *[]int64               `json:"grant,omitempty"`
+	Revoke *[]int64               `json:"revoke,omitempty"`
 }
 
 // UpdateProjectAccessResponseContent defines model for UpdateProjectAccessResponseContent.
@@ -1870,13 +1870,13 @@ type UpdateQuestionResponseContent struct {
 
 // UpdateScheduleEntryRequestContent defines model for UpdateScheduleEntryRequestContent.
 type UpdateScheduleEntryRequestContent struct {
-	AllDay         *bool      `json:"all_day,omitempty"`
-	Description    *string    `json:"description,omitempty"`
-	EndsAt         *string    `json:"ends_at,omitempty"`
-	Notify         *bool      `json:"notify,omitempty"`
-	ParticipantIds *[]float32 `json:"participant_ids,omitempty"`
-	StartsAt       *string    `json:"starts_at,omitempty"`
-	Summary        *string    `json:"summary,omitempty"`
+	AllDay         *bool    `json:"all_day,omitempty"`
+	Description    *string  `json:"description,omitempty"`
+	EndsAt         *string  `json:"ends_at,omitempty"`
+	Notify         *bool    `json:"notify,omitempty"`
+	ParticipantIds *[]int64 `json:"participant_ids,omitempty"`
+	StartsAt       *string  `json:"starts_at,omitempty"`
+	Summary        *string  `json:"summary,omitempty"`
 }
 
 // UpdateScheduleEntryResponseContent defines model for UpdateScheduleEntryResponseContent.
@@ -1896,8 +1896,8 @@ type UpdateScheduleSettingsResponseContent struct {
 
 // UpdateSubscriptionRequestContent defines model for UpdateSubscriptionRequestContent.
 type UpdateSubscriptionRequestContent struct {
-	Subscriptions   *[]float32 `json:"subscriptions,omitempty"`
-	Unsubscriptions *[]float32 `json:"unsubscriptions,omitempty"`
+	Subscriptions   *[]int64 `json:"subscriptions,omitempty"`
+	Unsubscriptions *[]int64 `json:"unsubscriptions,omitempty"`
 }
 
 // UpdateSubscriptionResponseContent defines model for UpdateSubscriptionResponseContent.
@@ -1918,13 +1918,13 @@ type UpdateTemplateResponseContent struct {
 
 // UpdateTodoRequestContent defines model for UpdateTodoRequestContent.
 type UpdateTodoRequestContent struct {
-	AssigneeIds             *[]float32 `json:"assignee_ids,omitempty"`
-	CompletionSubscriberIds *[]float32 `json:"completion_subscriber_ids,omitempty"`
-	Content                 *string    `json:"content,omitempty"`
-	Description             *string    `json:"description,omitempty"`
-	DueOn                   *string    `json:"due_on,omitempty"`
-	Notify                  *bool      `json:"notify,omitempty"`
-	StartsOn                *string    `json:"starts_on,omitempty"`
+	AssigneeIds             *[]int64 `json:"assignee_ids,omitempty"`
+	CompletionSubscriberIds *[]int64 `json:"completion_subscriber_ids,omitempty"`
+	Content                 *string  `json:"content,omitempty"`
+	Description             *string  `json:"description,omitempty"`
+	DueOn                   *string  `json:"due_on,omitempty"`
+	Notify                  *bool    `json:"notify,omitempty"`
+	StartsOn                *string  `json:"starts_on,omitempty"`
 }
 
 // UpdateTodoResponseContent defines model for UpdateTodoResponseContent.
@@ -1995,8 +1995,8 @@ type Upload struct {
 	AppUrl           *string          `json:"app_url,omitempty"`
 	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
 	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	ByteSize         *float32         `json:"byte_size,omitempty"`
-	CommentsCount    *float32         `json:"comments_count,omitempty"`
+	ByteSize         *int64           `json:"byte_size,omitempty"`
+	CommentsCount    *int32           `json:"comments_count,omitempty"`
 	CommentsUrl      *string          `json:"comments_url,omitempty"`
 	ContentType      *string          `json:"content_type,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
@@ -2004,11 +2004,11 @@ type Upload struct {
 	Description      *string          `json:"description,omitempty"`
 	DownloadUrl      *string          `json:"download_url,omitempty"`
 	Filename         *string          `json:"filename,omitempty"`
-	Height           *float32         `json:"height,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Height           *int32           `json:"height,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
-	Position         *float32         `json:"position,omitempty"`
+	Position         *int32           `json:"position,omitempty"`
 	Status           *string          `json:"status,omitempty"`
 	SubscriptionUrl  *string          `json:"subscription_url,omitempty"`
 	Title            *string          `json:"title,omitempty"`
@@ -2016,7 +2016,7 @@ type Upload struct {
 	UpdatedAt        *string          `json:"updated_at,omitempty"`
 	Url              *string          `json:"url,omitempty"`
 	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
-	Width            *float32         `json:"width,omitempty"`
+	Width            *int32           `json:"width,omitempty"`
 }
 
 // ValidationErrorResponseContent defines model for ValidationErrorResponseContent.
@@ -2032,20 +2032,20 @@ type Vault struct {
 	Bucket           *TodoBucket      `json:"bucket,omitempty"`
 	CreatedAt        *string          `json:"created_at,omitempty"`
 	Creator          *Person          `json:"creator,omitempty"`
-	DocumentsCount   *float32         `json:"documents_count,omitempty"`
+	DocumentsCount   *int32           `json:"documents_count,omitempty"`
 	DocumentsUrl     *string          `json:"documents_url,omitempty"`
-	Id               *float32         `json:"id,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
 	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
 	Parent           *RecordingParent `json:"parent,omitempty"`
-	Position         *float32         `json:"position,omitempty"`
+	Position         *int32           `json:"position,omitempty"`
 	Status           *string          `json:"status,omitempty"`
 	Title            *string          `json:"title,omitempty"`
 	Type             *string          `json:"type,omitempty"`
 	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	UploadsCount     *float32         `json:"uploads_count,omitempty"`
+	UploadsCount     *int32           `json:"uploads_count,omitempty"`
 	UploadsUrl       *string          `json:"uploads_url,omitempty"`
 	Url              *string          `json:"url,omitempty"`
-	VaultsCount      *float32         `json:"vaults_count,omitempty"`
+	VaultsCount      *int32           `json:"vaults_count,omitempty"`
 	VaultsUrl        *string          `json:"vaults_url,omitempty"`
 	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
 }
@@ -2055,7 +2055,7 @@ type Webhook struct {
 	Active     *bool     `json:"active,omitempty"`
 	AppUrl     *string   `json:"app_url,omitempty"`
 	CreatedAt  *string   `json:"created_at,omitempty"`
-	Id         *float32  `json:"id,omitempty"`
+	Id         *int64    `json:"id,omitempty"`
 	PayloadUrl *string   `json:"payload_url,omitempty"`
 	Types      *[]string `json:"types,omitempty"`
 	UpdatedAt  *string   `json:"updated_at,omitempty"`
@@ -2092,9 +2092,9 @@ type CreateAttachmentParams struct {
 
 // GetRecordingTimesheetParams defines parameters for GetRecordingTimesheet.
 type GetRecordingTimesheetParams struct {
-	From     *string  `form:"from,omitempty" json:"from,omitempty"`
-	To       *string  `form:"to,omitempty" json:"to,omitempty"`
-	PersonId *float32 `form:"person_id,omitempty" json:"person_id,omitempty"`
+	From     *string `form:"from,omitempty" json:"from,omitempty"`
+	To       *string `form:"to,omitempty" json:"to,omitempty"`
+	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
 }
 
 // ListScheduleEntriesParams defines parameters for ListScheduleEntries.
@@ -2105,9 +2105,9 @@ type ListScheduleEntriesParams struct {
 
 // GetProjectTimesheetParams defines parameters for GetProjectTimesheet.
 type GetProjectTimesheetParams struct {
-	From     *string  `form:"from,omitempty" json:"from,omitempty"`
-	To       *string  `form:"to,omitempty" json:"to,omitempty"`
-	PersonId *float32 `form:"person_id,omitempty" json:"person_id,omitempty"`
+	From     *string `form:"from,omitempty" json:"from,omitempty"`
+	To       *string `form:"to,omitempty" json:"to,omitempty"`
+	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
 }
 
 // ListTodosParams defines parameters for ListTodos.
@@ -2147,9 +2147,9 @@ type ListRecordingsParams struct {
 
 // GetTimesheetReportParams defines parameters for GetTimesheetReport.
 type GetTimesheetReportParams struct {
-	From     *string  `form:"from,omitempty" json:"from,omitempty"`
-	To       *string  `form:"to,omitempty" json:"to,omitempty"`
-	PersonId *float32 `form:"person_id,omitempty" json:"person_id,omitempty"`
+	From     *string `form:"from,omitempty" json:"from,omitempty"`
+	To       *string `form:"to,omitempty" json:"to,omitempty"`
+	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
 }
 
 // SearchParams defines parameters for Search.
@@ -2619,466 +2619,466 @@ type ClientInterface interface {
 	CreateAttachmentWithBody(ctx context.Context, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCard request
-	GetCard(ctx context.Context, projectId float32, cardId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetCard(ctx context.Context, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateCardWithBody request with any body
-	UpdateCardWithBody(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCardWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateCard(ctx context.Context, projectId float32, cardId float32, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCard(ctx context.Context, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MoveCardWithBody request with any body
-	MoveCardWithBody(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MoveCardWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	MoveCard(ctx context.Context, projectId float32, cardId float32, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MoveCard(ctx context.Context, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RepositionCardStepWithBody request with any body
-	RepositionCardStepWithBody(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionCardStepWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	RepositionCardStep(ctx context.Context, projectId float32, cardId float32, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionCardStep(ctx context.Context, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCardStepWithBody request with any body
-	CreateCardStepWithBody(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCardStepWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateCardStep(ctx context.Context, projectId float32, cardId float32, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCardStep(ctx context.Context, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCardColumn request
-	GetCardColumn(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetCardColumn(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateCardColumnWithBody request with any body
-	UpdateCardColumnWithBody(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCardColumnWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateCardColumn(ctx context.Context, projectId float32, columnId float32, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCardColumn(ctx context.Context, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetCardColumnColorWithBody request with any body
-	SetCardColumnColorWithBody(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetCardColumnColorWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SetCardColumnColor(ctx context.Context, projectId float32, columnId float32, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetCardColumnColor(ctx context.Context, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DisableCardColumnOnHold request
-	DisableCardColumnOnHold(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DisableCardColumnOnHold(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// EnableCardColumnOnHold request
-	EnableCardColumnOnHold(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	EnableCardColumnOnHold(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCards request
-	ListCards(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListCards(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCardWithBody request with any body
-	CreateCardWithBody(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCardWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateCard(ctx context.Context, projectId float32, columnId float32, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCard(ctx context.Context, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateCardStepWithBody request with any body
-	UpdateCardStepWithBody(ctx context.Context, projectId float32, stepId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCardStepWithBody(ctx context.Context, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateCardStep(ctx context.Context, projectId float32, stepId float32, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCardStep(ctx context.Context, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UncompleteCardStep request
-	UncompleteCardStep(ctx context.Context, projectId float32, stepId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UncompleteCardStep(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CompleteCardStep request
-	CompleteCardStep(ctx context.Context, projectId float32, stepId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteCardStep(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCardTable request
-	GetCardTable(ctx context.Context, projectId float32, cardTableId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetCardTable(ctx context.Context, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCardColumnWithBody request with any body
-	CreateCardColumnWithBody(ctx context.Context, projectId float32, cardTableId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCardColumnWithBody(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateCardColumn(ctx context.Context, projectId float32, cardTableId float32, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCardColumn(ctx context.Context, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MoveCardColumnWithBody request with any body
-	MoveCardColumnWithBody(ctx context.Context, projectId float32, cardTableId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MoveCardColumnWithBody(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	MoveCardColumn(ctx context.Context, projectId float32, cardTableId float32, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MoveCardColumn(ctx context.Context, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListMessageTypes request
-	ListMessageTypes(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListMessageTypes(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateMessageTypeWithBody request with any body
-	CreateMessageTypeWithBody(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateMessageTypeWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateMessageType(ctx context.Context, projectId float32, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateMessageType(ctx context.Context, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteMessageType request
-	DeleteMessageType(ctx context.Context, projectId float32, typeId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteMessageType(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMessageType request
-	GetMessageType(ctx context.Context, projectId float32, typeId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetMessageType(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateMessageTypeWithBody request with any body
-	UpdateMessageTypeWithBody(ctx context.Context, projectId float32, typeId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateMessageTypeWithBody(ctx context.Context, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateMessageType(ctx context.Context, projectId float32, typeId float32, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateMessageType(ctx context.Context, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCampfire request
-	GetCampfire(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetCampfire(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListChatbots request
-	ListChatbots(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListChatbots(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateChatbotWithBody request with any body
-	CreateChatbotWithBody(ctx context.Context, projectId float32, campfireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateChatbotWithBody(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateChatbot(ctx context.Context, projectId float32, campfireId float32, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateChatbot(ctx context.Context, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteChatbot request
-	DeleteChatbot(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetChatbot request
-	GetChatbot(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateChatbotWithBody request with any body
-	UpdateChatbotWithBody(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateChatbotWithBody(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateChatbot(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCampfireLines request
-	ListCampfireLines(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListCampfireLines(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCampfireLineWithBody request with any body
-	CreateCampfireLineWithBody(ctx context.Context, projectId float32, campfireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCampfireLineWithBody(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateCampfireLine(ctx context.Context, projectId float32, campfireId float32, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCampfireLine(ctx context.Context, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteCampfireLine request
-	DeleteCampfireLine(ctx context.Context, projectId float32, campfireId float32, lineId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteCampfireLine(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCampfireLine request
-	GetCampfireLine(ctx context.Context, projectId float32, campfireId float32, lineId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetCampfireLine(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListClientApprovals request
-	ListClientApprovals(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListClientApprovals(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetClientApproval request
-	GetClientApproval(ctx context.Context, projectId float32, approvalId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetClientApproval(ctx context.Context, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListClientCorrespondences request
-	ListClientCorrespondences(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListClientCorrespondences(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetClientCorrespondence request
-	GetClientCorrespondence(ctx context.Context, projectId float32, correspondenceId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetClientCorrespondence(ctx context.Context, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListClientReplies request
-	ListClientReplies(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListClientReplies(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetClientReply request
-	GetClientReply(ctx context.Context, projectId float32, recordingId float32, replyId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetClientReply(ctx context.Context, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetComment request
-	GetComment(ctx context.Context, projectId float32, commentId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetComment(ctx context.Context, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateCommentWithBody request with any body
-	UpdateCommentWithBody(ctx context.Context, projectId float32, commentId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCommentWithBody(ctx context.Context, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateComment(ctx context.Context, projectId float32, commentId float32, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateComment(ctx context.Context, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CloneTool request
-	CloneTool(ctx context.Context, projectId float32, sourceToolId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CloneTool(ctx context.Context, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTool request
-	DeleteTool(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTool request
-	GetTool(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateToolWithBody request with any body
-	UpdateToolWithBody(ctx context.Context, projectId float32, toolId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateToolWithBody(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTool(ctx context.Context, projectId float32, toolId float32, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTool(ctx context.Context, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DisableTool request
-	DisableTool(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DisableTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// EnableTool request
-	EnableTool(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	EnableTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RepositionToolWithBody request with any body
-	RepositionToolWithBody(ctx context.Context, projectId float32, toolId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionToolWithBody(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	RepositionTool(ctx context.Context, projectId float32, toolId float32, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionTool(ctx context.Context, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDocument request
-	GetDocument(ctx context.Context, projectId float32, documentId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDocument(ctx context.Context, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateDocumentWithBody request with any body
-	UpdateDocumentWithBody(ctx context.Context, projectId float32, documentId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateDocumentWithBody(ctx context.Context, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateDocument(ctx context.Context, projectId float32, documentId float32, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateDocument(ctx context.Context, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetForward request
-	GetForward(ctx context.Context, projectId float32, forwardId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetForward(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListForwardReplies request
-	ListForwardReplies(ctx context.Context, projectId float32, forwardId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListForwardReplies(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateForwardReplyWithBody request with any body
-	CreateForwardReplyWithBody(ctx context.Context, projectId float32, forwardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateForwardReplyWithBody(ctx context.Context, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateForwardReply(ctx context.Context, projectId float32, forwardId float32, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateForwardReply(ctx context.Context, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetForwardReply request
-	GetForwardReply(ctx context.Context, projectId float32, forwardId float32, replyId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetForwardReply(ctx context.Context, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetInbox request
-	GetInbox(ctx context.Context, projectId float32, inboxId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetInbox(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListForwards request
-	ListForwards(ctx context.Context, projectId float32, inboxId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListForwards(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMessageBoard request
-	GetMessageBoard(ctx context.Context, projectId float32, boardId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetMessageBoard(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListMessages request
-	ListMessages(ctx context.Context, projectId float32, boardId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListMessages(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateMessageWithBody request with any body
-	CreateMessageWithBody(ctx context.Context, projectId float32, boardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateMessageWithBody(ctx context.Context, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateMessage(ctx context.Context, projectId float32, boardId float32, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateMessage(ctx context.Context, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMessage request
-	GetMessage(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateMessageWithBody request with any body
-	UpdateMessageWithBody(ctx context.Context, projectId float32, messageId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateMessageWithBody(ctx context.Context, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateMessage(ctx context.Context, projectId float32, messageId float32, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateMessage(ctx context.Context, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAnswer request
-	GetAnswer(ctx context.Context, projectId float32, answerId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetAnswer(ctx context.Context, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateAnswerWithBody request with any body
-	UpdateAnswerWithBody(ctx context.Context, projectId float32, answerId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateAnswerWithBody(ctx context.Context, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateAnswer(ctx context.Context, projectId float32, answerId float32, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateAnswer(ctx context.Context, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetQuestionnaire request
-	GetQuestionnaire(ctx context.Context, projectId float32, questionnaireId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetQuestionnaire(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListQuestions request
-	ListQuestions(ctx context.Context, projectId float32, questionnaireId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListQuestions(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateQuestionWithBody request with any body
-	CreateQuestionWithBody(ctx context.Context, projectId float32, questionnaireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateQuestionWithBody(ctx context.Context, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateQuestion(ctx context.Context, projectId float32, questionnaireId float32, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateQuestion(ctx context.Context, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetQuestion request
-	GetQuestion(ctx context.Context, projectId float32, questionId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetQuestion(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateQuestionWithBody request with any body
-	UpdateQuestionWithBody(ctx context.Context, projectId float32, questionId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateQuestionWithBody(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateQuestion(ctx context.Context, projectId float32, questionId float32, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateQuestion(ctx context.Context, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListAnswers request
-	ListAnswers(ctx context.Context, projectId float32, questionId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListAnswers(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateAnswerWithBody request with any body
-	CreateAnswerWithBody(ctx context.Context, projectId float32, questionId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateAnswerWithBody(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateAnswer(ctx context.Context, projectId float32, questionId float32, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateAnswer(ctx context.Context, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnpinMessage request
-	UnpinMessage(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UnpinMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PinMessage request
-	PinMessage(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PinMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRecording request
-	GetRecording(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetClientVisibilityWithBody request with any body
-	SetClientVisibilityWithBody(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetClientVisibilityWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SetClientVisibility(ctx context.Context, projectId float32, recordingId float32, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetClientVisibility(ctx context.Context, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListComments request
-	ListComments(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListComments(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCommentWithBody request with any body
-	CreateCommentWithBody(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCommentWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateComment(ctx context.Context, projectId float32, recordingId float32, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateComment(ctx context.Context, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListEvents request
-	ListEvents(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListEvents(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnarchiveRecording request
-	UnarchiveRecording(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UnarchiveRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ArchiveRecording request
-	ArchiveRecording(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ArchiveRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// TrashRecording request
-	TrashRecording(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	TrashRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Unsubscribe request
-	Unsubscribe(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	Unsubscribe(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetSubscription request
-	GetSubscription(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetSubscription(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Subscribe request
-	Subscribe(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	Subscribe(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateSubscriptionWithBody request with any body
-	UpdateSubscriptionWithBody(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateSubscriptionWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateSubscription(ctx context.Context, projectId float32, recordingId float32, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateSubscription(ctx context.Context, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRecordingTimesheet request
-	GetRecordingTimesheet(ctx context.Context, projectId float32, recordingId float32, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetRecordingTimesheet(ctx context.Context, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetScheduleEntry request
-	GetScheduleEntry(ctx context.Context, projectId float32, entryId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetScheduleEntry(ctx context.Context, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateScheduleEntryWithBody request with any body
-	UpdateScheduleEntryWithBody(ctx context.Context, projectId float32, entryId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateScheduleEntryWithBody(ctx context.Context, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateScheduleEntry(ctx context.Context, projectId float32, entryId float32, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateScheduleEntry(ctx context.Context, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetScheduleEntryOccurrence request
-	GetScheduleEntryOccurrence(ctx context.Context, projectId float32, entryId float32, date string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetScheduleEntryOccurrence(ctx context.Context, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetSchedule request
-	GetSchedule(ctx context.Context, projectId float32, scheduleId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetSchedule(ctx context.Context, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateScheduleSettingsWithBody request with any body
-	UpdateScheduleSettingsWithBody(ctx context.Context, projectId float32, scheduleId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateScheduleSettingsWithBody(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateScheduleSettings(ctx context.Context, projectId float32, scheduleId float32, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateScheduleSettings(ctx context.Context, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListScheduleEntries request
-	ListScheduleEntries(ctx context.Context, projectId float32, scheduleId float32, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListScheduleEntries(ctx context.Context, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateScheduleEntryWithBody request with any body
-	CreateScheduleEntryWithBody(ctx context.Context, projectId float32, scheduleId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateScheduleEntryWithBody(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateScheduleEntry(ctx context.Context, projectId float32, scheduleId float32, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateScheduleEntry(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectTimesheet request
-	GetProjectTimesheet(ctx context.Context, projectId float32, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProjectTimesheet(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RepositionTodolistGroupWithBody request with any body
-	RepositionTodolistGroupWithBody(ctx context.Context, projectId float32, groupId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionTodolistGroupWithBody(ctx context.Context, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	RepositionTodolistGroup(ctx context.Context, projectId float32, groupId float32, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionTodolistGroup(ctx context.Context, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTodolistOrGroup request
-	GetTodolistOrGroup(ctx context.Context, projectId float32, id float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTodolistOrGroup(ctx context.Context, projectId int64, id int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTodolistOrGroupWithBody request with any body
-	UpdateTodolistOrGroupWithBody(ctx context.Context, projectId float32, id float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTodolistOrGroupWithBody(ctx context.Context, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTodolistOrGroup(ctx context.Context, projectId float32, id float32, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTodolistOrGroup(ctx context.Context, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTodolistGroups request
-	ListTodolistGroups(ctx context.Context, projectId float32, todolistId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTodolistGroups(ctx context.Context, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTodolistGroupWithBody request with any body
-	CreateTodolistGroupWithBody(ctx context.Context, projectId float32, todolistId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodolistGroupWithBody(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateTodolistGroup(ctx context.Context, projectId float32, todolistId float32, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodolistGroup(ctx context.Context, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTodos request
-	ListTodos(ctx context.Context, projectId float32, todolistId float32, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTodos(ctx context.Context, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTodoWithBody request with any body
-	CreateTodoWithBody(ctx context.Context, projectId float32, todolistId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodoWithBody(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateTodo(ctx context.Context, projectId float32, todolistId float32, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodo(ctx context.Context, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// TrashTodo request
-	TrashTodo(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	TrashTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTodo request
-	GetTodo(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTodoWithBody request with any body
-	UpdateTodoWithBody(ctx context.Context, projectId float32, todoId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTodoWithBody(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTodo(ctx context.Context, projectId float32, todoId float32, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTodo(ctx context.Context, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UncompleteTodo request
-	UncompleteTodo(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UncompleteTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CompleteTodo request
-	CompleteTodo(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTodoset request
-	GetTodoset(ctx context.Context, projectId float32, todosetId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTodoset(ctx context.Context, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTodolists request
-	ListTodolists(ctx context.Context, projectId float32, todosetId float32, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTodolists(ctx context.Context, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTodolistWithBody request with any body
-	CreateTodolistWithBody(ctx context.Context, projectId float32, todosetId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodolistWithBody(ctx context.Context, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateTodolist(ctx context.Context, projectId float32, todosetId float32, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodolist(ctx context.Context, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUpload request
-	GetUpload(ctx context.Context, projectId float32, uploadId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetUpload(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateUploadWithBody request with any body
-	UpdateUploadWithBody(ctx context.Context, projectId float32, uploadId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUploadWithBody(ctx context.Context, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateUpload(ctx context.Context, projectId float32, uploadId float32, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUpload(ctx context.Context, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListUploadVersions request
-	ListUploadVersions(ctx context.Context, projectId float32, uploadId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListUploadVersions(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetVault request
-	GetVault(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetVault(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateVaultWithBody request with any body
-	UpdateVaultWithBody(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateVaultWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateVault(ctx context.Context, projectId float32, vaultId float32, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateVault(ctx context.Context, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDocuments request
-	ListDocuments(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListDocuments(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateDocumentWithBody request with any body
-	CreateDocumentWithBody(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateDocumentWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateDocument(ctx context.Context, projectId float32, vaultId float32, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateDocument(ctx context.Context, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListUploads request
-	ListUploads(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListUploads(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateUploadWithBody request with any body
-	CreateUploadWithBody(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateUploadWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateUpload(ctx context.Context, projectId float32, vaultId float32, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateUpload(ctx context.Context, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListVaults request
-	ListVaults(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListVaults(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateVaultWithBody request with any body
-	CreateVaultWithBody(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateVaultWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateVault(ctx context.Context, projectId float32, vaultId float32, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateVault(ctx context.Context, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListWebhooks request
-	ListWebhooks(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListWebhooks(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateWebhookWithBody request with any body
-	CreateWebhookWithBody(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateWebhookWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateWebhook(ctx context.Context, projectId float32, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateWebhook(ctx context.Context, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteWebhook request
-	DeleteWebhook(ctx context.Context, projectId float32, webhookId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteWebhook(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetWebhook request
-	GetWebhook(ctx context.Context, projectId float32, webhookId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetWebhook(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateWebhookWithBody request with any body
-	UpdateWebhookWithBody(ctx context.Context, projectId float32, webhookId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateWebhookWithBody(ctx context.Context, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateWebhook(ctx context.Context, projectId float32, webhookId float32, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateWebhook(ctx context.Context, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCampfires request
 	ListCampfires(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3092,12 +3092,12 @@ type ClientInterface interface {
 	CreateLineupMarker(ctx context.Context, body CreateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteLineupMarker request
-	DeleteLineupMarker(ctx context.Context, markerId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteLineupMarker(ctx context.Context, markerId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateLineupMarkerWithBody request with any body
-	UpdateLineupMarkerWithBody(ctx context.Context, markerId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateLineupMarkerWithBody(ctx context.Context, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateLineupMarker(ctx context.Context, markerId float32, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateLineupMarker(ctx context.Context, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMyProfile request
 	GetMyProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3106,7 +3106,7 @@ type ClientInterface interface {
 	ListPeople(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPerson request
-	GetPerson(ctx context.Context, personId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetPerson(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjects request
 	ListProjects(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3120,23 +3120,23 @@ type ClientInterface interface {
 	ListRecordings(ctx context.Context, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// TrashProject request
-	TrashProject(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	TrashProject(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProject request
-	GetProject(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProject(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateProjectWithBody request with any body
-	UpdateProjectWithBody(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProjectWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateProject(ctx context.Context, projectId float32, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProject(ctx context.Context, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjectPeople request
-	ListProjectPeople(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjectPeople(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateProjectAccessWithBody request with any body
-	UpdateProjectAccessWithBody(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProjectAccessWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateProjectAccess(ctx context.Context, projectId float32, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProjectAccess(ctx context.Context, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTimesheetReport request
 	GetTimesheetReport(ctx context.Context, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3156,23 +3156,23 @@ type ClientInterface interface {
 	CreateTemplate(ctx context.Context, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTemplate request
-	DeleteTemplate(ctx context.Context, templateId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteTemplate(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTemplate request
-	GetTemplate(ctx context.Context, templateId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTemplate(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTemplateWithBody request with any body
-	UpdateTemplateWithBody(ctx context.Context, templateId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTemplateWithBody(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTemplate(ctx context.Context, templateId float32, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTemplate(ctx context.Context, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProjectFromTemplateWithBody request with any body
-	CreateProjectFromTemplateWithBody(ctx context.Context, templateId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateProjectFromTemplateWithBody(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateProjectFromTemplate(ctx context.Context, templateId float32, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateProjectFromTemplate(ctx context.Context, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectConstruction request
-	GetProjectConstruction(ctx context.Context, templateId float32, constructionId float32, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProjectConstruction(ctx context.Context, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // CreateAttachmentWithBody executes the CreateAttachment operation.
@@ -3193,7 +3193,7 @@ func (c *Client) CreateAttachmentWithBody(ctx context.Context, params *CreateAtt
 
 // GetCard is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetCard(ctx context.Context, projectId float32, cardId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetCard(ctx context.Context, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetCardRequest(c.Server, projectId, cardId)
@@ -3203,7 +3203,7 @@ func (c *Client) GetCard(ctx context.Context, projectId float32, cardId float32,
 
 // UpdateCardWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateCardWithBody(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCardWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardRequestWithBody(c.Server, projectId, cardId, contentType, body)
@@ -3211,7 +3211,7 @@ func (c *Client) UpdateCardWithBody(ctx context.Context, projectId float32, card
 
 }
 
-func (c *Client) UpdateCard(ctx context.Context, projectId float32, cardId float32, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCard(ctx context.Context, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardRequest(c.Server, projectId, cardId, body)
@@ -3221,7 +3221,7 @@ func (c *Client) UpdateCard(ctx context.Context, projectId float32, cardId float
 
 // MoveCardWithBody executes the MoveCard operation.
 
-func (c *Client) MoveCardWithBody(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MoveCardWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewMoveCardRequestWithBody(c.Server, projectId, cardId, contentType, body)
 	if err != nil {
@@ -3235,7 +3235,7 @@ func (c *Client) MoveCardWithBody(ctx context.Context, projectId float32, cardId
 
 }
 
-func (c *Client) MoveCard(ctx context.Context, projectId float32, cardId float32, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MoveCard(ctx context.Context, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewMoveCardRequest(c.Server, projectId, cardId, body)
 	if err != nil {
@@ -3251,7 +3251,7 @@ func (c *Client) MoveCard(ctx context.Context, projectId float32, cardId float32
 
 // RepositionCardStepWithBody executes the RepositionCardStep operation.
 
-func (c *Client) RepositionCardStepWithBody(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionCardStepWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewRepositionCardStepRequestWithBody(c.Server, projectId, cardId, contentType, body)
 	if err != nil {
@@ -3265,7 +3265,7 @@ func (c *Client) RepositionCardStepWithBody(ctx context.Context, projectId float
 
 }
 
-func (c *Client) RepositionCardStep(ctx context.Context, projectId float32, cardId float32, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionCardStep(ctx context.Context, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewRepositionCardStepRequest(c.Server, projectId, cardId, body)
 	if err != nil {
@@ -3281,7 +3281,7 @@ func (c *Client) RepositionCardStep(ctx context.Context, projectId float32, card
 
 // CreateCardStepWithBody executes the CreateCardStep operation.
 
-func (c *Client) CreateCardStepWithBody(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCardStepWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateCardStepRequestWithBody(c.Server, projectId, cardId, contentType, body)
 	if err != nil {
@@ -3295,7 +3295,7 @@ func (c *Client) CreateCardStepWithBody(ctx context.Context, projectId float32, 
 
 }
 
-func (c *Client) CreateCardStep(ctx context.Context, projectId float32, cardId float32, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCardStep(ctx context.Context, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateCardStepRequest(c.Server, projectId, cardId, body)
 	if err != nil {
@@ -3311,7 +3311,7 @@ func (c *Client) CreateCardStep(ctx context.Context, projectId float32, cardId f
 
 // GetCardColumn is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetCardColumn(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetCardColumn(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetCardColumnRequest(c.Server, projectId, columnId)
@@ -3321,7 +3321,7 @@ func (c *Client) GetCardColumn(ctx context.Context, projectId float32, columnId 
 
 // UpdateCardColumnWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateCardColumnWithBody(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCardColumnWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardColumnRequestWithBody(c.Server, projectId, columnId, contentType, body)
@@ -3329,7 +3329,7 @@ func (c *Client) UpdateCardColumnWithBody(ctx context.Context, projectId float32
 
 }
 
-func (c *Client) UpdateCardColumn(ctx context.Context, projectId float32, columnId float32, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCardColumn(ctx context.Context, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardColumnRequest(c.Server, projectId, columnId, body)
@@ -3339,7 +3339,7 @@ func (c *Client) UpdateCardColumn(ctx context.Context, projectId float32, column
 
 // SetCardColumnColorWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) SetCardColumnColorWithBody(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SetCardColumnColorWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewSetCardColumnColorRequestWithBody(c.Server, projectId, columnId, contentType, body)
@@ -3347,7 +3347,7 @@ func (c *Client) SetCardColumnColorWithBody(ctx context.Context, projectId float
 
 }
 
-func (c *Client) SetCardColumnColor(ctx context.Context, projectId float32, columnId float32, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SetCardColumnColor(ctx context.Context, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewSetCardColumnColorRequest(c.Server, projectId, columnId, body)
@@ -3357,7 +3357,7 @@ func (c *Client) SetCardColumnColor(ctx context.Context, projectId float32, colu
 
 // DisableCardColumnOnHold is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DisableCardColumnOnHold(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DisableCardColumnOnHold(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDisableCardColumnOnHoldRequest(c.Server, projectId, columnId)
@@ -3367,7 +3367,7 @@ func (c *Client) DisableCardColumnOnHold(ctx context.Context, projectId float32,
 
 // EnableCardColumnOnHold executes the EnableCardColumnOnHold operation.
 
-func (c *Client) EnableCardColumnOnHold(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) EnableCardColumnOnHold(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewEnableCardColumnOnHoldRequest(c.Server, projectId, columnId)
 	if err != nil {
@@ -3383,7 +3383,7 @@ func (c *Client) EnableCardColumnOnHold(ctx context.Context, projectId float32, 
 
 // ListCards is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListCards(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListCards(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListCardsRequest(c.Server, projectId, columnId)
@@ -3393,7 +3393,7 @@ func (c *Client) ListCards(ctx context.Context, projectId float32, columnId floa
 
 // CreateCardWithBody executes the CreateCard operation.
 
-func (c *Client) CreateCardWithBody(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCardWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateCardRequestWithBody(c.Server, projectId, columnId, contentType, body)
 	if err != nil {
@@ -3407,7 +3407,7 @@ func (c *Client) CreateCardWithBody(ctx context.Context, projectId float32, colu
 
 }
 
-func (c *Client) CreateCard(ctx context.Context, projectId float32, columnId float32, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCard(ctx context.Context, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateCardRequest(c.Server, projectId, columnId, body)
 	if err != nil {
@@ -3423,7 +3423,7 @@ func (c *Client) CreateCard(ctx context.Context, projectId float32, columnId flo
 
 // UpdateCardStepWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateCardStepWithBody(ctx context.Context, projectId float32, stepId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCardStepWithBody(ctx context.Context, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardStepRequestWithBody(c.Server, projectId, stepId, contentType, body)
@@ -3431,7 +3431,7 @@ func (c *Client) UpdateCardStepWithBody(ctx context.Context, projectId float32, 
 
 }
 
-func (c *Client) UpdateCardStep(ctx context.Context, projectId float32, stepId float32, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCardStep(ctx context.Context, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardStepRequest(c.Server, projectId, stepId, body)
@@ -3441,7 +3441,7 @@ func (c *Client) UpdateCardStep(ctx context.Context, projectId float32, stepId f
 
 // UncompleteCardStep is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UncompleteCardStep(ctx context.Context, projectId float32, stepId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UncompleteCardStep(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUncompleteCardStepRequest(c.Server, projectId, stepId)
@@ -3451,7 +3451,7 @@ func (c *Client) UncompleteCardStep(ctx context.Context, projectId float32, step
 
 // CompleteCardStep is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) CompleteCardStep(ctx context.Context, projectId float32, stepId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteCardStep(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewCompleteCardStepRequest(c.Server, projectId, stepId)
@@ -3461,7 +3461,7 @@ func (c *Client) CompleteCardStep(ctx context.Context, projectId float32, stepId
 
 // GetCardTable is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetCardTable(ctx context.Context, projectId float32, cardTableId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetCardTable(ctx context.Context, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetCardTableRequest(c.Server, projectId, cardTableId)
@@ -3471,7 +3471,7 @@ func (c *Client) GetCardTable(ctx context.Context, projectId float32, cardTableI
 
 // CreateCardColumnWithBody executes the CreateCardColumn operation.
 
-func (c *Client) CreateCardColumnWithBody(ctx context.Context, projectId float32, cardTableId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCardColumnWithBody(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateCardColumnRequestWithBody(c.Server, projectId, cardTableId, contentType, body)
 	if err != nil {
@@ -3485,7 +3485,7 @@ func (c *Client) CreateCardColumnWithBody(ctx context.Context, projectId float32
 
 }
 
-func (c *Client) CreateCardColumn(ctx context.Context, projectId float32, cardTableId float32, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCardColumn(ctx context.Context, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateCardColumnRequest(c.Server, projectId, cardTableId, body)
 	if err != nil {
@@ -3501,7 +3501,7 @@ func (c *Client) CreateCardColumn(ctx context.Context, projectId float32, cardTa
 
 // MoveCardColumnWithBody executes the MoveCardColumn operation.
 
-func (c *Client) MoveCardColumnWithBody(ctx context.Context, projectId float32, cardTableId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MoveCardColumnWithBody(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewMoveCardColumnRequestWithBody(c.Server, projectId, cardTableId, contentType, body)
 	if err != nil {
@@ -3515,7 +3515,7 @@ func (c *Client) MoveCardColumnWithBody(ctx context.Context, projectId float32, 
 
 }
 
-func (c *Client) MoveCardColumn(ctx context.Context, projectId float32, cardTableId float32, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MoveCardColumn(ctx context.Context, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewMoveCardColumnRequest(c.Server, projectId, cardTableId, body)
 	if err != nil {
@@ -3531,7 +3531,7 @@ func (c *Client) MoveCardColumn(ctx context.Context, projectId float32, cardTabl
 
 // ListMessageTypes is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListMessageTypes(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListMessageTypes(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListMessageTypesRequest(c.Server, projectId)
@@ -3541,7 +3541,7 @@ func (c *Client) ListMessageTypes(ctx context.Context, projectId float32, reqEdi
 
 // CreateMessageTypeWithBody executes the CreateMessageType operation.
 
-func (c *Client) CreateMessageTypeWithBody(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateMessageTypeWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateMessageTypeRequestWithBody(c.Server, projectId, contentType, body)
 	if err != nil {
@@ -3555,7 +3555,7 @@ func (c *Client) CreateMessageTypeWithBody(ctx context.Context, projectId float3
 
 }
 
-func (c *Client) CreateMessageType(ctx context.Context, projectId float32, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateMessageType(ctx context.Context, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateMessageTypeRequest(c.Server, projectId, body)
 	if err != nil {
@@ -3571,7 +3571,7 @@ func (c *Client) CreateMessageType(ctx context.Context, projectId float32, body 
 
 // DeleteMessageType is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteMessageType(ctx context.Context, projectId float32, typeId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteMessageType(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteMessageTypeRequest(c.Server, projectId, typeId)
@@ -3581,7 +3581,7 @@ func (c *Client) DeleteMessageType(ctx context.Context, projectId float32, typeI
 
 // GetMessageType is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetMessageType(ctx context.Context, projectId float32, typeId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetMessageType(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetMessageTypeRequest(c.Server, projectId, typeId)
@@ -3591,7 +3591,7 @@ func (c *Client) GetMessageType(ctx context.Context, projectId float32, typeId f
 
 // UpdateMessageTypeWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateMessageTypeWithBody(ctx context.Context, projectId float32, typeId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateMessageTypeWithBody(ctx context.Context, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateMessageTypeRequestWithBody(c.Server, projectId, typeId, contentType, body)
@@ -3599,7 +3599,7 @@ func (c *Client) UpdateMessageTypeWithBody(ctx context.Context, projectId float3
 
 }
 
-func (c *Client) UpdateMessageType(ctx context.Context, projectId float32, typeId float32, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateMessageType(ctx context.Context, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateMessageTypeRequest(c.Server, projectId, typeId, body)
@@ -3609,7 +3609,7 @@ func (c *Client) UpdateMessageType(ctx context.Context, projectId float32, typeI
 
 // GetCampfire is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetCampfire(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetCampfire(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetCampfireRequest(c.Server, projectId, campfireId)
@@ -3619,7 +3619,7 @@ func (c *Client) GetCampfire(ctx context.Context, projectId float32, campfireId 
 
 // ListChatbots is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListChatbots(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListChatbots(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListChatbotsRequest(c.Server, projectId, campfireId)
@@ -3629,7 +3629,7 @@ func (c *Client) ListChatbots(ctx context.Context, projectId float32, campfireId
 
 // CreateChatbotWithBody executes the CreateChatbot operation.
 
-func (c *Client) CreateChatbotWithBody(ctx context.Context, projectId float32, campfireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateChatbotWithBody(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateChatbotRequestWithBody(c.Server, projectId, campfireId, contentType, body)
 	if err != nil {
@@ -3643,7 +3643,7 @@ func (c *Client) CreateChatbotWithBody(ctx context.Context, projectId float32, c
 
 }
 
-func (c *Client) CreateChatbot(ctx context.Context, projectId float32, campfireId float32, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateChatbot(ctx context.Context, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateChatbotRequest(c.Server, projectId, campfireId, body)
 	if err != nil {
@@ -3659,7 +3659,7 @@ func (c *Client) CreateChatbot(ctx context.Context, projectId float32, campfireI
 
 // DeleteChatbot is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteChatbot(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteChatbotRequest(c.Server, projectId, campfireId, chatbotId)
@@ -3669,7 +3669,7 @@ func (c *Client) DeleteChatbot(ctx context.Context, projectId float32, campfireI
 
 // GetChatbot is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetChatbot(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetChatbotRequest(c.Server, projectId, campfireId, chatbotId)
@@ -3679,7 +3679,7 @@ func (c *Client) GetChatbot(ctx context.Context, projectId float32, campfireId f
 
 // UpdateChatbotWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateChatbotWithBody(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateChatbotWithBody(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateChatbotRequestWithBody(c.Server, projectId, campfireId, chatbotId, contentType, body)
@@ -3687,7 +3687,7 @@ func (c *Client) UpdateChatbotWithBody(ctx context.Context, projectId float32, c
 
 }
 
-func (c *Client) UpdateChatbot(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateChatbotRequest(c.Server, projectId, campfireId, chatbotId, body)
@@ -3697,7 +3697,7 @@ func (c *Client) UpdateChatbot(ctx context.Context, projectId float32, campfireI
 
 // ListCampfireLines is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListCampfireLines(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListCampfireLines(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListCampfireLinesRequest(c.Server, projectId, campfireId)
@@ -3707,7 +3707,7 @@ func (c *Client) ListCampfireLines(ctx context.Context, projectId float32, campf
 
 // CreateCampfireLineWithBody executes the CreateCampfireLine operation.
 
-func (c *Client) CreateCampfireLineWithBody(ctx context.Context, projectId float32, campfireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCampfireLineWithBody(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateCampfireLineRequestWithBody(c.Server, projectId, campfireId, contentType, body)
 	if err != nil {
@@ -3721,7 +3721,7 @@ func (c *Client) CreateCampfireLineWithBody(ctx context.Context, projectId float
 
 }
 
-func (c *Client) CreateCampfireLine(ctx context.Context, projectId float32, campfireId float32, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCampfireLine(ctx context.Context, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateCampfireLineRequest(c.Server, projectId, campfireId, body)
 	if err != nil {
@@ -3737,7 +3737,7 @@ func (c *Client) CreateCampfireLine(ctx context.Context, projectId float32, camp
 
 // DeleteCampfireLine is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteCampfireLine(ctx context.Context, projectId float32, campfireId float32, lineId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteCampfireLine(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteCampfireLineRequest(c.Server, projectId, campfireId, lineId)
@@ -3747,7 +3747,7 @@ func (c *Client) DeleteCampfireLine(ctx context.Context, projectId float32, camp
 
 // GetCampfireLine is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetCampfireLine(ctx context.Context, projectId float32, campfireId float32, lineId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetCampfireLine(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetCampfireLineRequest(c.Server, projectId, campfireId, lineId)
@@ -3757,7 +3757,7 @@ func (c *Client) GetCampfireLine(ctx context.Context, projectId float32, campfir
 
 // ListClientApprovals is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListClientApprovals(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListClientApprovals(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListClientApprovalsRequest(c.Server, projectId)
@@ -3767,7 +3767,7 @@ func (c *Client) ListClientApprovals(ctx context.Context, projectId float32, req
 
 // GetClientApproval is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetClientApproval(ctx context.Context, projectId float32, approvalId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetClientApproval(ctx context.Context, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetClientApprovalRequest(c.Server, projectId, approvalId)
@@ -3777,7 +3777,7 @@ func (c *Client) GetClientApproval(ctx context.Context, projectId float32, appro
 
 // ListClientCorrespondences is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListClientCorrespondences(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListClientCorrespondences(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListClientCorrespondencesRequest(c.Server, projectId)
@@ -3787,7 +3787,7 @@ func (c *Client) ListClientCorrespondences(ctx context.Context, projectId float3
 
 // GetClientCorrespondence is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetClientCorrespondence(ctx context.Context, projectId float32, correspondenceId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetClientCorrespondence(ctx context.Context, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetClientCorrespondenceRequest(c.Server, projectId, correspondenceId)
@@ -3797,7 +3797,7 @@ func (c *Client) GetClientCorrespondence(ctx context.Context, projectId float32,
 
 // ListClientReplies is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListClientReplies(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListClientReplies(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListClientRepliesRequest(c.Server, projectId, recordingId)
@@ -3807,7 +3807,7 @@ func (c *Client) ListClientReplies(ctx context.Context, projectId float32, recor
 
 // GetClientReply is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetClientReply(ctx context.Context, projectId float32, recordingId float32, replyId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetClientReply(ctx context.Context, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetClientReplyRequest(c.Server, projectId, recordingId, replyId)
@@ -3817,7 +3817,7 @@ func (c *Client) GetClientReply(ctx context.Context, projectId float32, recordin
 
 // GetComment is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetComment(ctx context.Context, projectId float32, commentId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetComment(ctx context.Context, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetCommentRequest(c.Server, projectId, commentId)
@@ -3827,7 +3827,7 @@ func (c *Client) GetComment(ctx context.Context, projectId float32, commentId fl
 
 // UpdateCommentWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateCommentWithBody(ctx context.Context, projectId float32, commentId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCommentWithBody(ctx context.Context, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCommentRequestWithBody(c.Server, projectId, commentId, contentType, body)
@@ -3835,7 +3835,7 @@ func (c *Client) UpdateCommentWithBody(ctx context.Context, projectId float32, c
 
 }
 
-func (c *Client) UpdateComment(ctx context.Context, projectId float32, commentId float32, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateComment(ctx context.Context, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCommentRequest(c.Server, projectId, commentId, body)
@@ -3845,7 +3845,7 @@ func (c *Client) UpdateComment(ctx context.Context, projectId float32, commentId
 
 // CloneTool executes the CloneTool operation.
 
-func (c *Client) CloneTool(ctx context.Context, projectId float32, sourceToolId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CloneTool(ctx context.Context, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCloneToolRequest(c.Server, projectId, sourceToolId)
 	if err != nil {
@@ -3861,7 +3861,7 @@ func (c *Client) CloneTool(ctx context.Context, projectId float32, sourceToolId 
 
 // DeleteTool is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteTool(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteToolRequest(c.Server, projectId, toolId)
@@ -3871,7 +3871,7 @@ func (c *Client) DeleteTool(ctx context.Context, projectId float32, toolId float
 
 // GetTool is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTool(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetToolRequest(c.Server, projectId, toolId)
@@ -3881,7 +3881,7 @@ func (c *Client) GetTool(ctx context.Context, projectId float32, toolId float32,
 
 // UpdateToolWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateToolWithBody(ctx context.Context, projectId float32, toolId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateToolWithBody(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateToolRequestWithBody(c.Server, projectId, toolId, contentType, body)
@@ -3889,7 +3889,7 @@ func (c *Client) UpdateToolWithBody(ctx context.Context, projectId float32, tool
 
 }
 
-func (c *Client) UpdateTool(ctx context.Context, projectId float32, toolId float32, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTool(ctx context.Context, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateToolRequest(c.Server, projectId, toolId, body)
@@ -3899,7 +3899,7 @@ func (c *Client) UpdateTool(ctx context.Context, projectId float32, toolId float
 
 // DisableTool is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DisableTool(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DisableTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDisableToolRequest(c.Server, projectId, toolId)
@@ -3909,7 +3909,7 @@ func (c *Client) DisableTool(ctx context.Context, projectId float32, toolId floa
 
 // EnableTool executes the EnableTool operation.
 
-func (c *Client) EnableTool(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) EnableTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewEnableToolRequest(c.Server, projectId, toolId)
 	if err != nil {
@@ -3925,7 +3925,7 @@ func (c *Client) EnableTool(ctx context.Context, projectId float32, toolId float
 
 // RepositionToolWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) RepositionToolWithBody(ctx context.Context, projectId float32, toolId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionToolWithBody(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewRepositionToolRequestWithBody(c.Server, projectId, toolId, contentType, body)
@@ -3933,7 +3933,7 @@ func (c *Client) RepositionToolWithBody(ctx context.Context, projectId float32, 
 
 }
 
-func (c *Client) RepositionTool(ctx context.Context, projectId float32, toolId float32, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionTool(ctx context.Context, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewRepositionToolRequest(c.Server, projectId, toolId, body)
@@ -3943,7 +3943,7 @@ func (c *Client) RepositionTool(ctx context.Context, projectId float32, toolId f
 
 // GetDocument is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetDocument(ctx context.Context, projectId float32, documentId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDocument(ctx context.Context, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetDocumentRequest(c.Server, projectId, documentId)
@@ -3953,7 +3953,7 @@ func (c *Client) GetDocument(ctx context.Context, projectId float32, documentId 
 
 // UpdateDocumentWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateDocumentWithBody(ctx context.Context, projectId float32, documentId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateDocumentWithBody(ctx context.Context, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateDocumentRequestWithBody(c.Server, projectId, documentId, contentType, body)
@@ -3961,7 +3961,7 @@ func (c *Client) UpdateDocumentWithBody(ctx context.Context, projectId float32, 
 
 }
 
-func (c *Client) UpdateDocument(ctx context.Context, projectId float32, documentId float32, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateDocument(ctx context.Context, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateDocumentRequest(c.Server, projectId, documentId, body)
@@ -3971,7 +3971,7 @@ func (c *Client) UpdateDocument(ctx context.Context, projectId float32, document
 
 // GetForward is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetForward(ctx context.Context, projectId float32, forwardId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetForward(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetForwardRequest(c.Server, projectId, forwardId)
@@ -3981,7 +3981,7 @@ func (c *Client) GetForward(ctx context.Context, projectId float32, forwardId fl
 
 // ListForwardReplies is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListForwardReplies(ctx context.Context, projectId float32, forwardId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListForwardReplies(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListForwardRepliesRequest(c.Server, projectId, forwardId)
@@ -3991,7 +3991,7 @@ func (c *Client) ListForwardReplies(ctx context.Context, projectId float32, forw
 
 // CreateForwardReplyWithBody executes the CreateForwardReply operation.
 
-func (c *Client) CreateForwardReplyWithBody(ctx context.Context, projectId float32, forwardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateForwardReplyWithBody(ctx context.Context, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateForwardReplyRequestWithBody(c.Server, projectId, forwardId, contentType, body)
 	if err != nil {
@@ -4005,7 +4005,7 @@ func (c *Client) CreateForwardReplyWithBody(ctx context.Context, projectId float
 
 }
 
-func (c *Client) CreateForwardReply(ctx context.Context, projectId float32, forwardId float32, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateForwardReply(ctx context.Context, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateForwardReplyRequest(c.Server, projectId, forwardId, body)
 	if err != nil {
@@ -4021,7 +4021,7 @@ func (c *Client) CreateForwardReply(ctx context.Context, projectId float32, forw
 
 // GetForwardReply is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetForwardReply(ctx context.Context, projectId float32, forwardId float32, replyId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetForwardReply(ctx context.Context, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetForwardReplyRequest(c.Server, projectId, forwardId, replyId)
@@ -4031,7 +4031,7 @@ func (c *Client) GetForwardReply(ctx context.Context, projectId float32, forward
 
 // GetInbox is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetInbox(ctx context.Context, projectId float32, inboxId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetInbox(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetInboxRequest(c.Server, projectId, inboxId)
@@ -4041,7 +4041,7 @@ func (c *Client) GetInbox(ctx context.Context, projectId float32, inboxId float3
 
 // ListForwards is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListForwards(ctx context.Context, projectId float32, inboxId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListForwards(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListForwardsRequest(c.Server, projectId, inboxId)
@@ -4051,7 +4051,7 @@ func (c *Client) ListForwards(ctx context.Context, projectId float32, inboxId fl
 
 // GetMessageBoard is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetMessageBoard(ctx context.Context, projectId float32, boardId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetMessageBoard(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetMessageBoardRequest(c.Server, projectId, boardId)
@@ -4061,7 +4061,7 @@ func (c *Client) GetMessageBoard(ctx context.Context, projectId float32, boardId
 
 // ListMessages is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListMessages(ctx context.Context, projectId float32, boardId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListMessages(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListMessagesRequest(c.Server, projectId, boardId)
@@ -4071,7 +4071,7 @@ func (c *Client) ListMessages(ctx context.Context, projectId float32, boardId fl
 
 // CreateMessageWithBody executes the CreateMessage operation.
 
-func (c *Client) CreateMessageWithBody(ctx context.Context, projectId float32, boardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateMessageWithBody(ctx context.Context, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateMessageRequestWithBody(c.Server, projectId, boardId, contentType, body)
 	if err != nil {
@@ -4085,7 +4085,7 @@ func (c *Client) CreateMessageWithBody(ctx context.Context, projectId float32, b
 
 }
 
-func (c *Client) CreateMessage(ctx context.Context, projectId float32, boardId float32, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateMessage(ctx context.Context, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateMessageRequest(c.Server, projectId, boardId, body)
 	if err != nil {
@@ -4101,7 +4101,7 @@ func (c *Client) CreateMessage(ctx context.Context, projectId float32, boardId f
 
 // GetMessage is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetMessage(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetMessageRequest(c.Server, projectId, messageId)
@@ -4111,7 +4111,7 @@ func (c *Client) GetMessage(ctx context.Context, projectId float32, messageId fl
 
 // UpdateMessageWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateMessageWithBody(ctx context.Context, projectId float32, messageId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateMessageWithBody(ctx context.Context, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateMessageRequestWithBody(c.Server, projectId, messageId, contentType, body)
@@ -4119,7 +4119,7 @@ func (c *Client) UpdateMessageWithBody(ctx context.Context, projectId float32, m
 
 }
 
-func (c *Client) UpdateMessage(ctx context.Context, projectId float32, messageId float32, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateMessage(ctx context.Context, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateMessageRequest(c.Server, projectId, messageId, body)
@@ -4129,7 +4129,7 @@ func (c *Client) UpdateMessage(ctx context.Context, projectId float32, messageId
 
 // GetAnswer is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetAnswer(ctx context.Context, projectId float32, answerId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetAnswer(ctx context.Context, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetAnswerRequest(c.Server, projectId, answerId)
@@ -4139,7 +4139,7 @@ func (c *Client) GetAnswer(ctx context.Context, projectId float32, answerId floa
 
 // UpdateAnswerWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateAnswerWithBody(ctx context.Context, projectId float32, answerId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateAnswerWithBody(ctx context.Context, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateAnswerRequestWithBody(c.Server, projectId, answerId, contentType, body)
@@ -4147,7 +4147,7 @@ func (c *Client) UpdateAnswerWithBody(ctx context.Context, projectId float32, an
 
 }
 
-func (c *Client) UpdateAnswer(ctx context.Context, projectId float32, answerId float32, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateAnswer(ctx context.Context, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateAnswerRequest(c.Server, projectId, answerId, body)
@@ -4157,7 +4157,7 @@ func (c *Client) UpdateAnswer(ctx context.Context, projectId float32, answerId f
 
 // GetQuestionnaire is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetQuestionnaire(ctx context.Context, projectId float32, questionnaireId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetQuestionnaire(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetQuestionnaireRequest(c.Server, projectId, questionnaireId)
@@ -4167,7 +4167,7 @@ func (c *Client) GetQuestionnaire(ctx context.Context, projectId float32, questi
 
 // ListQuestions is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListQuestions(ctx context.Context, projectId float32, questionnaireId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListQuestions(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListQuestionsRequest(c.Server, projectId, questionnaireId)
@@ -4177,7 +4177,7 @@ func (c *Client) ListQuestions(ctx context.Context, projectId float32, questionn
 
 // CreateQuestionWithBody executes the CreateQuestion operation.
 
-func (c *Client) CreateQuestionWithBody(ctx context.Context, projectId float32, questionnaireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateQuestionWithBody(ctx context.Context, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateQuestionRequestWithBody(c.Server, projectId, questionnaireId, contentType, body)
 	if err != nil {
@@ -4191,7 +4191,7 @@ func (c *Client) CreateQuestionWithBody(ctx context.Context, projectId float32, 
 
 }
 
-func (c *Client) CreateQuestion(ctx context.Context, projectId float32, questionnaireId float32, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateQuestion(ctx context.Context, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateQuestionRequest(c.Server, projectId, questionnaireId, body)
 	if err != nil {
@@ -4207,7 +4207,7 @@ func (c *Client) CreateQuestion(ctx context.Context, projectId float32, question
 
 // GetQuestion is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetQuestion(ctx context.Context, projectId float32, questionId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetQuestion(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetQuestionRequest(c.Server, projectId, questionId)
@@ -4217,7 +4217,7 @@ func (c *Client) GetQuestion(ctx context.Context, projectId float32, questionId 
 
 // UpdateQuestionWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateQuestionWithBody(ctx context.Context, projectId float32, questionId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateQuestionWithBody(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateQuestionRequestWithBody(c.Server, projectId, questionId, contentType, body)
@@ -4225,7 +4225,7 @@ func (c *Client) UpdateQuestionWithBody(ctx context.Context, projectId float32, 
 
 }
 
-func (c *Client) UpdateQuestion(ctx context.Context, projectId float32, questionId float32, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateQuestion(ctx context.Context, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateQuestionRequest(c.Server, projectId, questionId, body)
@@ -4235,7 +4235,7 @@ func (c *Client) UpdateQuestion(ctx context.Context, projectId float32, question
 
 // ListAnswers is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListAnswers(ctx context.Context, projectId float32, questionId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListAnswers(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListAnswersRequest(c.Server, projectId, questionId)
@@ -4245,7 +4245,7 @@ func (c *Client) ListAnswers(ctx context.Context, projectId float32, questionId 
 
 // CreateAnswerWithBody executes the CreateAnswer operation.
 
-func (c *Client) CreateAnswerWithBody(ctx context.Context, projectId float32, questionId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateAnswerWithBody(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateAnswerRequestWithBody(c.Server, projectId, questionId, contentType, body)
 	if err != nil {
@@ -4259,7 +4259,7 @@ func (c *Client) CreateAnswerWithBody(ctx context.Context, projectId float32, qu
 
 }
 
-func (c *Client) CreateAnswer(ctx context.Context, projectId float32, questionId float32, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateAnswer(ctx context.Context, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateAnswerRequest(c.Server, projectId, questionId, body)
 	if err != nil {
@@ -4275,7 +4275,7 @@ func (c *Client) CreateAnswer(ctx context.Context, projectId float32, questionId
 
 // UnpinMessage is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UnpinMessage(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UnpinMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUnpinMessageRequest(c.Server, projectId, messageId)
@@ -4285,7 +4285,7 @@ func (c *Client) UnpinMessage(ctx context.Context, projectId float32, messageId 
 
 // PinMessage executes the PinMessage operation.
 
-func (c *Client) PinMessage(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PinMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewPinMessageRequest(c.Server, projectId, messageId)
 	if err != nil {
@@ -4301,7 +4301,7 @@ func (c *Client) PinMessage(ctx context.Context, projectId float32, messageId fl
 
 // GetRecording is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetRecording(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetRecordingRequest(c.Server, projectId, recordingId)
@@ -4311,7 +4311,7 @@ func (c *Client) GetRecording(ctx context.Context, projectId float32, recordingI
 
 // SetClientVisibilityWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) SetClientVisibilityWithBody(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SetClientVisibilityWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewSetClientVisibilityRequestWithBody(c.Server, projectId, recordingId, contentType, body)
@@ -4319,7 +4319,7 @@ func (c *Client) SetClientVisibilityWithBody(ctx context.Context, projectId floa
 
 }
 
-func (c *Client) SetClientVisibility(ctx context.Context, projectId float32, recordingId float32, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SetClientVisibility(ctx context.Context, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewSetClientVisibilityRequest(c.Server, projectId, recordingId, body)
@@ -4329,7 +4329,7 @@ func (c *Client) SetClientVisibility(ctx context.Context, projectId float32, rec
 
 // ListComments is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListComments(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListComments(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListCommentsRequest(c.Server, projectId, recordingId)
@@ -4339,7 +4339,7 @@ func (c *Client) ListComments(ctx context.Context, projectId float32, recordingI
 
 // CreateCommentWithBody executes the CreateComment operation.
 
-func (c *Client) CreateCommentWithBody(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCommentWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateCommentRequestWithBody(c.Server, projectId, recordingId, contentType, body)
 	if err != nil {
@@ -4353,7 +4353,7 @@ func (c *Client) CreateCommentWithBody(ctx context.Context, projectId float32, r
 
 }
 
-func (c *Client) CreateComment(ctx context.Context, projectId float32, recordingId float32, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateComment(ctx context.Context, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateCommentRequest(c.Server, projectId, recordingId, body)
 	if err != nil {
@@ -4369,7 +4369,7 @@ func (c *Client) CreateComment(ctx context.Context, projectId float32, recording
 
 // ListEvents is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListEvents(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListEvents(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListEventsRequest(c.Server, projectId, recordingId)
@@ -4379,7 +4379,7 @@ func (c *Client) ListEvents(ctx context.Context, projectId float32, recordingId 
 
 // UnarchiveRecording is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UnarchiveRecording(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UnarchiveRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUnarchiveRecordingRequest(c.Server, projectId, recordingId)
@@ -4389,7 +4389,7 @@ func (c *Client) UnarchiveRecording(ctx context.Context, projectId float32, reco
 
 // ArchiveRecording is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ArchiveRecording(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ArchiveRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewArchiveRecordingRequest(c.Server, projectId, recordingId)
@@ -4399,7 +4399,7 @@ func (c *Client) ArchiveRecording(ctx context.Context, projectId float32, record
 
 // TrashRecording is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) TrashRecording(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) TrashRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewTrashRecordingRequest(c.Server, projectId, recordingId)
@@ -4409,7 +4409,7 @@ func (c *Client) TrashRecording(ctx context.Context, projectId float32, recordin
 
 // Unsubscribe is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) Unsubscribe(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) Unsubscribe(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUnsubscribeRequest(c.Server, projectId, recordingId)
@@ -4419,7 +4419,7 @@ func (c *Client) Unsubscribe(ctx context.Context, projectId float32, recordingId
 
 // GetSubscription is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetSubscription(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetSubscription(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetSubscriptionRequest(c.Server, projectId, recordingId)
@@ -4429,7 +4429,7 @@ func (c *Client) GetSubscription(ctx context.Context, projectId float32, recordi
 
 // Subscribe executes the Subscribe operation.
 
-func (c *Client) Subscribe(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) Subscribe(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewSubscribeRequest(c.Server, projectId, recordingId)
 	if err != nil {
@@ -4445,7 +4445,7 @@ func (c *Client) Subscribe(ctx context.Context, projectId float32, recordingId f
 
 // UpdateSubscriptionWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateSubscriptionWithBody(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateSubscriptionWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateSubscriptionRequestWithBody(c.Server, projectId, recordingId, contentType, body)
@@ -4453,7 +4453,7 @@ func (c *Client) UpdateSubscriptionWithBody(ctx context.Context, projectId float
 
 }
 
-func (c *Client) UpdateSubscription(ctx context.Context, projectId float32, recordingId float32, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateSubscription(ctx context.Context, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateSubscriptionRequest(c.Server, projectId, recordingId, body)
@@ -4463,7 +4463,7 @@ func (c *Client) UpdateSubscription(ctx context.Context, projectId float32, reco
 
 // GetRecordingTimesheet is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetRecordingTimesheet(ctx context.Context, projectId float32, recordingId float32, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetRecordingTimesheet(ctx context.Context, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetRecordingTimesheetRequest(c.Server, projectId, recordingId, params)
@@ -4473,7 +4473,7 @@ func (c *Client) GetRecordingTimesheet(ctx context.Context, projectId float32, r
 
 // GetScheduleEntry is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetScheduleEntry(ctx context.Context, projectId float32, entryId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetScheduleEntry(ctx context.Context, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetScheduleEntryRequest(c.Server, projectId, entryId)
@@ -4483,7 +4483,7 @@ func (c *Client) GetScheduleEntry(ctx context.Context, projectId float32, entryI
 
 // UpdateScheduleEntryWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateScheduleEntryWithBody(ctx context.Context, projectId float32, entryId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateScheduleEntryWithBody(ctx context.Context, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateScheduleEntryRequestWithBody(c.Server, projectId, entryId, contentType, body)
@@ -4491,7 +4491,7 @@ func (c *Client) UpdateScheduleEntryWithBody(ctx context.Context, projectId floa
 
 }
 
-func (c *Client) UpdateScheduleEntry(ctx context.Context, projectId float32, entryId float32, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateScheduleEntry(ctx context.Context, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateScheduleEntryRequest(c.Server, projectId, entryId, body)
@@ -4501,7 +4501,7 @@ func (c *Client) UpdateScheduleEntry(ctx context.Context, projectId float32, ent
 
 // GetScheduleEntryOccurrence is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetScheduleEntryOccurrence(ctx context.Context, projectId float32, entryId float32, date string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetScheduleEntryOccurrence(ctx context.Context, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetScheduleEntryOccurrenceRequest(c.Server, projectId, entryId, date)
@@ -4511,7 +4511,7 @@ func (c *Client) GetScheduleEntryOccurrence(ctx context.Context, projectId float
 
 // GetSchedule is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetSchedule(ctx context.Context, projectId float32, scheduleId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetSchedule(ctx context.Context, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetScheduleRequest(c.Server, projectId, scheduleId)
@@ -4521,7 +4521,7 @@ func (c *Client) GetSchedule(ctx context.Context, projectId float32, scheduleId 
 
 // UpdateScheduleSettingsWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateScheduleSettingsWithBody(ctx context.Context, projectId float32, scheduleId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateScheduleSettingsWithBody(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateScheduleSettingsRequestWithBody(c.Server, projectId, scheduleId, contentType, body)
@@ -4529,7 +4529,7 @@ func (c *Client) UpdateScheduleSettingsWithBody(ctx context.Context, projectId f
 
 }
 
-func (c *Client) UpdateScheduleSettings(ctx context.Context, projectId float32, scheduleId float32, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateScheduleSettings(ctx context.Context, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateScheduleSettingsRequest(c.Server, projectId, scheduleId, body)
@@ -4539,7 +4539,7 @@ func (c *Client) UpdateScheduleSettings(ctx context.Context, projectId float32, 
 
 // ListScheduleEntries is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListScheduleEntries(ctx context.Context, projectId float32, scheduleId float32, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListScheduleEntries(ctx context.Context, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListScheduleEntriesRequest(c.Server, projectId, scheduleId, params)
@@ -4549,7 +4549,7 @@ func (c *Client) ListScheduleEntries(ctx context.Context, projectId float32, sch
 
 // CreateScheduleEntryWithBody executes the CreateScheduleEntry operation.
 
-func (c *Client) CreateScheduleEntryWithBody(ctx context.Context, projectId float32, scheduleId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateScheduleEntryWithBody(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateScheduleEntryRequestWithBody(c.Server, projectId, scheduleId, contentType, body)
 	if err != nil {
@@ -4563,7 +4563,7 @@ func (c *Client) CreateScheduleEntryWithBody(ctx context.Context, projectId floa
 
 }
 
-func (c *Client) CreateScheduleEntry(ctx context.Context, projectId float32, scheduleId float32, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateScheduleEntry(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateScheduleEntryRequest(c.Server, projectId, scheduleId, body)
 	if err != nil {
@@ -4579,7 +4579,7 @@ func (c *Client) CreateScheduleEntry(ctx context.Context, projectId float32, sch
 
 // GetProjectTimesheet is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProjectTimesheet(ctx context.Context, projectId float32, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProjectTimesheet(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetProjectTimesheetRequest(c.Server, projectId, params)
@@ -4589,7 +4589,7 @@ func (c *Client) GetProjectTimesheet(ctx context.Context, projectId float32, par
 
 // RepositionTodolistGroupWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) RepositionTodolistGroupWithBody(ctx context.Context, projectId float32, groupId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionTodolistGroupWithBody(ctx context.Context, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewRepositionTodolistGroupRequestWithBody(c.Server, projectId, groupId, contentType, body)
@@ -4597,7 +4597,7 @@ func (c *Client) RepositionTodolistGroupWithBody(ctx context.Context, projectId 
 
 }
 
-func (c *Client) RepositionTodolistGroup(ctx context.Context, projectId float32, groupId float32, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionTodolistGroup(ctx context.Context, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewRepositionTodolistGroupRequest(c.Server, projectId, groupId, body)
@@ -4607,7 +4607,7 @@ func (c *Client) RepositionTodolistGroup(ctx context.Context, projectId float32,
 
 // GetTodolistOrGroup is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTodolistOrGroup(ctx context.Context, projectId float32, id float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTodolistOrGroup(ctx context.Context, projectId int64, id int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetTodolistOrGroupRequest(c.Server, projectId, id)
@@ -4617,7 +4617,7 @@ func (c *Client) GetTodolistOrGroup(ctx context.Context, projectId float32, id f
 
 // UpdateTodolistOrGroupWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateTodolistOrGroupWithBody(ctx context.Context, projectId float32, id float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTodolistOrGroupWithBody(ctx context.Context, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTodolistOrGroupRequestWithBody(c.Server, projectId, id, contentType, body)
@@ -4625,7 +4625,7 @@ func (c *Client) UpdateTodolistOrGroupWithBody(ctx context.Context, projectId fl
 
 }
 
-func (c *Client) UpdateTodolistOrGroup(ctx context.Context, projectId float32, id float32, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTodolistOrGroup(ctx context.Context, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTodolistOrGroupRequest(c.Server, projectId, id, body)
@@ -4635,7 +4635,7 @@ func (c *Client) UpdateTodolistOrGroup(ctx context.Context, projectId float32, i
 
 // ListTodolistGroups is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListTodolistGroups(ctx context.Context, projectId float32, todolistId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListTodolistGroups(ctx context.Context, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListTodolistGroupsRequest(c.Server, projectId, todolistId)
@@ -4645,7 +4645,7 @@ func (c *Client) ListTodolistGroups(ctx context.Context, projectId float32, todo
 
 // CreateTodolistGroupWithBody executes the CreateTodolistGroup operation.
 
-func (c *Client) CreateTodolistGroupWithBody(ctx context.Context, projectId float32, todolistId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodolistGroupWithBody(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateTodolistGroupRequestWithBody(c.Server, projectId, todolistId, contentType, body)
 	if err != nil {
@@ -4659,7 +4659,7 @@ func (c *Client) CreateTodolistGroupWithBody(ctx context.Context, projectId floa
 
 }
 
-func (c *Client) CreateTodolistGroup(ctx context.Context, projectId float32, todolistId float32, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodolistGroup(ctx context.Context, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateTodolistGroupRequest(c.Server, projectId, todolistId, body)
 	if err != nil {
@@ -4675,7 +4675,7 @@ func (c *Client) CreateTodolistGroup(ctx context.Context, projectId float32, tod
 
 // ListTodos is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListTodos(ctx context.Context, projectId float32, todolistId float32, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListTodos(ctx context.Context, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListTodosRequest(c.Server, projectId, todolistId, params)
@@ -4685,7 +4685,7 @@ func (c *Client) ListTodos(ctx context.Context, projectId float32, todolistId fl
 
 // CreateTodoWithBody executes the CreateTodo operation.
 
-func (c *Client) CreateTodoWithBody(ctx context.Context, projectId float32, todolistId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodoWithBody(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateTodoRequestWithBody(c.Server, projectId, todolistId, contentType, body)
 	if err != nil {
@@ -4699,7 +4699,7 @@ func (c *Client) CreateTodoWithBody(ctx context.Context, projectId float32, todo
 
 }
 
-func (c *Client) CreateTodo(ctx context.Context, projectId float32, todolistId float32, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodo(ctx context.Context, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateTodoRequest(c.Server, projectId, todolistId, body)
 	if err != nil {
@@ -4715,7 +4715,7 @@ func (c *Client) CreateTodo(ctx context.Context, projectId float32, todolistId f
 
 // TrashTodo is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) TrashTodo(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) TrashTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewTrashTodoRequest(c.Server, projectId, todoId)
@@ -4725,7 +4725,7 @@ func (c *Client) TrashTodo(ctx context.Context, projectId float32, todoId float3
 
 // GetTodo is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTodo(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetTodoRequest(c.Server, projectId, todoId)
@@ -4735,7 +4735,7 @@ func (c *Client) GetTodo(ctx context.Context, projectId float32, todoId float32,
 
 // UpdateTodoWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateTodoWithBody(ctx context.Context, projectId float32, todoId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTodoWithBody(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTodoRequestWithBody(c.Server, projectId, todoId, contentType, body)
@@ -4743,7 +4743,7 @@ func (c *Client) UpdateTodoWithBody(ctx context.Context, projectId float32, todo
 
 }
 
-func (c *Client) UpdateTodo(ctx context.Context, projectId float32, todoId float32, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTodo(ctx context.Context, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTodoRequest(c.Server, projectId, todoId, body)
@@ -4753,7 +4753,7 @@ func (c *Client) UpdateTodo(ctx context.Context, projectId float32, todoId float
 
 // UncompleteTodo is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UncompleteTodo(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UncompleteTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUncompleteTodoRequest(c.Server, projectId, todoId)
@@ -4763,7 +4763,7 @@ func (c *Client) UncompleteTodo(ctx context.Context, projectId float32, todoId f
 
 // CompleteTodo is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) CompleteTodo(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewCompleteTodoRequest(c.Server, projectId, todoId)
@@ -4773,7 +4773,7 @@ func (c *Client) CompleteTodo(ctx context.Context, projectId float32, todoId flo
 
 // GetTodoset is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTodoset(ctx context.Context, projectId float32, todosetId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTodoset(ctx context.Context, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetTodosetRequest(c.Server, projectId, todosetId)
@@ -4783,7 +4783,7 @@ func (c *Client) GetTodoset(ctx context.Context, projectId float32, todosetId fl
 
 // ListTodolists is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListTodolists(ctx context.Context, projectId float32, todosetId float32, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListTodolists(ctx context.Context, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListTodolistsRequest(c.Server, projectId, todosetId, params)
@@ -4793,7 +4793,7 @@ func (c *Client) ListTodolists(ctx context.Context, projectId float32, todosetId
 
 // CreateTodolistWithBody executes the CreateTodolist operation.
 
-func (c *Client) CreateTodolistWithBody(ctx context.Context, projectId float32, todosetId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodolistWithBody(ctx context.Context, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateTodolistRequestWithBody(c.Server, projectId, todosetId, contentType, body)
 	if err != nil {
@@ -4807,7 +4807,7 @@ func (c *Client) CreateTodolistWithBody(ctx context.Context, projectId float32, 
 
 }
 
-func (c *Client) CreateTodolist(ctx context.Context, projectId float32, todosetId float32, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodolist(ctx context.Context, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateTodolistRequest(c.Server, projectId, todosetId, body)
 	if err != nil {
@@ -4823,7 +4823,7 @@ func (c *Client) CreateTodolist(ctx context.Context, projectId float32, todosetI
 
 // GetUpload is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetUpload(ctx context.Context, projectId float32, uploadId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetUpload(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetUploadRequest(c.Server, projectId, uploadId)
@@ -4833,7 +4833,7 @@ func (c *Client) GetUpload(ctx context.Context, projectId float32, uploadId floa
 
 // UpdateUploadWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateUploadWithBody(ctx context.Context, projectId float32, uploadId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUploadWithBody(ctx context.Context, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateUploadRequestWithBody(c.Server, projectId, uploadId, contentType, body)
@@ -4841,7 +4841,7 @@ func (c *Client) UpdateUploadWithBody(ctx context.Context, projectId float32, up
 
 }
 
-func (c *Client) UpdateUpload(ctx context.Context, projectId float32, uploadId float32, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUpload(ctx context.Context, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateUploadRequest(c.Server, projectId, uploadId, body)
@@ -4851,7 +4851,7 @@ func (c *Client) UpdateUpload(ctx context.Context, projectId float32, uploadId f
 
 // ListUploadVersions is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListUploadVersions(ctx context.Context, projectId float32, uploadId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListUploadVersions(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListUploadVersionsRequest(c.Server, projectId, uploadId)
@@ -4861,7 +4861,7 @@ func (c *Client) ListUploadVersions(ctx context.Context, projectId float32, uplo
 
 // GetVault is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetVault(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetVault(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetVaultRequest(c.Server, projectId, vaultId)
@@ -4871,7 +4871,7 @@ func (c *Client) GetVault(ctx context.Context, projectId float32, vaultId float3
 
 // UpdateVaultWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateVaultWithBody(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateVaultWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateVaultRequestWithBody(c.Server, projectId, vaultId, contentType, body)
@@ -4879,7 +4879,7 @@ func (c *Client) UpdateVaultWithBody(ctx context.Context, projectId float32, vau
 
 }
 
-func (c *Client) UpdateVault(ctx context.Context, projectId float32, vaultId float32, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateVault(ctx context.Context, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateVaultRequest(c.Server, projectId, vaultId, body)
@@ -4889,7 +4889,7 @@ func (c *Client) UpdateVault(ctx context.Context, projectId float32, vaultId flo
 
 // ListDocuments is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListDocuments(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListDocuments(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListDocumentsRequest(c.Server, projectId, vaultId)
@@ -4899,7 +4899,7 @@ func (c *Client) ListDocuments(ctx context.Context, projectId float32, vaultId f
 
 // CreateDocumentWithBody executes the CreateDocument operation.
 
-func (c *Client) CreateDocumentWithBody(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateDocumentWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateDocumentRequestWithBody(c.Server, projectId, vaultId, contentType, body)
 	if err != nil {
@@ -4913,7 +4913,7 @@ func (c *Client) CreateDocumentWithBody(ctx context.Context, projectId float32, 
 
 }
 
-func (c *Client) CreateDocument(ctx context.Context, projectId float32, vaultId float32, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateDocument(ctx context.Context, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateDocumentRequest(c.Server, projectId, vaultId, body)
 	if err != nil {
@@ -4929,7 +4929,7 @@ func (c *Client) CreateDocument(ctx context.Context, projectId float32, vaultId 
 
 // ListUploads is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListUploads(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListUploads(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListUploadsRequest(c.Server, projectId, vaultId)
@@ -4939,7 +4939,7 @@ func (c *Client) ListUploads(ctx context.Context, projectId float32, vaultId flo
 
 // CreateUploadWithBody executes the CreateUpload operation.
 
-func (c *Client) CreateUploadWithBody(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateUploadWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateUploadRequestWithBody(c.Server, projectId, vaultId, contentType, body)
 	if err != nil {
@@ -4953,7 +4953,7 @@ func (c *Client) CreateUploadWithBody(ctx context.Context, projectId float32, va
 
 }
 
-func (c *Client) CreateUpload(ctx context.Context, projectId float32, vaultId float32, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateUpload(ctx context.Context, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateUploadRequest(c.Server, projectId, vaultId, body)
 	if err != nil {
@@ -4969,7 +4969,7 @@ func (c *Client) CreateUpload(ctx context.Context, projectId float32, vaultId fl
 
 // ListVaults is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListVaults(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListVaults(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListVaultsRequest(c.Server, projectId, vaultId)
@@ -4979,7 +4979,7 @@ func (c *Client) ListVaults(ctx context.Context, projectId float32, vaultId floa
 
 // CreateVaultWithBody executes the CreateVault operation.
 
-func (c *Client) CreateVaultWithBody(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateVaultWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateVaultRequestWithBody(c.Server, projectId, vaultId, contentType, body)
 	if err != nil {
@@ -4993,7 +4993,7 @@ func (c *Client) CreateVaultWithBody(ctx context.Context, projectId float32, vau
 
 }
 
-func (c *Client) CreateVault(ctx context.Context, projectId float32, vaultId float32, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateVault(ctx context.Context, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateVaultRequest(c.Server, projectId, vaultId, body)
 	if err != nil {
@@ -5009,7 +5009,7 @@ func (c *Client) CreateVault(ctx context.Context, projectId float32, vaultId flo
 
 // ListWebhooks is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListWebhooks(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListWebhooks(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListWebhooksRequest(c.Server, projectId)
@@ -5019,7 +5019,7 @@ func (c *Client) ListWebhooks(ctx context.Context, projectId float32, reqEditors
 
 // CreateWebhookWithBody executes the CreateWebhook operation.
 
-func (c *Client) CreateWebhookWithBody(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateWebhookWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateWebhookRequestWithBody(c.Server, projectId, contentType, body)
 	if err != nil {
@@ -5033,7 +5033,7 @@ func (c *Client) CreateWebhookWithBody(ctx context.Context, projectId float32, c
 
 }
 
-func (c *Client) CreateWebhook(ctx context.Context, projectId float32, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateWebhook(ctx context.Context, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateWebhookRequest(c.Server, projectId, body)
 	if err != nil {
@@ -5049,7 +5049,7 @@ func (c *Client) CreateWebhook(ctx context.Context, projectId float32, body Crea
 
 // DeleteWebhook is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteWebhook(ctx context.Context, projectId float32, webhookId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteWebhook(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteWebhookRequest(c.Server, projectId, webhookId)
@@ -5059,7 +5059,7 @@ func (c *Client) DeleteWebhook(ctx context.Context, projectId float32, webhookId
 
 // GetWebhook is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetWebhook(ctx context.Context, projectId float32, webhookId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetWebhook(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetWebhookRequest(c.Server, projectId, webhookId)
@@ -5069,7 +5069,7 @@ func (c *Client) GetWebhook(ctx context.Context, projectId float32, webhookId fl
 
 // UpdateWebhookWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateWebhookWithBody(ctx context.Context, projectId float32, webhookId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateWebhookWithBody(ctx context.Context, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateWebhookRequestWithBody(c.Server, projectId, webhookId, contentType, body)
@@ -5077,7 +5077,7 @@ func (c *Client) UpdateWebhookWithBody(ctx context.Context, projectId float32, w
 
 }
 
-func (c *Client) UpdateWebhook(ctx context.Context, projectId float32, webhookId float32, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateWebhook(ctx context.Context, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateWebhookRequest(c.Server, projectId, webhookId, body)
@@ -5137,7 +5137,7 @@ func (c *Client) CreateLineupMarker(ctx context.Context, body CreateLineupMarker
 
 // DeleteLineupMarker is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteLineupMarker(ctx context.Context, markerId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteLineupMarker(ctx context.Context, markerId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteLineupMarkerRequest(c.Server, markerId)
@@ -5147,7 +5147,7 @@ func (c *Client) DeleteLineupMarker(ctx context.Context, markerId float32, reqEd
 
 // UpdateLineupMarkerWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateLineupMarkerWithBody(ctx context.Context, markerId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateLineupMarkerWithBody(ctx context.Context, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateLineupMarkerRequestWithBody(c.Server, markerId, contentType, body)
@@ -5155,7 +5155,7 @@ func (c *Client) UpdateLineupMarkerWithBody(ctx context.Context, markerId float3
 
 }
 
-func (c *Client) UpdateLineupMarker(ctx context.Context, markerId float32, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateLineupMarker(ctx context.Context, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateLineupMarkerRequest(c.Server, markerId, body)
@@ -5185,7 +5185,7 @@ func (c *Client) ListPeople(ctx context.Context, reqEditors ...RequestEditorFn) 
 
 // GetPerson is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetPerson(ctx context.Context, personId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetPerson(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetPersonRequest(c.Server, personId)
@@ -5245,7 +5245,7 @@ func (c *Client) ListRecordings(ctx context.Context, params *ListRecordingsParam
 
 // TrashProject is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) TrashProject(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) TrashProject(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewTrashProjectRequest(c.Server, projectId)
@@ -5255,7 +5255,7 @@ func (c *Client) TrashProject(ctx context.Context, projectId float32, reqEditors
 
 // GetProject is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProject(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProject(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetProjectRequest(c.Server, projectId)
@@ -5265,7 +5265,7 @@ func (c *Client) GetProject(ctx context.Context, projectId float32, reqEditors .
 
 // UpdateProjectWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateProjectRequestWithBody(c.Server, projectId, contentType, body)
@@ -5273,7 +5273,7 @@ func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId float32, c
 
 }
 
-func (c *Client) UpdateProject(ctx context.Context, projectId float32, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateProject(ctx context.Context, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateProjectRequest(c.Server, projectId, body)
@@ -5283,7 +5283,7 @@ func (c *Client) UpdateProject(ctx context.Context, projectId float32, body Upda
 
 // ListProjectPeople is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListProjectPeople(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListProjectPeople(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListProjectPeopleRequest(c.Server, projectId)
@@ -5293,7 +5293,7 @@ func (c *Client) ListProjectPeople(ctx context.Context, projectId float32, reqEd
 
 // UpdateProjectAccessWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateProjectAccessWithBody(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateProjectAccessWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateProjectAccessRequestWithBody(c.Server, projectId, contentType, body)
@@ -5301,7 +5301,7 @@ func (c *Client) UpdateProjectAccessWithBody(ctx context.Context, projectId floa
 
 }
 
-func (c *Client) UpdateProjectAccess(ctx context.Context, projectId float32, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateProjectAccess(ctx context.Context, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateProjectAccessRequest(c.Server, projectId, body)
@@ -5381,7 +5381,7 @@ func (c *Client) CreateTemplate(ctx context.Context, body CreateTemplateJSONRequ
 
 // DeleteTemplate is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteTemplate(ctx context.Context, templateId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteTemplate(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewDeleteTemplateRequest(c.Server, templateId)
@@ -5391,7 +5391,7 @@ func (c *Client) DeleteTemplate(ctx context.Context, templateId float32, reqEdit
 
 // GetTemplate is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTemplate(ctx context.Context, templateId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTemplate(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetTemplateRequest(c.Server, templateId)
@@ -5401,7 +5401,7 @@ func (c *Client) GetTemplate(ctx context.Context, templateId float32, reqEditors
 
 // UpdateTemplateWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateTemplateWithBody(ctx context.Context, templateId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTemplateWithBody(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTemplateRequestWithBody(c.Server, templateId, contentType, body)
@@ -5409,7 +5409,7 @@ func (c *Client) UpdateTemplateWithBody(ctx context.Context, templateId float32,
 
 }
 
-func (c *Client) UpdateTemplate(ctx context.Context, templateId float32, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTemplate(ctx context.Context, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateTemplateRequest(c.Server, templateId, body)
@@ -5419,7 +5419,7 @@ func (c *Client) UpdateTemplate(ctx context.Context, templateId float32, body Up
 
 // CreateProjectFromTemplateWithBody executes the CreateProjectFromTemplate operation.
 
-func (c *Client) CreateProjectFromTemplateWithBody(ctx context.Context, templateId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateProjectFromTemplateWithBody(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateProjectFromTemplateRequestWithBody(c.Server, templateId, contentType, body)
 	if err != nil {
@@ -5433,7 +5433,7 @@ func (c *Client) CreateProjectFromTemplateWithBody(ctx context.Context, template
 
 }
 
-func (c *Client) CreateProjectFromTemplate(ctx context.Context, templateId float32, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateProjectFromTemplate(ctx context.Context, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateProjectFromTemplateRequest(c.Server, templateId, body)
 	if err != nil {
@@ -5449,7 +5449,7 @@ func (c *Client) CreateProjectFromTemplate(ctx context.Context, templateId float
 
 // GetProjectConstruction is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProjectConstruction(ctx context.Context, templateId float32, constructionId float32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProjectConstruction(ctx context.Context, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetProjectConstructionRequest(c.Server, templateId, constructionId)
@@ -5518,7 +5518,7 @@ func NewCreateAttachmentRequestWithBody(server string, params *CreateAttachmentP
 }
 
 // NewGetCardRequest generates requests for GetCard
-func NewGetCardRequest(server string, projectId float32, cardId float32) (*http.Request, error) {
+func NewGetCardRequest(server string, projectId int64, cardId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5559,7 +5559,7 @@ func NewGetCardRequest(server string, projectId float32, cardId float32) (*http.
 }
 
 // NewUpdateCardRequest calls the generic UpdateCard builder with application/json body
-func NewUpdateCardRequest(server string, projectId float32, cardId float32, body UpdateCardJSONRequestBody) (*http.Request, error) {
+func NewUpdateCardRequest(server string, projectId int64, cardId int64, body UpdateCardJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -5570,7 +5570,7 @@ func NewUpdateCardRequest(server string, projectId float32, cardId float32, body
 }
 
 // NewUpdateCardRequestWithBody generates requests for UpdateCard with any type of body
-func NewUpdateCardRequestWithBody(server string, projectId float32, cardId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateCardRequestWithBody(server string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5613,7 +5613,7 @@ func NewUpdateCardRequestWithBody(server string, projectId float32, cardId float
 }
 
 // NewMoveCardRequest calls the generic MoveCard builder with application/json body
-func NewMoveCardRequest(server string, projectId float32, cardId float32, body MoveCardJSONRequestBody) (*http.Request, error) {
+func NewMoveCardRequest(server string, projectId int64, cardId int64, body MoveCardJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -5624,7 +5624,7 @@ func NewMoveCardRequest(server string, projectId float32, cardId float32, body M
 }
 
 // NewMoveCardRequestWithBody generates requests for MoveCard with any type of body
-func NewMoveCardRequestWithBody(server string, projectId float32, cardId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewMoveCardRequestWithBody(server string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5667,7 +5667,7 @@ func NewMoveCardRequestWithBody(server string, projectId float32, cardId float32
 }
 
 // NewRepositionCardStepRequest calls the generic RepositionCardStep builder with application/json body
-func NewRepositionCardStepRequest(server string, projectId float32, cardId float32, body RepositionCardStepJSONRequestBody) (*http.Request, error) {
+func NewRepositionCardStepRequest(server string, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -5678,7 +5678,7 @@ func NewRepositionCardStepRequest(server string, projectId float32, cardId float
 }
 
 // NewRepositionCardStepRequestWithBody generates requests for RepositionCardStep with any type of body
-func NewRepositionCardStepRequestWithBody(server string, projectId float32, cardId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewRepositionCardStepRequestWithBody(server string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5721,7 +5721,7 @@ func NewRepositionCardStepRequestWithBody(server string, projectId float32, card
 }
 
 // NewCreateCardStepRequest calls the generic CreateCardStep builder with application/json body
-func NewCreateCardStepRequest(server string, projectId float32, cardId float32, body CreateCardStepJSONRequestBody) (*http.Request, error) {
+func NewCreateCardStepRequest(server string, projectId int64, cardId int64, body CreateCardStepJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -5732,7 +5732,7 @@ func NewCreateCardStepRequest(server string, projectId float32, cardId float32, 
 }
 
 // NewCreateCardStepRequestWithBody generates requests for CreateCardStep with any type of body
-func NewCreateCardStepRequestWithBody(server string, projectId float32, cardId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateCardStepRequestWithBody(server string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5775,7 +5775,7 @@ func NewCreateCardStepRequestWithBody(server string, projectId float32, cardId f
 }
 
 // NewGetCardColumnRequest generates requests for GetCardColumn
-func NewGetCardColumnRequest(server string, projectId float32, columnId float32) (*http.Request, error) {
+func NewGetCardColumnRequest(server string, projectId int64, columnId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5816,7 +5816,7 @@ func NewGetCardColumnRequest(server string, projectId float32, columnId float32)
 }
 
 // NewUpdateCardColumnRequest calls the generic UpdateCardColumn builder with application/json body
-func NewUpdateCardColumnRequest(server string, projectId float32, columnId float32, body UpdateCardColumnJSONRequestBody) (*http.Request, error) {
+func NewUpdateCardColumnRequest(server string, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -5827,7 +5827,7 @@ func NewUpdateCardColumnRequest(server string, projectId float32, columnId float
 }
 
 // NewUpdateCardColumnRequestWithBody generates requests for UpdateCardColumn with any type of body
-func NewUpdateCardColumnRequestWithBody(server string, projectId float32, columnId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateCardColumnRequestWithBody(server string, projectId int64, columnId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5870,7 +5870,7 @@ func NewUpdateCardColumnRequestWithBody(server string, projectId float32, column
 }
 
 // NewSetCardColumnColorRequest calls the generic SetCardColumnColor builder with application/json body
-func NewSetCardColumnColorRequest(server string, projectId float32, columnId float32, body SetCardColumnColorJSONRequestBody) (*http.Request, error) {
+func NewSetCardColumnColorRequest(server string, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -5881,7 +5881,7 @@ func NewSetCardColumnColorRequest(server string, projectId float32, columnId flo
 }
 
 // NewSetCardColumnColorRequestWithBody generates requests for SetCardColumnColor with any type of body
-func NewSetCardColumnColorRequestWithBody(server string, projectId float32, columnId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewSetCardColumnColorRequestWithBody(server string, projectId int64, columnId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5924,7 +5924,7 @@ func NewSetCardColumnColorRequestWithBody(server string, projectId float32, colu
 }
 
 // NewDisableCardColumnOnHoldRequest generates requests for DisableCardColumnOnHold
-func NewDisableCardColumnOnHoldRequest(server string, projectId float32, columnId float32) (*http.Request, error) {
+func NewDisableCardColumnOnHoldRequest(server string, projectId int64, columnId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5965,7 +5965,7 @@ func NewDisableCardColumnOnHoldRequest(server string, projectId float32, columnI
 }
 
 // NewEnableCardColumnOnHoldRequest generates requests for EnableCardColumnOnHold
-func NewEnableCardColumnOnHoldRequest(server string, projectId float32, columnId float32) (*http.Request, error) {
+func NewEnableCardColumnOnHoldRequest(server string, projectId int64, columnId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6006,7 +6006,7 @@ func NewEnableCardColumnOnHoldRequest(server string, projectId float32, columnId
 }
 
 // NewListCardsRequest generates requests for ListCards
-func NewListCardsRequest(server string, projectId float32, columnId float32) (*http.Request, error) {
+func NewListCardsRequest(server string, projectId int64, columnId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6047,7 +6047,7 @@ func NewListCardsRequest(server string, projectId float32, columnId float32) (*h
 }
 
 // NewCreateCardRequest calls the generic CreateCard builder with application/json body
-func NewCreateCardRequest(server string, projectId float32, columnId float32, body CreateCardJSONRequestBody) (*http.Request, error) {
+func NewCreateCardRequest(server string, projectId int64, columnId int64, body CreateCardJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -6058,7 +6058,7 @@ func NewCreateCardRequest(server string, projectId float32, columnId float32, bo
 }
 
 // NewCreateCardRequestWithBody generates requests for CreateCard with any type of body
-func NewCreateCardRequestWithBody(server string, projectId float32, columnId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateCardRequestWithBody(server string, projectId int64, columnId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6101,7 +6101,7 @@ func NewCreateCardRequestWithBody(server string, projectId float32, columnId flo
 }
 
 // NewUpdateCardStepRequest calls the generic UpdateCardStep builder with application/json body
-func NewUpdateCardStepRequest(server string, projectId float32, stepId float32, body UpdateCardStepJSONRequestBody) (*http.Request, error) {
+func NewUpdateCardStepRequest(server string, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -6112,7 +6112,7 @@ func NewUpdateCardStepRequest(server string, projectId float32, stepId float32, 
 }
 
 // NewUpdateCardStepRequestWithBody generates requests for UpdateCardStep with any type of body
-func NewUpdateCardStepRequestWithBody(server string, projectId float32, stepId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateCardStepRequestWithBody(server string, projectId int64, stepId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6155,7 +6155,7 @@ func NewUpdateCardStepRequestWithBody(server string, projectId float32, stepId f
 }
 
 // NewUncompleteCardStepRequest generates requests for UncompleteCardStep
-func NewUncompleteCardStepRequest(server string, projectId float32, stepId float32) (*http.Request, error) {
+func NewUncompleteCardStepRequest(server string, projectId int64, stepId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6196,7 +6196,7 @@ func NewUncompleteCardStepRequest(server string, projectId float32, stepId float
 }
 
 // NewCompleteCardStepRequest generates requests for CompleteCardStep
-func NewCompleteCardStepRequest(server string, projectId float32, stepId float32) (*http.Request, error) {
+func NewCompleteCardStepRequest(server string, projectId int64, stepId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6237,7 +6237,7 @@ func NewCompleteCardStepRequest(server string, projectId float32, stepId float32
 }
 
 // NewGetCardTableRequest generates requests for GetCardTable
-func NewGetCardTableRequest(server string, projectId float32, cardTableId float32) (*http.Request, error) {
+func NewGetCardTableRequest(server string, projectId int64, cardTableId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6278,7 +6278,7 @@ func NewGetCardTableRequest(server string, projectId float32, cardTableId float3
 }
 
 // NewCreateCardColumnRequest calls the generic CreateCardColumn builder with application/json body
-func NewCreateCardColumnRequest(server string, projectId float32, cardTableId float32, body CreateCardColumnJSONRequestBody) (*http.Request, error) {
+func NewCreateCardColumnRequest(server string, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -6289,7 +6289,7 @@ func NewCreateCardColumnRequest(server string, projectId float32, cardTableId fl
 }
 
 // NewCreateCardColumnRequestWithBody generates requests for CreateCardColumn with any type of body
-func NewCreateCardColumnRequestWithBody(server string, projectId float32, cardTableId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateCardColumnRequestWithBody(server string, projectId int64, cardTableId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6332,7 +6332,7 @@ func NewCreateCardColumnRequestWithBody(server string, projectId float32, cardTa
 }
 
 // NewMoveCardColumnRequest calls the generic MoveCardColumn builder with application/json body
-func NewMoveCardColumnRequest(server string, projectId float32, cardTableId float32, body MoveCardColumnJSONRequestBody) (*http.Request, error) {
+func NewMoveCardColumnRequest(server string, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -6343,7 +6343,7 @@ func NewMoveCardColumnRequest(server string, projectId float32, cardTableId floa
 }
 
 // NewMoveCardColumnRequestWithBody generates requests for MoveCardColumn with any type of body
-func NewMoveCardColumnRequestWithBody(server string, projectId float32, cardTableId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewMoveCardColumnRequestWithBody(server string, projectId int64, cardTableId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6386,7 +6386,7 @@ func NewMoveCardColumnRequestWithBody(server string, projectId float32, cardTabl
 }
 
 // NewListMessageTypesRequest generates requests for ListMessageTypes
-func NewListMessageTypesRequest(server string, projectId float32) (*http.Request, error) {
+func NewListMessageTypesRequest(server string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6420,7 +6420,7 @@ func NewListMessageTypesRequest(server string, projectId float32) (*http.Request
 }
 
 // NewCreateMessageTypeRequest calls the generic CreateMessageType builder with application/json body
-func NewCreateMessageTypeRequest(server string, projectId float32, body CreateMessageTypeJSONRequestBody) (*http.Request, error) {
+func NewCreateMessageTypeRequest(server string, projectId int64, body CreateMessageTypeJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -6431,7 +6431,7 @@ func NewCreateMessageTypeRequest(server string, projectId float32, body CreateMe
 }
 
 // NewCreateMessageTypeRequestWithBody generates requests for CreateMessageType with any type of body
-func NewCreateMessageTypeRequestWithBody(server string, projectId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateMessageTypeRequestWithBody(server string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6467,7 +6467,7 @@ func NewCreateMessageTypeRequestWithBody(server string, projectId float32, conte
 }
 
 // NewDeleteMessageTypeRequest generates requests for DeleteMessageType
-func NewDeleteMessageTypeRequest(server string, projectId float32, typeId float32) (*http.Request, error) {
+func NewDeleteMessageTypeRequest(server string, projectId int64, typeId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6508,7 +6508,7 @@ func NewDeleteMessageTypeRequest(server string, projectId float32, typeId float3
 }
 
 // NewGetMessageTypeRequest generates requests for GetMessageType
-func NewGetMessageTypeRequest(server string, projectId float32, typeId float32) (*http.Request, error) {
+func NewGetMessageTypeRequest(server string, projectId int64, typeId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6549,7 +6549,7 @@ func NewGetMessageTypeRequest(server string, projectId float32, typeId float32) 
 }
 
 // NewUpdateMessageTypeRequest calls the generic UpdateMessageType builder with application/json body
-func NewUpdateMessageTypeRequest(server string, projectId float32, typeId float32, body UpdateMessageTypeJSONRequestBody) (*http.Request, error) {
+func NewUpdateMessageTypeRequest(server string, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -6560,7 +6560,7 @@ func NewUpdateMessageTypeRequest(server string, projectId float32, typeId float3
 }
 
 // NewUpdateMessageTypeRequestWithBody generates requests for UpdateMessageType with any type of body
-func NewUpdateMessageTypeRequestWithBody(server string, projectId float32, typeId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateMessageTypeRequestWithBody(server string, projectId int64, typeId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6603,7 +6603,7 @@ func NewUpdateMessageTypeRequestWithBody(server string, projectId float32, typeI
 }
 
 // NewGetCampfireRequest generates requests for GetCampfire
-func NewGetCampfireRequest(server string, projectId float32, campfireId float32) (*http.Request, error) {
+func NewGetCampfireRequest(server string, projectId int64, campfireId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6644,7 +6644,7 @@ func NewGetCampfireRequest(server string, projectId float32, campfireId float32)
 }
 
 // NewListChatbotsRequest generates requests for ListChatbots
-func NewListChatbotsRequest(server string, projectId float32, campfireId float32) (*http.Request, error) {
+func NewListChatbotsRequest(server string, projectId int64, campfireId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6685,7 +6685,7 @@ func NewListChatbotsRequest(server string, projectId float32, campfireId float32
 }
 
 // NewCreateChatbotRequest calls the generic CreateChatbot builder with application/json body
-func NewCreateChatbotRequest(server string, projectId float32, campfireId float32, body CreateChatbotJSONRequestBody) (*http.Request, error) {
+func NewCreateChatbotRequest(server string, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -6696,7 +6696,7 @@ func NewCreateChatbotRequest(server string, projectId float32, campfireId float3
 }
 
 // NewCreateChatbotRequestWithBody generates requests for CreateChatbot with any type of body
-func NewCreateChatbotRequestWithBody(server string, projectId float32, campfireId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateChatbotRequestWithBody(server string, projectId int64, campfireId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6739,7 +6739,7 @@ func NewCreateChatbotRequestWithBody(server string, projectId float32, campfireI
 }
 
 // NewDeleteChatbotRequest generates requests for DeleteChatbot
-func NewDeleteChatbotRequest(server string, projectId float32, campfireId float32, chatbotId float32) (*http.Request, error) {
+func NewDeleteChatbotRequest(server string, projectId int64, campfireId int64, chatbotId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6787,7 +6787,7 @@ func NewDeleteChatbotRequest(server string, projectId float32, campfireId float3
 }
 
 // NewGetChatbotRequest generates requests for GetChatbot
-func NewGetChatbotRequest(server string, projectId float32, campfireId float32, chatbotId float32) (*http.Request, error) {
+func NewGetChatbotRequest(server string, projectId int64, campfireId int64, chatbotId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6835,7 +6835,7 @@ func NewGetChatbotRequest(server string, projectId float32, campfireId float32, 
 }
 
 // NewUpdateChatbotRequest calls the generic UpdateChatbot builder with application/json body
-func NewUpdateChatbotRequest(server string, projectId float32, campfireId float32, chatbotId float32, body UpdateChatbotJSONRequestBody) (*http.Request, error) {
+func NewUpdateChatbotRequest(server string, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -6846,7 +6846,7 @@ func NewUpdateChatbotRequest(server string, projectId float32, campfireId float3
 }
 
 // NewUpdateChatbotRequestWithBody generates requests for UpdateChatbot with any type of body
-func NewUpdateChatbotRequestWithBody(server string, projectId float32, campfireId float32, chatbotId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateChatbotRequestWithBody(server string, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6896,7 +6896,7 @@ func NewUpdateChatbotRequestWithBody(server string, projectId float32, campfireI
 }
 
 // NewListCampfireLinesRequest generates requests for ListCampfireLines
-func NewListCampfireLinesRequest(server string, projectId float32, campfireId float32) (*http.Request, error) {
+func NewListCampfireLinesRequest(server string, projectId int64, campfireId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6937,7 +6937,7 @@ func NewListCampfireLinesRequest(server string, projectId float32, campfireId fl
 }
 
 // NewCreateCampfireLineRequest calls the generic CreateCampfireLine builder with application/json body
-func NewCreateCampfireLineRequest(server string, projectId float32, campfireId float32, body CreateCampfireLineJSONRequestBody) (*http.Request, error) {
+func NewCreateCampfireLineRequest(server string, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -6948,7 +6948,7 @@ func NewCreateCampfireLineRequest(server string, projectId float32, campfireId f
 }
 
 // NewCreateCampfireLineRequestWithBody generates requests for CreateCampfireLine with any type of body
-func NewCreateCampfireLineRequestWithBody(server string, projectId float32, campfireId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateCampfireLineRequestWithBody(server string, projectId int64, campfireId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6991,7 +6991,7 @@ func NewCreateCampfireLineRequestWithBody(server string, projectId float32, camp
 }
 
 // NewDeleteCampfireLineRequest generates requests for DeleteCampfireLine
-func NewDeleteCampfireLineRequest(server string, projectId float32, campfireId float32, lineId float32) (*http.Request, error) {
+func NewDeleteCampfireLineRequest(server string, projectId int64, campfireId int64, lineId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7039,7 +7039,7 @@ func NewDeleteCampfireLineRequest(server string, projectId float32, campfireId f
 }
 
 // NewGetCampfireLineRequest generates requests for GetCampfireLine
-func NewGetCampfireLineRequest(server string, projectId float32, campfireId float32, lineId float32) (*http.Request, error) {
+func NewGetCampfireLineRequest(server string, projectId int64, campfireId int64, lineId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7087,7 +7087,7 @@ func NewGetCampfireLineRequest(server string, projectId float32, campfireId floa
 }
 
 // NewListClientApprovalsRequest generates requests for ListClientApprovals
-func NewListClientApprovalsRequest(server string, projectId float32) (*http.Request, error) {
+func NewListClientApprovalsRequest(server string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7121,7 +7121,7 @@ func NewListClientApprovalsRequest(server string, projectId float32) (*http.Requ
 }
 
 // NewGetClientApprovalRequest generates requests for GetClientApproval
-func NewGetClientApprovalRequest(server string, projectId float32, approvalId float32) (*http.Request, error) {
+func NewGetClientApprovalRequest(server string, projectId int64, approvalId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7162,7 +7162,7 @@ func NewGetClientApprovalRequest(server string, projectId float32, approvalId fl
 }
 
 // NewListClientCorrespondencesRequest generates requests for ListClientCorrespondences
-func NewListClientCorrespondencesRequest(server string, projectId float32) (*http.Request, error) {
+func NewListClientCorrespondencesRequest(server string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7196,7 +7196,7 @@ func NewListClientCorrespondencesRequest(server string, projectId float32) (*htt
 }
 
 // NewGetClientCorrespondenceRequest generates requests for GetClientCorrespondence
-func NewGetClientCorrespondenceRequest(server string, projectId float32, correspondenceId float32) (*http.Request, error) {
+func NewGetClientCorrespondenceRequest(server string, projectId int64, correspondenceId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7237,7 +7237,7 @@ func NewGetClientCorrespondenceRequest(server string, projectId float32, corresp
 }
 
 // NewListClientRepliesRequest generates requests for ListClientReplies
-func NewListClientRepliesRequest(server string, projectId float32, recordingId float32) (*http.Request, error) {
+func NewListClientRepliesRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7278,7 +7278,7 @@ func NewListClientRepliesRequest(server string, projectId float32, recordingId f
 }
 
 // NewGetClientReplyRequest generates requests for GetClientReply
-func NewGetClientReplyRequest(server string, projectId float32, recordingId float32, replyId float32) (*http.Request, error) {
+func NewGetClientReplyRequest(server string, projectId int64, recordingId int64, replyId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7326,7 +7326,7 @@ func NewGetClientReplyRequest(server string, projectId float32, recordingId floa
 }
 
 // NewGetCommentRequest generates requests for GetComment
-func NewGetCommentRequest(server string, projectId float32, commentId float32) (*http.Request, error) {
+func NewGetCommentRequest(server string, projectId int64, commentId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7367,7 +7367,7 @@ func NewGetCommentRequest(server string, projectId float32, commentId float32) (
 }
 
 // NewUpdateCommentRequest calls the generic UpdateComment builder with application/json body
-func NewUpdateCommentRequest(server string, projectId float32, commentId float32, body UpdateCommentJSONRequestBody) (*http.Request, error) {
+func NewUpdateCommentRequest(server string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -7378,7 +7378,7 @@ func NewUpdateCommentRequest(server string, projectId float32, commentId float32
 }
 
 // NewUpdateCommentRequestWithBody generates requests for UpdateComment with any type of body
-func NewUpdateCommentRequestWithBody(server string, projectId float32, commentId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateCommentRequestWithBody(server string, projectId int64, commentId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7421,7 +7421,7 @@ func NewUpdateCommentRequestWithBody(server string, projectId float32, commentId
 }
 
 // NewCloneToolRequest generates requests for CloneTool
-func NewCloneToolRequest(server string, projectId float32, sourceToolId float32) (*http.Request, error) {
+func NewCloneToolRequest(server string, projectId int64, sourceToolId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7462,7 +7462,7 @@ func NewCloneToolRequest(server string, projectId float32, sourceToolId float32)
 }
 
 // NewDeleteToolRequest generates requests for DeleteTool
-func NewDeleteToolRequest(server string, projectId float32, toolId float32) (*http.Request, error) {
+func NewDeleteToolRequest(server string, projectId int64, toolId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7503,7 +7503,7 @@ func NewDeleteToolRequest(server string, projectId float32, toolId float32) (*ht
 }
 
 // NewGetToolRequest generates requests for GetTool
-func NewGetToolRequest(server string, projectId float32, toolId float32) (*http.Request, error) {
+func NewGetToolRequest(server string, projectId int64, toolId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7544,7 +7544,7 @@ func NewGetToolRequest(server string, projectId float32, toolId float32) (*http.
 }
 
 // NewUpdateToolRequest calls the generic UpdateTool builder with application/json body
-func NewUpdateToolRequest(server string, projectId float32, toolId float32, body UpdateToolJSONRequestBody) (*http.Request, error) {
+func NewUpdateToolRequest(server string, projectId int64, toolId int64, body UpdateToolJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -7555,7 +7555,7 @@ func NewUpdateToolRequest(server string, projectId float32, toolId float32, body
 }
 
 // NewUpdateToolRequestWithBody generates requests for UpdateTool with any type of body
-func NewUpdateToolRequestWithBody(server string, projectId float32, toolId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateToolRequestWithBody(server string, projectId int64, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7598,7 +7598,7 @@ func NewUpdateToolRequestWithBody(server string, projectId float32, toolId float
 }
 
 // NewDisableToolRequest generates requests for DisableTool
-func NewDisableToolRequest(server string, projectId float32, toolId float32) (*http.Request, error) {
+func NewDisableToolRequest(server string, projectId int64, toolId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7639,7 +7639,7 @@ func NewDisableToolRequest(server string, projectId float32, toolId float32) (*h
 }
 
 // NewEnableToolRequest generates requests for EnableTool
-func NewEnableToolRequest(server string, projectId float32, toolId float32) (*http.Request, error) {
+func NewEnableToolRequest(server string, projectId int64, toolId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7680,7 +7680,7 @@ func NewEnableToolRequest(server string, projectId float32, toolId float32) (*ht
 }
 
 // NewRepositionToolRequest calls the generic RepositionTool builder with application/json body
-func NewRepositionToolRequest(server string, projectId float32, toolId float32, body RepositionToolJSONRequestBody) (*http.Request, error) {
+func NewRepositionToolRequest(server string, projectId int64, toolId int64, body RepositionToolJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -7691,7 +7691,7 @@ func NewRepositionToolRequest(server string, projectId float32, toolId float32, 
 }
 
 // NewRepositionToolRequestWithBody generates requests for RepositionTool with any type of body
-func NewRepositionToolRequestWithBody(server string, projectId float32, toolId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewRepositionToolRequestWithBody(server string, projectId int64, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7734,7 +7734,7 @@ func NewRepositionToolRequestWithBody(server string, projectId float32, toolId f
 }
 
 // NewGetDocumentRequest generates requests for GetDocument
-func NewGetDocumentRequest(server string, projectId float32, documentId float32) (*http.Request, error) {
+func NewGetDocumentRequest(server string, projectId int64, documentId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7775,7 +7775,7 @@ func NewGetDocumentRequest(server string, projectId float32, documentId float32)
 }
 
 // NewUpdateDocumentRequest calls the generic UpdateDocument builder with application/json body
-func NewUpdateDocumentRequest(server string, projectId float32, documentId float32, body UpdateDocumentJSONRequestBody) (*http.Request, error) {
+func NewUpdateDocumentRequest(server string, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -7786,7 +7786,7 @@ func NewUpdateDocumentRequest(server string, projectId float32, documentId float
 }
 
 // NewUpdateDocumentRequestWithBody generates requests for UpdateDocument with any type of body
-func NewUpdateDocumentRequestWithBody(server string, projectId float32, documentId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateDocumentRequestWithBody(server string, projectId int64, documentId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7829,7 +7829,7 @@ func NewUpdateDocumentRequestWithBody(server string, projectId float32, document
 }
 
 // NewGetForwardRequest generates requests for GetForward
-func NewGetForwardRequest(server string, projectId float32, forwardId float32) (*http.Request, error) {
+func NewGetForwardRequest(server string, projectId int64, forwardId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7870,7 +7870,7 @@ func NewGetForwardRequest(server string, projectId float32, forwardId float32) (
 }
 
 // NewListForwardRepliesRequest generates requests for ListForwardReplies
-func NewListForwardRepliesRequest(server string, projectId float32, forwardId float32) (*http.Request, error) {
+func NewListForwardRepliesRequest(server string, projectId int64, forwardId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7911,7 +7911,7 @@ func NewListForwardRepliesRequest(server string, projectId float32, forwardId fl
 }
 
 // NewCreateForwardReplyRequest calls the generic CreateForwardReply builder with application/json body
-func NewCreateForwardReplyRequest(server string, projectId float32, forwardId float32, body CreateForwardReplyJSONRequestBody) (*http.Request, error) {
+func NewCreateForwardReplyRequest(server string, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -7922,7 +7922,7 @@ func NewCreateForwardReplyRequest(server string, projectId float32, forwardId fl
 }
 
 // NewCreateForwardReplyRequestWithBody generates requests for CreateForwardReply with any type of body
-func NewCreateForwardReplyRequestWithBody(server string, projectId float32, forwardId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateForwardReplyRequestWithBody(server string, projectId int64, forwardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7965,7 +7965,7 @@ func NewCreateForwardReplyRequestWithBody(server string, projectId float32, forw
 }
 
 // NewGetForwardReplyRequest generates requests for GetForwardReply
-func NewGetForwardReplyRequest(server string, projectId float32, forwardId float32, replyId float32) (*http.Request, error) {
+func NewGetForwardReplyRequest(server string, projectId int64, forwardId int64, replyId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8013,7 +8013,7 @@ func NewGetForwardReplyRequest(server string, projectId float32, forwardId float
 }
 
 // NewGetInboxRequest generates requests for GetInbox
-func NewGetInboxRequest(server string, projectId float32, inboxId float32) (*http.Request, error) {
+func NewGetInboxRequest(server string, projectId int64, inboxId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8054,7 +8054,7 @@ func NewGetInboxRequest(server string, projectId float32, inboxId float32) (*htt
 }
 
 // NewListForwardsRequest generates requests for ListForwards
-func NewListForwardsRequest(server string, projectId float32, inboxId float32) (*http.Request, error) {
+func NewListForwardsRequest(server string, projectId int64, inboxId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8095,7 +8095,7 @@ func NewListForwardsRequest(server string, projectId float32, inboxId float32) (
 }
 
 // NewGetMessageBoardRequest generates requests for GetMessageBoard
-func NewGetMessageBoardRequest(server string, projectId float32, boardId float32) (*http.Request, error) {
+func NewGetMessageBoardRequest(server string, projectId int64, boardId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8136,7 +8136,7 @@ func NewGetMessageBoardRequest(server string, projectId float32, boardId float32
 }
 
 // NewListMessagesRequest generates requests for ListMessages
-func NewListMessagesRequest(server string, projectId float32, boardId float32) (*http.Request, error) {
+func NewListMessagesRequest(server string, projectId int64, boardId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8177,7 +8177,7 @@ func NewListMessagesRequest(server string, projectId float32, boardId float32) (
 }
 
 // NewCreateMessageRequest calls the generic CreateMessage builder with application/json body
-func NewCreateMessageRequest(server string, projectId float32, boardId float32, body CreateMessageJSONRequestBody) (*http.Request, error) {
+func NewCreateMessageRequest(server string, projectId int64, boardId int64, body CreateMessageJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -8188,7 +8188,7 @@ func NewCreateMessageRequest(server string, projectId float32, boardId float32, 
 }
 
 // NewCreateMessageRequestWithBody generates requests for CreateMessage with any type of body
-func NewCreateMessageRequestWithBody(server string, projectId float32, boardId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateMessageRequestWithBody(server string, projectId int64, boardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8231,7 +8231,7 @@ func NewCreateMessageRequestWithBody(server string, projectId float32, boardId f
 }
 
 // NewGetMessageRequest generates requests for GetMessage
-func NewGetMessageRequest(server string, projectId float32, messageId float32) (*http.Request, error) {
+func NewGetMessageRequest(server string, projectId int64, messageId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8272,7 +8272,7 @@ func NewGetMessageRequest(server string, projectId float32, messageId float32) (
 }
 
 // NewUpdateMessageRequest calls the generic UpdateMessage builder with application/json body
-func NewUpdateMessageRequest(server string, projectId float32, messageId float32, body UpdateMessageJSONRequestBody) (*http.Request, error) {
+func NewUpdateMessageRequest(server string, projectId int64, messageId int64, body UpdateMessageJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -8283,7 +8283,7 @@ func NewUpdateMessageRequest(server string, projectId float32, messageId float32
 }
 
 // NewUpdateMessageRequestWithBody generates requests for UpdateMessage with any type of body
-func NewUpdateMessageRequestWithBody(server string, projectId float32, messageId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateMessageRequestWithBody(server string, projectId int64, messageId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8326,7 +8326,7 @@ func NewUpdateMessageRequestWithBody(server string, projectId float32, messageId
 }
 
 // NewGetAnswerRequest generates requests for GetAnswer
-func NewGetAnswerRequest(server string, projectId float32, answerId float32) (*http.Request, error) {
+func NewGetAnswerRequest(server string, projectId int64, answerId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8367,7 +8367,7 @@ func NewGetAnswerRequest(server string, projectId float32, answerId float32) (*h
 }
 
 // NewUpdateAnswerRequest calls the generic UpdateAnswer builder with application/json body
-func NewUpdateAnswerRequest(server string, projectId float32, answerId float32, body UpdateAnswerJSONRequestBody) (*http.Request, error) {
+func NewUpdateAnswerRequest(server string, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -8378,7 +8378,7 @@ func NewUpdateAnswerRequest(server string, projectId float32, answerId float32, 
 }
 
 // NewUpdateAnswerRequestWithBody generates requests for UpdateAnswer with any type of body
-func NewUpdateAnswerRequestWithBody(server string, projectId float32, answerId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateAnswerRequestWithBody(server string, projectId int64, answerId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8421,7 +8421,7 @@ func NewUpdateAnswerRequestWithBody(server string, projectId float32, answerId f
 }
 
 // NewGetQuestionnaireRequest generates requests for GetQuestionnaire
-func NewGetQuestionnaireRequest(server string, projectId float32, questionnaireId float32) (*http.Request, error) {
+func NewGetQuestionnaireRequest(server string, projectId int64, questionnaireId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8462,7 +8462,7 @@ func NewGetQuestionnaireRequest(server string, projectId float32, questionnaireI
 }
 
 // NewListQuestionsRequest generates requests for ListQuestions
-func NewListQuestionsRequest(server string, projectId float32, questionnaireId float32) (*http.Request, error) {
+func NewListQuestionsRequest(server string, projectId int64, questionnaireId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8503,7 +8503,7 @@ func NewListQuestionsRequest(server string, projectId float32, questionnaireId f
 }
 
 // NewCreateQuestionRequest calls the generic CreateQuestion builder with application/json body
-func NewCreateQuestionRequest(server string, projectId float32, questionnaireId float32, body CreateQuestionJSONRequestBody) (*http.Request, error) {
+func NewCreateQuestionRequest(server string, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -8514,7 +8514,7 @@ func NewCreateQuestionRequest(server string, projectId float32, questionnaireId 
 }
 
 // NewCreateQuestionRequestWithBody generates requests for CreateQuestion with any type of body
-func NewCreateQuestionRequestWithBody(server string, projectId float32, questionnaireId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateQuestionRequestWithBody(server string, projectId int64, questionnaireId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8557,7 +8557,7 @@ func NewCreateQuestionRequestWithBody(server string, projectId float32, question
 }
 
 // NewGetQuestionRequest generates requests for GetQuestion
-func NewGetQuestionRequest(server string, projectId float32, questionId float32) (*http.Request, error) {
+func NewGetQuestionRequest(server string, projectId int64, questionId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8598,7 +8598,7 @@ func NewGetQuestionRequest(server string, projectId float32, questionId float32)
 }
 
 // NewUpdateQuestionRequest calls the generic UpdateQuestion builder with application/json body
-func NewUpdateQuestionRequest(server string, projectId float32, questionId float32, body UpdateQuestionJSONRequestBody) (*http.Request, error) {
+func NewUpdateQuestionRequest(server string, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -8609,7 +8609,7 @@ func NewUpdateQuestionRequest(server string, projectId float32, questionId float
 }
 
 // NewUpdateQuestionRequestWithBody generates requests for UpdateQuestion with any type of body
-func NewUpdateQuestionRequestWithBody(server string, projectId float32, questionId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateQuestionRequestWithBody(server string, projectId int64, questionId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8652,7 +8652,7 @@ func NewUpdateQuestionRequestWithBody(server string, projectId float32, question
 }
 
 // NewListAnswersRequest generates requests for ListAnswers
-func NewListAnswersRequest(server string, projectId float32, questionId float32) (*http.Request, error) {
+func NewListAnswersRequest(server string, projectId int64, questionId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8693,7 +8693,7 @@ func NewListAnswersRequest(server string, projectId float32, questionId float32)
 }
 
 // NewCreateAnswerRequest calls the generic CreateAnswer builder with application/json body
-func NewCreateAnswerRequest(server string, projectId float32, questionId float32, body CreateAnswerJSONRequestBody) (*http.Request, error) {
+func NewCreateAnswerRequest(server string, projectId int64, questionId int64, body CreateAnswerJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -8704,7 +8704,7 @@ func NewCreateAnswerRequest(server string, projectId float32, questionId float32
 }
 
 // NewCreateAnswerRequestWithBody generates requests for CreateAnswer with any type of body
-func NewCreateAnswerRequestWithBody(server string, projectId float32, questionId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateAnswerRequestWithBody(server string, projectId int64, questionId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8747,7 +8747,7 @@ func NewCreateAnswerRequestWithBody(server string, projectId float32, questionId
 }
 
 // NewUnpinMessageRequest generates requests for UnpinMessage
-func NewUnpinMessageRequest(server string, projectId float32, messageId float32) (*http.Request, error) {
+func NewUnpinMessageRequest(server string, projectId int64, messageId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8788,7 +8788,7 @@ func NewUnpinMessageRequest(server string, projectId float32, messageId float32)
 }
 
 // NewPinMessageRequest generates requests for PinMessage
-func NewPinMessageRequest(server string, projectId float32, messageId float32) (*http.Request, error) {
+func NewPinMessageRequest(server string, projectId int64, messageId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8829,7 +8829,7 @@ func NewPinMessageRequest(server string, projectId float32, messageId float32) (
 }
 
 // NewGetRecordingRequest generates requests for GetRecording
-func NewGetRecordingRequest(server string, projectId float32, recordingId float32) (*http.Request, error) {
+func NewGetRecordingRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8870,7 +8870,7 @@ func NewGetRecordingRequest(server string, projectId float32, recordingId float3
 }
 
 // NewSetClientVisibilityRequest calls the generic SetClientVisibility builder with application/json body
-func NewSetClientVisibilityRequest(server string, projectId float32, recordingId float32, body SetClientVisibilityJSONRequestBody) (*http.Request, error) {
+func NewSetClientVisibilityRequest(server string, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -8881,7 +8881,7 @@ func NewSetClientVisibilityRequest(server string, projectId float32, recordingId
 }
 
 // NewSetClientVisibilityRequestWithBody generates requests for SetClientVisibility with any type of body
-func NewSetClientVisibilityRequestWithBody(server string, projectId float32, recordingId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewSetClientVisibilityRequestWithBody(server string, projectId int64, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8924,7 +8924,7 @@ func NewSetClientVisibilityRequestWithBody(server string, projectId float32, rec
 }
 
 // NewListCommentsRequest generates requests for ListComments
-func NewListCommentsRequest(server string, projectId float32, recordingId float32) (*http.Request, error) {
+func NewListCommentsRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8965,7 +8965,7 @@ func NewListCommentsRequest(server string, projectId float32, recordingId float3
 }
 
 // NewCreateCommentRequest calls the generic CreateComment builder with application/json body
-func NewCreateCommentRequest(server string, projectId float32, recordingId float32, body CreateCommentJSONRequestBody) (*http.Request, error) {
+func NewCreateCommentRequest(server string, projectId int64, recordingId int64, body CreateCommentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -8976,7 +8976,7 @@ func NewCreateCommentRequest(server string, projectId float32, recordingId float
 }
 
 // NewCreateCommentRequestWithBody generates requests for CreateComment with any type of body
-func NewCreateCommentRequestWithBody(server string, projectId float32, recordingId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateCommentRequestWithBody(server string, projectId int64, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9019,7 +9019,7 @@ func NewCreateCommentRequestWithBody(server string, projectId float32, recording
 }
 
 // NewListEventsRequest generates requests for ListEvents
-func NewListEventsRequest(server string, projectId float32, recordingId float32) (*http.Request, error) {
+func NewListEventsRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9060,7 +9060,7 @@ func NewListEventsRequest(server string, projectId float32, recordingId float32)
 }
 
 // NewUnarchiveRecordingRequest generates requests for UnarchiveRecording
-func NewUnarchiveRecordingRequest(server string, projectId float32, recordingId float32) (*http.Request, error) {
+func NewUnarchiveRecordingRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9101,7 +9101,7 @@ func NewUnarchiveRecordingRequest(server string, projectId float32, recordingId 
 }
 
 // NewArchiveRecordingRequest generates requests for ArchiveRecording
-func NewArchiveRecordingRequest(server string, projectId float32, recordingId float32) (*http.Request, error) {
+func NewArchiveRecordingRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9142,7 +9142,7 @@ func NewArchiveRecordingRequest(server string, projectId float32, recordingId fl
 }
 
 // NewTrashRecordingRequest generates requests for TrashRecording
-func NewTrashRecordingRequest(server string, projectId float32, recordingId float32) (*http.Request, error) {
+func NewTrashRecordingRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9183,7 +9183,7 @@ func NewTrashRecordingRequest(server string, projectId float32, recordingId floa
 }
 
 // NewUnsubscribeRequest generates requests for Unsubscribe
-func NewUnsubscribeRequest(server string, projectId float32, recordingId float32) (*http.Request, error) {
+func NewUnsubscribeRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9224,7 +9224,7 @@ func NewUnsubscribeRequest(server string, projectId float32, recordingId float32
 }
 
 // NewGetSubscriptionRequest generates requests for GetSubscription
-func NewGetSubscriptionRequest(server string, projectId float32, recordingId float32) (*http.Request, error) {
+func NewGetSubscriptionRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9265,7 +9265,7 @@ func NewGetSubscriptionRequest(server string, projectId float32, recordingId flo
 }
 
 // NewSubscribeRequest generates requests for Subscribe
-func NewSubscribeRequest(server string, projectId float32, recordingId float32) (*http.Request, error) {
+func NewSubscribeRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9306,7 +9306,7 @@ func NewSubscribeRequest(server string, projectId float32, recordingId float32) 
 }
 
 // NewUpdateSubscriptionRequest calls the generic UpdateSubscription builder with application/json body
-func NewUpdateSubscriptionRequest(server string, projectId float32, recordingId float32, body UpdateSubscriptionJSONRequestBody) (*http.Request, error) {
+func NewUpdateSubscriptionRequest(server string, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -9317,7 +9317,7 @@ func NewUpdateSubscriptionRequest(server string, projectId float32, recordingId 
 }
 
 // NewUpdateSubscriptionRequestWithBody generates requests for UpdateSubscription with any type of body
-func NewUpdateSubscriptionRequestWithBody(server string, projectId float32, recordingId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateSubscriptionRequestWithBody(server string, projectId int64, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9360,7 +9360,7 @@ func NewUpdateSubscriptionRequestWithBody(server string, projectId float32, reco
 }
 
 // NewGetRecordingTimesheetRequest generates requests for GetRecordingTimesheet
-func NewGetRecordingTimesheetRequest(server string, projectId float32, recordingId float32, params *GetRecordingTimesheetParams) (*http.Request, error) {
+func NewGetRecordingTimesheetRequest(server string, projectId int64, recordingId int64, params *GetRecordingTimesheetParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9455,7 +9455,7 @@ func NewGetRecordingTimesheetRequest(server string, projectId float32, recording
 }
 
 // NewGetScheduleEntryRequest generates requests for GetScheduleEntry
-func NewGetScheduleEntryRequest(server string, projectId float32, entryId float32) (*http.Request, error) {
+func NewGetScheduleEntryRequest(server string, projectId int64, entryId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9496,7 +9496,7 @@ func NewGetScheduleEntryRequest(server string, projectId float32, entryId float3
 }
 
 // NewUpdateScheduleEntryRequest calls the generic UpdateScheduleEntry builder with application/json body
-func NewUpdateScheduleEntryRequest(server string, projectId float32, entryId float32, body UpdateScheduleEntryJSONRequestBody) (*http.Request, error) {
+func NewUpdateScheduleEntryRequest(server string, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -9507,7 +9507,7 @@ func NewUpdateScheduleEntryRequest(server string, projectId float32, entryId flo
 }
 
 // NewUpdateScheduleEntryRequestWithBody generates requests for UpdateScheduleEntry with any type of body
-func NewUpdateScheduleEntryRequestWithBody(server string, projectId float32, entryId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateScheduleEntryRequestWithBody(server string, projectId int64, entryId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9550,7 +9550,7 @@ func NewUpdateScheduleEntryRequestWithBody(server string, projectId float32, ent
 }
 
 // NewGetScheduleEntryOccurrenceRequest generates requests for GetScheduleEntryOccurrence
-func NewGetScheduleEntryOccurrenceRequest(server string, projectId float32, entryId float32, date string) (*http.Request, error) {
+func NewGetScheduleEntryOccurrenceRequest(server string, projectId int64, entryId int64, date string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9598,7 +9598,7 @@ func NewGetScheduleEntryOccurrenceRequest(server string, projectId float32, entr
 }
 
 // NewGetScheduleRequest generates requests for GetSchedule
-func NewGetScheduleRequest(server string, projectId float32, scheduleId float32) (*http.Request, error) {
+func NewGetScheduleRequest(server string, projectId int64, scheduleId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9639,7 +9639,7 @@ func NewGetScheduleRequest(server string, projectId float32, scheduleId float32)
 }
 
 // NewUpdateScheduleSettingsRequest calls the generic UpdateScheduleSettings builder with application/json body
-func NewUpdateScheduleSettingsRequest(server string, projectId float32, scheduleId float32, body UpdateScheduleSettingsJSONRequestBody) (*http.Request, error) {
+func NewUpdateScheduleSettingsRequest(server string, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -9650,7 +9650,7 @@ func NewUpdateScheduleSettingsRequest(server string, projectId float32, schedule
 }
 
 // NewUpdateScheduleSettingsRequestWithBody generates requests for UpdateScheduleSettings with any type of body
-func NewUpdateScheduleSettingsRequestWithBody(server string, projectId float32, scheduleId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateScheduleSettingsRequestWithBody(server string, projectId int64, scheduleId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9693,7 +9693,7 @@ func NewUpdateScheduleSettingsRequestWithBody(server string, projectId float32, 
 }
 
 // NewListScheduleEntriesRequest generates requests for ListScheduleEntries
-func NewListScheduleEntriesRequest(server string, projectId float32, scheduleId float32, params *ListScheduleEntriesParams) (*http.Request, error) {
+func NewListScheduleEntriesRequest(server string, projectId int64, scheduleId int64, params *ListScheduleEntriesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9756,7 +9756,7 @@ func NewListScheduleEntriesRequest(server string, projectId float32, scheduleId 
 }
 
 // NewCreateScheduleEntryRequest calls the generic CreateScheduleEntry builder with application/json body
-func NewCreateScheduleEntryRequest(server string, projectId float32, scheduleId float32, body CreateScheduleEntryJSONRequestBody) (*http.Request, error) {
+func NewCreateScheduleEntryRequest(server string, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -9767,7 +9767,7 @@ func NewCreateScheduleEntryRequest(server string, projectId float32, scheduleId 
 }
 
 // NewCreateScheduleEntryRequestWithBody generates requests for CreateScheduleEntry with any type of body
-func NewCreateScheduleEntryRequestWithBody(server string, projectId float32, scheduleId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateScheduleEntryRequestWithBody(server string, projectId int64, scheduleId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9810,7 +9810,7 @@ func NewCreateScheduleEntryRequestWithBody(server string, projectId float32, sch
 }
 
 // NewGetProjectTimesheetRequest generates requests for GetProjectTimesheet
-func NewGetProjectTimesheetRequest(server string, projectId float32, params *GetProjectTimesheetParams) (*http.Request, error) {
+func NewGetProjectTimesheetRequest(server string, projectId int64, params *GetProjectTimesheetParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9898,7 +9898,7 @@ func NewGetProjectTimesheetRequest(server string, projectId float32, params *Get
 }
 
 // NewRepositionTodolistGroupRequest calls the generic RepositionTodolistGroup builder with application/json body
-func NewRepositionTodolistGroupRequest(server string, projectId float32, groupId float32, body RepositionTodolistGroupJSONRequestBody) (*http.Request, error) {
+func NewRepositionTodolistGroupRequest(server string, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -9909,7 +9909,7 @@ func NewRepositionTodolistGroupRequest(server string, projectId float32, groupId
 }
 
 // NewRepositionTodolistGroupRequestWithBody generates requests for RepositionTodolistGroup with any type of body
-func NewRepositionTodolistGroupRequestWithBody(server string, projectId float32, groupId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewRepositionTodolistGroupRequestWithBody(server string, projectId int64, groupId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9952,7 +9952,7 @@ func NewRepositionTodolistGroupRequestWithBody(server string, projectId float32,
 }
 
 // NewGetTodolistOrGroupRequest generates requests for GetTodolistOrGroup
-func NewGetTodolistOrGroupRequest(server string, projectId float32, id float32) (*http.Request, error) {
+func NewGetTodolistOrGroupRequest(server string, projectId int64, id int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9993,7 +9993,7 @@ func NewGetTodolistOrGroupRequest(server string, projectId float32, id float32) 
 }
 
 // NewUpdateTodolistOrGroupRequest calls the generic UpdateTodolistOrGroup builder with application/json body
-func NewUpdateTodolistOrGroupRequest(server string, projectId float32, id float32, body UpdateTodolistOrGroupJSONRequestBody) (*http.Request, error) {
+func NewUpdateTodolistOrGroupRequest(server string, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -10004,7 +10004,7 @@ func NewUpdateTodolistOrGroupRequest(server string, projectId float32, id float3
 }
 
 // NewUpdateTodolistOrGroupRequestWithBody generates requests for UpdateTodolistOrGroup with any type of body
-func NewUpdateTodolistOrGroupRequestWithBody(server string, projectId float32, id float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateTodolistOrGroupRequestWithBody(server string, projectId int64, id int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10047,7 +10047,7 @@ func NewUpdateTodolistOrGroupRequestWithBody(server string, projectId float32, i
 }
 
 // NewListTodolistGroupsRequest generates requests for ListTodolistGroups
-func NewListTodolistGroupsRequest(server string, projectId float32, todolistId float32) (*http.Request, error) {
+func NewListTodolistGroupsRequest(server string, projectId int64, todolistId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10088,7 +10088,7 @@ func NewListTodolistGroupsRequest(server string, projectId float32, todolistId f
 }
 
 // NewCreateTodolistGroupRequest calls the generic CreateTodolistGroup builder with application/json body
-func NewCreateTodolistGroupRequest(server string, projectId float32, todolistId float32, body CreateTodolistGroupJSONRequestBody) (*http.Request, error) {
+func NewCreateTodolistGroupRequest(server string, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -10099,7 +10099,7 @@ func NewCreateTodolistGroupRequest(server string, projectId float32, todolistId 
 }
 
 // NewCreateTodolistGroupRequestWithBody generates requests for CreateTodolistGroup with any type of body
-func NewCreateTodolistGroupRequestWithBody(server string, projectId float32, todolistId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTodolistGroupRequestWithBody(server string, projectId int64, todolistId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10142,7 +10142,7 @@ func NewCreateTodolistGroupRequestWithBody(server string, projectId float32, tod
 }
 
 // NewListTodosRequest generates requests for ListTodos
-func NewListTodosRequest(server string, projectId float32, todolistId float32, params *ListTodosParams) (*http.Request, error) {
+func NewListTodosRequest(server string, projectId int64, todolistId int64, params *ListTodosParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10221,7 +10221,7 @@ func NewListTodosRequest(server string, projectId float32, todolistId float32, p
 }
 
 // NewCreateTodoRequest calls the generic CreateTodo builder with application/json body
-func NewCreateTodoRequest(server string, projectId float32, todolistId float32, body CreateTodoJSONRequestBody) (*http.Request, error) {
+func NewCreateTodoRequest(server string, projectId int64, todolistId int64, body CreateTodoJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -10232,7 +10232,7 @@ func NewCreateTodoRequest(server string, projectId float32, todolistId float32, 
 }
 
 // NewCreateTodoRequestWithBody generates requests for CreateTodo with any type of body
-func NewCreateTodoRequestWithBody(server string, projectId float32, todolistId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTodoRequestWithBody(server string, projectId int64, todolistId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10275,7 +10275,7 @@ func NewCreateTodoRequestWithBody(server string, projectId float32, todolistId f
 }
 
 // NewTrashTodoRequest generates requests for TrashTodo
-func NewTrashTodoRequest(server string, projectId float32, todoId float32) (*http.Request, error) {
+func NewTrashTodoRequest(server string, projectId int64, todoId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10316,7 +10316,7 @@ func NewTrashTodoRequest(server string, projectId float32, todoId float32) (*htt
 }
 
 // NewGetTodoRequest generates requests for GetTodo
-func NewGetTodoRequest(server string, projectId float32, todoId float32) (*http.Request, error) {
+func NewGetTodoRequest(server string, projectId int64, todoId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10357,7 +10357,7 @@ func NewGetTodoRequest(server string, projectId float32, todoId float32) (*http.
 }
 
 // NewUpdateTodoRequest calls the generic UpdateTodo builder with application/json body
-func NewUpdateTodoRequest(server string, projectId float32, todoId float32, body UpdateTodoJSONRequestBody) (*http.Request, error) {
+func NewUpdateTodoRequest(server string, projectId int64, todoId int64, body UpdateTodoJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -10368,7 +10368,7 @@ func NewUpdateTodoRequest(server string, projectId float32, todoId float32, body
 }
 
 // NewUpdateTodoRequestWithBody generates requests for UpdateTodo with any type of body
-func NewUpdateTodoRequestWithBody(server string, projectId float32, todoId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateTodoRequestWithBody(server string, projectId int64, todoId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10411,7 +10411,7 @@ func NewUpdateTodoRequestWithBody(server string, projectId float32, todoId float
 }
 
 // NewUncompleteTodoRequest generates requests for UncompleteTodo
-func NewUncompleteTodoRequest(server string, projectId float32, todoId float32) (*http.Request, error) {
+func NewUncompleteTodoRequest(server string, projectId int64, todoId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10452,7 +10452,7 @@ func NewUncompleteTodoRequest(server string, projectId float32, todoId float32) 
 }
 
 // NewCompleteTodoRequest generates requests for CompleteTodo
-func NewCompleteTodoRequest(server string, projectId float32, todoId float32) (*http.Request, error) {
+func NewCompleteTodoRequest(server string, projectId int64, todoId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10493,7 +10493,7 @@ func NewCompleteTodoRequest(server string, projectId float32, todoId float32) (*
 }
 
 // NewGetTodosetRequest generates requests for GetTodoset
-func NewGetTodosetRequest(server string, projectId float32, todosetId float32) (*http.Request, error) {
+func NewGetTodosetRequest(server string, projectId int64, todosetId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10534,7 +10534,7 @@ func NewGetTodosetRequest(server string, projectId float32, todosetId float32) (
 }
 
 // NewListTodolistsRequest generates requests for ListTodolists
-func NewListTodolistsRequest(server string, projectId float32, todosetId float32, params *ListTodolistsParams) (*http.Request, error) {
+func NewListTodolistsRequest(server string, projectId int64, todosetId int64, params *ListTodolistsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10597,7 +10597,7 @@ func NewListTodolistsRequest(server string, projectId float32, todosetId float32
 }
 
 // NewCreateTodolistRequest calls the generic CreateTodolist builder with application/json body
-func NewCreateTodolistRequest(server string, projectId float32, todosetId float32, body CreateTodolistJSONRequestBody) (*http.Request, error) {
+func NewCreateTodolistRequest(server string, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -10608,7 +10608,7 @@ func NewCreateTodolistRequest(server string, projectId float32, todosetId float3
 }
 
 // NewCreateTodolistRequestWithBody generates requests for CreateTodolist with any type of body
-func NewCreateTodolistRequestWithBody(server string, projectId float32, todosetId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTodolistRequestWithBody(server string, projectId int64, todosetId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10651,7 +10651,7 @@ func NewCreateTodolistRequestWithBody(server string, projectId float32, todosetI
 }
 
 // NewGetUploadRequest generates requests for GetUpload
-func NewGetUploadRequest(server string, projectId float32, uploadId float32) (*http.Request, error) {
+func NewGetUploadRequest(server string, projectId int64, uploadId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10692,7 +10692,7 @@ func NewGetUploadRequest(server string, projectId float32, uploadId float32) (*h
 }
 
 // NewUpdateUploadRequest calls the generic UpdateUpload builder with application/json body
-func NewUpdateUploadRequest(server string, projectId float32, uploadId float32, body UpdateUploadJSONRequestBody) (*http.Request, error) {
+func NewUpdateUploadRequest(server string, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -10703,7 +10703,7 @@ func NewUpdateUploadRequest(server string, projectId float32, uploadId float32, 
 }
 
 // NewUpdateUploadRequestWithBody generates requests for UpdateUpload with any type of body
-func NewUpdateUploadRequestWithBody(server string, projectId float32, uploadId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateUploadRequestWithBody(server string, projectId int64, uploadId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10746,7 +10746,7 @@ func NewUpdateUploadRequestWithBody(server string, projectId float32, uploadId f
 }
 
 // NewListUploadVersionsRequest generates requests for ListUploadVersions
-func NewListUploadVersionsRequest(server string, projectId float32, uploadId float32) (*http.Request, error) {
+func NewListUploadVersionsRequest(server string, projectId int64, uploadId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10787,7 +10787,7 @@ func NewListUploadVersionsRequest(server string, projectId float32, uploadId flo
 }
 
 // NewGetVaultRequest generates requests for GetVault
-func NewGetVaultRequest(server string, projectId float32, vaultId float32) (*http.Request, error) {
+func NewGetVaultRequest(server string, projectId int64, vaultId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10828,7 +10828,7 @@ func NewGetVaultRequest(server string, projectId float32, vaultId float32) (*htt
 }
 
 // NewUpdateVaultRequest calls the generic UpdateVault builder with application/json body
-func NewUpdateVaultRequest(server string, projectId float32, vaultId float32, body UpdateVaultJSONRequestBody) (*http.Request, error) {
+func NewUpdateVaultRequest(server string, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -10839,7 +10839,7 @@ func NewUpdateVaultRequest(server string, projectId float32, vaultId float32, bo
 }
 
 // NewUpdateVaultRequestWithBody generates requests for UpdateVault with any type of body
-func NewUpdateVaultRequestWithBody(server string, projectId float32, vaultId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateVaultRequestWithBody(server string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10882,7 +10882,7 @@ func NewUpdateVaultRequestWithBody(server string, projectId float32, vaultId flo
 }
 
 // NewListDocumentsRequest generates requests for ListDocuments
-func NewListDocumentsRequest(server string, projectId float32, vaultId float32) (*http.Request, error) {
+func NewListDocumentsRequest(server string, projectId int64, vaultId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10923,7 +10923,7 @@ func NewListDocumentsRequest(server string, projectId float32, vaultId float32) 
 }
 
 // NewCreateDocumentRequest calls the generic CreateDocument builder with application/json body
-func NewCreateDocumentRequest(server string, projectId float32, vaultId float32, body CreateDocumentJSONRequestBody) (*http.Request, error) {
+func NewCreateDocumentRequest(server string, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -10934,7 +10934,7 @@ func NewCreateDocumentRequest(server string, projectId float32, vaultId float32,
 }
 
 // NewCreateDocumentRequestWithBody generates requests for CreateDocument with any type of body
-func NewCreateDocumentRequestWithBody(server string, projectId float32, vaultId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateDocumentRequestWithBody(server string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10977,7 +10977,7 @@ func NewCreateDocumentRequestWithBody(server string, projectId float32, vaultId 
 }
 
 // NewListUploadsRequest generates requests for ListUploads
-func NewListUploadsRequest(server string, projectId float32, vaultId float32) (*http.Request, error) {
+func NewListUploadsRequest(server string, projectId int64, vaultId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11018,7 +11018,7 @@ func NewListUploadsRequest(server string, projectId float32, vaultId float32) (*
 }
 
 // NewCreateUploadRequest calls the generic CreateUpload builder with application/json body
-func NewCreateUploadRequest(server string, projectId float32, vaultId float32, body CreateUploadJSONRequestBody) (*http.Request, error) {
+func NewCreateUploadRequest(server string, projectId int64, vaultId int64, body CreateUploadJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -11029,7 +11029,7 @@ func NewCreateUploadRequest(server string, projectId float32, vaultId float32, b
 }
 
 // NewCreateUploadRequestWithBody generates requests for CreateUpload with any type of body
-func NewCreateUploadRequestWithBody(server string, projectId float32, vaultId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateUploadRequestWithBody(server string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11072,7 +11072,7 @@ func NewCreateUploadRequestWithBody(server string, projectId float32, vaultId fl
 }
 
 // NewListVaultsRequest generates requests for ListVaults
-func NewListVaultsRequest(server string, projectId float32, vaultId float32) (*http.Request, error) {
+func NewListVaultsRequest(server string, projectId int64, vaultId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11113,7 +11113,7 @@ func NewListVaultsRequest(server string, projectId float32, vaultId float32) (*h
 }
 
 // NewCreateVaultRequest calls the generic CreateVault builder with application/json body
-func NewCreateVaultRequest(server string, projectId float32, vaultId float32, body CreateVaultJSONRequestBody) (*http.Request, error) {
+func NewCreateVaultRequest(server string, projectId int64, vaultId int64, body CreateVaultJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -11124,7 +11124,7 @@ func NewCreateVaultRequest(server string, projectId float32, vaultId float32, bo
 }
 
 // NewCreateVaultRequestWithBody generates requests for CreateVault with any type of body
-func NewCreateVaultRequestWithBody(server string, projectId float32, vaultId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateVaultRequestWithBody(server string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11167,7 +11167,7 @@ func NewCreateVaultRequestWithBody(server string, projectId float32, vaultId flo
 }
 
 // NewListWebhooksRequest generates requests for ListWebhooks
-func NewListWebhooksRequest(server string, projectId float32) (*http.Request, error) {
+func NewListWebhooksRequest(server string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11201,7 +11201,7 @@ func NewListWebhooksRequest(server string, projectId float32) (*http.Request, er
 }
 
 // NewCreateWebhookRequest calls the generic CreateWebhook builder with application/json body
-func NewCreateWebhookRequest(server string, projectId float32, body CreateWebhookJSONRequestBody) (*http.Request, error) {
+func NewCreateWebhookRequest(server string, projectId int64, body CreateWebhookJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -11212,7 +11212,7 @@ func NewCreateWebhookRequest(server string, projectId float32, body CreateWebhoo
 }
 
 // NewCreateWebhookRequestWithBody generates requests for CreateWebhook with any type of body
-func NewCreateWebhookRequestWithBody(server string, projectId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateWebhookRequestWithBody(server string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11248,7 +11248,7 @@ func NewCreateWebhookRequestWithBody(server string, projectId float32, contentTy
 }
 
 // NewDeleteWebhookRequest generates requests for DeleteWebhook
-func NewDeleteWebhookRequest(server string, projectId float32, webhookId float32) (*http.Request, error) {
+func NewDeleteWebhookRequest(server string, projectId int64, webhookId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11289,7 +11289,7 @@ func NewDeleteWebhookRequest(server string, projectId float32, webhookId float32
 }
 
 // NewGetWebhookRequest generates requests for GetWebhook
-func NewGetWebhookRequest(server string, projectId float32, webhookId float32) (*http.Request, error) {
+func NewGetWebhookRequest(server string, projectId int64, webhookId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11330,7 +11330,7 @@ func NewGetWebhookRequest(server string, projectId float32, webhookId float32) (
 }
 
 // NewUpdateWebhookRequest calls the generic UpdateWebhook builder with application/json body
-func NewUpdateWebhookRequest(server string, projectId float32, webhookId float32, body UpdateWebhookJSONRequestBody) (*http.Request, error) {
+func NewUpdateWebhookRequest(server string, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -11341,7 +11341,7 @@ func NewUpdateWebhookRequest(server string, projectId float32, webhookId float32
 }
 
 // NewUpdateWebhookRequestWithBody generates requests for UpdateWebhook with any type of body
-func NewUpdateWebhookRequestWithBody(server string, projectId float32, webhookId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateWebhookRequestWithBody(server string, projectId int64, webhookId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11478,7 +11478,7 @@ func NewCreateLineupMarkerRequestWithBody(server string, contentType string, bod
 }
 
 // NewDeleteLineupMarkerRequest generates requests for DeleteLineupMarker
-func NewDeleteLineupMarkerRequest(server string, markerId float32) (*http.Request, error) {
+func NewDeleteLineupMarkerRequest(server string, markerId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11512,7 +11512,7 @@ func NewDeleteLineupMarkerRequest(server string, markerId float32) (*http.Reques
 }
 
 // NewUpdateLineupMarkerRequest calls the generic UpdateLineupMarker builder with application/json body
-func NewUpdateLineupMarkerRequest(server string, markerId float32, body UpdateLineupMarkerJSONRequestBody) (*http.Request, error) {
+func NewUpdateLineupMarkerRequest(server string, markerId int64, body UpdateLineupMarkerJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -11523,7 +11523,7 @@ func NewUpdateLineupMarkerRequest(server string, markerId float32, body UpdateLi
 }
 
 // NewUpdateLineupMarkerRequestWithBody generates requests for UpdateLineupMarker with any type of body
-func NewUpdateLineupMarkerRequestWithBody(server string, markerId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateLineupMarkerRequestWithBody(server string, markerId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11613,7 +11613,7 @@ func NewListPeopleRequest(server string) (*http.Request, error) {
 }
 
 // NewGetPersonRequest generates requests for GetPerson
-func NewGetPersonRequest(server string, personId float32) (*http.Request, error) {
+func NewGetPersonRequest(server string, personId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11845,7 +11845,7 @@ func NewListRecordingsRequest(server string, params *ListRecordingsParams) (*htt
 }
 
 // NewTrashProjectRequest generates requests for TrashProject
-func NewTrashProjectRequest(server string, projectId float32) (*http.Request, error) {
+func NewTrashProjectRequest(server string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11879,7 +11879,7 @@ func NewTrashProjectRequest(server string, projectId float32) (*http.Request, er
 }
 
 // NewGetProjectRequest generates requests for GetProject
-func NewGetProjectRequest(server string, projectId float32) (*http.Request, error) {
+func NewGetProjectRequest(server string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11913,7 +11913,7 @@ func NewGetProjectRequest(server string, projectId float32) (*http.Request, erro
 }
 
 // NewUpdateProjectRequest calls the generic UpdateProject builder with application/json body
-func NewUpdateProjectRequest(server string, projectId float32, body UpdateProjectJSONRequestBody) (*http.Request, error) {
+func NewUpdateProjectRequest(server string, projectId int64, body UpdateProjectJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -11924,7 +11924,7 @@ func NewUpdateProjectRequest(server string, projectId float32, body UpdateProjec
 }
 
 // NewUpdateProjectRequestWithBody generates requests for UpdateProject with any type of body
-func NewUpdateProjectRequestWithBody(server string, projectId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateProjectRequestWithBody(server string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11960,7 +11960,7 @@ func NewUpdateProjectRequestWithBody(server string, projectId float32, contentTy
 }
 
 // NewListProjectPeopleRequest generates requests for ListProjectPeople
-func NewListProjectPeopleRequest(server string, projectId float32) (*http.Request, error) {
+func NewListProjectPeopleRequest(server string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11994,7 +11994,7 @@ func NewListProjectPeopleRequest(server string, projectId float32) (*http.Reques
 }
 
 // NewUpdateProjectAccessRequest calls the generic UpdateProjectAccess builder with application/json body
-func NewUpdateProjectAccessRequest(server string, projectId float32, body UpdateProjectAccessJSONRequestBody) (*http.Request, error) {
+func NewUpdateProjectAccessRequest(server string, projectId int64, body UpdateProjectAccessJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -12005,7 +12005,7 @@ func NewUpdateProjectAccessRequest(server string, projectId float32, body Update
 }
 
 // NewUpdateProjectAccessRequestWithBody generates requests for UpdateProjectAccess with any type of body
-func NewUpdateProjectAccessRequestWithBody(server string, projectId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateProjectAccessRequestWithBody(server string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12299,7 +12299,7 @@ func NewCreateTemplateRequestWithBody(server string, contentType string, body io
 }
 
 // NewDeleteTemplateRequest generates requests for DeleteTemplate
-func NewDeleteTemplateRequest(server string, templateId float32) (*http.Request, error) {
+func NewDeleteTemplateRequest(server string, templateId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12333,7 +12333,7 @@ func NewDeleteTemplateRequest(server string, templateId float32) (*http.Request,
 }
 
 // NewGetTemplateRequest generates requests for GetTemplate
-func NewGetTemplateRequest(server string, templateId float32) (*http.Request, error) {
+func NewGetTemplateRequest(server string, templateId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12367,7 +12367,7 @@ func NewGetTemplateRequest(server string, templateId float32) (*http.Request, er
 }
 
 // NewUpdateTemplateRequest calls the generic UpdateTemplate builder with application/json body
-func NewUpdateTemplateRequest(server string, templateId float32, body UpdateTemplateJSONRequestBody) (*http.Request, error) {
+func NewUpdateTemplateRequest(server string, templateId int64, body UpdateTemplateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -12378,7 +12378,7 @@ func NewUpdateTemplateRequest(server string, templateId float32, body UpdateTemp
 }
 
 // NewUpdateTemplateRequestWithBody generates requests for UpdateTemplate with any type of body
-func NewUpdateTemplateRequestWithBody(server string, templateId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateTemplateRequestWithBody(server string, templateId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12414,7 +12414,7 @@ func NewUpdateTemplateRequestWithBody(server string, templateId float32, content
 }
 
 // NewCreateProjectFromTemplateRequest calls the generic CreateProjectFromTemplate builder with application/json body
-func NewCreateProjectFromTemplateRequest(server string, templateId float32, body CreateProjectFromTemplateJSONRequestBody) (*http.Request, error) {
+func NewCreateProjectFromTemplateRequest(server string, templateId int64, body CreateProjectFromTemplateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -12425,7 +12425,7 @@ func NewCreateProjectFromTemplateRequest(server string, templateId float32, body
 }
 
 // NewCreateProjectFromTemplateRequestWithBody generates requests for CreateProjectFromTemplate with any type of body
-func NewCreateProjectFromTemplateRequestWithBody(server string, templateId float32, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateProjectFromTemplateRequestWithBody(server string, templateId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12461,7 +12461,7 @@ func NewCreateProjectFromTemplateRequestWithBody(server string, templateId float
 }
 
 // NewGetProjectConstructionRequest generates requests for GetProjectConstruction
-func NewGetProjectConstructionRequest(server string, templateId float32, constructionId float32) (*http.Request, error) {
+func NewGetProjectConstructionRequest(server string, templateId int64, constructionId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12727,466 +12727,466 @@ type ClientWithResponsesInterface interface {
 	CreateAttachmentWithBodyWithResponse(ctx context.Context, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAttachmentResponse, error)
 
 	// GetCardWithResponse request
-	GetCardWithResponse(ctx context.Context, projectId float32, cardId float32, reqEditors ...RequestEditorFn) (*GetCardResponse, error)
+	GetCardWithResponse(ctx context.Context, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error)
 
 	// UpdateCardWithBodyWithResponse request with any body
-	UpdateCardWithBodyWithResponse(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error)
+	UpdateCardWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error)
 
-	UpdateCardWithResponse(ctx context.Context, projectId float32, cardId float32, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error)
+	UpdateCardWithResponse(ctx context.Context, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error)
 
 	// MoveCardWithBodyWithResponse request with any body
-	MoveCardWithBodyWithResponse(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardResponse, error)
+	MoveCardWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardResponse, error)
 
-	MoveCardWithResponse(ctx context.Context, projectId float32, cardId float32, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardResponse, error)
+	MoveCardWithResponse(ctx context.Context, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardResponse, error)
 
 	// RepositionCardStepWithBodyWithResponse request with any body
-	RepositionCardStepWithBodyWithResponse(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error)
+	RepositionCardStepWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error)
 
-	RepositionCardStepWithResponse(ctx context.Context, projectId float32, cardId float32, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error)
+	RepositionCardStepWithResponse(ctx context.Context, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error)
 
 	// CreateCardStepWithBodyWithResponse request with any body
-	CreateCardStepWithBodyWithResponse(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error)
+	CreateCardStepWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error)
 
-	CreateCardStepWithResponse(ctx context.Context, projectId float32, cardId float32, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error)
+	CreateCardStepWithResponse(ctx context.Context, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error)
 
 	// GetCardColumnWithResponse request
-	GetCardColumnWithResponse(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*GetCardColumnResponse, error)
+	GetCardColumnWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*GetCardColumnResponse, error)
 
 	// UpdateCardColumnWithBodyWithResponse request with any body
-	UpdateCardColumnWithBodyWithResponse(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error)
+	UpdateCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error)
 
-	UpdateCardColumnWithResponse(ctx context.Context, projectId float32, columnId float32, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error)
+	UpdateCardColumnWithResponse(ctx context.Context, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error)
 
 	// SetCardColumnColorWithBodyWithResponse request with any body
-	SetCardColumnColorWithBodyWithResponse(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
+	SetCardColumnColorWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
 
-	SetCardColumnColorWithResponse(ctx context.Context, projectId float32, columnId float32, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
+	SetCardColumnColorWithResponse(ctx context.Context, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
 
 	// DisableCardColumnOnHoldWithResponse request
-	DisableCardColumnOnHoldWithResponse(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error)
+	DisableCardColumnOnHoldWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error)
 
 	// EnableCardColumnOnHoldWithResponse request
-	EnableCardColumnOnHoldWithResponse(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error)
+	EnableCardColumnOnHoldWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error)
 
 	// ListCardsWithResponse request
-	ListCardsWithResponse(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*ListCardsResponse, error)
+	ListCardsWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*ListCardsResponse, error)
 
 	// CreateCardWithBodyWithResponse request with any body
-	CreateCardWithBodyWithResponse(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardResponse, error)
+	CreateCardWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardResponse, error)
 
-	CreateCardWithResponse(ctx context.Context, projectId float32, columnId float32, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardResponse, error)
+	CreateCardWithResponse(ctx context.Context, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardResponse, error)
 
 	// UpdateCardStepWithBodyWithResponse request with any body
-	UpdateCardStepWithBodyWithResponse(ctx context.Context, projectId float32, stepId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error)
+	UpdateCardStepWithBodyWithResponse(ctx context.Context, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error)
 
-	UpdateCardStepWithResponse(ctx context.Context, projectId float32, stepId float32, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error)
+	UpdateCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error)
 
 	// UncompleteCardStepWithResponse request
-	UncompleteCardStepWithResponse(ctx context.Context, projectId float32, stepId float32, reqEditors ...RequestEditorFn) (*UncompleteCardStepResponse, error)
+	UncompleteCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*UncompleteCardStepResponse, error)
 
 	// CompleteCardStepWithResponse request
-	CompleteCardStepWithResponse(ctx context.Context, projectId float32, stepId float32, reqEditors ...RequestEditorFn) (*CompleteCardStepResponse, error)
+	CompleteCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*CompleteCardStepResponse, error)
 
 	// GetCardTableWithResponse request
-	GetCardTableWithResponse(ctx context.Context, projectId float32, cardTableId float32, reqEditors ...RequestEditorFn) (*GetCardTableResponse, error)
+	GetCardTableWithResponse(ctx context.Context, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*GetCardTableResponse, error)
 
 	// CreateCardColumnWithBodyWithResponse request with any body
-	CreateCardColumnWithBodyWithResponse(ctx context.Context, projectId float32, cardTableId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error)
+	CreateCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error)
 
-	CreateCardColumnWithResponse(ctx context.Context, projectId float32, cardTableId float32, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error)
+	CreateCardColumnWithResponse(ctx context.Context, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error)
 
 	// MoveCardColumnWithBodyWithResponse request with any body
-	MoveCardColumnWithBodyWithResponse(ctx context.Context, projectId float32, cardTableId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
+	MoveCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
 
-	MoveCardColumnWithResponse(ctx context.Context, projectId float32, cardTableId float32, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
+	MoveCardColumnWithResponse(ctx context.Context, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
 
 	// ListMessageTypesWithResponse request
-	ListMessageTypesWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error)
+	ListMessageTypesWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error)
 
 	// CreateMessageTypeWithBodyWithResponse request with any body
-	CreateMessageTypeWithBodyWithResponse(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
+	CreateMessageTypeWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
 
-	CreateMessageTypeWithResponse(ctx context.Context, projectId float32, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
+	CreateMessageTypeWithResponse(ctx context.Context, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
 
 	// DeleteMessageTypeWithResponse request
-	DeleteMessageTypeWithResponse(ctx context.Context, projectId float32, typeId float32, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error)
+	DeleteMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error)
 
 	// GetMessageTypeWithResponse request
-	GetMessageTypeWithResponse(ctx context.Context, projectId float32, typeId float32, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error)
+	GetMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error)
 
 	// UpdateMessageTypeWithBodyWithResponse request with any body
-	UpdateMessageTypeWithBodyWithResponse(ctx context.Context, projectId float32, typeId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
+	UpdateMessageTypeWithBodyWithResponse(ctx context.Context, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
 
-	UpdateMessageTypeWithResponse(ctx context.Context, projectId float32, typeId float32, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
+	UpdateMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
 
 	// GetCampfireWithResponse request
-	GetCampfireWithResponse(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*GetCampfireResponse, error)
+	GetCampfireWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*GetCampfireResponse, error)
 
 	// ListChatbotsWithResponse request
-	ListChatbotsWithResponse(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error)
+	ListChatbotsWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error)
 
 	// CreateChatbotWithBodyWithResponse request with any body
-	CreateChatbotWithBodyWithResponse(ctx context.Context, projectId float32, campfireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
+	CreateChatbotWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
 
-	CreateChatbotWithResponse(ctx context.Context, projectId float32, campfireId float32, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
+	CreateChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
 
 	// DeleteChatbotWithResponse request
-	DeleteChatbotWithResponse(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error)
+	DeleteChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error)
 
 	// GetChatbotWithResponse request
-	GetChatbotWithResponse(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error)
+	GetChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error)
 
 	// UpdateChatbotWithBodyWithResponse request with any body
-	UpdateChatbotWithBodyWithResponse(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
+	UpdateChatbotWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
 
-	UpdateChatbotWithResponse(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
+	UpdateChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
 
 	// ListCampfireLinesWithResponse request
-	ListCampfireLinesWithResponse(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error)
+	ListCampfireLinesWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error)
 
 	// CreateCampfireLineWithBodyWithResponse request with any body
-	CreateCampfireLineWithBodyWithResponse(ctx context.Context, projectId float32, campfireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error)
+	CreateCampfireLineWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error)
 
-	CreateCampfireLineWithResponse(ctx context.Context, projectId float32, campfireId float32, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error)
+	CreateCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error)
 
 	// DeleteCampfireLineWithResponse request
-	DeleteCampfireLineWithResponse(ctx context.Context, projectId float32, campfireId float32, lineId float32, reqEditors ...RequestEditorFn) (*DeleteCampfireLineResponse, error)
+	DeleteCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*DeleteCampfireLineResponse, error)
 
 	// GetCampfireLineWithResponse request
-	GetCampfireLineWithResponse(ctx context.Context, projectId float32, campfireId float32, lineId float32, reqEditors ...RequestEditorFn) (*GetCampfireLineResponse, error)
+	GetCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*GetCampfireLineResponse, error)
 
 	// ListClientApprovalsWithResponse request
-	ListClientApprovalsWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error)
+	ListClientApprovalsWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error)
 
 	// GetClientApprovalWithResponse request
-	GetClientApprovalWithResponse(ctx context.Context, projectId float32, approvalId float32, reqEditors ...RequestEditorFn) (*GetClientApprovalResponse, error)
+	GetClientApprovalWithResponse(ctx context.Context, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*GetClientApprovalResponse, error)
 
 	// ListClientCorrespondencesWithResponse request
-	ListClientCorrespondencesWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error)
+	ListClientCorrespondencesWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error)
 
 	// GetClientCorrespondenceWithResponse request
-	GetClientCorrespondenceWithResponse(ctx context.Context, projectId float32, correspondenceId float32, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error)
+	GetClientCorrespondenceWithResponse(ctx context.Context, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error)
 
 	// ListClientRepliesWithResponse request
-	ListClientRepliesWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error)
+	ListClientRepliesWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error)
 
 	// GetClientReplyWithResponse request
-	GetClientReplyWithResponse(ctx context.Context, projectId float32, recordingId float32, replyId float32, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error)
+	GetClientReplyWithResponse(ctx context.Context, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error)
 
 	// GetCommentWithResponse request
-	GetCommentWithResponse(ctx context.Context, projectId float32, commentId float32, reqEditors ...RequestEditorFn) (*GetCommentResponse, error)
+	GetCommentWithResponse(ctx context.Context, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*GetCommentResponse, error)
 
 	// UpdateCommentWithBodyWithResponse request with any body
-	UpdateCommentWithBodyWithResponse(ctx context.Context, projectId float32, commentId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
+	UpdateCommentWithBodyWithResponse(ctx context.Context, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
 
-	UpdateCommentWithResponse(ctx context.Context, projectId float32, commentId float32, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
+	UpdateCommentWithResponse(ctx context.Context, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
 
 	// CloneToolWithResponse request
-	CloneToolWithResponse(ctx context.Context, projectId float32, sourceToolId float32, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+	CloneToolWithResponse(ctx context.Context, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
 
 	// DeleteToolWithResponse request
-	DeleteToolWithResponse(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error)
+	DeleteToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error)
 
 	// GetToolWithResponse request
-	GetToolWithResponse(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*GetToolResponse, error)
+	GetToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*GetToolResponse, error)
 
 	// UpdateToolWithBodyWithResponse request with any body
-	UpdateToolWithBodyWithResponse(ctx context.Context, projectId float32, toolId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
+	UpdateToolWithBodyWithResponse(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
 
-	UpdateToolWithResponse(ctx context.Context, projectId float32, toolId float32, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
+	UpdateToolWithResponse(ctx context.Context, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
 
 	// DisableToolWithResponse request
-	DisableToolWithResponse(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*DisableToolResponse, error)
+	DisableToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error)
 
 	// EnableToolWithResponse request
-	EnableToolWithResponse(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*EnableToolResponse, error)
+	EnableToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error)
 
 	// RepositionToolWithBodyWithResponse request with any body
-	RepositionToolWithBodyWithResponse(ctx context.Context, projectId float32, toolId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
+	RepositionToolWithBodyWithResponse(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
 
-	RepositionToolWithResponse(ctx context.Context, projectId float32, toolId float32, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
+	RepositionToolWithResponse(ctx context.Context, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
 
 	// GetDocumentWithResponse request
-	GetDocumentWithResponse(ctx context.Context, projectId float32, documentId float32, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error)
+	GetDocumentWithResponse(ctx context.Context, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error)
 
 	// UpdateDocumentWithBodyWithResponse request with any body
-	UpdateDocumentWithBodyWithResponse(ctx context.Context, projectId float32, documentId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
+	UpdateDocumentWithBodyWithResponse(ctx context.Context, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
 
-	UpdateDocumentWithResponse(ctx context.Context, projectId float32, documentId float32, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
+	UpdateDocumentWithResponse(ctx context.Context, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
 
 	// GetForwardWithResponse request
-	GetForwardWithResponse(ctx context.Context, projectId float32, forwardId float32, reqEditors ...RequestEditorFn) (*GetForwardResponse, error)
+	GetForwardWithResponse(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*GetForwardResponse, error)
 
 	// ListForwardRepliesWithResponse request
-	ListForwardRepliesWithResponse(ctx context.Context, projectId float32, forwardId float32, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error)
+	ListForwardRepliesWithResponse(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error)
 
 	// CreateForwardReplyWithBodyWithResponse request with any body
-	CreateForwardReplyWithBodyWithResponse(ctx context.Context, projectId float32, forwardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error)
+	CreateForwardReplyWithBodyWithResponse(ctx context.Context, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error)
 
-	CreateForwardReplyWithResponse(ctx context.Context, projectId float32, forwardId float32, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error)
+	CreateForwardReplyWithResponse(ctx context.Context, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error)
 
 	// GetForwardReplyWithResponse request
-	GetForwardReplyWithResponse(ctx context.Context, projectId float32, forwardId float32, replyId float32, reqEditors ...RequestEditorFn) (*GetForwardReplyResponse, error)
+	GetForwardReplyWithResponse(ctx context.Context, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetForwardReplyResponse, error)
 
 	// GetInboxWithResponse request
-	GetInboxWithResponse(ctx context.Context, projectId float32, inboxId float32, reqEditors ...RequestEditorFn) (*GetInboxResponse, error)
+	GetInboxWithResponse(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*GetInboxResponse, error)
 
 	// ListForwardsWithResponse request
-	ListForwardsWithResponse(ctx context.Context, projectId float32, inboxId float32, reqEditors ...RequestEditorFn) (*ListForwardsResponse, error)
+	ListForwardsWithResponse(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*ListForwardsResponse, error)
 
 	// GetMessageBoardWithResponse request
-	GetMessageBoardWithResponse(ctx context.Context, projectId float32, boardId float32, reqEditors ...RequestEditorFn) (*GetMessageBoardResponse, error)
+	GetMessageBoardWithResponse(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*GetMessageBoardResponse, error)
 
 	// ListMessagesWithResponse request
-	ListMessagesWithResponse(ctx context.Context, projectId float32, boardId float32, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error)
+	ListMessagesWithResponse(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error)
 
 	// CreateMessageWithBodyWithResponse request with any body
-	CreateMessageWithBodyWithResponse(ctx context.Context, projectId float32, boardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error)
+	CreateMessageWithBodyWithResponse(ctx context.Context, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error)
 
-	CreateMessageWithResponse(ctx context.Context, projectId float32, boardId float32, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error)
+	CreateMessageWithResponse(ctx context.Context, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error)
 
 	// GetMessageWithResponse request
-	GetMessageWithResponse(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*GetMessageResponse, error)
+	GetMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*GetMessageResponse, error)
 
 	// UpdateMessageWithBodyWithResponse request with any body
-	UpdateMessageWithBodyWithResponse(ctx context.Context, projectId float32, messageId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error)
+	UpdateMessageWithBodyWithResponse(ctx context.Context, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error)
 
-	UpdateMessageWithResponse(ctx context.Context, projectId float32, messageId float32, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error)
+	UpdateMessageWithResponse(ctx context.Context, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error)
 
 	// GetAnswerWithResponse request
-	GetAnswerWithResponse(ctx context.Context, projectId float32, answerId float32, reqEditors ...RequestEditorFn) (*GetAnswerResponse, error)
+	GetAnswerWithResponse(ctx context.Context, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*GetAnswerResponse, error)
 
 	// UpdateAnswerWithBodyWithResponse request with any body
-	UpdateAnswerWithBodyWithResponse(ctx context.Context, projectId float32, answerId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error)
+	UpdateAnswerWithBodyWithResponse(ctx context.Context, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error)
 
-	UpdateAnswerWithResponse(ctx context.Context, projectId float32, answerId float32, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error)
+	UpdateAnswerWithResponse(ctx context.Context, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error)
 
 	// GetQuestionnaireWithResponse request
-	GetQuestionnaireWithResponse(ctx context.Context, projectId float32, questionnaireId float32, reqEditors ...RequestEditorFn) (*GetQuestionnaireResponse, error)
+	GetQuestionnaireWithResponse(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*GetQuestionnaireResponse, error)
 
 	// ListQuestionsWithResponse request
-	ListQuestionsWithResponse(ctx context.Context, projectId float32, questionnaireId float32, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error)
+	ListQuestionsWithResponse(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error)
 
 	// CreateQuestionWithBodyWithResponse request with any body
-	CreateQuestionWithBodyWithResponse(ctx context.Context, projectId float32, questionnaireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error)
+	CreateQuestionWithBodyWithResponse(ctx context.Context, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error)
 
-	CreateQuestionWithResponse(ctx context.Context, projectId float32, questionnaireId float32, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error)
+	CreateQuestionWithResponse(ctx context.Context, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error)
 
 	// GetQuestionWithResponse request
-	GetQuestionWithResponse(ctx context.Context, projectId float32, questionId float32, reqEditors ...RequestEditorFn) (*GetQuestionResponse, error)
+	GetQuestionWithResponse(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*GetQuestionResponse, error)
 
 	// UpdateQuestionWithBodyWithResponse request with any body
-	UpdateQuestionWithBodyWithResponse(ctx context.Context, projectId float32, questionId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error)
+	UpdateQuestionWithBodyWithResponse(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error)
 
-	UpdateQuestionWithResponse(ctx context.Context, projectId float32, questionId float32, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error)
+	UpdateQuestionWithResponse(ctx context.Context, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error)
 
 	// ListAnswersWithResponse request
-	ListAnswersWithResponse(ctx context.Context, projectId float32, questionId float32, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error)
+	ListAnswersWithResponse(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error)
 
 	// CreateAnswerWithBodyWithResponse request with any body
-	CreateAnswerWithBodyWithResponse(ctx context.Context, projectId float32, questionId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
+	CreateAnswerWithBodyWithResponse(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
 
-	CreateAnswerWithResponse(ctx context.Context, projectId float32, questionId float32, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
+	CreateAnswerWithResponse(ctx context.Context, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
 
 	// UnpinMessageWithResponse request
-	UnpinMessageWithResponse(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*UnpinMessageResponse, error)
+	UnpinMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*UnpinMessageResponse, error)
 
 	// PinMessageWithResponse request
-	PinMessageWithResponse(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*PinMessageResponse, error)
+	PinMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*PinMessageResponse, error)
 
 	// GetRecordingWithResponse request
-	GetRecordingWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error)
+	GetRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error)
 
 	// SetClientVisibilityWithBodyWithResponse request with any body
-	SetClientVisibilityWithBodyWithResponse(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error)
+	SetClientVisibilityWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error)
 
-	SetClientVisibilityWithResponse(ctx context.Context, projectId float32, recordingId float32, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error)
+	SetClientVisibilityWithResponse(ctx context.Context, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error)
 
 	// ListCommentsWithResponse request
-	ListCommentsWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error)
+	ListCommentsWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error)
 
 	// CreateCommentWithBodyWithResponse request with any body
-	CreateCommentWithBodyWithResponse(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error)
+	CreateCommentWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error)
 
-	CreateCommentWithResponse(ctx context.Context, projectId float32, recordingId float32, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error)
+	CreateCommentWithResponse(ctx context.Context, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error)
 
 	// ListEventsWithResponse request
-	ListEventsWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*ListEventsResponse, error)
+	ListEventsWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListEventsResponse, error)
 
 	// UnarchiveRecordingWithResponse request
-	UnarchiveRecordingWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*UnarchiveRecordingResponse, error)
+	UnarchiveRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnarchiveRecordingResponse, error)
 
 	// ArchiveRecordingWithResponse request
-	ArchiveRecordingWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*ArchiveRecordingResponse, error)
+	ArchiveRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ArchiveRecordingResponse, error)
 
 	// TrashRecordingWithResponse request
-	TrashRecordingWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*TrashRecordingResponse, error)
+	TrashRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*TrashRecordingResponse, error)
 
 	// UnsubscribeWithResponse request
-	UnsubscribeWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error)
+	UnsubscribeWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error)
 
 	// GetSubscriptionWithResponse request
-	GetSubscriptionWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*GetSubscriptionResponse, error)
+	GetSubscriptionWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetSubscriptionResponse, error)
 
 	// SubscribeWithResponse request
-	SubscribeWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*SubscribeResponse, error)
+	SubscribeWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*SubscribeResponse, error)
 
 	// UpdateSubscriptionWithBodyWithResponse request with any body
-	UpdateSubscriptionWithBodyWithResponse(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error)
+	UpdateSubscriptionWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error)
 
-	UpdateSubscriptionWithResponse(ctx context.Context, projectId float32, recordingId float32, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error)
+	UpdateSubscriptionWithResponse(ctx context.Context, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error)
 
 	// GetRecordingTimesheetWithResponse request
-	GetRecordingTimesheetWithResponse(ctx context.Context, projectId float32, recordingId float32, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error)
+	GetRecordingTimesheetWithResponse(ctx context.Context, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error)
 
 	// GetScheduleEntryWithResponse request
-	GetScheduleEntryWithResponse(ctx context.Context, projectId float32, entryId float32, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error)
+	GetScheduleEntryWithResponse(ctx context.Context, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error)
 
 	// UpdateScheduleEntryWithBodyWithResponse request with any body
-	UpdateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId float32, entryId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error)
+	UpdateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error)
 
-	UpdateScheduleEntryWithResponse(ctx context.Context, projectId float32, entryId float32, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error)
+	UpdateScheduleEntryWithResponse(ctx context.Context, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error)
 
 	// GetScheduleEntryOccurrenceWithResponse request
-	GetScheduleEntryOccurrenceWithResponse(ctx context.Context, projectId float32, entryId float32, date string, reqEditors ...RequestEditorFn) (*GetScheduleEntryOccurrenceResponse, error)
+	GetScheduleEntryOccurrenceWithResponse(ctx context.Context, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*GetScheduleEntryOccurrenceResponse, error)
 
 	// GetScheduleWithResponse request
-	GetScheduleWithResponse(ctx context.Context, projectId float32, scheduleId float32, reqEditors ...RequestEditorFn) (*GetScheduleResponse, error)
+	GetScheduleWithResponse(ctx context.Context, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*GetScheduleResponse, error)
 
 	// UpdateScheduleSettingsWithBodyWithResponse request with any body
-	UpdateScheduleSettingsWithBodyWithResponse(ctx context.Context, projectId float32, scheduleId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error)
+	UpdateScheduleSettingsWithBodyWithResponse(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error)
 
-	UpdateScheduleSettingsWithResponse(ctx context.Context, projectId float32, scheduleId float32, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error)
+	UpdateScheduleSettingsWithResponse(ctx context.Context, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error)
 
 	// ListScheduleEntriesWithResponse request
-	ListScheduleEntriesWithResponse(ctx context.Context, projectId float32, scheduleId float32, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*ListScheduleEntriesResponse, error)
+	ListScheduleEntriesWithResponse(ctx context.Context, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*ListScheduleEntriesResponse, error)
 
 	// CreateScheduleEntryWithBodyWithResponse request with any body
-	CreateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId float32, scheduleId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error)
+	CreateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error)
 
-	CreateScheduleEntryWithResponse(ctx context.Context, projectId float32, scheduleId float32, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error)
+	CreateScheduleEntryWithResponse(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error)
 
 	// GetProjectTimesheetWithResponse request
-	GetProjectTimesheetWithResponse(ctx context.Context, projectId float32, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
+	GetProjectTimesheetWithResponse(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
 
 	// RepositionTodolistGroupWithBodyWithResponse request with any body
-	RepositionTodolistGroupWithBodyWithResponse(ctx context.Context, projectId float32, groupId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error)
+	RepositionTodolistGroupWithBodyWithResponse(ctx context.Context, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error)
 
-	RepositionTodolistGroupWithResponse(ctx context.Context, projectId float32, groupId float32, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error)
+	RepositionTodolistGroupWithResponse(ctx context.Context, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error)
 
 	// GetTodolistOrGroupWithResponse request
-	GetTodolistOrGroupWithResponse(ctx context.Context, projectId float32, id float32, reqEditors ...RequestEditorFn) (*GetTodolistOrGroupResponse, error)
+	GetTodolistOrGroupWithResponse(ctx context.Context, projectId int64, id int64, reqEditors ...RequestEditorFn) (*GetTodolistOrGroupResponse, error)
 
 	// UpdateTodolistOrGroupWithBodyWithResponse request with any body
-	UpdateTodolistOrGroupWithBodyWithResponse(ctx context.Context, projectId float32, id float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error)
+	UpdateTodolistOrGroupWithBodyWithResponse(ctx context.Context, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error)
 
-	UpdateTodolistOrGroupWithResponse(ctx context.Context, projectId float32, id float32, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error)
+	UpdateTodolistOrGroupWithResponse(ctx context.Context, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error)
 
 	// ListTodolistGroupsWithResponse request
-	ListTodolistGroupsWithResponse(ctx context.Context, projectId float32, todolistId float32, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error)
+	ListTodolistGroupsWithResponse(ctx context.Context, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error)
 
 	// CreateTodolistGroupWithBodyWithResponse request with any body
-	CreateTodolistGroupWithBodyWithResponse(ctx context.Context, projectId float32, todolistId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error)
+	CreateTodolistGroupWithBodyWithResponse(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error)
 
-	CreateTodolistGroupWithResponse(ctx context.Context, projectId float32, todolistId float32, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error)
+	CreateTodolistGroupWithResponse(ctx context.Context, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error)
 
 	// ListTodosWithResponse request
-	ListTodosWithResponse(ctx context.Context, projectId float32, todolistId float32, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error)
+	ListTodosWithResponse(ctx context.Context, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error)
 
 	// CreateTodoWithBodyWithResponse request with any body
-	CreateTodoWithBodyWithResponse(ctx context.Context, projectId float32, todolistId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
+	CreateTodoWithBodyWithResponse(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
 
-	CreateTodoWithResponse(ctx context.Context, projectId float32, todolistId float32, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
+	CreateTodoWithResponse(ctx context.Context, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
 
 	// TrashTodoWithResponse request
-	TrashTodoWithResponse(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error)
+	TrashTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error)
 
 	// GetTodoWithResponse request
-	GetTodoWithResponse(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*GetTodoResponse, error)
+	GetTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*GetTodoResponse, error)
 
 	// UpdateTodoWithBodyWithResponse request with any body
-	UpdateTodoWithBodyWithResponse(ctx context.Context, projectId float32, todoId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
+	UpdateTodoWithBodyWithResponse(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
 
-	UpdateTodoWithResponse(ctx context.Context, projectId float32, todoId float32, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
+	UpdateTodoWithResponse(ctx context.Context, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
 
 	// UncompleteTodoWithResponse request
-	UncompleteTodoWithResponse(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*UncompleteTodoResponse, error)
+	UncompleteTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*UncompleteTodoResponse, error)
 
 	// CompleteTodoWithResponse request
-	CompleteTodoWithResponse(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*CompleteTodoResponse, error)
+	CompleteTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*CompleteTodoResponse, error)
 
 	// GetTodosetWithResponse request
-	GetTodosetWithResponse(ctx context.Context, projectId float32, todosetId float32, reqEditors ...RequestEditorFn) (*GetTodosetResponse, error)
+	GetTodosetWithResponse(ctx context.Context, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*GetTodosetResponse, error)
 
 	// ListTodolistsWithResponse request
-	ListTodolistsWithResponse(ctx context.Context, projectId float32, todosetId float32, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*ListTodolistsResponse, error)
+	ListTodolistsWithResponse(ctx context.Context, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*ListTodolistsResponse, error)
 
 	// CreateTodolistWithBodyWithResponse request with any body
-	CreateTodolistWithBodyWithResponse(ctx context.Context, projectId float32, todosetId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error)
+	CreateTodolistWithBodyWithResponse(ctx context.Context, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error)
 
-	CreateTodolistWithResponse(ctx context.Context, projectId float32, todosetId float32, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error)
+	CreateTodolistWithResponse(ctx context.Context, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error)
 
 	// GetUploadWithResponse request
-	GetUploadWithResponse(ctx context.Context, projectId float32, uploadId float32, reqEditors ...RequestEditorFn) (*GetUploadResponse, error)
+	GetUploadWithResponse(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*GetUploadResponse, error)
 
 	// UpdateUploadWithBodyWithResponse request with any body
-	UpdateUploadWithBodyWithResponse(ctx context.Context, projectId float32, uploadId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error)
+	UpdateUploadWithBodyWithResponse(ctx context.Context, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error)
 
-	UpdateUploadWithResponse(ctx context.Context, projectId float32, uploadId float32, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error)
+	UpdateUploadWithResponse(ctx context.Context, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error)
 
 	// ListUploadVersionsWithResponse request
-	ListUploadVersionsWithResponse(ctx context.Context, projectId float32, uploadId float32, reqEditors ...RequestEditorFn) (*ListUploadVersionsResponse, error)
+	ListUploadVersionsWithResponse(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*ListUploadVersionsResponse, error)
 
 	// GetVaultWithResponse request
-	GetVaultWithResponse(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*GetVaultResponse, error)
+	GetVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*GetVaultResponse, error)
 
 	// UpdateVaultWithBodyWithResponse request with any body
-	UpdateVaultWithBodyWithResponse(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error)
+	UpdateVaultWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error)
 
-	UpdateVaultWithResponse(ctx context.Context, projectId float32, vaultId float32, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error)
+	UpdateVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error)
 
 	// ListDocumentsWithResponse request
-	ListDocumentsWithResponse(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error)
+	ListDocumentsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error)
 
 	// CreateDocumentWithBodyWithResponse request with any body
-	CreateDocumentWithBodyWithResponse(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error)
+	CreateDocumentWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error)
 
-	CreateDocumentWithResponse(ctx context.Context, projectId float32, vaultId float32, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error)
+	CreateDocumentWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error)
 
 	// ListUploadsWithResponse request
-	ListUploadsWithResponse(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error)
+	ListUploadsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error)
 
 	// CreateUploadWithBodyWithResponse request with any body
-	CreateUploadWithBodyWithResponse(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error)
+	CreateUploadWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error)
 
-	CreateUploadWithResponse(ctx context.Context, projectId float32, vaultId float32, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error)
+	CreateUploadWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error)
 
 	// ListVaultsWithResponse request
-	ListVaultsWithResponse(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error)
+	ListVaultsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error)
 
 	// CreateVaultWithBodyWithResponse request with any body
-	CreateVaultWithBodyWithResponse(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error)
+	CreateVaultWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error)
 
-	CreateVaultWithResponse(ctx context.Context, projectId float32, vaultId float32, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error)
+	CreateVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error)
 
 	// ListWebhooksWithResponse request
-	ListWebhooksWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
+	ListWebhooksWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
 
 	// CreateWebhookWithBodyWithResponse request with any body
-	CreateWebhookWithBodyWithResponse(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
+	CreateWebhookWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
 
-	CreateWebhookWithResponse(ctx context.Context, projectId float32, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
+	CreateWebhookWithResponse(ctx context.Context, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
 
 	// DeleteWebhookWithResponse request
-	DeleteWebhookWithResponse(ctx context.Context, projectId float32, webhookId float32, reqEditors ...RequestEditorFn) (*DeleteWebhookResponse, error)
+	DeleteWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*DeleteWebhookResponse, error)
 
 	// GetWebhookWithResponse request
-	GetWebhookWithResponse(ctx context.Context, projectId float32, webhookId float32, reqEditors ...RequestEditorFn) (*GetWebhookResponse, error)
+	GetWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*GetWebhookResponse, error)
 
 	// UpdateWebhookWithBodyWithResponse request with any body
-	UpdateWebhookWithBodyWithResponse(ctx context.Context, projectId float32, webhookId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error)
+	UpdateWebhookWithBodyWithResponse(ctx context.Context, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error)
 
-	UpdateWebhookWithResponse(ctx context.Context, projectId float32, webhookId float32, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error)
+	UpdateWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error)
 
 	// ListCampfiresWithResponse request
 	ListCampfiresWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error)
@@ -13200,12 +13200,12 @@ type ClientWithResponsesInterface interface {
 	CreateLineupMarkerWithResponse(ctx context.Context, body CreateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLineupMarkerResponse, error)
 
 	// DeleteLineupMarkerWithResponse request
-	DeleteLineupMarkerWithResponse(ctx context.Context, markerId float32, reqEditors ...RequestEditorFn) (*DeleteLineupMarkerResponse, error)
+	DeleteLineupMarkerWithResponse(ctx context.Context, markerId int64, reqEditors ...RequestEditorFn) (*DeleteLineupMarkerResponse, error)
 
 	// UpdateLineupMarkerWithBodyWithResponse request with any body
-	UpdateLineupMarkerWithBodyWithResponse(ctx context.Context, markerId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error)
+	UpdateLineupMarkerWithBodyWithResponse(ctx context.Context, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error)
 
-	UpdateLineupMarkerWithResponse(ctx context.Context, markerId float32, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error)
+	UpdateLineupMarkerWithResponse(ctx context.Context, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error)
 
 	// GetMyProfileWithResponse request
 	GetMyProfileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyProfileResponse, error)
@@ -13214,7 +13214,7 @@ type ClientWithResponsesInterface interface {
 	ListPeopleWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error)
 
 	// GetPersonWithResponse request
-	GetPersonWithResponse(ctx context.Context, personId float32, reqEditors ...RequestEditorFn) (*GetPersonResponse, error)
+	GetPersonWithResponse(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*GetPersonResponse, error)
 
 	// ListProjectsWithResponse request
 	ListProjectsWithResponse(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error)
@@ -13228,23 +13228,23 @@ type ClientWithResponsesInterface interface {
 	ListRecordingsWithResponse(ctx context.Context, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*ListRecordingsResponse, error)
 
 	// TrashProjectWithResponse request
-	TrashProjectWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*TrashProjectResponse, error)
+	TrashProjectWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*TrashProjectResponse, error)
 
 	// GetProjectWithResponse request
-	GetProjectWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*GetProjectResponse, error)
+	GetProjectWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectResponse, error)
 
 	// UpdateProjectWithBodyWithResponse request with any body
-	UpdateProjectWithBodyWithResponse(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
+	UpdateProjectWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
 
-	UpdateProjectWithResponse(ctx context.Context, projectId float32, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
+	UpdateProjectWithResponse(ctx context.Context, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
 
 	// ListProjectPeopleWithResponse request
-	ListProjectPeopleWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error)
+	ListProjectPeopleWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error)
 
 	// UpdateProjectAccessWithBodyWithResponse request with any body
-	UpdateProjectAccessWithBodyWithResponse(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
+	UpdateProjectAccessWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
 
-	UpdateProjectAccessWithResponse(ctx context.Context, projectId float32, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
+	UpdateProjectAccessWithResponse(ctx context.Context, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
 
 	// GetTimesheetReportWithResponse request
 	GetTimesheetReportWithResponse(ctx context.Context, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*GetTimesheetReportResponse, error)
@@ -13264,23 +13264,23 @@ type ClientWithResponsesInterface interface {
 	CreateTemplateWithResponse(ctx context.Context, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplateResponse, error)
 
 	// DeleteTemplateWithResponse request
-	DeleteTemplateWithResponse(ctx context.Context, templateId float32, reqEditors ...RequestEditorFn) (*DeleteTemplateResponse, error)
+	DeleteTemplateWithResponse(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*DeleteTemplateResponse, error)
 
 	// GetTemplateWithResponse request
-	GetTemplateWithResponse(ctx context.Context, templateId float32, reqEditors ...RequestEditorFn) (*GetTemplateResponse, error)
+	GetTemplateWithResponse(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*GetTemplateResponse, error)
 
 	// UpdateTemplateWithBodyWithResponse request with any body
-	UpdateTemplateWithBodyWithResponse(ctx context.Context, templateId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error)
+	UpdateTemplateWithBodyWithResponse(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error)
 
-	UpdateTemplateWithResponse(ctx context.Context, templateId float32, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error)
+	UpdateTemplateWithResponse(ctx context.Context, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error)
 
 	// CreateProjectFromTemplateWithBodyWithResponse request with any body
-	CreateProjectFromTemplateWithBodyWithResponse(ctx context.Context, templateId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error)
+	CreateProjectFromTemplateWithBodyWithResponse(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error)
 
-	CreateProjectFromTemplateWithResponse(ctx context.Context, templateId float32, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error)
+	CreateProjectFromTemplateWithResponse(ctx context.Context, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error)
 
 	// GetProjectConstructionWithResponse request
-	GetProjectConstructionWithResponse(ctx context.Context, templateId float32, constructionId float32, reqEditors ...RequestEditorFn) (*GetProjectConstructionResponse, error)
+	GetProjectConstructionWithResponse(ctx context.Context, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*GetProjectConstructionResponse, error)
 }
 
 type CreateAttachmentResponse struct {
@@ -17259,7 +17259,7 @@ func (c *ClientWithResponses) CreateAttachmentWithBodyWithResponse(ctx context.C
 }
 
 // GetCardWithResponse request returning *GetCardResponse
-func (c *ClientWithResponses) GetCardWithResponse(ctx context.Context, projectId float32, cardId float32, reqEditors ...RequestEditorFn) (*GetCardResponse, error) {
+func (c *ClientWithResponses) GetCardWithResponse(ctx context.Context, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error) {
 	rsp, err := c.GetCard(ctx, projectId, cardId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17268,7 +17268,7 @@ func (c *ClientWithResponses) GetCardWithResponse(ctx context.Context, projectId
 }
 
 // UpdateCardWithBodyWithResponse request with arbitrary body returning *UpdateCardResponse
-func (c *ClientWithResponses) UpdateCardWithBodyWithResponse(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error) {
+func (c *ClientWithResponses) UpdateCardWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error) {
 	rsp, err := c.UpdateCardWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17276,7 +17276,7 @@ func (c *ClientWithResponses) UpdateCardWithBodyWithResponse(ctx context.Context
 	return ParseUpdateCardResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateCardWithResponse(ctx context.Context, projectId float32, cardId float32, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error) {
+func (c *ClientWithResponses) UpdateCardWithResponse(ctx context.Context, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error) {
 	rsp, err := c.UpdateCard(ctx, projectId, cardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17285,7 +17285,7 @@ func (c *ClientWithResponses) UpdateCardWithResponse(ctx context.Context, projec
 }
 
 // MoveCardWithBodyWithResponse request with arbitrary body returning *MoveCardResponse
-func (c *ClientWithResponses) MoveCardWithBodyWithResponse(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardResponse, error) {
+func (c *ClientWithResponses) MoveCardWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardResponse, error) {
 	rsp, err := c.MoveCardWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17293,7 +17293,7 @@ func (c *ClientWithResponses) MoveCardWithBodyWithResponse(ctx context.Context, 
 	return ParseMoveCardResponse(rsp)
 }
 
-func (c *ClientWithResponses) MoveCardWithResponse(ctx context.Context, projectId float32, cardId float32, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardResponse, error) {
+func (c *ClientWithResponses) MoveCardWithResponse(ctx context.Context, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardResponse, error) {
 	rsp, err := c.MoveCard(ctx, projectId, cardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17302,7 +17302,7 @@ func (c *ClientWithResponses) MoveCardWithResponse(ctx context.Context, projectI
 }
 
 // RepositionCardStepWithBodyWithResponse request with arbitrary body returning *RepositionCardStepResponse
-func (c *ClientWithResponses) RepositionCardStepWithBodyWithResponse(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error) {
+func (c *ClientWithResponses) RepositionCardStepWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error) {
 	rsp, err := c.RepositionCardStepWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17310,7 +17310,7 @@ func (c *ClientWithResponses) RepositionCardStepWithBodyWithResponse(ctx context
 	return ParseRepositionCardStepResponse(rsp)
 }
 
-func (c *ClientWithResponses) RepositionCardStepWithResponse(ctx context.Context, projectId float32, cardId float32, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error) {
+func (c *ClientWithResponses) RepositionCardStepWithResponse(ctx context.Context, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error) {
 	rsp, err := c.RepositionCardStep(ctx, projectId, cardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17319,7 +17319,7 @@ func (c *ClientWithResponses) RepositionCardStepWithResponse(ctx context.Context
 }
 
 // CreateCardStepWithBodyWithResponse request with arbitrary body returning *CreateCardStepResponse
-func (c *ClientWithResponses) CreateCardStepWithBodyWithResponse(ctx context.Context, projectId float32, cardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error) {
+func (c *ClientWithResponses) CreateCardStepWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error) {
 	rsp, err := c.CreateCardStepWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17327,7 +17327,7 @@ func (c *ClientWithResponses) CreateCardStepWithBodyWithResponse(ctx context.Con
 	return ParseCreateCardStepResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateCardStepWithResponse(ctx context.Context, projectId float32, cardId float32, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error) {
+func (c *ClientWithResponses) CreateCardStepWithResponse(ctx context.Context, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error) {
 	rsp, err := c.CreateCardStep(ctx, projectId, cardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17336,7 +17336,7 @@ func (c *ClientWithResponses) CreateCardStepWithResponse(ctx context.Context, pr
 }
 
 // GetCardColumnWithResponse request returning *GetCardColumnResponse
-func (c *ClientWithResponses) GetCardColumnWithResponse(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*GetCardColumnResponse, error) {
+func (c *ClientWithResponses) GetCardColumnWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*GetCardColumnResponse, error) {
 	rsp, err := c.GetCardColumn(ctx, projectId, columnId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17345,7 +17345,7 @@ func (c *ClientWithResponses) GetCardColumnWithResponse(ctx context.Context, pro
 }
 
 // UpdateCardColumnWithBodyWithResponse request with arbitrary body returning *UpdateCardColumnResponse
-func (c *ClientWithResponses) UpdateCardColumnWithBodyWithResponse(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error) {
+func (c *ClientWithResponses) UpdateCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error) {
 	rsp, err := c.UpdateCardColumnWithBody(ctx, projectId, columnId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17353,7 +17353,7 @@ func (c *ClientWithResponses) UpdateCardColumnWithBodyWithResponse(ctx context.C
 	return ParseUpdateCardColumnResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateCardColumnWithResponse(ctx context.Context, projectId float32, columnId float32, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error) {
+func (c *ClientWithResponses) UpdateCardColumnWithResponse(ctx context.Context, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error) {
 	rsp, err := c.UpdateCardColumn(ctx, projectId, columnId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17362,7 +17362,7 @@ func (c *ClientWithResponses) UpdateCardColumnWithResponse(ctx context.Context, 
 }
 
 // SetCardColumnColorWithBodyWithResponse request with arbitrary body returning *SetCardColumnColorResponse
-func (c *ClientWithResponses) SetCardColumnColorWithBodyWithResponse(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
+func (c *ClientWithResponses) SetCardColumnColorWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
 	rsp, err := c.SetCardColumnColorWithBody(ctx, projectId, columnId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17370,7 +17370,7 @@ func (c *ClientWithResponses) SetCardColumnColorWithBodyWithResponse(ctx context
 	return ParseSetCardColumnColorResponse(rsp)
 }
 
-func (c *ClientWithResponses) SetCardColumnColorWithResponse(ctx context.Context, projectId float32, columnId float32, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
+func (c *ClientWithResponses) SetCardColumnColorWithResponse(ctx context.Context, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
 	rsp, err := c.SetCardColumnColor(ctx, projectId, columnId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17379,7 +17379,7 @@ func (c *ClientWithResponses) SetCardColumnColorWithResponse(ctx context.Context
 }
 
 // DisableCardColumnOnHoldWithResponse request returning *DisableCardColumnOnHoldResponse
-func (c *ClientWithResponses) DisableCardColumnOnHoldWithResponse(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error) {
+func (c *ClientWithResponses) DisableCardColumnOnHoldWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error) {
 	rsp, err := c.DisableCardColumnOnHold(ctx, projectId, columnId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17388,7 +17388,7 @@ func (c *ClientWithResponses) DisableCardColumnOnHoldWithResponse(ctx context.Co
 }
 
 // EnableCardColumnOnHoldWithResponse request returning *EnableCardColumnOnHoldResponse
-func (c *ClientWithResponses) EnableCardColumnOnHoldWithResponse(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error) {
+func (c *ClientWithResponses) EnableCardColumnOnHoldWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error) {
 	rsp, err := c.EnableCardColumnOnHold(ctx, projectId, columnId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17397,7 +17397,7 @@ func (c *ClientWithResponses) EnableCardColumnOnHoldWithResponse(ctx context.Con
 }
 
 // ListCardsWithResponse request returning *ListCardsResponse
-func (c *ClientWithResponses) ListCardsWithResponse(ctx context.Context, projectId float32, columnId float32, reqEditors ...RequestEditorFn) (*ListCardsResponse, error) {
+func (c *ClientWithResponses) ListCardsWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*ListCardsResponse, error) {
 	rsp, err := c.ListCards(ctx, projectId, columnId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17406,7 +17406,7 @@ func (c *ClientWithResponses) ListCardsWithResponse(ctx context.Context, project
 }
 
 // CreateCardWithBodyWithResponse request with arbitrary body returning *CreateCardResponse
-func (c *ClientWithResponses) CreateCardWithBodyWithResponse(ctx context.Context, projectId float32, columnId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardResponse, error) {
+func (c *ClientWithResponses) CreateCardWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardResponse, error) {
 	rsp, err := c.CreateCardWithBody(ctx, projectId, columnId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17414,7 +17414,7 @@ func (c *ClientWithResponses) CreateCardWithBodyWithResponse(ctx context.Context
 	return ParseCreateCardResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateCardWithResponse(ctx context.Context, projectId float32, columnId float32, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardResponse, error) {
+func (c *ClientWithResponses) CreateCardWithResponse(ctx context.Context, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardResponse, error) {
 	rsp, err := c.CreateCard(ctx, projectId, columnId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17423,7 +17423,7 @@ func (c *ClientWithResponses) CreateCardWithResponse(ctx context.Context, projec
 }
 
 // UpdateCardStepWithBodyWithResponse request with arbitrary body returning *UpdateCardStepResponse
-func (c *ClientWithResponses) UpdateCardStepWithBodyWithResponse(ctx context.Context, projectId float32, stepId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error) {
+func (c *ClientWithResponses) UpdateCardStepWithBodyWithResponse(ctx context.Context, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error) {
 	rsp, err := c.UpdateCardStepWithBody(ctx, projectId, stepId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17431,7 +17431,7 @@ func (c *ClientWithResponses) UpdateCardStepWithBodyWithResponse(ctx context.Con
 	return ParseUpdateCardStepResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateCardStepWithResponse(ctx context.Context, projectId float32, stepId float32, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error) {
+func (c *ClientWithResponses) UpdateCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error) {
 	rsp, err := c.UpdateCardStep(ctx, projectId, stepId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17440,7 +17440,7 @@ func (c *ClientWithResponses) UpdateCardStepWithResponse(ctx context.Context, pr
 }
 
 // UncompleteCardStepWithResponse request returning *UncompleteCardStepResponse
-func (c *ClientWithResponses) UncompleteCardStepWithResponse(ctx context.Context, projectId float32, stepId float32, reqEditors ...RequestEditorFn) (*UncompleteCardStepResponse, error) {
+func (c *ClientWithResponses) UncompleteCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*UncompleteCardStepResponse, error) {
 	rsp, err := c.UncompleteCardStep(ctx, projectId, stepId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17449,7 +17449,7 @@ func (c *ClientWithResponses) UncompleteCardStepWithResponse(ctx context.Context
 }
 
 // CompleteCardStepWithResponse request returning *CompleteCardStepResponse
-func (c *ClientWithResponses) CompleteCardStepWithResponse(ctx context.Context, projectId float32, stepId float32, reqEditors ...RequestEditorFn) (*CompleteCardStepResponse, error) {
+func (c *ClientWithResponses) CompleteCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*CompleteCardStepResponse, error) {
 	rsp, err := c.CompleteCardStep(ctx, projectId, stepId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17458,7 +17458,7 @@ func (c *ClientWithResponses) CompleteCardStepWithResponse(ctx context.Context, 
 }
 
 // GetCardTableWithResponse request returning *GetCardTableResponse
-func (c *ClientWithResponses) GetCardTableWithResponse(ctx context.Context, projectId float32, cardTableId float32, reqEditors ...RequestEditorFn) (*GetCardTableResponse, error) {
+func (c *ClientWithResponses) GetCardTableWithResponse(ctx context.Context, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*GetCardTableResponse, error) {
 	rsp, err := c.GetCardTable(ctx, projectId, cardTableId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17467,7 +17467,7 @@ func (c *ClientWithResponses) GetCardTableWithResponse(ctx context.Context, proj
 }
 
 // CreateCardColumnWithBodyWithResponse request with arbitrary body returning *CreateCardColumnResponse
-func (c *ClientWithResponses) CreateCardColumnWithBodyWithResponse(ctx context.Context, projectId float32, cardTableId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error) {
+func (c *ClientWithResponses) CreateCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error) {
 	rsp, err := c.CreateCardColumnWithBody(ctx, projectId, cardTableId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17475,7 +17475,7 @@ func (c *ClientWithResponses) CreateCardColumnWithBodyWithResponse(ctx context.C
 	return ParseCreateCardColumnResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateCardColumnWithResponse(ctx context.Context, projectId float32, cardTableId float32, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error) {
+func (c *ClientWithResponses) CreateCardColumnWithResponse(ctx context.Context, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error) {
 	rsp, err := c.CreateCardColumn(ctx, projectId, cardTableId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17484,7 +17484,7 @@ func (c *ClientWithResponses) CreateCardColumnWithResponse(ctx context.Context, 
 }
 
 // MoveCardColumnWithBodyWithResponse request with arbitrary body returning *MoveCardColumnResponse
-func (c *ClientWithResponses) MoveCardColumnWithBodyWithResponse(ctx context.Context, projectId float32, cardTableId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error) {
+func (c *ClientWithResponses) MoveCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error) {
 	rsp, err := c.MoveCardColumnWithBody(ctx, projectId, cardTableId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17492,7 +17492,7 @@ func (c *ClientWithResponses) MoveCardColumnWithBodyWithResponse(ctx context.Con
 	return ParseMoveCardColumnResponse(rsp)
 }
 
-func (c *ClientWithResponses) MoveCardColumnWithResponse(ctx context.Context, projectId float32, cardTableId float32, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error) {
+func (c *ClientWithResponses) MoveCardColumnWithResponse(ctx context.Context, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error) {
 	rsp, err := c.MoveCardColumn(ctx, projectId, cardTableId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17501,7 +17501,7 @@ func (c *ClientWithResponses) MoveCardColumnWithResponse(ctx context.Context, pr
 }
 
 // ListMessageTypesWithResponse request returning *ListMessageTypesResponse
-func (c *ClientWithResponses) ListMessageTypesWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error) {
+func (c *ClientWithResponses) ListMessageTypesWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error) {
 	rsp, err := c.ListMessageTypes(ctx, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17510,7 +17510,7 @@ func (c *ClientWithResponses) ListMessageTypesWithResponse(ctx context.Context, 
 }
 
 // CreateMessageTypeWithBodyWithResponse request with arbitrary body returning *CreateMessageTypeResponse
-func (c *ClientWithResponses) CreateMessageTypeWithBodyWithResponse(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
+func (c *ClientWithResponses) CreateMessageTypeWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
 	rsp, err := c.CreateMessageTypeWithBody(ctx, projectId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17518,7 +17518,7 @@ func (c *ClientWithResponses) CreateMessageTypeWithBodyWithResponse(ctx context.
 	return ParseCreateMessageTypeResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateMessageTypeWithResponse(ctx context.Context, projectId float32, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
+func (c *ClientWithResponses) CreateMessageTypeWithResponse(ctx context.Context, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
 	rsp, err := c.CreateMessageType(ctx, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17527,7 +17527,7 @@ func (c *ClientWithResponses) CreateMessageTypeWithResponse(ctx context.Context,
 }
 
 // DeleteMessageTypeWithResponse request returning *DeleteMessageTypeResponse
-func (c *ClientWithResponses) DeleteMessageTypeWithResponse(ctx context.Context, projectId float32, typeId float32, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error) {
+func (c *ClientWithResponses) DeleteMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error) {
 	rsp, err := c.DeleteMessageType(ctx, projectId, typeId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17536,7 +17536,7 @@ func (c *ClientWithResponses) DeleteMessageTypeWithResponse(ctx context.Context,
 }
 
 // GetMessageTypeWithResponse request returning *GetMessageTypeResponse
-func (c *ClientWithResponses) GetMessageTypeWithResponse(ctx context.Context, projectId float32, typeId float32, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error) {
+func (c *ClientWithResponses) GetMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error) {
 	rsp, err := c.GetMessageType(ctx, projectId, typeId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17545,7 +17545,7 @@ func (c *ClientWithResponses) GetMessageTypeWithResponse(ctx context.Context, pr
 }
 
 // UpdateMessageTypeWithBodyWithResponse request with arbitrary body returning *UpdateMessageTypeResponse
-func (c *ClientWithResponses) UpdateMessageTypeWithBodyWithResponse(ctx context.Context, projectId float32, typeId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
+func (c *ClientWithResponses) UpdateMessageTypeWithBodyWithResponse(ctx context.Context, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
 	rsp, err := c.UpdateMessageTypeWithBody(ctx, projectId, typeId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17553,7 +17553,7 @@ func (c *ClientWithResponses) UpdateMessageTypeWithBodyWithResponse(ctx context.
 	return ParseUpdateMessageTypeResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateMessageTypeWithResponse(ctx context.Context, projectId float32, typeId float32, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
+func (c *ClientWithResponses) UpdateMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
 	rsp, err := c.UpdateMessageType(ctx, projectId, typeId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17562,7 +17562,7 @@ func (c *ClientWithResponses) UpdateMessageTypeWithResponse(ctx context.Context,
 }
 
 // GetCampfireWithResponse request returning *GetCampfireResponse
-func (c *ClientWithResponses) GetCampfireWithResponse(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*GetCampfireResponse, error) {
+func (c *ClientWithResponses) GetCampfireWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*GetCampfireResponse, error) {
 	rsp, err := c.GetCampfire(ctx, projectId, campfireId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17571,7 +17571,7 @@ func (c *ClientWithResponses) GetCampfireWithResponse(ctx context.Context, proje
 }
 
 // ListChatbotsWithResponse request returning *ListChatbotsResponse
-func (c *ClientWithResponses) ListChatbotsWithResponse(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error) {
+func (c *ClientWithResponses) ListChatbotsWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error) {
 	rsp, err := c.ListChatbots(ctx, projectId, campfireId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17580,7 +17580,7 @@ func (c *ClientWithResponses) ListChatbotsWithResponse(ctx context.Context, proj
 }
 
 // CreateChatbotWithBodyWithResponse request with arbitrary body returning *CreateChatbotResponse
-func (c *ClientWithResponses) CreateChatbotWithBodyWithResponse(ctx context.Context, projectId float32, campfireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
+func (c *ClientWithResponses) CreateChatbotWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
 	rsp, err := c.CreateChatbotWithBody(ctx, projectId, campfireId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17588,7 +17588,7 @@ func (c *ClientWithResponses) CreateChatbotWithBodyWithResponse(ctx context.Cont
 	return ParseCreateChatbotResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateChatbotWithResponse(ctx context.Context, projectId float32, campfireId float32, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
+func (c *ClientWithResponses) CreateChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
 	rsp, err := c.CreateChatbot(ctx, projectId, campfireId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17597,7 +17597,7 @@ func (c *ClientWithResponses) CreateChatbotWithResponse(ctx context.Context, pro
 }
 
 // DeleteChatbotWithResponse request returning *DeleteChatbotResponse
-func (c *ClientWithResponses) DeleteChatbotWithResponse(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error) {
+func (c *ClientWithResponses) DeleteChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error) {
 	rsp, err := c.DeleteChatbot(ctx, projectId, campfireId, chatbotId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17606,7 +17606,7 @@ func (c *ClientWithResponses) DeleteChatbotWithResponse(ctx context.Context, pro
 }
 
 // GetChatbotWithResponse request returning *GetChatbotResponse
-func (c *ClientWithResponses) GetChatbotWithResponse(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error) {
+func (c *ClientWithResponses) GetChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error) {
 	rsp, err := c.GetChatbot(ctx, projectId, campfireId, chatbotId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17615,7 +17615,7 @@ func (c *ClientWithResponses) GetChatbotWithResponse(ctx context.Context, projec
 }
 
 // UpdateChatbotWithBodyWithResponse request with arbitrary body returning *UpdateChatbotResponse
-func (c *ClientWithResponses) UpdateChatbotWithBodyWithResponse(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
+func (c *ClientWithResponses) UpdateChatbotWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
 	rsp, err := c.UpdateChatbotWithBody(ctx, projectId, campfireId, chatbotId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17623,7 +17623,7 @@ func (c *ClientWithResponses) UpdateChatbotWithBodyWithResponse(ctx context.Cont
 	return ParseUpdateChatbotResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateChatbotWithResponse(ctx context.Context, projectId float32, campfireId float32, chatbotId float32, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
+func (c *ClientWithResponses) UpdateChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
 	rsp, err := c.UpdateChatbot(ctx, projectId, campfireId, chatbotId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17632,7 +17632,7 @@ func (c *ClientWithResponses) UpdateChatbotWithResponse(ctx context.Context, pro
 }
 
 // ListCampfireLinesWithResponse request returning *ListCampfireLinesResponse
-func (c *ClientWithResponses) ListCampfireLinesWithResponse(ctx context.Context, projectId float32, campfireId float32, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error) {
+func (c *ClientWithResponses) ListCampfireLinesWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error) {
 	rsp, err := c.ListCampfireLines(ctx, projectId, campfireId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17641,7 +17641,7 @@ func (c *ClientWithResponses) ListCampfireLinesWithResponse(ctx context.Context,
 }
 
 // CreateCampfireLineWithBodyWithResponse request with arbitrary body returning *CreateCampfireLineResponse
-func (c *ClientWithResponses) CreateCampfireLineWithBodyWithResponse(ctx context.Context, projectId float32, campfireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error) {
+func (c *ClientWithResponses) CreateCampfireLineWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error) {
 	rsp, err := c.CreateCampfireLineWithBody(ctx, projectId, campfireId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17649,7 +17649,7 @@ func (c *ClientWithResponses) CreateCampfireLineWithBodyWithResponse(ctx context
 	return ParseCreateCampfireLineResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateCampfireLineWithResponse(ctx context.Context, projectId float32, campfireId float32, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error) {
+func (c *ClientWithResponses) CreateCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error) {
 	rsp, err := c.CreateCampfireLine(ctx, projectId, campfireId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17658,7 +17658,7 @@ func (c *ClientWithResponses) CreateCampfireLineWithResponse(ctx context.Context
 }
 
 // DeleteCampfireLineWithResponse request returning *DeleteCampfireLineResponse
-func (c *ClientWithResponses) DeleteCampfireLineWithResponse(ctx context.Context, projectId float32, campfireId float32, lineId float32, reqEditors ...RequestEditorFn) (*DeleteCampfireLineResponse, error) {
+func (c *ClientWithResponses) DeleteCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*DeleteCampfireLineResponse, error) {
 	rsp, err := c.DeleteCampfireLine(ctx, projectId, campfireId, lineId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17667,7 +17667,7 @@ func (c *ClientWithResponses) DeleteCampfireLineWithResponse(ctx context.Context
 }
 
 // GetCampfireLineWithResponse request returning *GetCampfireLineResponse
-func (c *ClientWithResponses) GetCampfireLineWithResponse(ctx context.Context, projectId float32, campfireId float32, lineId float32, reqEditors ...RequestEditorFn) (*GetCampfireLineResponse, error) {
+func (c *ClientWithResponses) GetCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*GetCampfireLineResponse, error) {
 	rsp, err := c.GetCampfireLine(ctx, projectId, campfireId, lineId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17676,7 +17676,7 @@ func (c *ClientWithResponses) GetCampfireLineWithResponse(ctx context.Context, p
 }
 
 // ListClientApprovalsWithResponse request returning *ListClientApprovalsResponse
-func (c *ClientWithResponses) ListClientApprovalsWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error) {
+func (c *ClientWithResponses) ListClientApprovalsWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error) {
 	rsp, err := c.ListClientApprovals(ctx, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17685,7 +17685,7 @@ func (c *ClientWithResponses) ListClientApprovalsWithResponse(ctx context.Contex
 }
 
 // GetClientApprovalWithResponse request returning *GetClientApprovalResponse
-func (c *ClientWithResponses) GetClientApprovalWithResponse(ctx context.Context, projectId float32, approvalId float32, reqEditors ...RequestEditorFn) (*GetClientApprovalResponse, error) {
+func (c *ClientWithResponses) GetClientApprovalWithResponse(ctx context.Context, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*GetClientApprovalResponse, error) {
 	rsp, err := c.GetClientApproval(ctx, projectId, approvalId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17694,7 +17694,7 @@ func (c *ClientWithResponses) GetClientApprovalWithResponse(ctx context.Context,
 }
 
 // ListClientCorrespondencesWithResponse request returning *ListClientCorrespondencesResponse
-func (c *ClientWithResponses) ListClientCorrespondencesWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error) {
+func (c *ClientWithResponses) ListClientCorrespondencesWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error) {
 	rsp, err := c.ListClientCorrespondences(ctx, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17703,7 +17703,7 @@ func (c *ClientWithResponses) ListClientCorrespondencesWithResponse(ctx context.
 }
 
 // GetClientCorrespondenceWithResponse request returning *GetClientCorrespondenceResponse
-func (c *ClientWithResponses) GetClientCorrespondenceWithResponse(ctx context.Context, projectId float32, correspondenceId float32, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error) {
+func (c *ClientWithResponses) GetClientCorrespondenceWithResponse(ctx context.Context, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error) {
 	rsp, err := c.GetClientCorrespondence(ctx, projectId, correspondenceId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17712,7 +17712,7 @@ func (c *ClientWithResponses) GetClientCorrespondenceWithResponse(ctx context.Co
 }
 
 // ListClientRepliesWithResponse request returning *ListClientRepliesResponse
-func (c *ClientWithResponses) ListClientRepliesWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error) {
+func (c *ClientWithResponses) ListClientRepliesWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error) {
 	rsp, err := c.ListClientReplies(ctx, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17721,7 +17721,7 @@ func (c *ClientWithResponses) ListClientRepliesWithResponse(ctx context.Context,
 }
 
 // GetClientReplyWithResponse request returning *GetClientReplyResponse
-func (c *ClientWithResponses) GetClientReplyWithResponse(ctx context.Context, projectId float32, recordingId float32, replyId float32, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error) {
+func (c *ClientWithResponses) GetClientReplyWithResponse(ctx context.Context, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error) {
 	rsp, err := c.GetClientReply(ctx, projectId, recordingId, replyId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17730,7 +17730,7 @@ func (c *ClientWithResponses) GetClientReplyWithResponse(ctx context.Context, pr
 }
 
 // GetCommentWithResponse request returning *GetCommentResponse
-func (c *ClientWithResponses) GetCommentWithResponse(ctx context.Context, projectId float32, commentId float32, reqEditors ...RequestEditorFn) (*GetCommentResponse, error) {
+func (c *ClientWithResponses) GetCommentWithResponse(ctx context.Context, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*GetCommentResponse, error) {
 	rsp, err := c.GetComment(ctx, projectId, commentId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17739,7 +17739,7 @@ func (c *ClientWithResponses) GetCommentWithResponse(ctx context.Context, projec
 }
 
 // UpdateCommentWithBodyWithResponse request with arbitrary body returning *UpdateCommentResponse
-func (c *ClientWithResponses) UpdateCommentWithBodyWithResponse(ctx context.Context, projectId float32, commentId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error) {
+func (c *ClientWithResponses) UpdateCommentWithBodyWithResponse(ctx context.Context, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error) {
 	rsp, err := c.UpdateCommentWithBody(ctx, projectId, commentId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17747,7 +17747,7 @@ func (c *ClientWithResponses) UpdateCommentWithBodyWithResponse(ctx context.Cont
 	return ParseUpdateCommentResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateCommentWithResponse(ctx context.Context, projectId float32, commentId float32, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error) {
+func (c *ClientWithResponses) UpdateCommentWithResponse(ctx context.Context, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error) {
 	rsp, err := c.UpdateComment(ctx, projectId, commentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17756,7 +17756,7 @@ func (c *ClientWithResponses) UpdateCommentWithResponse(ctx context.Context, pro
 }
 
 // CloneToolWithResponse request returning *CloneToolResponse
-func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, projectId float32, sourceToolId float32, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
+func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
 	rsp, err := c.CloneTool(ctx, projectId, sourceToolId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17765,7 +17765,7 @@ func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, project
 }
 
 // DeleteToolWithResponse request returning *DeleteToolResponse
-func (c *ClientWithResponses) DeleteToolWithResponse(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error) {
+func (c *ClientWithResponses) DeleteToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error) {
 	rsp, err := c.DeleteTool(ctx, projectId, toolId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17774,7 +17774,7 @@ func (c *ClientWithResponses) DeleteToolWithResponse(ctx context.Context, projec
 }
 
 // GetToolWithResponse request returning *GetToolResponse
-func (c *ClientWithResponses) GetToolWithResponse(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*GetToolResponse, error) {
+func (c *ClientWithResponses) GetToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*GetToolResponse, error) {
 	rsp, err := c.GetTool(ctx, projectId, toolId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17783,7 +17783,7 @@ func (c *ClientWithResponses) GetToolWithResponse(ctx context.Context, projectId
 }
 
 // UpdateToolWithBodyWithResponse request with arbitrary body returning *UpdateToolResponse
-func (c *ClientWithResponses) UpdateToolWithBodyWithResponse(ctx context.Context, projectId float32, toolId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
+func (c *ClientWithResponses) UpdateToolWithBodyWithResponse(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
 	rsp, err := c.UpdateToolWithBody(ctx, projectId, toolId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17791,7 +17791,7 @@ func (c *ClientWithResponses) UpdateToolWithBodyWithResponse(ctx context.Context
 	return ParseUpdateToolResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateToolWithResponse(ctx context.Context, projectId float32, toolId float32, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
+func (c *ClientWithResponses) UpdateToolWithResponse(ctx context.Context, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
 	rsp, err := c.UpdateTool(ctx, projectId, toolId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17800,7 +17800,7 @@ func (c *ClientWithResponses) UpdateToolWithResponse(ctx context.Context, projec
 }
 
 // DisableToolWithResponse request returning *DisableToolResponse
-func (c *ClientWithResponses) DisableToolWithResponse(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*DisableToolResponse, error) {
+func (c *ClientWithResponses) DisableToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error) {
 	rsp, err := c.DisableTool(ctx, projectId, toolId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17809,7 +17809,7 @@ func (c *ClientWithResponses) DisableToolWithResponse(ctx context.Context, proje
 }
 
 // EnableToolWithResponse request returning *EnableToolResponse
-func (c *ClientWithResponses) EnableToolWithResponse(ctx context.Context, projectId float32, toolId float32, reqEditors ...RequestEditorFn) (*EnableToolResponse, error) {
+func (c *ClientWithResponses) EnableToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error) {
 	rsp, err := c.EnableTool(ctx, projectId, toolId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17818,7 +17818,7 @@ func (c *ClientWithResponses) EnableToolWithResponse(ctx context.Context, projec
 }
 
 // RepositionToolWithBodyWithResponse request with arbitrary body returning *RepositionToolResponse
-func (c *ClientWithResponses) RepositionToolWithBodyWithResponse(ctx context.Context, projectId float32, toolId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
+func (c *ClientWithResponses) RepositionToolWithBodyWithResponse(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
 	rsp, err := c.RepositionToolWithBody(ctx, projectId, toolId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17826,7 +17826,7 @@ func (c *ClientWithResponses) RepositionToolWithBodyWithResponse(ctx context.Con
 	return ParseRepositionToolResponse(rsp)
 }
 
-func (c *ClientWithResponses) RepositionToolWithResponse(ctx context.Context, projectId float32, toolId float32, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
+func (c *ClientWithResponses) RepositionToolWithResponse(ctx context.Context, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
 	rsp, err := c.RepositionTool(ctx, projectId, toolId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17835,7 +17835,7 @@ func (c *ClientWithResponses) RepositionToolWithResponse(ctx context.Context, pr
 }
 
 // GetDocumentWithResponse request returning *GetDocumentResponse
-func (c *ClientWithResponses) GetDocumentWithResponse(ctx context.Context, projectId float32, documentId float32, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error) {
+func (c *ClientWithResponses) GetDocumentWithResponse(ctx context.Context, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error) {
 	rsp, err := c.GetDocument(ctx, projectId, documentId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17844,7 +17844,7 @@ func (c *ClientWithResponses) GetDocumentWithResponse(ctx context.Context, proje
 }
 
 // UpdateDocumentWithBodyWithResponse request with arbitrary body returning *UpdateDocumentResponse
-func (c *ClientWithResponses) UpdateDocumentWithBodyWithResponse(ctx context.Context, projectId float32, documentId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error) {
+func (c *ClientWithResponses) UpdateDocumentWithBodyWithResponse(ctx context.Context, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error) {
 	rsp, err := c.UpdateDocumentWithBody(ctx, projectId, documentId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17852,7 +17852,7 @@ func (c *ClientWithResponses) UpdateDocumentWithBodyWithResponse(ctx context.Con
 	return ParseUpdateDocumentResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateDocumentWithResponse(ctx context.Context, projectId float32, documentId float32, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error) {
+func (c *ClientWithResponses) UpdateDocumentWithResponse(ctx context.Context, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error) {
 	rsp, err := c.UpdateDocument(ctx, projectId, documentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17861,7 +17861,7 @@ func (c *ClientWithResponses) UpdateDocumentWithResponse(ctx context.Context, pr
 }
 
 // GetForwardWithResponse request returning *GetForwardResponse
-func (c *ClientWithResponses) GetForwardWithResponse(ctx context.Context, projectId float32, forwardId float32, reqEditors ...RequestEditorFn) (*GetForwardResponse, error) {
+func (c *ClientWithResponses) GetForwardWithResponse(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*GetForwardResponse, error) {
 	rsp, err := c.GetForward(ctx, projectId, forwardId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17870,7 +17870,7 @@ func (c *ClientWithResponses) GetForwardWithResponse(ctx context.Context, projec
 }
 
 // ListForwardRepliesWithResponse request returning *ListForwardRepliesResponse
-func (c *ClientWithResponses) ListForwardRepliesWithResponse(ctx context.Context, projectId float32, forwardId float32, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error) {
+func (c *ClientWithResponses) ListForwardRepliesWithResponse(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error) {
 	rsp, err := c.ListForwardReplies(ctx, projectId, forwardId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17879,7 +17879,7 @@ func (c *ClientWithResponses) ListForwardRepliesWithResponse(ctx context.Context
 }
 
 // CreateForwardReplyWithBodyWithResponse request with arbitrary body returning *CreateForwardReplyResponse
-func (c *ClientWithResponses) CreateForwardReplyWithBodyWithResponse(ctx context.Context, projectId float32, forwardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error) {
+func (c *ClientWithResponses) CreateForwardReplyWithBodyWithResponse(ctx context.Context, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error) {
 	rsp, err := c.CreateForwardReplyWithBody(ctx, projectId, forwardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17887,7 +17887,7 @@ func (c *ClientWithResponses) CreateForwardReplyWithBodyWithResponse(ctx context
 	return ParseCreateForwardReplyResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateForwardReplyWithResponse(ctx context.Context, projectId float32, forwardId float32, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error) {
+func (c *ClientWithResponses) CreateForwardReplyWithResponse(ctx context.Context, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error) {
 	rsp, err := c.CreateForwardReply(ctx, projectId, forwardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17896,7 +17896,7 @@ func (c *ClientWithResponses) CreateForwardReplyWithResponse(ctx context.Context
 }
 
 // GetForwardReplyWithResponse request returning *GetForwardReplyResponse
-func (c *ClientWithResponses) GetForwardReplyWithResponse(ctx context.Context, projectId float32, forwardId float32, replyId float32, reqEditors ...RequestEditorFn) (*GetForwardReplyResponse, error) {
+func (c *ClientWithResponses) GetForwardReplyWithResponse(ctx context.Context, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetForwardReplyResponse, error) {
 	rsp, err := c.GetForwardReply(ctx, projectId, forwardId, replyId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17905,7 +17905,7 @@ func (c *ClientWithResponses) GetForwardReplyWithResponse(ctx context.Context, p
 }
 
 // GetInboxWithResponse request returning *GetInboxResponse
-func (c *ClientWithResponses) GetInboxWithResponse(ctx context.Context, projectId float32, inboxId float32, reqEditors ...RequestEditorFn) (*GetInboxResponse, error) {
+func (c *ClientWithResponses) GetInboxWithResponse(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*GetInboxResponse, error) {
 	rsp, err := c.GetInbox(ctx, projectId, inboxId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17914,7 +17914,7 @@ func (c *ClientWithResponses) GetInboxWithResponse(ctx context.Context, projectI
 }
 
 // ListForwardsWithResponse request returning *ListForwardsResponse
-func (c *ClientWithResponses) ListForwardsWithResponse(ctx context.Context, projectId float32, inboxId float32, reqEditors ...RequestEditorFn) (*ListForwardsResponse, error) {
+func (c *ClientWithResponses) ListForwardsWithResponse(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*ListForwardsResponse, error) {
 	rsp, err := c.ListForwards(ctx, projectId, inboxId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17923,7 +17923,7 @@ func (c *ClientWithResponses) ListForwardsWithResponse(ctx context.Context, proj
 }
 
 // GetMessageBoardWithResponse request returning *GetMessageBoardResponse
-func (c *ClientWithResponses) GetMessageBoardWithResponse(ctx context.Context, projectId float32, boardId float32, reqEditors ...RequestEditorFn) (*GetMessageBoardResponse, error) {
+func (c *ClientWithResponses) GetMessageBoardWithResponse(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*GetMessageBoardResponse, error) {
 	rsp, err := c.GetMessageBoard(ctx, projectId, boardId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17932,7 +17932,7 @@ func (c *ClientWithResponses) GetMessageBoardWithResponse(ctx context.Context, p
 }
 
 // ListMessagesWithResponse request returning *ListMessagesResponse
-func (c *ClientWithResponses) ListMessagesWithResponse(ctx context.Context, projectId float32, boardId float32, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error) {
+func (c *ClientWithResponses) ListMessagesWithResponse(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error) {
 	rsp, err := c.ListMessages(ctx, projectId, boardId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17941,7 +17941,7 @@ func (c *ClientWithResponses) ListMessagesWithResponse(ctx context.Context, proj
 }
 
 // CreateMessageWithBodyWithResponse request with arbitrary body returning *CreateMessageResponse
-func (c *ClientWithResponses) CreateMessageWithBodyWithResponse(ctx context.Context, projectId float32, boardId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error) {
+func (c *ClientWithResponses) CreateMessageWithBodyWithResponse(ctx context.Context, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error) {
 	rsp, err := c.CreateMessageWithBody(ctx, projectId, boardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17949,7 +17949,7 @@ func (c *ClientWithResponses) CreateMessageWithBodyWithResponse(ctx context.Cont
 	return ParseCreateMessageResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateMessageWithResponse(ctx context.Context, projectId float32, boardId float32, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error) {
+func (c *ClientWithResponses) CreateMessageWithResponse(ctx context.Context, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error) {
 	rsp, err := c.CreateMessage(ctx, projectId, boardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17958,7 +17958,7 @@ func (c *ClientWithResponses) CreateMessageWithResponse(ctx context.Context, pro
 }
 
 // GetMessageWithResponse request returning *GetMessageResponse
-func (c *ClientWithResponses) GetMessageWithResponse(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*GetMessageResponse, error) {
+func (c *ClientWithResponses) GetMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*GetMessageResponse, error) {
 	rsp, err := c.GetMessage(ctx, projectId, messageId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17967,7 +17967,7 @@ func (c *ClientWithResponses) GetMessageWithResponse(ctx context.Context, projec
 }
 
 // UpdateMessageWithBodyWithResponse request with arbitrary body returning *UpdateMessageResponse
-func (c *ClientWithResponses) UpdateMessageWithBodyWithResponse(ctx context.Context, projectId float32, messageId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error) {
+func (c *ClientWithResponses) UpdateMessageWithBodyWithResponse(ctx context.Context, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error) {
 	rsp, err := c.UpdateMessageWithBody(ctx, projectId, messageId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17975,7 +17975,7 @@ func (c *ClientWithResponses) UpdateMessageWithBodyWithResponse(ctx context.Cont
 	return ParseUpdateMessageResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateMessageWithResponse(ctx context.Context, projectId float32, messageId float32, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error) {
+func (c *ClientWithResponses) UpdateMessageWithResponse(ctx context.Context, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error) {
 	rsp, err := c.UpdateMessage(ctx, projectId, messageId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17984,7 +17984,7 @@ func (c *ClientWithResponses) UpdateMessageWithResponse(ctx context.Context, pro
 }
 
 // GetAnswerWithResponse request returning *GetAnswerResponse
-func (c *ClientWithResponses) GetAnswerWithResponse(ctx context.Context, projectId float32, answerId float32, reqEditors ...RequestEditorFn) (*GetAnswerResponse, error) {
+func (c *ClientWithResponses) GetAnswerWithResponse(ctx context.Context, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*GetAnswerResponse, error) {
 	rsp, err := c.GetAnswer(ctx, projectId, answerId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -17993,7 +17993,7 @@ func (c *ClientWithResponses) GetAnswerWithResponse(ctx context.Context, project
 }
 
 // UpdateAnswerWithBodyWithResponse request with arbitrary body returning *UpdateAnswerResponse
-func (c *ClientWithResponses) UpdateAnswerWithBodyWithResponse(ctx context.Context, projectId float32, answerId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error) {
+func (c *ClientWithResponses) UpdateAnswerWithBodyWithResponse(ctx context.Context, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error) {
 	rsp, err := c.UpdateAnswerWithBody(ctx, projectId, answerId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18001,7 +18001,7 @@ func (c *ClientWithResponses) UpdateAnswerWithBodyWithResponse(ctx context.Conte
 	return ParseUpdateAnswerResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateAnswerWithResponse(ctx context.Context, projectId float32, answerId float32, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error) {
+func (c *ClientWithResponses) UpdateAnswerWithResponse(ctx context.Context, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error) {
 	rsp, err := c.UpdateAnswer(ctx, projectId, answerId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18010,7 +18010,7 @@ func (c *ClientWithResponses) UpdateAnswerWithResponse(ctx context.Context, proj
 }
 
 // GetQuestionnaireWithResponse request returning *GetQuestionnaireResponse
-func (c *ClientWithResponses) GetQuestionnaireWithResponse(ctx context.Context, projectId float32, questionnaireId float32, reqEditors ...RequestEditorFn) (*GetQuestionnaireResponse, error) {
+func (c *ClientWithResponses) GetQuestionnaireWithResponse(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*GetQuestionnaireResponse, error) {
 	rsp, err := c.GetQuestionnaire(ctx, projectId, questionnaireId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18019,7 +18019,7 @@ func (c *ClientWithResponses) GetQuestionnaireWithResponse(ctx context.Context, 
 }
 
 // ListQuestionsWithResponse request returning *ListQuestionsResponse
-func (c *ClientWithResponses) ListQuestionsWithResponse(ctx context.Context, projectId float32, questionnaireId float32, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error) {
+func (c *ClientWithResponses) ListQuestionsWithResponse(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error) {
 	rsp, err := c.ListQuestions(ctx, projectId, questionnaireId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18028,7 +18028,7 @@ func (c *ClientWithResponses) ListQuestionsWithResponse(ctx context.Context, pro
 }
 
 // CreateQuestionWithBodyWithResponse request with arbitrary body returning *CreateQuestionResponse
-func (c *ClientWithResponses) CreateQuestionWithBodyWithResponse(ctx context.Context, projectId float32, questionnaireId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error) {
+func (c *ClientWithResponses) CreateQuestionWithBodyWithResponse(ctx context.Context, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error) {
 	rsp, err := c.CreateQuestionWithBody(ctx, projectId, questionnaireId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18036,7 +18036,7 @@ func (c *ClientWithResponses) CreateQuestionWithBodyWithResponse(ctx context.Con
 	return ParseCreateQuestionResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateQuestionWithResponse(ctx context.Context, projectId float32, questionnaireId float32, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error) {
+func (c *ClientWithResponses) CreateQuestionWithResponse(ctx context.Context, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error) {
 	rsp, err := c.CreateQuestion(ctx, projectId, questionnaireId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18045,7 +18045,7 @@ func (c *ClientWithResponses) CreateQuestionWithResponse(ctx context.Context, pr
 }
 
 // GetQuestionWithResponse request returning *GetQuestionResponse
-func (c *ClientWithResponses) GetQuestionWithResponse(ctx context.Context, projectId float32, questionId float32, reqEditors ...RequestEditorFn) (*GetQuestionResponse, error) {
+func (c *ClientWithResponses) GetQuestionWithResponse(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*GetQuestionResponse, error) {
 	rsp, err := c.GetQuestion(ctx, projectId, questionId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18054,7 +18054,7 @@ func (c *ClientWithResponses) GetQuestionWithResponse(ctx context.Context, proje
 }
 
 // UpdateQuestionWithBodyWithResponse request with arbitrary body returning *UpdateQuestionResponse
-func (c *ClientWithResponses) UpdateQuestionWithBodyWithResponse(ctx context.Context, projectId float32, questionId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error) {
+func (c *ClientWithResponses) UpdateQuestionWithBodyWithResponse(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error) {
 	rsp, err := c.UpdateQuestionWithBody(ctx, projectId, questionId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18062,7 +18062,7 @@ func (c *ClientWithResponses) UpdateQuestionWithBodyWithResponse(ctx context.Con
 	return ParseUpdateQuestionResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateQuestionWithResponse(ctx context.Context, projectId float32, questionId float32, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error) {
+func (c *ClientWithResponses) UpdateQuestionWithResponse(ctx context.Context, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error) {
 	rsp, err := c.UpdateQuestion(ctx, projectId, questionId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18071,7 +18071,7 @@ func (c *ClientWithResponses) UpdateQuestionWithResponse(ctx context.Context, pr
 }
 
 // ListAnswersWithResponse request returning *ListAnswersResponse
-func (c *ClientWithResponses) ListAnswersWithResponse(ctx context.Context, projectId float32, questionId float32, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error) {
+func (c *ClientWithResponses) ListAnswersWithResponse(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error) {
 	rsp, err := c.ListAnswers(ctx, projectId, questionId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18080,7 +18080,7 @@ func (c *ClientWithResponses) ListAnswersWithResponse(ctx context.Context, proje
 }
 
 // CreateAnswerWithBodyWithResponse request with arbitrary body returning *CreateAnswerResponse
-func (c *ClientWithResponses) CreateAnswerWithBodyWithResponse(ctx context.Context, projectId float32, questionId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error) {
+func (c *ClientWithResponses) CreateAnswerWithBodyWithResponse(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error) {
 	rsp, err := c.CreateAnswerWithBody(ctx, projectId, questionId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18088,7 +18088,7 @@ func (c *ClientWithResponses) CreateAnswerWithBodyWithResponse(ctx context.Conte
 	return ParseCreateAnswerResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateAnswerWithResponse(ctx context.Context, projectId float32, questionId float32, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error) {
+func (c *ClientWithResponses) CreateAnswerWithResponse(ctx context.Context, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error) {
 	rsp, err := c.CreateAnswer(ctx, projectId, questionId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18097,7 +18097,7 @@ func (c *ClientWithResponses) CreateAnswerWithResponse(ctx context.Context, proj
 }
 
 // UnpinMessageWithResponse request returning *UnpinMessageResponse
-func (c *ClientWithResponses) UnpinMessageWithResponse(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*UnpinMessageResponse, error) {
+func (c *ClientWithResponses) UnpinMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*UnpinMessageResponse, error) {
 	rsp, err := c.UnpinMessage(ctx, projectId, messageId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18106,7 +18106,7 @@ func (c *ClientWithResponses) UnpinMessageWithResponse(ctx context.Context, proj
 }
 
 // PinMessageWithResponse request returning *PinMessageResponse
-func (c *ClientWithResponses) PinMessageWithResponse(ctx context.Context, projectId float32, messageId float32, reqEditors ...RequestEditorFn) (*PinMessageResponse, error) {
+func (c *ClientWithResponses) PinMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*PinMessageResponse, error) {
 	rsp, err := c.PinMessage(ctx, projectId, messageId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18115,7 +18115,7 @@ func (c *ClientWithResponses) PinMessageWithResponse(ctx context.Context, projec
 }
 
 // GetRecordingWithResponse request returning *GetRecordingResponse
-func (c *ClientWithResponses) GetRecordingWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error) {
+func (c *ClientWithResponses) GetRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error) {
 	rsp, err := c.GetRecording(ctx, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18124,7 +18124,7 @@ func (c *ClientWithResponses) GetRecordingWithResponse(ctx context.Context, proj
 }
 
 // SetClientVisibilityWithBodyWithResponse request with arbitrary body returning *SetClientVisibilityResponse
-func (c *ClientWithResponses) SetClientVisibilityWithBodyWithResponse(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error) {
+func (c *ClientWithResponses) SetClientVisibilityWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error) {
 	rsp, err := c.SetClientVisibilityWithBody(ctx, projectId, recordingId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18132,7 +18132,7 @@ func (c *ClientWithResponses) SetClientVisibilityWithBodyWithResponse(ctx contex
 	return ParseSetClientVisibilityResponse(rsp)
 }
 
-func (c *ClientWithResponses) SetClientVisibilityWithResponse(ctx context.Context, projectId float32, recordingId float32, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error) {
+func (c *ClientWithResponses) SetClientVisibilityWithResponse(ctx context.Context, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error) {
 	rsp, err := c.SetClientVisibility(ctx, projectId, recordingId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18141,7 +18141,7 @@ func (c *ClientWithResponses) SetClientVisibilityWithResponse(ctx context.Contex
 }
 
 // ListCommentsWithResponse request returning *ListCommentsResponse
-func (c *ClientWithResponses) ListCommentsWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error) {
+func (c *ClientWithResponses) ListCommentsWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error) {
 	rsp, err := c.ListComments(ctx, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18150,7 +18150,7 @@ func (c *ClientWithResponses) ListCommentsWithResponse(ctx context.Context, proj
 }
 
 // CreateCommentWithBodyWithResponse request with arbitrary body returning *CreateCommentResponse
-func (c *ClientWithResponses) CreateCommentWithBodyWithResponse(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error) {
+func (c *ClientWithResponses) CreateCommentWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error) {
 	rsp, err := c.CreateCommentWithBody(ctx, projectId, recordingId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18158,7 +18158,7 @@ func (c *ClientWithResponses) CreateCommentWithBodyWithResponse(ctx context.Cont
 	return ParseCreateCommentResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateCommentWithResponse(ctx context.Context, projectId float32, recordingId float32, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error) {
+func (c *ClientWithResponses) CreateCommentWithResponse(ctx context.Context, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error) {
 	rsp, err := c.CreateComment(ctx, projectId, recordingId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18167,7 +18167,7 @@ func (c *ClientWithResponses) CreateCommentWithResponse(ctx context.Context, pro
 }
 
 // ListEventsWithResponse request returning *ListEventsResponse
-func (c *ClientWithResponses) ListEventsWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*ListEventsResponse, error) {
+func (c *ClientWithResponses) ListEventsWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListEventsResponse, error) {
 	rsp, err := c.ListEvents(ctx, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18176,7 +18176,7 @@ func (c *ClientWithResponses) ListEventsWithResponse(ctx context.Context, projec
 }
 
 // UnarchiveRecordingWithResponse request returning *UnarchiveRecordingResponse
-func (c *ClientWithResponses) UnarchiveRecordingWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*UnarchiveRecordingResponse, error) {
+func (c *ClientWithResponses) UnarchiveRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnarchiveRecordingResponse, error) {
 	rsp, err := c.UnarchiveRecording(ctx, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18185,7 +18185,7 @@ func (c *ClientWithResponses) UnarchiveRecordingWithResponse(ctx context.Context
 }
 
 // ArchiveRecordingWithResponse request returning *ArchiveRecordingResponse
-func (c *ClientWithResponses) ArchiveRecordingWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*ArchiveRecordingResponse, error) {
+func (c *ClientWithResponses) ArchiveRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ArchiveRecordingResponse, error) {
 	rsp, err := c.ArchiveRecording(ctx, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18194,7 +18194,7 @@ func (c *ClientWithResponses) ArchiveRecordingWithResponse(ctx context.Context, 
 }
 
 // TrashRecordingWithResponse request returning *TrashRecordingResponse
-func (c *ClientWithResponses) TrashRecordingWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*TrashRecordingResponse, error) {
+func (c *ClientWithResponses) TrashRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*TrashRecordingResponse, error) {
 	rsp, err := c.TrashRecording(ctx, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18203,7 +18203,7 @@ func (c *ClientWithResponses) TrashRecordingWithResponse(ctx context.Context, pr
 }
 
 // UnsubscribeWithResponse request returning *UnsubscribeResponse
-func (c *ClientWithResponses) UnsubscribeWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error) {
+func (c *ClientWithResponses) UnsubscribeWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error) {
 	rsp, err := c.Unsubscribe(ctx, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18212,7 +18212,7 @@ func (c *ClientWithResponses) UnsubscribeWithResponse(ctx context.Context, proje
 }
 
 // GetSubscriptionWithResponse request returning *GetSubscriptionResponse
-func (c *ClientWithResponses) GetSubscriptionWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*GetSubscriptionResponse, error) {
+func (c *ClientWithResponses) GetSubscriptionWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetSubscriptionResponse, error) {
 	rsp, err := c.GetSubscription(ctx, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18221,7 +18221,7 @@ func (c *ClientWithResponses) GetSubscriptionWithResponse(ctx context.Context, p
 }
 
 // SubscribeWithResponse request returning *SubscribeResponse
-func (c *ClientWithResponses) SubscribeWithResponse(ctx context.Context, projectId float32, recordingId float32, reqEditors ...RequestEditorFn) (*SubscribeResponse, error) {
+func (c *ClientWithResponses) SubscribeWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*SubscribeResponse, error) {
 	rsp, err := c.Subscribe(ctx, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18230,7 +18230,7 @@ func (c *ClientWithResponses) SubscribeWithResponse(ctx context.Context, project
 }
 
 // UpdateSubscriptionWithBodyWithResponse request with arbitrary body returning *UpdateSubscriptionResponse
-func (c *ClientWithResponses) UpdateSubscriptionWithBodyWithResponse(ctx context.Context, projectId float32, recordingId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error) {
+func (c *ClientWithResponses) UpdateSubscriptionWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error) {
 	rsp, err := c.UpdateSubscriptionWithBody(ctx, projectId, recordingId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18238,7 +18238,7 @@ func (c *ClientWithResponses) UpdateSubscriptionWithBodyWithResponse(ctx context
 	return ParseUpdateSubscriptionResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateSubscriptionWithResponse(ctx context.Context, projectId float32, recordingId float32, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error) {
+func (c *ClientWithResponses) UpdateSubscriptionWithResponse(ctx context.Context, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error) {
 	rsp, err := c.UpdateSubscription(ctx, projectId, recordingId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18247,7 +18247,7 @@ func (c *ClientWithResponses) UpdateSubscriptionWithResponse(ctx context.Context
 }
 
 // GetRecordingTimesheetWithResponse request returning *GetRecordingTimesheetResponse
-func (c *ClientWithResponses) GetRecordingTimesheetWithResponse(ctx context.Context, projectId float32, recordingId float32, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error) {
+func (c *ClientWithResponses) GetRecordingTimesheetWithResponse(ctx context.Context, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error) {
 	rsp, err := c.GetRecordingTimesheet(ctx, projectId, recordingId, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18256,7 +18256,7 @@ func (c *ClientWithResponses) GetRecordingTimesheetWithResponse(ctx context.Cont
 }
 
 // GetScheduleEntryWithResponse request returning *GetScheduleEntryResponse
-func (c *ClientWithResponses) GetScheduleEntryWithResponse(ctx context.Context, projectId float32, entryId float32, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error) {
+func (c *ClientWithResponses) GetScheduleEntryWithResponse(ctx context.Context, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error) {
 	rsp, err := c.GetScheduleEntry(ctx, projectId, entryId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18265,7 +18265,7 @@ func (c *ClientWithResponses) GetScheduleEntryWithResponse(ctx context.Context, 
 }
 
 // UpdateScheduleEntryWithBodyWithResponse request with arbitrary body returning *UpdateScheduleEntryResponse
-func (c *ClientWithResponses) UpdateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId float32, entryId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error) {
+func (c *ClientWithResponses) UpdateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error) {
 	rsp, err := c.UpdateScheduleEntryWithBody(ctx, projectId, entryId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18273,7 +18273,7 @@ func (c *ClientWithResponses) UpdateScheduleEntryWithBodyWithResponse(ctx contex
 	return ParseUpdateScheduleEntryResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateScheduleEntryWithResponse(ctx context.Context, projectId float32, entryId float32, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error) {
+func (c *ClientWithResponses) UpdateScheduleEntryWithResponse(ctx context.Context, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error) {
 	rsp, err := c.UpdateScheduleEntry(ctx, projectId, entryId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18282,7 +18282,7 @@ func (c *ClientWithResponses) UpdateScheduleEntryWithResponse(ctx context.Contex
 }
 
 // GetScheduleEntryOccurrenceWithResponse request returning *GetScheduleEntryOccurrenceResponse
-func (c *ClientWithResponses) GetScheduleEntryOccurrenceWithResponse(ctx context.Context, projectId float32, entryId float32, date string, reqEditors ...RequestEditorFn) (*GetScheduleEntryOccurrenceResponse, error) {
+func (c *ClientWithResponses) GetScheduleEntryOccurrenceWithResponse(ctx context.Context, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*GetScheduleEntryOccurrenceResponse, error) {
 	rsp, err := c.GetScheduleEntryOccurrence(ctx, projectId, entryId, date, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18291,7 +18291,7 @@ func (c *ClientWithResponses) GetScheduleEntryOccurrenceWithResponse(ctx context
 }
 
 // GetScheduleWithResponse request returning *GetScheduleResponse
-func (c *ClientWithResponses) GetScheduleWithResponse(ctx context.Context, projectId float32, scheduleId float32, reqEditors ...RequestEditorFn) (*GetScheduleResponse, error) {
+func (c *ClientWithResponses) GetScheduleWithResponse(ctx context.Context, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*GetScheduleResponse, error) {
 	rsp, err := c.GetSchedule(ctx, projectId, scheduleId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18300,7 +18300,7 @@ func (c *ClientWithResponses) GetScheduleWithResponse(ctx context.Context, proje
 }
 
 // UpdateScheduleSettingsWithBodyWithResponse request with arbitrary body returning *UpdateScheduleSettingsResponse
-func (c *ClientWithResponses) UpdateScheduleSettingsWithBodyWithResponse(ctx context.Context, projectId float32, scheduleId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error) {
+func (c *ClientWithResponses) UpdateScheduleSettingsWithBodyWithResponse(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error) {
 	rsp, err := c.UpdateScheduleSettingsWithBody(ctx, projectId, scheduleId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18308,7 +18308,7 @@ func (c *ClientWithResponses) UpdateScheduleSettingsWithBodyWithResponse(ctx con
 	return ParseUpdateScheduleSettingsResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateScheduleSettingsWithResponse(ctx context.Context, projectId float32, scheduleId float32, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error) {
+func (c *ClientWithResponses) UpdateScheduleSettingsWithResponse(ctx context.Context, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error) {
 	rsp, err := c.UpdateScheduleSettings(ctx, projectId, scheduleId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18317,7 +18317,7 @@ func (c *ClientWithResponses) UpdateScheduleSettingsWithResponse(ctx context.Con
 }
 
 // ListScheduleEntriesWithResponse request returning *ListScheduleEntriesResponse
-func (c *ClientWithResponses) ListScheduleEntriesWithResponse(ctx context.Context, projectId float32, scheduleId float32, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*ListScheduleEntriesResponse, error) {
+func (c *ClientWithResponses) ListScheduleEntriesWithResponse(ctx context.Context, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*ListScheduleEntriesResponse, error) {
 	rsp, err := c.ListScheduleEntries(ctx, projectId, scheduleId, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18326,7 +18326,7 @@ func (c *ClientWithResponses) ListScheduleEntriesWithResponse(ctx context.Contex
 }
 
 // CreateScheduleEntryWithBodyWithResponse request with arbitrary body returning *CreateScheduleEntryResponse
-func (c *ClientWithResponses) CreateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId float32, scheduleId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error) {
+func (c *ClientWithResponses) CreateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error) {
 	rsp, err := c.CreateScheduleEntryWithBody(ctx, projectId, scheduleId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18334,7 +18334,7 @@ func (c *ClientWithResponses) CreateScheduleEntryWithBodyWithResponse(ctx contex
 	return ParseCreateScheduleEntryResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateScheduleEntryWithResponse(ctx context.Context, projectId float32, scheduleId float32, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error) {
+func (c *ClientWithResponses) CreateScheduleEntryWithResponse(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error) {
 	rsp, err := c.CreateScheduleEntry(ctx, projectId, scheduleId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18343,7 +18343,7 @@ func (c *ClientWithResponses) CreateScheduleEntryWithResponse(ctx context.Contex
 }
 
 // GetProjectTimesheetWithResponse request returning *GetProjectTimesheetResponse
-func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Context, projectId float32, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error) {
+func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error) {
 	rsp, err := c.GetProjectTimesheet(ctx, projectId, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18352,7 +18352,7 @@ func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Contex
 }
 
 // RepositionTodolistGroupWithBodyWithResponse request with arbitrary body returning *RepositionTodolistGroupResponse
-func (c *ClientWithResponses) RepositionTodolistGroupWithBodyWithResponse(ctx context.Context, projectId float32, groupId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error) {
+func (c *ClientWithResponses) RepositionTodolistGroupWithBodyWithResponse(ctx context.Context, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error) {
 	rsp, err := c.RepositionTodolistGroupWithBody(ctx, projectId, groupId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18360,7 +18360,7 @@ func (c *ClientWithResponses) RepositionTodolistGroupWithBodyWithResponse(ctx co
 	return ParseRepositionTodolistGroupResponse(rsp)
 }
 
-func (c *ClientWithResponses) RepositionTodolistGroupWithResponse(ctx context.Context, projectId float32, groupId float32, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error) {
+func (c *ClientWithResponses) RepositionTodolistGroupWithResponse(ctx context.Context, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error) {
 	rsp, err := c.RepositionTodolistGroup(ctx, projectId, groupId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18369,7 +18369,7 @@ func (c *ClientWithResponses) RepositionTodolistGroupWithResponse(ctx context.Co
 }
 
 // GetTodolistOrGroupWithResponse request returning *GetTodolistOrGroupResponse
-func (c *ClientWithResponses) GetTodolistOrGroupWithResponse(ctx context.Context, projectId float32, id float32, reqEditors ...RequestEditorFn) (*GetTodolistOrGroupResponse, error) {
+func (c *ClientWithResponses) GetTodolistOrGroupWithResponse(ctx context.Context, projectId int64, id int64, reqEditors ...RequestEditorFn) (*GetTodolistOrGroupResponse, error) {
 	rsp, err := c.GetTodolistOrGroup(ctx, projectId, id, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18378,7 +18378,7 @@ func (c *ClientWithResponses) GetTodolistOrGroupWithResponse(ctx context.Context
 }
 
 // UpdateTodolistOrGroupWithBodyWithResponse request with arbitrary body returning *UpdateTodolistOrGroupResponse
-func (c *ClientWithResponses) UpdateTodolistOrGroupWithBodyWithResponse(ctx context.Context, projectId float32, id float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error) {
+func (c *ClientWithResponses) UpdateTodolistOrGroupWithBodyWithResponse(ctx context.Context, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error) {
 	rsp, err := c.UpdateTodolistOrGroupWithBody(ctx, projectId, id, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18386,7 +18386,7 @@ func (c *ClientWithResponses) UpdateTodolistOrGroupWithBodyWithResponse(ctx cont
 	return ParseUpdateTodolistOrGroupResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTodolistOrGroupWithResponse(ctx context.Context, projectId float32, id float32, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error) {
+func (c *ClientWithResponses) UpdateTodolistOrGroupWithResponse(ctx context.Context, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error) {
 	rsp, err := c.UpdateTodolistOrGroup(ctx, projectId, id, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18395,7 +18395,7 @@ func (c *ClientWithResponses) UpdateTodolistOrGroupWithResponse(ctx context.Cont
 }
 
 // ListTodolistGroupsWithResponse request returning *ListTodolistGroupsResponse
-func (c *ClientWithResponses) ListTodolistGroupsWithResponse(ctx context.Context, projectId float32, todolistId float32, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error) {
+func (c *ClientWithResponses) ListTodolistGroupsWithResponse(ctx context.Context, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error) {
 	rsp, err := c.ListTodolistGroups(ctx, projectId, todolistId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18404,7 +18404,7 @@ func (c *ClientWithResponses) ListTodolistGroupsWithResponse(ctx context.Context
 }
 
 // CreateTodolistGroupWithBodyWithResponse request with arbitrary body returning *CreateTodolistGroupResponse
-func (c *ClientWithResponses) CreateTodolistGroupWithBodyWithResponse(ctx context.Context, projectId float32, todolistId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error) {
+func (c *ClientWithResponses) CreateTodolistGroupWithBodyWithResponse(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error) {
 	rsp, err := c.CreateTodolistGroupWithBody(ctx, projectId, todolistId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18412,7 +18412,7 @@ func (c *ClientWithResponses) CreateTodolistGroupWithBodyWithResponse(ctx contex
 	return ParseCreateTodolistGroupResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTodolistGroupWithResponse(ctx context.Context, projectId float32, todolistId float32, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error) {
+func (c *ClientWithResponses) CreateTodolistGroupWithResponse(ctx context.Context, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error) {
 	rsp, err := c.CreateTodolistGroup(ctx, projectId, todolistId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18421,7 +18421,7 @@ func (c *ClientWithResponses) CreateTodolistGroupWithResponse(ctx context.Contex
 }
 
 // ListTodosWithResponse request returning *ListTodosResponse
-func (c *ClientWithResponses) ListTodosWithResponse(ctx context.Context, projectId float32, todolistId float32, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error) {
+func (c *ClientWithResponses) ListTodosWithResponse(ctx context.Context, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error) {
 	rsp, err := c.ListTodos(ctx, projectId, todolistId, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18430,7 +18430,7 @@ func (c *ClientWithResponses) ListTodosWithResponse(ctx context.Context, project
 }
 
 // CreateTodoWithBodyWithResponse request with arbitrary body returning *CreateTodoResponse
-func (c *ClientWithResponses) CreateTodoWithBodyWithResponse(ctx context.Context, projectId float32, todolistId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
+func (c *ClientWithResponses) CreateTodoWithBodyWithResponse(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
 	rsp, err := c.CreateTodoWithBody(ctx, projectId, todolistId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18438,7 +18438,7 @@ func (c *ClientWithResponses) CreateTodoWithBodyWithResponse(ctx context.Context
 	return ParseCreateTodoResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTodoWithResponse(ctx context.Context, projectId float32, todolistId float32, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
+func (c *ClientWithResponses) CreateTodoWithResponse(ctx context.Context, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
 	rsp, err := c.CreateTodo(ctx, projectId, todolistId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18447,7 +18447,7 @@ func (c *ClientWithResponses) CreateTodoWithResponse(ctx context.Context, projec
 }
 
 // TrashTodoWithResponse request returning *TrashTodoResponse
-func (c *ClientWithResponses) TrashTodoWithResponse(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error) {
+func (c *ClientWithResponses) TrashTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error) {
 	rsp, err := c.TrashTodo(ctx, projectId, todoId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18456,7 +18456,7 @@ func (c *ClientWithResponses) TrashTodoWithResponse(ctx context.Context, project
 }
 
 // GetTodoWithResponse request returning *GetTodoResponse
-func (c *ClientWithResponses) GetTodoWithResponse(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*GetTodoResponse, error) {
+func (c *ClientWithResponses) GetTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*GetTodoResponse, error) {
 	rsp, err := c.GetTodo(ctx, projectId, todoId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18465,7 +18465,7 @@ func (c *ClientWithResponses) GetTodoWithResponse(ctx context.Context, projectId
 }
 
 // UpdateTodoWithBodyWithResponse request with arbitrary body returning *UpdateTodoResponse
-func (c *ClientWithResponses) UpdateTodoWithBodyWithResponse(ctx context.Context, projectId float32, todoId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
+func (c *ClientWithResponses) UpdateTodoWithBodyWithResponse(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
 	rsp, err := c.UpdateTodoWithBody(ctx, projectId, todoId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18473,7 +18473,7 @@ func (c *ClientWithResponses) UpdateTodoWithBodyWithResponse(ctx context.Context
 	return ParseUpdateTodoResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTodoWithResponse(ctx context.Context, projectId float32, todoId float32, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
+func (c *ClientWithResponses) UpdateTodoWithResponse(ctx context.Context, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
 	rsp, err := c.UpdateTodo(ctx, projectId, todoId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18482,7 +18482,7 @@ func (c *ClientWithResponses) UpdateTodoWithResponse(ctx context.Context, projec
 }
 
 // UncompleteTodoWithResponse request returning *UncompleteTodoResponse
-func (c *ClientWithResponses) UncompleteTodoWithResponse(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*UncompleteTodoResponse, error) {
+func (c *ClientWithResponses) UncompleteTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*UncompleteTodoResponse, error) {
 	rsp, err := c.UncompleteTodo(ctx, projectId, todoId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18491,7 +18491,7 @@ func (c *ClientWithResponses) UncompleteTodoWithResponse(ctx context.Context, pr
 }
 
 // CompleteTodoWithResponse request returning *CompleteTodoResponse
-func (c *ClientWithResponses) CompleteTodoWithResponse(ctx context.Context, projectId float32, todoId float32, reqEditors ...RequestEditorFn) (*CompleteTodoResponse, error) {
+func (c *ClientWithResponses) CompleteTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*CompleteTodoResponse, error) {
 	rsp, err := c.CompleteTodo(ctx, projectId, todoId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18500,7 +18500,7 @@ func (c *ClientWithResponses) CompleteTodoWithResponse(ctx context.Context, proj
 }
 
 // GetTodosetWithResponse request returning *GetTodosetResponse
-func (c *ClientWithResponses) GetTodosetWithResponse(ctx context.Context, projectId float32, todosetId float32, reqEditors ...RequestEditorFn) (*GetTodosetResponse, error) {
+func (c *ClientWithResponses) GetTodosetWithResponse(ctx context.Context, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*GetTodosetResponse, error) {
 	rsp, err := c.GetTodoset(ctx, projectId, todosetId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18509,7 +18509,7 @@ func (c *ClientWithResponses) GetTodosetWithResponse(ctx context.Context, projec
 }
 
 // ListTodolistsWithResponse request returning *ListTodolistsResponse
-func (c *ClientWithResponses) ListTodolistsWithResponse(ctx context.Context, projectId float32, todosetId float32, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*ListTodolistsResponse, error) {
+func (c *ClientWithResponses) ListTodolistsWithResponse(ctx context.Context, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*ListTodolistsResponse, error) {
 	rsp, err := c.ListTodolists(ctx, projectId, todosetId, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18518,7 +18518,7 @@ func (c *ClientWithResponses) ListTodolistsWithResponse(ctx context.Context, pro
 }
 
 // CreateTodolistWithBodyWithResponse request with arbitrary body returning *CreateTodolistResponse
-func (c *ClientWithResponses) CreateTodolistWithBodyWithResponse(ctx context.Context, projectId float32, todosetId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error) {
+func (c *ClientWithResponses) CreateTodolistWithBodyWithResponse(ctx context.Context, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error) {
 	rsp, err := c.CreateTodolistWithBody(ctx, projectId, todosetId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18526,7 +18526,7 @@ func (c *ClientWithResponses) CreateTodolistWithBodyWithResponse(ctx context.Con
 	return ParseCreateTodolistResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTodolistWithResponse(ctx context.Context, projectId float32, todosetId float32, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error) {
+func (c *ClientWithResponses) CreateTodolistWithResponse(ctx context.Context, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error) {
 	rsp, err := c.CreateTodolist(ctx, projectId, todosetId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18535,7 +18535,7 @@ func (c *ClientWithResponses) CreateTodolistWithResponse(ctx context.Context, pr
 }
 
 // GetUploadWithResponse request returning *GetUploadResponse
-func (c *ClientWithResponses) GetUploadWithResponse(ctx context.Context, projectId float32, uploadId float32, reqEditors ...RequestEditorFn) (*GetUploadResponse, error) {
+func (c *ClientWithResponses) GetUploadWithResponse(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*GetUploadResponse, error) {
 	rsp, err := c.GetUpload(ctx, projectId, uploadId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18544,7 +18544,7 @@ func (c *ClientWithResponses) GetUploadWithResponse(ctx context.Context, project
 }
 
 // UpdateUploadWithBodyWithResponse request with arbitrary body returning *UpdateUploadResponse
-func (c *ClientWithResponses) UpdateUploadWithBodyWithResponse(ctx context.Context, projectId float32, uploadId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error) {
+func (c *ClientWithResponses) UpdateUploadWithBodyWithResponse(ctx context.Context, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error) {
 	rsp, err := c.UpdateUploadWithBody(ctx, projectId, uploadId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18552,7 +18552,7 @@ func (c *ClientWithResponses) UpdateUploadWithBodyWithResponse(ctx context.Conte
 	return ParseUpdateUploadResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateUploadWithResponse(ctx context.Context, projectId float32, uploadId float32, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error) {
+func (c *ClientWithResponses) UpdateUploadWithResponse(ctx context.Context, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error) {
 	rsp, err := c.UpdateUpload(ctx, projectId, uploadId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18561,7 +18561,7 @@ func (c *ClientWithResponses) UpdateUploadWithResponse(ctx context.Context, proj
 }
 
 // ListUploadVersionsWithResponse request returning *ListUploadVersionsResponse
-func (c *ClientWithResponses) ListUploadVersionsWithResponse(ctx context.Context, projectId float32, uploadId float32, reqEditors ...RequestEditorFn) (*ListUploadVersionsResponse, error) {
+func (c *ClientWithResponses) ListUploadVersionsWithResponse(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*ListUploadVersionsResponse, error) {
 	rsp, err := c.ListUploadVersions(ctx, projectId, uploadId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18570,7 +18570,7 @@ func (c *ClientWithResponses) ListUploadVersionsWithResponse(ctx context.Context
 }
 
 // GetVaultWithResponse request returning *GetVaultResponse
-func (c *ClientWithResponses) GetVaultWithResponse(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*GetVaultResponse, error) {
+func (c *ClientWithResponses) GetVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*GetVaultResponse, error) {
 	rsp, err := c.GetVault(ctx, projectId, vaultId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18579,7 +18579,7 @@ func (c *ClientWithResponses) GetVaultWithResponse(ctx context.Context, projectI
 }
 
 // UpdateVaultWithBodyWithResponse request with arbitrary body returning *UpdateVaultResponse
-func (c *ClientWithResponses) UpdateVaultWithBodyWithResponse(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error) {
+func (c *ClientWithResponses) UpdateVaultWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error) {
 	rsp, err := c.UpdateVaultWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18587,7 +18587,7 @@ func (c *ClientWithResponses) UpdateVaultWithBodyWithResponse(ctx context.Contex
 	return ParseUpdateVaultResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateVaultWithResponse(ctx context.Context, projectId float32, vaultId float32, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error) {
+func (c *ClientWithResponses) UpdateVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error) {
 	rsp, err := c.UpdateVault(ctx, projectId, vaultId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18596,7 +18596,7 @@ func (c *ClientWithResponses) UpdateVaultWithResponse(ctx context.Context, proje
 }
 
 // ListDocumentsWithResponse request returning *ListDocumentsResponse
-func (c *ClientWithResponses) ListDocumentsWithResponse(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error) {
+func (c *ClientWithResponses) ListDocumentsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error) {
 	rsp, err := c.ListDocuments(ctx, projectId, vaultId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18605,7 +18605,7 @@ func (c *ClientWithResponses) ListDocumentsWithResponse(ctx context.Context, pro
 }
 
 // CreateDocumentWithBodyWithResponse request with arbitrary body returning *CreateDocumentResponse
-func (c *ClientWithResponses) CreateDocumentWithBodyWithResponse(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error) {
+func (c *ClientWithResponses) CreateDocumentWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error) {
 	rsp, err := c.CreateDocumentWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18613,7 +18613,7 @@ func (c *ClientWithResponses) CreateDocumentWithBodyWithResponse(ctx context.Con
 	return ParseCreateDocumentResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateDocumentWithResponse(ctx context.Context, projectId float32, vaultId float32, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error) {
+func (c *ClientWithResponses) CreateDocumentWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error) {
 	rsp, err := c.CreateDocument(ctx, projectId, vaultId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18622,7 +18622,7 @@ func (c *ClientWithResponses) CreateDocumentWithResponse(ctx context.Context, pr
 }
 
 // ListUploadsWithResponse request returning *ListUploadsResponse
-func (c *ClientWithResponses) ListUploadsWithResponse(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error) {
+func (c *ClientWithResponses) ListUploadsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error) {
 	rsp, err := c.ListUploads(ctx, projectId, vaultId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18631,7 +18631,7 @@ func (c *ClientWithResponses) ListUploadsWithResponse(ctx context.Context, proje
 }
 
 // CreateUploadWithBodyWithResponse request with arbitrary body returning *CreateUploadResponse
-func (c *ClientWithResponses) CreateUploadWithBodyWithResponse(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error) {
+func (c *ClientWithResponses) CreateUploadWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error) {
 	rsp, err := c.CreateUploadWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18639,7 +18639,7 @@ func (c *ClientWithResponses) CreateUploadWithBodyWithResponse(ctx context.Conte
 	return ParseCreateUploadResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateUploadWithResponse(ctx context.Context, projectId float32, vaultId float32, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error) {
+func (c *ClientWithResponses) CreateUploadWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error) {
 	rsp, err := c.CreateUpload(ctx, projectId, vaultId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18648,7 +18648,7 @@ func (c *ClientWithResponses) CreateUploadWithResponse(ctx context.Context, proj
 }
 
 // ListVaultsWithResponse request returning *ListVaultsResponse
-func (c *ClientWithResponses) ListVaultsWithResponse(ctx context.Context, projectId float32, vaultId float32, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error) {
+func (c *ClientWithResponses) ListVaultsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error) {
 	rsp, err := c.ListVaults(ctx, projectId, vaultId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18657,7 +18657,7 @@ func (c *ClientWithResponses) ListVaultsWithResponse(ctx context.Context, projec
 }
 
 // CreateVaultWithBodyWithResponse request with arbitrary body returning *CreateVaultResponse
-func (c *ClientWithResponses) CreateVaultWithBodyWithResponse(ctx context.Context, projectId float32, vaultId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error) {
+func (c *ClientWithResponses) CreateVaultWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error) {
 	rsp, err := c.CreateVaultWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18665,7 +18665,7 @@ func (c *ClientWithResponses) CreateVaultWithBodyWithResponse(ctx context.Contex
 	return ParseCreateVaultResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateVaultWithResponse(ctx context.Context, projectId float32, vaultId float32, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error) {
+func (c *ClientWithResponses) CreateVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error) {
 	rsp, err := c.CreateVault(ctx, projectId, vaultId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18674,7 +18674,7 @@ func (c *ClientWithResponses) CreateVaultWithResponse(ctx context.Context, proje
 }
 
 // ListWebhooksWithResponse request returning *ListWebhooksResponse
-func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
+func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
 	rsp, err := c.ListWebhooks(ctx, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18683,7 +18683,7 @@ func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, proj
 }
 
 // CreateWebhookWithBodyWithResponse request with arbitrary body returning *CreateWebhookResponse
-func (c *ClientWithResponses) CreateWebhookWithBodyWithResponse(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
+func (c *ClientWithResponses) CreateWebhookWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
 	rsp, err := c.CreateWebhookWithBody(ctx, projectId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18691,7 +18691,7 @@ func (c *ClientWithResponses) CreateWebhookWithBodyWithResponse(ctx context.Cont
 	return ParseCreateWebhookResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, projectId float32, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
+func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
 	rsp, err := c.CreateWebhook(ctx, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18700,7 +18700,7 @@ func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, pro
 }
 
 // DeleteWebhookWithResponse request returning *DeleteWebhookResponse
-func (c *ClientWithResponses) DeleteWebhookWithResponse(ctx context.Context, projectId float32, webhookId float32, reqEditors ...RequestEditorFn) (*DeleteWebhookResponse, error) {
+func (c *ClientWithResponses) DeleteWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*DeleteWebhookResponse, error) {
 	rsp, err := c.DeleteWebhook(ctx, projectId, webhookId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18709,7 +18709,7 @@ func (c *ClientWithResponses) DeleteWebhookWithResponse(ctx context.Context, pro
 }
 
 // GetWebhookWithResponse request returning *GetWebhookResponse
-func (c *ClientWithResponses) GetWebhookWithResponse(ctx context.Context, projectId float32, webhookId float32, reqEditors ...RequestEditorFn) (*GetWebhookResponse, error) {
+func (c *ClientWithResponses) GetWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*GetWebhookResponse, error) {
 	rsp, err := c.GetWebhook(ctx, projectId, webhookId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18718,7 +18718,7 @@ func (c *ClientWithResponses) GetWebhookWithResponse(ctx context.Context, projec
 }
 
 // UpdateWebhookWithBodyWithResponse request with arbitrary body returning *UpdateWebhookResponse
-func (c *ClientWithResponses) UpdateWebhookWithBodyWithResponse(ctx context.Context, projectId float32, webhookId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error) {
+func (c *ClientWithResponses) UpdateWebhookWithBodyWithResponse(ctx context.Context, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error) {
 	rsp, err := c.UpdateWebhookWithBody(ctx, projectId, webhookId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18726,7 +18726,7 @@ func (c *ClientWithResponses) UpdateWebhookWithBodyWithResponse(ctx context.Cont
 	return ParseUpdateWebhookResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateWebhookWithResponse(ctx context.Context, projectId float32, webhookId float32, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error) {
+func (c *ClientWithResponses) UpdateWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error) {
 	rsp, err := c.UpdateWebhook(ctx, projectId, webhookId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18770,7 +18770,7 @@ func (c *ClientWithResponses) CreateLineupMarkerWithResponse(ctx context.Context
 }
 
 // DeleteLineupMarkerWithResponse request returning *DeleteLineupMarkerResponse
-func (c *ClientWithResponses) DeleteLineupMarkerWithResponse(ctx context.Context, markerId float32, reqEditors ...RequestEditorFn) (*DeleteLineupMarkerResponse, error) {
+func (c *ClientWithResponses) DeleteLineupMarkerWithResponse(ctx context.Context, markerId int64, reqEditors ...RequestEditorFn) (*DeleteLineupMarkerResponse, error) {
 	rsp, err := c.DeleteLineupMarker(ctx, markerId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18779,7 +18779,7 @@ func (c *ClientWithResponses) DeleteLineupMarkerWithResponse(ctx context.Context
 }
 
 // UpdateLineupMarkerWithBodyWithResponse request with arbitrary body returning *UpdateLineupMarkerResponse
-func (c *ClientWithResponses) UpdateLineupMarkerWithBodyWithResponse(ctx context.Context, markerId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error) {
+func (c *ClientWithResponses) UpdateLineupMarkerWithBodyWithResponse(ctx context.Context, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error) {
 	rsp, err := c.UpdateLineupMarkerWithBody(ctx, markerId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18787,7 +18787,7 @@ func (c *ClientWithResponses) UpdateLineupMarkerWithBodyWithResponse(ctx context
 	return ParseUpdateLineupMarkerResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateLineupMarkerWithResponse(ctx context.Context, markerId float32, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error) {
+func (c *ClientWithResponses) UpdateLineupMarkerWithResponse(ctx context.Context, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error) {
 	rsp, err := c.UpdateLineupMarker(ctx, markerId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18814,7 +18814,7 @@ func (c *ClientWithResponses) ListPeopleWithResponse(ctx context.Context, reqEdi
 }
 
 // GetPersonWithResponse request returning *GetPersonResponse
-func (c *ClientWithResponses) GetPersonWithResponse(ctx context.Context, personId float32, reqEditors ...RequestEditorFn) (*GetPersonResponse, error) {
+func (c *ClientWithResponses) GetPersonWithResponse(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*GetPersonResponse, error) {
 	rsp, err := c.GetPerson(ctx, personId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18858,7 +18858,7 @@ func (c *ClientWithResponses) ListRecordingsWithResponse(ctx context.Context, pa
 }
 
 // TrashProjectWithResponse request returning *TrashProjectResponse
-func (c *ClientWithResponses) TrashProjectWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*TrashProjectResponse, error) {
+func (c *ClientWithResponses) TrashProjectWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*TrashProjectResponse, error) {
 	rsp, err := c.TrashProject(ctx, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18867,7 +18867,7 @@ func (c *ClientWithResponses) TrashProjectWithResponse(ctx context.Context, proj
 }
 
 // GetProjectWithResponse request returning *GetProjectResponse
-func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*GetProjectResponse, error) {
+func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectResponse, error) {
 	rsp, err := c.GetProject(ctx, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18876,7 +18876,7 @@ func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, projec
 }
 
 // UpdateProjectWithBodyWithResponse request with arbitrary body returning *UpdateProjectResponse
-func (c *ClientWithResponses) UpdateProjectWithBodyWithResponse(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
+func (c *ClientWithResponses) UpdateProjectWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
 	rsp, err := c.UpdateProjectWithBody(ctx, projectId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18884,7 +18884,7 @@ func (c *ClientWithResponses) UpdateProjectWithBodyWithResponse(ctx context.Cont
 	return ParseUpdateProjectResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, projectId float32, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
+func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
 	rsp, err := c.UpdateProject(ctx, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18893,7 +18893,7 @@ func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, pro
 }
 
 // ListProjectPeopleWithResponse request returning *ListProjectPeopleResponse
-func (c *ClientWithResponses) ListProjectPeopleWithResponse(ctx context.Context, projectId float32, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error) {
+func (c *ClientWithResponses) ListProjectPeopleWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error) {
 	rsp, err := c.ListProjectPeople(ctx, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18902,7 +18902,7 @@ func (c *ClientWithResponses) ListProjectPeopleWithResponse(ctx context.Context,
 }
 
 // UpdateProjectAccessWithBodyWithResponse request with arbitrary body returning *UpdateProjectAccessResponse
-func (c *ClientWithResponses) UpdateProjectAccessWithBodyWithResponse(ctx context.Context, projectId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error) {
+func (c *ClientWithResponses) UpdateProjectAccessWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error) {
 	rsp, err := c.UpdateProjectAccessWithBody(ctx, projectId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18910,7 +18910,7 @@ func (c *ClientWithResponses) UpdateProjectAccessWithBodyWithResponse(ctx contex
 	return ParseUpdateProjectAccessResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateProjectAccessWithResponse(ctx context.Context, projectId float32, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error) {
+func (c *ClientWithResponses) UpdateProjectAccessWithResponse(ctx context.Context, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error) {
 	rsp, err := c.UpdateProjectAccess(ctx, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18972,7 +18972,7 @@ func (c *ClientWithResponses) CreateTemplateWithResponse(ctx context.Context, bo
 }
 
 // DeleteTemplateWithResponse request returning *DeleteTemplateResponse
-func (c *ClientWithResponses) DeleteTemplateWithResponse(ctx context.Context, templateId float32, reqEditors ...RequestEditorFn) (*DeleteTemplateResponse, error) {
+func (c *ClientWithResponses) DeleteTemplateWithResponse(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*DeleteTemplateResponse, error) {
 	rsp, err := c.DeleteTemplate(ctx, templateId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18981,7 +18981,7 @@ func (c *ClientWithResponses) DeleteTemplateWithResponse(ctx context.Context, te
 }
 
 // GetTemplateWithResponse request returning *GetTemplateResponse
-func (c *ClientWithResponses) GetTemplateWithResponse(ctx context.Context, templateId float32, reqEditors ...RequestEditorFn) (*GetTemplateResponse, error) {
+func (c *ClientWithResponses) GetTemplateWithResponse(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*GetTemplateResponse, error) {
 	rsp, err := c.GetTemplate(ctx, templateId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18990,7 +18990,7 @@ func (c *ClientWithResponses) GetTemplateWithResponse(ctx context.Context, templ
 }
 
 // UpdateTemplateWithBodyWithResponse request with arbitrary body returning *UpdateTemplateResponse
-func (c *ClientWithResponses) UpdateTemplateWithBodyWithResponse(ctx context.Context, templateId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error) {
+func (c *ClientWithResponses) UpdateTemplateWithBodyWithResponse(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error) {
 	rsp, err := c.UpdateTemplateWithBody(ctx, templateId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -18998,7 +18998,7 @@ func (c *ClientWithResponses) UpdateTemplateWithBodyWithResponse(ctx context.Con
 	return ParseUpdateTemplateResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTemplateWithResponse(ctx context.Context, templateId float32, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error) {
+func (c *ClientWithResponses) UpdateTemplateWithResponse(ctx context.Context, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error) {
 	rsp, err := c.UpdateTemplate(ctx, templateId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -19007,7 +19007,7 @@ func (c *ClientWithResponses) UpdateTemplateWithResponse(ctx context.Context, te
 }
 
 // CreateProjectFromTemplateWithBodyWithResponse request with arbitrary body returning *CreateProjectFromTemplateResponse
-func (c *ClientWithResponses) CreateProjectFromTemplateWithBodyWithResponse(ctx context.Context, templateId float32, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error) {
+func (c *ClientWithResponses) CreateProjectFromTemplateWithBodyWithResponse(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error) {
 	rsp, err := c.CreateProjectFromTemplateWithBody(ctx, templateId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -19015,7 +19015,7 @@ func (c *ClientWithResponses) CreateProjectFromTemplateWithBodyWithResponse(ctx 
 	return ParseCreateProjectFromTemplateResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateProjectFromTemplateWithResponse(ctx context.Context, templateId float32, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error) {
+func (c *ClientWithResponses) CreateProjectFromTemplateWithResponse(ctx context.Context, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error) {
 	rsp, err := c.CreateProjectFromTemplate(ctx, templateId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -19024,7 +19024,7 @@ func (c *ClientWithResponses) CreateProjectFromTemplateWithResponse(ctx context.
 }
 
 // GetProjectConstructionWithResponse request returning *GetProjectConstructionResponse
-func (c *ClientWithResponses) GetProjectConstructionWithResponse(ctx context.Context, templateId float32, constructionId float32, reqEditors ...RequestEditorFn) (*GetProjectConstructionResponse, error) {
+func (c *ClientWithResponses) GetProjectConstructionWithResponse(ctx context.Context, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*GetProjectConstructionResponse, error) {
 	rsp, err := c.GetProjectConstruction(ctx, templateId, constructionId, reqEditors...)
 	if err != nil {
 		return nil, err

@@ -123,7 +123,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -131,7 +132,8 @@
                         "name": "cardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -218,7 +220,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -226,7 +229,8 @@
                         "name": "cardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -329,7 +333,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -337,7 +342,8 @@
                         "name": "cardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -430,7 +436,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -438,7 +445,8 @@
                         "name": "cardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -531,7 +539,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -539,7 +548,8 @@
                         "name": "cardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -629,7 +639,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -637,7 +648,8 @@
                         "name": "columnId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -724,7 +736,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -732,7 +745,8 @@
                         "name": "columnId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -835,7 +849,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -843,7 +858,8 @@
                         "name": "columnId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -936,7 +952,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -944,7 +961,8 @@
                         "name": "columnId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -1025,7 +1043,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -1033,7 +1052,8 @@
                         "name": "columnId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -1123,7 +1143,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -1131,7 +1152,8 @@
                         "name": "columnId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -1224,7 +1246,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -1232,7 +1255,8 @@
                         "name": "columnId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -1331,7 +1355,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -1339,7 +1364,8 @@
                         "name": "stepId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -1432,7 +1458,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -1440,7 +1467,8 @@
                         "name": "stepId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -1521,7 +1549,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -1529,7 +1558,8 @@
                         "name": "stepId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -1622,7 +1652,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -1630,7 +1661,8 @@
                         "name": "cardTableId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -1720,7 +1752,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -1728,7 +1761,8 @@
                         "name": "cardTableId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -1828,7 +1862,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -1836,7 +1871,8 @@
                         "name": "cardTableId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -1919,7 +1955,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -2012,7 +2049,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -2102,7 +2140,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2110,7 +2149,8 @@
                         "name": "typeId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -2184,7 +2224,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2192,7 +2233,8 @@
                         "name": "typeId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -2279,7 +2321,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2287,7 +2330,8 @@
                         "name": "typeId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -2380,7 +2424,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2388,7 +2433,8 @@
                         "name": "campfireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -2468,7 +2514,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2476,7 +2523,8 @@
                         "name": "campfireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -2569,7 +2617,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2577,7 +2626,8 @@
                         "name": "campfireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -2667,7 +2717,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2675,7 +2726,8 @@
                         "name": "campfireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2683,7 +2735,8 @@
                         "name": "chatbotId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -2757,7 +2810,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2765,7 +2819,8 @@
                         "name": "campfireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2773,7 +2828,8 @@
                         "name": "chatbotId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -2861,7 +2917,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2869,7 +2926,8 @@
                         "name": "campfireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2877,7 +2935,8 @@
                         "name": "chatbotId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -2970,7 +3029,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -2978,7 +3038,8 @@
                         "name": "campfireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -3071,7 +3132,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3079,7 +3141,8 @@
                         "name": "campfireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -3169,7 +3232,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3177,7 +3241,8 @@
                         "name": "campfireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3185,7 +3250,8 @@
                         "name": "lineId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -3259,7 +3325,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3267,7 +3334,8 @@
                         "name": "campfireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3275,7 +3343,8 @@
                         "name": "lineId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -3355,7 +3424,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -3440,7 +3510,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3448,7 +3519,8 @@
                         "name": "approvalId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -3528,7 +3600,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -3613,7 +3686,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3621,7 +3695,8 @@
                         "name": "correspondenceId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -3701,7 +3776,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3709,7 +3785,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -3794,7 +3871,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3802,7 +3880,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3810,7 +3889,8 @@
                         "name": "replyId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -3890,7 +3970,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3898,7 +3979,8 @@
                         "name": "commentId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -3986,7 +4068,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -3994,7 +4077,8 @@
                         "name": "commentId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -4087,7 +4171,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -4095,7 +4180,8 @@
                         "name": "sourceToolId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -4185,7 +4271,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -4193,7 +4280,8 @@
                         "name": "toolId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -4267,7 +4355,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -4275,7 +4364,8 @@
                         "name": "toolId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -4363,7 +4453,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -4371,7 +4462,8 @@
                         "name": "toolId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -4464,7 +4556,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -4472,7 +4565,8 @@
                         "name": "toolId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -4546,7 +4640,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -4554,7 +4649,8 @@
                         "name": "toolId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -4645,7 +4741,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -4653,7 +4750,8 @@
                         "name": "toolId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -4739,7 +4837,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -4747,7 +4846,8 @@
                         "name": "documentId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -4834,7 +4934,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -4842,7 +4943,8 @@
                         "name": "documentId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -4935,7 +5037,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -4943,7 +5046,8 @@
                         "name": "forwardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -5023,7 +5127,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5031,7 +5136,8 @@
                         "name": "forwardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -5124,7 +5230,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5132,7 +5239,8 @@
                         "name": "forwardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -5222,7 +5330,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5230,7 +5339,8 @@
                         "name": "forwardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5238,7 +5348,8 @@
                         "name": "replyId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -5318,7 +5429,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5326,7 +5438,8 @@
                         "name": "inboxId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -5406,7 +5519,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5414,7 +5528,8 @@
                         "name": "inboxId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -5499,7 +5614,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5507,7 +5623,8 @@
                         "name": "boardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -5587,7 +5704,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5595,7 +5713,8 @@
                         "name": "boardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -5688,7 +5807,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5696,7 +5816,8 @@
                         "name": "boardId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -5786,7 +5907,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5794,7 +5916,8 @@
                         "name": "messageId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -5881,7 +6004,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5889,7 +6013,8 @@
                         "name": "messageId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -5982,7 +6107,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -5990,7 +6116,8 @@
                         "name": "answerId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -6078,7 +6205,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -6086,7 +6214,8 @@
                         "name": "answerId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -6179,7 +6308,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -6187,7 +6317,8 @@
                         "name": "questionnaireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -6267,7 +6398,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -6275,7 +6407,8 @@
                         "name": "questionnaireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -6368,7 +6501,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -6376,7 +6510,8 @@
                         "name": "questionnaireId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -6466,7 +6601,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -6474,7 +6610,8 @@
                         "name": "questionId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -6561,7 +6698,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -6569,7 +6707,8 @@
                         "name": "questionId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -6662,7 +6801,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -6670,7 +6810,8 @@
                         "name": "questionId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -6763,7 +6904,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -6771,7 +6913,8 @@
                         "name": "questionId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -6861,7 +7004,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -6869,7 +7013,8 @@
                         "name": "messageId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -6943,7 +7088,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -6951,7 +7097,8 @@
                         "name": "messageId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -7034,7 +7181,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -7042,7 +7190,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -7132,7 +7281,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -7140,7 +7290,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -7233,7 +7384,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -7241,7 +7393,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -7334,7 +7487,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -7342,7 +7496,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -7432,7 +7587,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -7440,7 +7596,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -7525,7 +7682,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -7533,7 +7691,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -7619,7 +7778,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -7627,7 +7787,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -7713,7 +7874,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true,
                         "examples": {
@@ -7728,7 +7890,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true,
                         "examples": {
@@ -7821,7 +7984,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -7829,7 +7993,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -7903,7 +8068,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -7911,7 +8077,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -7989,7 +8156,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -7997,7 +8165,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -8115,7 +8284,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true,
                         "examples": {
@@ -8135,7 +8305,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true,
                         "examples": {
@@ -8252,7 +8423,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -8260,7 +8432,8 @@
                         "name": "recordingId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -8282,7 +8455,8 @@
                         "name": "person_id",
                         "in": "query",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 ],
@@ -8361,7 +8535,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -8369,7 +8544,8 @@
                         "name": "entryId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -8456,7 +8632,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -8464,7 +8641,8 @@
                         "name": "entryId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -8557,7 +8735,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -8565,7 +8744,8 @@
                         "name": "entryId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -8653,7 +8833,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -8661,7 +8842,8 @@
                         "name": "scheduleId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -8749,7 +8931,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -8757,7 +8940,8 @@
                         "name": "scheduleId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -8850,7 +9034,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -8858,7 +9043,8 @@
                         "name": "scheduleId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -8960,7 +9146,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -8968,7 +9155,8 @@
                         "name": "scheduleId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -9058,7 +9246,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -9080,7 +9269,8 @@
                         "name": "person_id",
                         "in": "query",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 ],
@@ -9169,7 +9359,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -9177,7 +9368,8 @@
                         "name": "groupId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -9263,7 +9455,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true,
                         "examples": {
@@ -9283,7 +9476,8 @@
                         "name": "id",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true,
                         "examples": {
@@ -9410,7 +9604,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -9418,7 +9613,8 @@
                         "name": "id",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -9511,7 +9707,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -9519,7 +9716,8 @@
                         "name": "todolistId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -9612,7 +9810,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -9620,7 +9819,8 @@
                         "name": "todolistId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -9710,7 +9910,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -9718,7 +9919,8 @@
                         "name": "todolistId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -9827,7 +10029,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -9835,7 +10038,8 @@
                         "name": "todolistId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -9925,7 +10129,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -9933,7 +10138,8 @@
                         "name": "todoId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -10007,7 +10213,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10015,7 +10222,8 @@
                         "name": "todoId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -10102,7 +10310,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10110,7 +10319,8 @@
                         "name": "todoId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -10203,7 +10413,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10211,7 +10422,8 @@
                         "name": "todoId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -10285,7 +10497,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10293,7 +10506,8 @@
                         "name": "todoId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -10379,7 +10593,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10387,7 +10602,8 @@
                         "name": "todosetId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -10467,7 +10683,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10475,7 +10692,8 @@
                         "name": "todosetId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10577,7 +10795,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10585,7 +10804,8 @@
                         "name": "todosetId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -10675,7 +10895,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10683,7 +10904,8 @@
                         "name": "uploadId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -10770,7 +10992,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10778,7 +11001,8 @@
                         "name": "uploadId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -10871,7 +11095,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10879,7 +11104,8 @@
                         "name": "uploadId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -10964,7 +11190,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -10972,7 +11199,8 @@
                         "name": "vaultId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -11059,7 +11287,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -11067,7 +11296,8 @@
                         "name": "vaultId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -11160,7 +11390,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -11168,7 +11399,8 @@
                         "name": "vaultId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -11261,7 +11493,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -11269,7 +11502,8 @@
                         "name": "vaultId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -11359,7 +11593,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -11367,7 +11602,8 @@
                         "name": "vaultId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -11460,7 +11696,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -11468,7 +11705,8 @@
                         "name": "vaultId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -11558,7 +11796,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -11566,7 +11805,8 @@
                         "name": "vaultId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -11659,7 +11899,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -11667,7 +11908,8 @@
                         "name": "vaultId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -11757,7 +11999,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -11850,7 +12093,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -11940,7 +12184,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -11948,7 +12193,8 @@
                         "name": "webhookId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -12022,7 +12268,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -12030,7 +12277,8 @@
                         "name": "webhookId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -12117,7 +12365,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -12125,7 +12374,8 @@
                         "name": "webhookId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -12458,7 +12708,8 @@
                         "name": "markerId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -12541,7 +12792,8 @@
                         "name": "markerId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -12779,7 +13031,8 @@
                         "name": "personId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -13188,7 +13441,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -13262,7 +13516,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -13350,7 +13605,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -13443,7 +13699,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -13570,7 +13827,8 @@
                         "name": "projectId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true,
                         "examples": {
@@ -13711,7 +13969,8 @@
                         "name": "person_id",
                         "in": "query",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 ],
@@ -14123,7 +14382,8 @@
                         "name": "templateId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -14197,7 +14457,8 @@
                         "name": "templateId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -14284,7 +14545,8 @@
                         "name": "templateId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -14387,7 +14649,8 @@
                         "name": "templateId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -14477,7 +14740,8 @@
                         "name": "templateId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     },
@@ -14485,7 +14749,8 @@
                         "name": "constructionId",
                         "in": "path",
                         "schema": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         },
                         "required": true
                     }
@@ -14563,7 +14828,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -14599,7 +14865,8 @@
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "bucket": {
                         "$ref": "#/components/schemas/TodoBucket"
@@ -14619,7 +14886,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -14669,7 +14937,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -14705,7 +14974,8 @@
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "content": {
                         "type": "string"
@@ -14723,7 +14993,8 @@
                         "type": "string"
                     },
                     "comments_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "comments_url": {
                         "type": "string"
@@ -14767,7 +15038,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -14800,7 +15072,8 @@
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "color": {
                         "type": "string"
@@ -14809,10 +15082,12 @@
                         "type": "string"
                     },
                     "cards_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "comments_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "cards_url": {
                         "type": "string"
@@ -14838,7 +15113,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -14871,7 +15147,8 @@
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "due_on": {
                         "type": "string"
@@ -14909,7 +15186,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -14968,7 +15246,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "created_at": {
                         "type": "string"
@@ -14997,7 +15276,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -15051,7 +15331,8 @@
                         "type": "string"
                     },
                     "replies_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "replies_url": {
                         "type": "string"
@@ -15074,7 +15355,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -15124,7 +15406,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "name": {
                         "type": "string"
@@ -15135,7 +15418,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -15186,7 +15470,8 @@
                         "type": "string"
                     },
                     "replies_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "replies_url": {
                         "type": "string"
@@ -15197,7 +15482,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -15268,7 +15554,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -15423,7 +15710,8 @@
                     "assignees": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 },
@@ -15572,7 +15860,8 @@
                         "description": "active|drafted"
                     },
                     "category_id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     }
                 },
                 "required": [
@@ -15720,7 +16009,8 @@
                     "participant_ids": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     },
                     "all_day": {
@@ -15778,13 +16068,15 @@
                     "assignee_ids": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     },
                     "completion_subscriber_ids": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     },
                     "notify": {
@@ -15935,7 +16227,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "title": {
                         "type": "string"
@@ -15947,7 +16240,8 @@
                         "type": "boolean"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "url": {
                         "type": "string"
@@ -15961,7 +16255,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -15997,13 +16292,15 @@
                         "type": "string"
                     },
                     "comments_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "comments_url": {
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "parent": {
                         "$ref": "#/components/schemas/RecordingParent"
@@ -16031,10 +16328,12 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "recording_id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "action": {
                         "type": "string"
@@ -16056,19 +16355,22 @@
                     "added_person_ids": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     },
                     "removed_person_ids": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     },
                     "notified_recipient_ids": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 }
@@ -16091,7 +16393,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -16145,7 +16448,8 @@
                         "type": "string"
                     },
                     "replies_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "replies_url": {
                         "type": "string"
@@ -16156,7 +16460,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -16543,7 +16848,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -16576,7 +16882,8 @@
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "bucket": {
                         "$ref": "#/components/schemas/TodoBucket"
@@ -16585,7 +16892,8 @@
                         "$ref": "#/components/schemas/Person"
                     },
                     "forwards_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "forwards_url": {
                         "type": "string"
@@ -16610,7 +16918,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -16990,7 +17299,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -17026,7 +17336,8 @@
                         "type": "string"
                     },
                     "comments_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "comments_url": {
                         "type": "string"
@@ -17055,7 +17366,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -17088,7 +17400,8 @@
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "bucket": {
                         "$ref": "#/components/schemas/TodoBucket"
@@ -17097,7 +17410,8 @@
                         "$ref": "#/components/schemas/Person"
                     },
                     "messages_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "messages_url": {
                         "type": "string"
@@ -17111,7 +17425,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "name": {
                         "type": "string"
@@ -17131,13 +17446,16 @@
                 "type": "object",
                 "properties": {
                     "source_id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "target_id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     }
                 },
                 "required": [
@@ -17149,7 +17467,8 @@
                 "type": "object",
                 "properties": {
                     "column_id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     }
                 },
                 "required": [
@@ -17174,7 +17493,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "attachable_sgid": {
                         "type": "string"
@@ -17266,7 +17586,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "name": {
                         "type": "string",
@@ -17278,7 +17599,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string",
@@ -17350,7 +17672,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -17367,7 +17690,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -17418,7 +17742,8 @@
                         "$ref": "#/components/schemas/QuestionSchedule"
                     },
                     "answers_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "answers_url": {
                         "type": "string"
@@ -17429,7 +17754,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -17465,7 +17791,8 @@
                         "type": "string"
                     },
                     "comments_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "comments_url": {
                         "type": "string"
@@ -17521,23 +17848,29 @@
                     "days": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int32"
                         }
                     },
                     "hour": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "minute": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "week_instance": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "week_interval": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "month_interval": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "start_date": {
                         "type": "string"
@@ -17551,7 +17884,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -17587,7 +17921,8 @@
                         "type": "string"
                     },
                     "questions_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "name": {
                         "type": "string"
@@ -17610,7 +17945,8 @@
                         "type": "string"
                     },
                     "retry_after": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     }
                 },
                 "required": [
@@ -17621,7 +17957,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -17668,7 +18005,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "name": {
                         "type": "string"
@@ -17682,7 +18020,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "title": {
                         "type": "string"
@@ -17702,11 +18041,13 @@
                 "type": "object",
                 "properties": {
                     "source_id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "position": {
-                        "type": "number",
-                        "description": "0-indexed position"
+                        "type": "integer",
+                        "description": "0-indexed position",
+                        "format": "int32"
                     }
                 },
                 "required": [
@@ -17718,7 +18059,8 @@
                 "type": "object",
                 "properties": {
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     }
                 },
                 "required": [
@@ -17729,7 +18071,8 @@
                 "type": "object",
                 "properties": {
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     }
                 },
                 "required": [
@@ -17740,7 +18083,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -17773,7 +18117,8 @@
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "bucket": {
                         "$ref": "#/components/schemas/TodoBucket"
@@ -17785,7 +18130,8 @@
                         "type": "boolean"
                     },
                     "entries_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "entries_url": {
                         "type": "string"
@@ -17807,7 +18153,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -17843,7 +18190,8 @@
                         "type": "string"
                     },
                     "comments_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "comments_url": {
                         "type": "string"
@@ -17895,7 +18243,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "name": {
                         "type": "string"
@@ -17917,7 +18266,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -18023,7 +18373,8 @@
                         "type": "boolean"
                     },
                     "count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "url": {
                         "type": "string"
@@ -18040,7 +18391,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -18075,7 +18427,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -18131,7 +18484,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string",
@@ -18168,13 +18522,15 @@
                         "type": "string"
                     },
                     "comments_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "comments_url": {
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "parent": {
                         "$ref": "#/components/schemas/TodoParent"
@@ -18221,7 +18577,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "name": {
                         "type": "string"
@@ -18235,7 +18592,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "title": {
                         "type": "string"
@@ -18255,7 +18613,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string",
@@ -18292,13 +18651,15 @@
                         "type": "string"
                     },
                     "comments_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "comments_url": {
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "parent": {
                         "$ref": "#/components/schemas/TodoParent"
@@ -18336,7 +18697,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -18372,13 +18734,15 @@
                         "type": "string"
                     },
                     "comments_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "comments_url": {
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "parent": {
                         "$ref": "#/components/schemas/TodoParent"
@@ -18439,7 +18803,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -18472,7 +18837,8 @@
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "bucket": {
                         "$ref": "#/components/schemas/TodoBucket"
@@ -18484,7 +18850,8 @@
                         "type": "string"
                     },
                     "todolists_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "todolists_url": {
                         "type": "string"
@@ -18496,13 +18863,16 @@
                         "type": "boolean"
                     },
                     "completed_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "on_schedule_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "over_schedule_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "app_todolists_url": {
                         "type": "string"
@@ -18513,7 +18883,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -18534,7 +18905,8 @@
                         "type": "boolean"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "url": {
                         "type": "string"
@@ -18611,7 +18983,8 @@
                     "assignee_ids": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 }
@@ -18636,7 +19009,8 @@
                     "assignees": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 }
@@ -18751,7 +19125,8 @@
                         "description": "active|drafted"
                     },
                     "category_id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     }
                 }
             },
@@ -18788,13 +19163,15 @@
                     "grant": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     },
                     "revoke": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     },
                     "create": {
@@ -18882,7 +19259,8 @@
                     "participant_ids": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     },
                     "all_day": {
@@ -18926,13 +19304,15 @@
                     "subscriptions": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     },
                     "unsubscriptions": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 }
@@ -18976,13 +19356,15 @@
                     "assignee_ids": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     },
                     "completion_subscriber_ids": {
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     },
                     "notify": {
@@ -19108,7 +19490,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -19144,13 +19527,15 @@
                         "type": "string"
                     },
                     "comments_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "comments_url": {
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "parent": {
                         "$ref": "#/components/schemas/RecordingParent"
@@ -19168,13 +19553,16 @@
                         "type": "string"
                     },
                     "byte_size": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "width": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "height": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "download_url": {
                         "type": "string"
@@ -19202,7 +19590,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "status": {
                         "type": "string"
@@ -19235,7 +19624,8 @@
                         "type": "string"
                     },
                     "position": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "parent": {
                         "$ref": "#/components/schemas/RecordingParent"
@@ -19247,19 +19637,22 @@
                         "$ref": "#/components/schemas/Person"
                     },
                     "documents_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "documents_url": {
                         "type": "string"
                     },
                     "uploads_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "uploads_url": {
                         "type": "string"
                     },
                     "vaults_count": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "vaults_url": {
                         "type": "string"
@@ -19270,7 +19663,8 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "number"
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "active": {
                         "type": "boolean"
