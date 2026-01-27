@@ -205,7 +205,8 @@ jobs:
 
           # Find files added in PR that don't exist on base branch
           # These need to be removed after checkout since git checkout doesn't remove them
-          ADDED_FILES=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}" -- . 2>/dev/null || true)
+          # Strip 'go/' prefix since we're running from go/ directory
+          ADDED_FILES=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}" -- . 2>/dev/null | sed 's|^go/||' || true)
 
           # Check out the base branch to compare against
           git checkout "origin/${BASE_REF}" -- .
