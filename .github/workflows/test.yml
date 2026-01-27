@@ -203,11 +203,19 @@ jobs:
           # Export the current (PR) API
           apidiff -w pr.api ./pkg/basecamp
 
+          # Find files added in PR that don't exist on base branch
+          # These need to be removed after checkout since git checkout doesn't remove them
+          ADDED_FILES=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}" -- . 2>/dev/null || true)
+
           # Check out the base branch to compare against
-          # Use git clean to remove files added in the PR that don't exist on base
-          # Exclude .api files which we need for comparison
           git checkout "origin/${BASE_REF}" -- .
-          git clean -fd -e "*.api"
+
+          # Remove files that were added in PR (they don't exist on base)
+          if [ -n "$ADDED_FILES" ]; then
+            echo "Removing files added in PR:"
+            echo "$ADDED_FILES"
+            echo "$ADDED_FILES" | xargs rm -f
+          fi
 
           # Export the base API
           apidiff -w base.api ./pkg/basecamp
