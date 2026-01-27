@@ -113,6 +113,37 @@ describe("BasecampClient", () => {
       expect(attempts).toBe(2); // Initial request + 1 retry
       expect(data).toEqual([]);
     });
+
+    it("should retry POST requests based on operation-specific metadata config", async () => {
+      // Unlike the Go SDK which is conservative, the TypeScript SDK uses per-operation
+      // retry configs from metadata.json. This allows safe retry of idempotent POST
+      // operations like CreateTodo (which has maxAttempts: 3 in metadata).
+      let attempts = 0;
+
+      server.use(
+        http.post(`${BASE_URL}/buckets/123/todolists/456/todos.json`, () => {
+          attempts++;
+          return new HttpResponse(null, { status: 503 });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+
+      const { error } = await client.POST(
+        "/buckets/{projectId}/todolists/{todolistId}/todos.json",
+        {
+          params: { path: { projectId: 123, todolistId: 456 } },
+          body: { content: "Test todo" },
+        }
+      );
+
+      // CreateTodo has maxAttempts: 3 in metadata, so we expect retries
+      expect(attempts).toBe(2); // Initial request + 1 retry before giving up
+      expect(error).toBeDefined();
+    });
   });
 
   describe("caching", () => {
