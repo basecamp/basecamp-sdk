@@ -92,7 +92,7 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 		params.Status = opts.Status
 	}
 
-	resp, err := s.client.gen.ListTodolistsWithResponse(ctx, s.client.accountID, bucketID, todosetID, params)
+	resp, err := s.client.parent.gen.ListTodolistsWithResponse(ctx, s.client.accountID, bucketID, todosetID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetTodolistOrGroupWithResponse(ctx, s.client.accountID, bucketID, todolistID)
+	resp, err := s.client.parent.gen.GetTodolistOrGroupWithResponse(ctx, s.client.accountID, bucketID, todolistID)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.CreateTodolistWithResponse(ctx, s.client.accountID, bucketID, todosetID, body)
+	resp, err := s.client.parent.gen.CreateTodolistWithResponse(ctx, s.client.accountID, bucketID, todosetID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int6
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, bucketID, todolistID, body)
+	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, bucketID, todolistID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func (s *TodolistsService) Trash(ctx context.Context, bucketID, todolistID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, todolistID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, todolistID)
 	if err != nil {
 		return err
 	}

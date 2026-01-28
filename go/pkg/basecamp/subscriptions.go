@@ -51,7 +51,7 @@ func (s *SubscriptionsService) Get(ctx context.Context, bucketID, recordingID in
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetSubscriptionWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.GetSubscriptionWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordin
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.SubscribeWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.SubscribeWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (s *SubscriptionsService) Unsubscribe(ctx context.Context, bucketID, record
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.UnsubscribeWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.UnsubscribeWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (s *SubscriptionsService) Update(ctx context.Context, bucketID, recordingID
 		Unsubscriptions: req.Unsubscriptions,
 	}
 
-	resp, err := s.client.gen.UpdateSubscriptionWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
+	resp, err := s.client.parent.gen.UpdateSubscriptionWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}

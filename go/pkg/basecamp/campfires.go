@@ -104,7 +104,7 @@ func (s *CampfiresService) List(ctx context.Context) (result []Campfire, err err
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListCampfiresWithResponse(ctx, s.client.accountID)
+	resp, err := s.client.parent.gen.ListCampfiresWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetCampfireWithResponse(ctx, s.client.accountID, bucketID, campfireID)
+	resp, err := s.client.parent.gen.GetCampfireWithResponse(ctx, s.client.accountID, bucketID, campfireID)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListCampfireLinesWithResponse(ctx, s.client.accountID, bucketID, campfireID)
+	resp, err := s.client.parent.gen.ListCampfireLinesWithResponse(ctx, s.client.accountID, bucketID, campfireID)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, lineID)
+	resp, err := s.client.parent.gen.GetCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, lineID)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 		Content: content,
 	}
 
-	resp, err := s.client.gen.CreateCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, body)
+	resp, err := s.client.parent.gen.CreateCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +283,7 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID,
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.DeleteCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, lineID)
+	resp, err := s.client.parent.gen.DeleteCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, lineID)
 	if err != nil {
 		return err
 	}
@@ -308,7 +308,7 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireI
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListChatbotsWithResponse(ctx, s.client.accountID, bucketID, campfireID)
+	resp, err := s.client.parent.gen.ListChatbotsWithResponse(ctx, s.client.accountID, bucketID, campfireID)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID,
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID)
+	resp, err := s.client.parent.gen.GetChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +390,7 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfire
 		body.CommandUrl = req.CommandURL
 	}
 
-	resp, err := s.client.gen.CreateChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, body)
+	resp, err := s.client.parent.gen.CreateChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -437,7 +437,7 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfire
 		body.CommandUrl = req.CommandURL
 	}
 
-	resp, err := s.client.gen.UpdateChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID, body)
+	resp, err := s.client.parent.gen.UpdateChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -471,7 +471,7 @@ func (s *CampfiresService) DeleteChatbot(ctx context.Context, bucketID, campfire
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.DeleteChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID)
+	resp, err := s.client.parent.gen.DeleteChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID)
 	if err != nil {
 		return err
 	}

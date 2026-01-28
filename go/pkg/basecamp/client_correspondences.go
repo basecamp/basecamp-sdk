@@ -58,7 +58,7 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID, bucketID)
+	resp, err := s.client.parent.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID, bucketID)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (s *ClientCorrespondencesService) Get(ctx context.Context, bucketID, corres
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetClientCorrespondenceWithResponse(ctx, s.client.accountID, bucketID, correspondenceID)
+	resp, err := s.client.parent.gen.GetClientCorrespondenceWithResponse(ctx, s.client.accountID, bucketID, correspondenceID)
 	if err != nil {
 		return nil, err
 	}

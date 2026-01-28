@@ -129,7 +129,7 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		}
 	}
 
-	resp, err := s.client.gen.ListRecordingsWithResponse(ctx, s.client.accountID, params)
+	resp, err := s.client.parent.gen.ListRecordingsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.GetRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (s *RecordingsService) Trash(ctx context.Context, bucketID, recordingID int
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -224,7 +224,7 @@ func (s *RecordingsService) Archive(ctx context.Context, bucketID, recordingID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ArchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ArchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ func (s *RecordingsService) Unarchive(ctx context.Context, bucketID, recordingID
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.UnarchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.UnarchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func (s *RecordingsService) SetClientVisibility(ctx context.Context, bucketID, r
 		VisibleToClients: visible,
 	}
 
-	resp, err := s.client.gen.SetClientVisibilityWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
+	resp, err := s.client.parent.gen.SetClientVisibilityWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}

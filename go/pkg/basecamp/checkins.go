@@ -159,7 +159,7 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questi
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetQuestionnaireWithResponse(ctx, s.client.accountID, bucketID, questionnaireID)
+	resp, err := s.client.parent.gen.GetQuestionnaireWithResponse(ctx, s.client.accountID, bucketID, questionnaireID)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListQuestionsWithResponse(ctx, s.client.accountID, bucketID, questionnaireID)
+	resp, err := s.client.parent.gen.ListQuestionsWithResponse(ctx, s.client.accountID, bucketID, questionnaireID)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ func (s *CheckinsService) GetQuestion(ctx context.Context, bucketID, questionID 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetQuestionWithResponse(ctx, s.client.accountID, bucketID, questionID)
+	resp, err := s.client.parent.gen.GetQuestionWithResponse(ctx, s.client.accountID, bucketID, questionID)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +276,7 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, question
 		Schedule: questionScheduleToGenerated(req.Schedule),
 	}
 
-	resp, err := s.client.gen.CreateQuestionWithResponse(ctx, s.client.accountID, bucketID, questionnaireID, body)
+	resp, err := s.client.parent.gen.CreateQuestionWithResponse(ctx, s.client.accountID, bucketID, questionnaireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +326,7 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 		body.Paused = *req.Paused
 	}
 
-	resp, err := s.client.gen.UpdateQuestionWithResponse(ctx, s.client.accountID, bucketID, questionID, body)
+	resp, err := s.client.parent.gen.UpdateQuestionWithResponse(ctx, s.client.accountID, bucketID, questionID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +359,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListAnswersWithResponse(ctx, s.client.accountID, bucketID, questionID)
+	resp, err := s.client.parent.gen.ListAnswersWithResponse(ctx, s.client.accountID, bucketID, questionID)
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +395,7 @@ func (s *CheckinsService) GetAnswer(ctx context.Context, bucketID, answerID int6
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetAnswerWithResponse(ctx, s.client.accountID, bucketID, answerID)
+	resp, err := s.client.parent.gen.GetAnswerWithResponse(ctx, s.client.accountID, bucketID, answerID)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +443,7 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 		}
 	}
 
-	resp, err := s.client.gen.CreateAnswerWithResponse(ctx, s.client.accountID, bucketID, questionID, body)
+	resp, err := s.client.parent.gen.CreateAnswerWithResponse(ctx, s.client.accountID, bucketID, questionID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -486,7 +486,7 @@ func (s *CheckinsService) UpdateAnswer(ctx context.Context, bucketID, answerID i
 		Content: req.Content,
 	}
 
-	resp, err := s.client.gen.UpdateAnswerWithResponse(ctx, s.client.accountID, bucketID, answerID, body)
+	resp, err := s.client.parent.gen.UpdateAnswerWithResponse(ctx, s.client.accountID, bucketID, answerID, body)
 	if err != nil {
 		return err
 	}

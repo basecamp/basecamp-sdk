@@ -67,7 +67,7 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 		Name: filename,
 	}
 
-	resp, err := s.client.gen.CreateAttachmentWithBodyWithResponse(ctx, s.client.accountID, params, contentType, bytes.NewReader(body))
+	resp, err := s.client.parent.gen.CreateAttachmentWithBodyWithResponse(ctx, s.client.accountID, params, contentType, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}

@@ -221,7 +221,7 @@ func (s *CardTablesService) Get(ctx context.Context, bucketID, cardTableID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetCardTableWithResponse(ctx, s.client.accountID, bucketID, cardTableID)
+	resp, err := s.client.parent.gen.GetCardTableWithResponse(ctx, s.client.accountID, bucketID, cardTableID)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +264,7 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64) (resu
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListCardsWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.ListCardsWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +299,7 @@ func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (result 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetCardWithResponse(ctx, s.client.accountID, bucketID, cardID)
+	resp, err := s.client.parent.gen.GetCardWithResponse(ctx, s.client.accountID, bucketID, cardID)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +356,7 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 		body.Notify = req.Notify
 	}
 
-	resp, err := s.client.gen.CreateCardWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
+	resp, err := s.client.parent.gen.CreateCardWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -414,7 +414,7 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 		body.AssigneeIds = req.AssigneeIDs
 	}
 
-	resp, err := s.client.gen.UpdateCardWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.UpdateCardWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +451,7 @@ func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int6
 		ColumnId: columnID,
 	}
 
-	resp, err := s.client.gen.MoveCardWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.MoveCardWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
 	if err != nil {
 		return err
 	}
@@ -476,7 +476,7 @@ func (s *CardsService) Trash(ctx context.Context, bucketID, cardID int64) (err e
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, cardID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, cardID)
 	if err != nil {
 		return err
 	}
@@ -510,7 +510,7 @@ func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetCardColumnWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.GetCardColumnWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -554,7 +554,7 @@ func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID i
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.CreateCardColumnWithResponse(ctx, s.client.accountID, bucketID, cardTableID, body)
+	resp, err := s.client.parent.gen.CreateCardColumnWithResponse(ctx, s.client.accountID, bucketID, cardTableID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -598,7 +598,7 @@ func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int6
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.UpdateCardColumnWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
+	resp, err := s.client.parent.gen.UpdateCardColumnWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -642,7 +642,7 @@ func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int
 		Position: int32(req.Position),
 	}
 
-	resp, err := s.client.gen.MoveCardColumnWithResponse(ctx, s.client.accountID, bucketID, cardTableID, body)
+	resp, err := s.client.parent.gen.MoveCardColumnWithResponse(ctx, s.client.accountID, bucketID, cardTableID, body)
 	if err != nil {
 		return err
 	}
@@ -677,7 +677,7 @@ func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID in
 		Color: color,
 	}
 
-	resp, err := s.client.gen.SetCardColumnColorWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
+	resp, err := s.client.parent.gen.SetCardColumnColorWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -711,7 +711,7 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnI
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.EnableCardColumnOnHoldWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.EnableCardColumnOnHoldWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -745,7 +745,7 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, column
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.DisableCardColumnOnHoldWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.DisableCardColumnOnHoldWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -779,7 +779,7 @@ func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.SubscribeWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.SubscribeWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -813,7 +813,7 @@ func (s *CardColumnsService) Unwatch(ctx context.Context, bucketID, columnID int
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.UnsubscribeWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.UnsubscribeWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return err
 	}
@@ -866,7 +866,7 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 		body.DueOn = d
 	}
 
-	resp, err := s.client.gen.CreateCardStepWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.CreateCardStepWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -918,7 +918,7 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 		body.DueOn = d
 	}
 
-	resp, err := s.client.gen.UpdateCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID, body)
+	resp, err := s.client.parent.gen.UpdateCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -952,7 +952,7 @@ func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.CompleteCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID)
+	resp, err := s.client.parent.gen.CompleteCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID)
 	if err != nil {
 		return nil, err
 	}
@@ -986,7 +986,7 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int6
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.UncompleteCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID)
+	resp, err := s.client.parent.gen.UncompleteCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID)
 	if err != nil {
 		return nil, err
 	}
@@ -1030,7 +1030,7 @@ func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, ste
 		Position: int32(position),
 	}
 
-	resp, err := s.client.gen.RepositionCardStepWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.RepositionCardStepWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
 	if err != nil {
 		return err
 	}
@@ -1054,7 +1054,7 @@ func (s *CardStepsService) Delete(ctx context.Context, bucketID, stepID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, stepID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, stepID)
 	if err != nil {
 		return err
 	}

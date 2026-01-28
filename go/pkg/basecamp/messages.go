@@ -76,7 +76,7 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) (re
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListMessagesWithResponse(ctx, s.client.accountID, bucketID, boardID)
+	resp, err := s.client.parent.gen.ListMessagesWithResponse(ctx, s.client.accountID, bucketID, boardID)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.GetMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, r
 		body.CategoryId = &req.CategoryID
 	}
 
-	resp, err := s.client.gen.CreateMessageWithResponse(ctx, s.client.accountID, bucketID, boardID, body)
+	resp, err := s.client.parent.gen.CreateMessageWithResponse(ctx, s.client.accountID, bucketID, boardID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64,
 		body.CategoryId = &req.CategoryID
 	}
 
-	resp, err := s.client.gen.UpdateMessageWithResponse(ctx, s.client.accountID, bucketID, messageID, body)
+	resp, err := s.client.parent.gen.UpdateMessageWithResponse(ctx, s.client.accountID, bucketID, messageID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func (s *MessagesService) Pin(ctx context.Context, bucketID, messageID int64) (e
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.PinMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.PinMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return err
 	}
@@ -264,7 +264,7 @@ func (s *MessagesService) Unpin(ctx context.Context, bucketID, messageID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.UnpinMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.UnpinMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return err
 	}
@@ -289,7 +289,7 @@ func (s *MessagesService) Trash(ctx context.Context, bucketID, messageID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return err
 	}
@@ -314,7 +314,7 @@ func (s *MessagesService) Archive(ctx context.Context, bucketID, messageID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ArchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.ArchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return err
 	}
@@ -338,7 +338,7 @@ func (s *MessagesService) Unarchive(ctx context.Context, bucketID, messageID int
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.UnarchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.UnarchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return err
 	}

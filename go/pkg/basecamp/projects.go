@@ -125,7 +125,7 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 		params.Status = string(opts.Status)
 	}
 
-	resp, err := s.client.gen.ListProjectsWithResponse(ctx, s.client.accountID, params)
+	resp, err := s.client.parent.gen.ListProjectsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (s *ProjectsService) Get(ctx context.Context, id int64) (result *Project, e
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetProjectWithResponse(ctx, s.client.accountID, id)
+	resp, err := s.client.parent.gen.GetProjectWithResponse(ctx, s.client.accountID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.CreateProjectWithResponse(ctx, s.client.accountID, body)
+	resp, err := s.client.parent.gen.CreateProjectWithResponse(ctx, s.client.accountID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +252,7 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 		}
 	}
 
-	resp, err := s.client.gen.UpdateProjectWithResponse(ctx, s.client.accountID, id, body)
+	resp, err := s.client.parent.gen.UpdateProjectWithResponse(ctx, s.client.accountID, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +285,7 @@ func (s *ProjectsService) Trash(ctx context.Context, id int64) (err error) {
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.TrashProjectWithResponse(ctx, s.client.accountID, id)
+	resp, err := s.client.parent.gen.TrashProjectWithResponse(ctx, s.client.accountID, id)
 	if err != nil {
 		return err
 	}

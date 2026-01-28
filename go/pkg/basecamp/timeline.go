@@ -49,7 +49,7 @@ func (s *TimelineService) Progress(ctx context.Context) (result []TimelineEvent,
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetProgressReportWithResponse(ctx, s.client.accountID)
+	resp, err := s.client.parent.gen.GetProgressReportWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetProjectTimelineWithResponse(ctx, s.client.accountID, projectID)
+	resp, err := s.client.parent.gen.GetProjectTimelineWithResponse(ctx, s.client.accountID, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetPersonProgressWithResponse(ctx, s.client.accountID, personID)
+	resp, err := s.client.parent.gen.GetPersonProgressWithResponse(ctx, s.client.accountID, personID)
 	if err != nil {
 		return nil, err
 	}

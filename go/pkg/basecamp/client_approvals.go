@@ -81,7 +81,7 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (resu
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID, bucketID)
+	resp, err := s.client.parent.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID, bucketID)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetClientApprovalWithResponse(ctx, s.client.accountID, bucketID, approvalID)
+	resp, err := s.client.parent.gen.GetClientApprovalWithResponse(ctx, s.client.accountID, bucketID, approvalID)
 	if err != nil {
 		return nil, err
 	}

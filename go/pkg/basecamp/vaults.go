@@ -161,7 +161,7 @@ func (s *VaultsService) Get(ctx context.Context, bucketID, vaultID int64) (resul
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetVaultWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+	resp, err := s.client.parent.gen.GetVaultWithResponse(ctx, s.client.accountID, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64) (resu
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListVaultsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+	resp, err := s.client.parent.gen.ListVaultsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func (s *VaultsService) Create(ctx context.Context, bucketID, vaultID int64, req
 		Title: req.Title,
 	}
 
-	resp, err := s.client.gen.CreateVaultWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
+	resp, err := s.client.parent.gen.CreateVaultWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +282,7 @@ func (s *VaultsService) Update(ctx context.Context, bucketID, vaultID int64, req
 		Title: req.Title,
 	}
 
-	resp, err := s.client.gen.UpdateVaultWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
+	resp, err := s.client.parent.gen.UpdateVaultWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +325,7 @@ func (s *DocumentsService) Get(ctx context.Context, bucketID, documentID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetDocumentWithResponse(ctx, s.client.accountID, bucketID, documentID)
+	resp, err := s.client.parent.gen.GetDocumentWithResponse(ctx, s.client.accountID, bucketID, documentID)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +358,7 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListDocumentsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+	resp, err := s.client.parent.gen.ListDocumentsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +405,7 @@ func (s *DocumentsService) Create(ctx context.Context, bucketID, vaultID int64, 
 		Status:  req.Status,
 	}
 
-	resp, err := s.client.gen.CreateDocumentWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
+	resp, err := s.client.parent.gen.CreateDocumentWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -449,7 +449,7 @@ func (s *DocumentsService) Update(ctx context.Context, bucketID, documentID int6
 		Content: req.Content,
 	}
 
-	resp, err := s.client.gen.UpdateDocumentWithResponse(ctx, s.client.accountID, bucketID, documentID, body)
+	resp, err := s.client.parent.gen.UpdateDocumentWithResponse(ctx, s.client.accountID, bucketID, documentID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -483,7 +483,7 @@ func (s *DocumentsService) Trash(ctx context.Context, bucketID, documentID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, documentID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, documentID)
 	if err != nil {
 		return err
 	}
@@ -517,7 +517,7 @@ func (s *UploadsService) Get(ctx context.Context, bucketID, uploadID int64) (res
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetUploadWithResponse(ctx, s.client.accountID, bucketID, uploadID)
+	resp, err := s.client.parent.gen.GetUploadWithResponse(ctx, s.client.accountID, bucketID, uploadID)
 	if err != nil {
 		return nil, err
 	}
@@ -550,7 +550,7 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64) (res
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListUploadsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+	resp, err := s.client.parent.gen.ListUploadsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
@@ -596,7 +596,7 @@ func (s *UploadsService) Update(ctx context.Context, bucketID, uploadID int64, r
 		BaseName:    req.BaseName,
 	}
 
-	resp, err := s.client.gen.UpdateUploadWithResponse(ctx, s.client.accountID, bucketID, uploadID, body)
+	resp, err := s.client.parent.gen.UpdateUploadWithResponse(ctx, s.client.accountID, bucketID, uploadID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -642,7 +642,7 @@ func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, re
 		BaseName:       req.BaseName,
 	}
 
-	resp, err := s.client.gen.CreateUploadWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
+	resp, err := s.client.parent.gen.CreateUploadWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -676,7 +676,7 @@ func (s *UploadsService) Trash(ctx context.Context, bucketID, uploadID int64) (e
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, uploadID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, uploadID)
 	if err != nil {
 		return err
 	}
@@ -700,7 +700,7 @@ func (s *UploadsService) ListVersions(ctx context.Context, bucketID, uploadID in
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListUploadVersionsWithResponse(ctx, s.client.accountID, bucketID, uploadID)
+	resp, err := s.client.parent.gen.ListUploadVersionsWithResponse(ctx, s.client.accountID, bucketID, uploadID)
 	if err != nil {
 		return nil, err
 	}

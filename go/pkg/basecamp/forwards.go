@@ -87,7 +87,7 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetInboxWithResponse(ctx, s.client.accountID, bucketID, inboxID)
+	resp, err := s.client.parent.gen.GetInboxWithResponse(ctx, s.client.accountID, bucketID, inboxID)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) (re
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListForwardsWithResponse(ctx, s.client.accountID, bucketID, inboxID)
+	resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, bucketID, inboxID)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetForwardWithResponse(ctx, s.client.accountID, bucketID, forwardID)
+	resp, err := s.client.parent.gen.GetForwardWithResponse(ctx, s.client.accountID, bucketID, forwardID)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListForwardRepliesWithResponse(ctx, s.client.accountID, bucketID, forwardID)
+	resp, err := s.client.parent.gen.ListForwardRepliesWithResponse(ctx, s.client.accountID, bucketID, forwardID)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, rep
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetForwardReplyWithResponse(ctx, s.client.accountID, bucketID, forwardID, replyID)
+	resp, err := s.client.parent.gen.GetForwardReplyWithResponse(ctx, s.client.accountID, bucketID, forwardID, replyID)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +268,7 @@ func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID i
 		Content: req.Content,
 	}
 
-	resp, err := s.client.gen.CreateForwardReplyWithResponse(ctx, s.client.accountID, bucketID, forwardID, body)
+	resp, err := s.client.parent.gen.CreateForwardReplyWithResponse(ctx, s.client.accountID, bucketID, forwardID, body)
 	if err != nil {
 		return nil, err
 	}

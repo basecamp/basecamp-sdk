@@ -85,7 +85,7 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 		params.Sort = opts.Sort
 	}
 
-	resp, err := s.client.gen.SearchWithResponse(ctx, s.client.accountID, params)
+	resp, err := s.client.parent.gen.SearchWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (s *SearchService) Metadata(ctx context.Context) (result *SearchMetadata, e
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetSearchMetadataWithResponse(ctx, s.client.accountID)
+	resp, err := s.client.parent.gen.GetSearchMetadataWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}

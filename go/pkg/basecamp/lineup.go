@@ -114,7 +114,7 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.CreateLineupMarkerWithResponse(ctx, s.client.accountID, body)
+	resp, err := s.client.parent.gen.CreateLineupMarkerWithResponse(ctx, s.client.accountID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 		body.EndsOn = endsOn
 	}
 
-	resp, err := s.client.gen.UpdateLineupMarkerWithResponse(ctx, s.client.accountID, markerID, body)
+	resp, err := s.client.parent.gen.UpdateLineupMarkerWithResponse(ctx, s.client.accountID, markerID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (s *LineupService) DeleteMarker(ctx context.Context, markerID int64) (err e
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.DeleteLineupMarkerWithResponse(ctx, s.client.accountID, markerID)
+	resp, err := s.client.parent.gen.DeleteLineupMarkerWithResponse(ctx, s.client.accountID, markerID)
 	if err != nil {
 		return err
 	}

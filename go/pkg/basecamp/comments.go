@@ -62,7 +62,7 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListCommentsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ListCommentsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetCommentWithResponse(ctx, s.client.accountID, bucketID, commentID)
+	resp, err := s.client.parent.gen.GetCommentWithResponse(ctx, s.client.accountID, bucketID, commentID)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int6
 		Content: req.Content,
 	}
 
-	resp, err := s.client.gen.CreateCommentWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
+	resp, err := s.client.parent.gen.CreateCommentWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 		Content: req.Content,
 	}
 
-	resp, err := s.client.gen.UpdateCommentWithResponse(ctx, s.client.accountID, bucketID, commentID, body)
+	resp, err := s.client.parent.gen.UpdateCommentWithResponse(ctx, s.client.accountID, bucketID, commentID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (s *CommentsService) Trash(ctx context.Context, bucketID, commentID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, commentID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, commentID)
 	if err != nil {
 		return err
 	}

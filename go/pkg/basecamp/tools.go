@@ -56,7 +56,7 @@ func (s *ToolsService) Get(ctx context.Context, bucketID, toolID int64) (result 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
+	resp, err := s.client.parent.gen.GetToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (s *ToolsService) Create(ctx context.Context, bucketID, sourceToolID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.CloneToolWithResponse(ctx, s.client.accountID, bucketID, sourceToolID)
+	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, bucketID, sourceToolID)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, title
 		Title: title,
 	}
 
-	resp, err := s.client.gen.UpdateToolWithResponse(ctx, s.client.accountID, bucketID, toolID, body)
+	resp, err := s.client.parent.gen.UpdateToolWithResponse(ctx, s.client.accountID, bucketID, toolID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func (s *ToolsService) Delete(ctx context.Context, bucketID, toolID int64) (err 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.DeleteToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
+	resp, err := s.client.parent.gen.DeleteToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func (s *ToolsService) Enable(ctx context.Context, bucketID, toolID int64) (err 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.EnableToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
+	resp, err := s.client.parent.gen.EnableToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
 	if err != nil {
 		return err
 	}
@@ -217,7 +217,7 @@ func (s *ToolsService) Disable(ctx context.Context, bucketID, toolID int64) (err
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.DisableToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
+	resp, err := s.client.parent.gen.DisableToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
 	if err != nil {
 		return err
 	}
@@ -251,7 +251,7 @@ func (s *ToolsService) Reposition(ctx context.Context, bucketID, toolID int64, p
 		Position: int32(position),
 	}
 
-	resp, err := s.client.gen.RepositionToolWithResponse(ctx, s.client.accountID, bucketID, toolID, body)
+	resp, err := s.client.parent.gen.RepositionToolWithResponse(ctx, s.client.accountID, bucketID, toolID, body)
 	if err != nil {
 		return err
 	}

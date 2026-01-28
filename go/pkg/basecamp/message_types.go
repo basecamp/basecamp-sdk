@@ -60,7 +60,7 @@ func (s *MessageTypesService) List(ctx context.Context, bucketID int64) (result 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListMessageTypesWithResponse(ctx, s.client.accountID, bucketID)
+	resp, err := s.client.parent.gen.ListMessageTypesWithResponse(ctx, s.client.accountID, bucketID)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (s *MessageTypesService) Get(ctx context.Context, bucketID, typeID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID)
+	resp, err := s.client.parent.gen.GetMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *C
 		Icon: req.Icon,
 	}
 
-	resp, err := s.client.gen.CreateMessageTypeWithResponse(ctx, s.client.accountID, bucketID, body)
+	resp, err := s.client.parent.gen.CreateMessageTypeWithResponse(ctx, s.client.accountID, bucketID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64
 		Icon: req.Icon,
 	}
 
-	resp, err := s.client.gen.UpdateMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID, body)
+	resp, err := s.client.parent.gen.UpdateMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (s *MessageTypesService) Delete(ctx context.Context, bucketID, typeID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.DeleteMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID)
+	resp, err := s.client.parent.gen.DeleteMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID)
 	if err != nil {
 		return err
 	}

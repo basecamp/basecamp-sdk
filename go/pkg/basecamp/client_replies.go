@@ -54,7 +54,7 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListClientRepliesWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ListClientRepliesWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetClientReplyWithResponse(ctx, s.client.accountID, bucketID, recordingID, replyID)
+	resp, err := s.client.parent.gen.GetClientReplyWithResponse(ctx, s.client.accountID, bucketID, recordingID, replyID)
 	if err != nil {
 		return nil, err
 	}

@@ -55,7 +55,7 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListEventsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ListEventsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}

@@ -159,7 +159,7 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 		params = &generated.ListTodosParams{Status: opts.Status}
 	}
 
-	resp, err := s.client.gen.ListTodosWithResponse(ctx, s.client.accountID, bucketID, todolistID, params)
+	resp, err := s.client.parent.gen.ListTodosWithResponse(ctx, s.client.accountID, bucketID, todolistID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,7 @@ func (s *TodosService) Get(ctx context.Context, bucketID, todoID int64) (result 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
+	resp, err := s.client.parent.gen.GetTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 		body.StartsOn = d
 	}
 
-	resp, err := s.client.gen.CreateTodoWithResponse(ctx, s.client.accountID, bucketID, todolistID, body)
+	resp, err := s.client.parent.gen.CreateTodoWithResponse(ctx, s.client.accountID, bucketID, todolistID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +318,7 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 		body.StartsOn = d
 	}
 
-	resp, err := s.client.gen.UpdateTodoWithResponse(ctx, s.client.accountID, bucketID, todoID, body)
+	resp, err := s.client.parent.gen.UpdateTodoWithResponse(ctx, s.client.accountID, bucketID, todoID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +352,7 @@ func (s *TodosService) Trash(ctx context.Context, bucketID, todoID int64) (err e
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.TrashTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
+	resp, err := s.client.parent.gen.TrashTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
 	if err != nil {
 		return err
 	}
@@ -376,7 +376,7 @@ func (s *TodosService) Complete(ctx context.Context, bucketID, todoID int64) (er
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.CompleteTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
+	resp, err := s.client.parent.gen.CompleteTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
 	if err != nil {
 		return err
 	}
@@ -400,7 +400,7 @@ func (s *TodosService) Uncomplete(ctx context.Context, bucketID, todoID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.UncompleteTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
+	resp, err := s.client.parent.gen.UncompleteTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
 	if err != nil {
 		return err
 	}
@@ -433,7 +433,7 @@ func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, p
 	body := generated.RepositionTodoJSONRequestBody{
 		Position: int32(position),
 	}
-	resp, err := s.client.gen.RepositionTodoWithResponse(ctx, s.client.accountID, bucketID, todoID, body)
+	resp, err := s.client.parent.gen.RepositionTodoWithResponse(ctx, s.client.accountID, bucketID, todoID, body)
 	if err != nil {
 		return err
 	}

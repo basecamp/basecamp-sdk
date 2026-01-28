@@ -63,7 +63,7 @@ func (s *PeopleService) List(ctx context.Context) (result []Person, err error) {
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListPeopleWithResponse(ctx, s.client.accountID)
+	resp, err := s.client.parent.gen.ListPeopleWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (s *PeopleService) Get(ctx context.Context, personID int64) (result *Person
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetPersonWithResponse(ctx, s.client.accountID, personID)
+	resp, err := s.client.parent.gen.GetPersonWithResponse(ctx, s.client.accountID, personID)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetMyProfileWithResponse(ctx, s.client.accountID)
+	resp, err := s.client.parent.gen.GetMyProfileWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, bucketID)
+	resp, err := s.client.parent.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, bucketID)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (s *PeopleService) Pingable(ctx context.Context) (result []Person, err erro
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListPingablePeopleWithResponse(ctx, s.client.accountID)
+	resp, err := s.client.parent.gen.ListPingablePeopleWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +255,7 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, bucketID int64,
 		}
 	}
 
-	resp, err := s.client.gen.UpdateProjectAccessWithResponse(ctx, s.client.accountID, bucketID, body)
+	resp, err := s.client.parent.gen.UpdateProjectAccessWithResponse(ctx, s.client.accountID, bucketID, body)
 	if err != nil {
 		return nil, err
 	}

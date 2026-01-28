@@ -37,6 +37,10 @@ type Client struct {
 	httpOpts      HTTPOptions
 	hooks         Hooks
 
+	// Generated client (single shared instance, account passed per operation)
+	genOnce sync.Once
+	gen     *generated.ClientWithResponses
+
 	// Authorization service (account-independent)
 	authMu        sync.Mutex
 	authorization *AuthorizationService
@@ -50,10 +54,12 @@ type Client struct {
 // (e.g., https://3.basecampapi.com/12345/projects.json). This SDK passes the
 // account ID as a path parameter to each generated client operation, matching
 // the OpenAPI spec's /{accountId}/... path structure.
+//
+// AccountClient shares the parent Client's generated API client and HTTP
+// resources. Creating multiple AccountClients via ForAccount is lightweight.
 type AccountClient struct {
 	parent    *Client
 	accountID string
-	gen       *generated.ClientWithResponses
 	mu        sync.Mutex // protects lazy service initialization
 
 	// Services (lazy-initialized, protected by mu)
@@ -217,12 +223,13 @@ func (c *Client) ForAccount(accountID string) *AccountClient {
 		}
 	}
 
-	ac := &AccountClient{
+	// Initialize shared generated client on first use (thread-safe)
+	c.initGeneratedClient()
+
+	return &AccountClient{
 		parent:    c,
 		accountID: accountID,
 	}
-	ac.initGeneratedClient()
-	return ac
 }
 
 // AccountID returns the account ID this client is bound to.
@@ -257,6 +264,7 @@ func (ac *AccountClient) GetAll(ctx context.Context, path string) ([]json.RawMes
 
 // accountPath prepends the account ID to the path.
 // Absolute URLs are returned unchanged (e.g., pagination Link headers).
+// Paths already prefixed with /{accountId}/ are returned unchanged.
 func (ac *AccountClient) accountPath(path string) string {
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		return path
@@ -264,35 +272,42 @@ func (ac *AccountClient) accountPath(path string) string {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
+	// Guard against double-prefixing if caller already included account ID
+	prefix := "/" + ac.accountID + "/"
+	if strings.HasPrefix(path, prefix) {
+		return path
+	}
 	return "/" + ac.accountID + path
 }
 
-// initGeneratedClient initializes the generated OpenAPI client.
+// initGeneratedClient initializes the shared generated OpenAPI client.
+// Uses sync.Once to ensure the client is only created once.
 // The account ID is passed as a parameter to each operation, not baked into the URL.
-func (ac *AccountClient) initGeneratedClient() {
-	c := ac.parent
-	serverURL := strings.TrimSuffix(c.cfg.BaseURL, "/")
-	authEditor := func(ctx context.Context, req *http.Request) error {
-		token, err := c.tokenProvider.AccessToken(ctx)
+func (c *Client) initGeneratedClient() {
+	c.genOnce.Do(func() {
+		serverURL := strings.TrimSuffix(c.cfg.BaseURL, "/")
+		authEditor := func(ctx context.Context, req *http.Request) error {
+			token, err := c.tokenProvider.AccessToken(ctx)
+			if err != nil {
+				return err
+			}
+			req.Header.Set("Authorization", "Bearer "+token)
+			req.Header.Set("User-Agent", c.userAgent)
+			// Only set Content-Type if not already set (preserves binary upload content types)
+			if req.Header.Get("Content-Type") == "" {
+				req.Header.Set("Content-Type", "application/json")
+			}
+			req.Header.Set("Accept", "application/json")
+			return nil
+		}
+		gen, err := generated.NewClientWithResponses(serverURL,
+			generated.WithHTTPClient(c.httpClient),
+			generated.WithRequestEditorFn(authEditor))
 		if err != nil {
-			return err
+			panic(fmt.Sprintf("basecamp: failed to create generated client: %v", err))
 		}
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("User-Agent", c.userAgent)
-		// Only set Content-Type if not already set (preserves binary upload content types)
-		if req.Header.Get("Content-Type") == "" {
-			req.Header.Set("Content-Type", "application/json")
-		}
-		req.Header.Set("Accept", "application/json")
-		return nil
-	}
-	gen, err := generated.NewClientWithResponses(serverURL,
-		generated.WithHTTPClient(c.httpClient),
-		generated.WithRequestEditorFn(authEditor))
-	if err != nil {
-		panic(fmt.Sprintf("basecamp: failed to create generated client: %v", err))
-	}
-	ac.gen = gen
+		c.gen = gen
+	})
 }
 
 // discardHandler is a slog.Handler that discards all log records.

@@ -125,7 +125,7 @@ func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetScheduleWithResponse(ctx, s.client.accountID, bucketID, scheduleID)
+	resp, err := s.client.parent.gen.GetScheduleWithResponse(ctx, s.client.accountID, bucketID, scheduleID)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListScheduleEntriesWithResponse(ctx, s.client.accountID, bucketID, scheduleID, nil)
+	resp, err := s.client.parent.gen.ListScheduleEntriesWithResponse(ctx, s.client.accountID, bucketID, scheduleID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, entryID)
+	resp, err := s.client.parent.gen.GetScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, entryID)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +262,7 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 		Notify:         req.Notify,
 	}
 
-	resp, err := s.client.gen.CreateScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, scheduleID, body)
+	resp, err := s.client.parent.gen.CreateScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, scheduleID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +325,7 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 		body.EndsAt = endsAt
 	}
 
-	resp, err := s.client.gen.UpdateScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, entryID, body)
+	resp, err := s.client.parent.gen.UpdateScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, entryID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +363,7 @@ func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, ent
 		return nil, err
 	}
 
-	resp, err := s.client.gen.GetScheduleEntryOccurrenceWithResponse(ctx, s.client.accountID, bucketID, entryID, date)
+	resp, err := s.client.parent.gen.GetScheduleEntryOccurrenceWithResponse(ctx, s.client.accountID, bucketID, entryID, date)
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +406,7 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, schedul
 		IncludeDueAssignments: req.IncludeDueAssignments,
 	}
 
-	resp, err := s.client.gen.UpdateScheduleSettingsWithResponse(ctx, s.client.accountID, bucketID, scheduleID, body)
+	resp, err := s.client.parent.gen.UpdateScheduleSettingsWithResponse(ctx, s.client.accountID, bucketID, scheduleID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -440,7 +440,7 @@ func (s *SchedulesService) TrashEntry(ctx context.Context, bucketID, entryID int
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, entryID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, entryID)
 	if err != nil {
 		return err
 	}

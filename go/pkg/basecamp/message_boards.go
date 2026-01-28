@@ -51,7 +51,7 @@ func (s *MessageBoardsService) Get(ctx context.Context, bucketID, boardID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetMessageBoardWithResponse(ctx, s.client.accountID, bucketID, boardID)
+	resp, err := s.client.parent.gen.GetMessageBoardWithResponse(ctx, s.client.accountID, bucketID, boardID)
 	if err != nil {
 		return nil, err
 	}

@@ -75,7 +75,7 @@ func (s *TemplatesService) List(ctx context.Context) (result []Template, err err
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListTemplatesWithResponse(ctx, s.client.accountID, nil)
+	resp, err := s.client.parent.gen.ListTemplatesWithResponse(ctx, s.client.accountID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (s *TemplatesService) Get(ctx context.Context, templateID int64) (result *T
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetTemplateWithResponse(ctx, s.client.accountID, templateID)
+	resp, err := s.client.parent.gen.GetTemplateWithResponse(ctx, s.client.accountID, templateID)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateReques
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.CreateTemplateWithResponse(ctx, s.client.accountID, body)
+	resp, err := s.client.parent.gen.CreateTemplateWithResponse(ctx, s.client.accountID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,7 @@ func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *Up
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.UpdateTemplateWithResponse(ctx, s.client.accountID, templateID, body)
+	resp, err := s.client.parent.gen.UpdateTemplateWithResponse(ctx, s.client.accountID, templateID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +227,7 @@ func (s *TemplatesService) Delete(ctx context.Context, templateID int64) (err er
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.DeleteTemplateWithResponse(ctx, s.client.accountID, templateID)
+	resp, err := s.client.parent.gen.DeleteTemplateWithResponse(ctx, s.client.accountID, templateID)
 	if err != nil {
 		return err
 	}
@@ -261,7 +261,7 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 		Description: description,
 	}
 
-	resp, err := s.client.gen.CreateProjectFromTemplateWithResponse(ctx, s.client.accountID, templateID, body)
+	resp, err := s.client.parent.gen.CreateProjectFromTemplateWithResponse(ctx, s.client.accountID, templateID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +293,7 @@ func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, cons
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetProjectConstructionWithResponse(ctx, s.client.accountID, templateID, constructionID)
+	resp, err := s.client.parent.gen.GetProjectConstructionWithResponse(ctx, s.client.accountID, templateID, constructionID)
 	if err != nil {
 		return nil, err
 	}

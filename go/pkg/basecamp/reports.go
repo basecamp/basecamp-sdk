@@ -33,7 +33,7 @@ func (s *ReportsService) AssignablePeople(ctx context.Context) (result []Person,
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.ListAssignablePeopleWithResponse(ctx, s.client.accountID)
+	resp, err := s.client.parent.gen.ListAssignablePeopleWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts
 		params = &generated.GetAssignedTodosParams{GroupBy: opts.GroupBy}
 	}
 
-	resp, err := s.client.gen.GetAssignedTodosWithResponse(ctx, s.client.accountID, personID, params)
+	resp, err := s.client.parent.gen.GetAssignedTodosWithResponse(ctx, s.client.accountID, personID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (s *ReportsService) OverdueTodos(ctx context.Context) (result *OverdueTodos
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetOverdueTodosWithResponse(ctx, s.client.accountID)
+	resp, err := s.client.parent.gen.GetOverdueTodosWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDat
 		}
 	}
 
-	resp, err := s.client.gen.GetUpcomingScheduleWithResponse(ctx, s.client.accountID, params)
+	resp, err := s.client.parent.gen.GetUpcomingScheduleWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}

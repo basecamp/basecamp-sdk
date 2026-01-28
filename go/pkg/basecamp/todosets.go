@@ -63,7 +63,7 @@ func (s *TodosetsService) Get(ctx context.Context, bucketID, todosetID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.gen.GetTodosetWithResponse(ctx, s.client.accountID, bucketID, todosetID)
+	resp, err := s.client.parent.gen.GetTodosetWithResponse(ctx, s.client.accountID, bucketID, todosetID)
 	if err != nil {
 		return nil, err
 	}

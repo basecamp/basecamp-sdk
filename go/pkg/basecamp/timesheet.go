@@ -78,7 +78,7 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 
 	params := s.buildTimesheetParams(opts)
 
-	resp, err := s.client.gen.GetTimesheetReportWithResponse(ctx, s.client.accountID, params)
+	resp, err := s.client.parent.gen.GetTimesheetReportWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 		}
 	}
 
-	resp, err := s.client.gen.GetProjectTimesheetWithResponse(ctx, s.client.accountID, projectID, params)
+	resp, err := s.client.parent.gen.GetProjectTimesheetWithResponse(ctx, s.client.accountID, projectID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recor
 		}
 	}
 
-	resp, err := s.client.gen.GetRecordingTimesheetWithResponse(ctx, s.client.accountID, projectID, recordingID, params)
+	resp, err := s.client.parent.gen.GetRecordingTimesheetWithResponse(ctx, s.client.accountID, projectID, recordingID, params)
 	if err != nil {
 		return nil, err
 	}
