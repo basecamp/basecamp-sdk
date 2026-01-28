@@ -35,6 +35,9 @@
   ],
   "author": "Basecamp",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/basecamp/basecamp-sdk.git",
