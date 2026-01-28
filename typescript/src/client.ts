@@ -619,7 +619,7 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/buckets/{projectId}/schedule_entries/{entryId}": "UpdateScheduleEntry",
   "GET:/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}": "GetScheduleEntryOccurrence",
   "GET:/buckets/{projectId}/schedules/{scheduleId}": "GetSchedule",
-  "PUT:/buckets/{projectId}/schedules/{scheduleId}": "UpdateSchedule",
+  "PUT:/buckets/{projectId}/schedules/{scheduleId}": "UpdateScheduleSettings",
   "GET:/buckets/{projectId}/schedules/{scheduleId}/entries.json": "ListScheduleEntries",
   "POST:/buckets/{projectId}/schedules/{scheduleId}/entries.json": "CreateScheduleEntry",
 
@@ -698,11 +698,11 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/projects/{projectId}/people/users.json": "UpdateProjectAccess",
 
   // Reports
-  "GET:/reports/progress.json": "GetProgress",
+  "GET:/reports/progress.json": "GetProgressReport",
   "GET:/reports/schedules/upcoming.json": "GetUpcomingSchedule",
   "GET:/reports/timesheet.json": "GetTimesheetReport",
-  "GET:/reports/todos/assigned.json": "GetAssignedTodos",
-  "GET:/reports/todos/assigned/{personId}": "GetAssignedTodosForPerson",
+  "GET:/reports/todos/assigned.json": "ListAssignablePeople",
+  "GET:/reports/todos/assigned/{personId}": "GetAssignedTodos",
   "GET:/reports/todos/overdue.json": "GetOverdueTodos",
   "GET:/reports/users/progress/{personId}": "GetPersonProgress",
 
