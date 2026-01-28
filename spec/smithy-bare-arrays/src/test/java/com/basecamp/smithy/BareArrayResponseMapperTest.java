@@ -244,4 +244,53 @@ class BareArrayResponseMapperTest {
         assertEquals("Wrapper description", result.expectStringMember("description").getValue());
         assertEquals("Wrapper Title", result.expectStringMember("title").getValue());
     }
+
+    @Test
+    void transformToArray_inheritsWrapperNullableAndDeprecated() {
+        ObjectNode wrapped = ObjectNode.builder()
+                .withMember("type", "object")
+                .withMember("nullable", true)
+                .withMember("deprecated", true)
+                .withMember("properties", ObjectNode.builder()
+                        .withMember("data", ObjectNode.builder()
+                                .withMember("type", "array")
+                                .withMember("items", ObjectNode.builder()
+                                        .withMember("type", "string")
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        ObjectNode result = mapper.transformToArray(wrapped);
+
+        // Should inherit nullable and deprecated from wrapper
+        assertTrue(result.expectBooleanMember("nullable").getValue());
+        assertTrue(result.expectBooleanMember("deprecated").getValue());
+    }
+
+    @Test
+    void transformToArray_preservesArrayKeywords() {
+        ObjectNode wrapped = ObjectNode.builder()
+                .withMember("type", "object")
+                .withMember("properties", ObjectNode.builder()
+                        .withMember("data", ObjectNode.builder()
+                                .withMember("type", "array")
+                                .withMember("minItems", 1)
+                                .withMember("maxItems", 100)
+                                .withMember("uniqueItems", true)
+                                .withMember("readOnly", true)
+                                .withMember("items", ObjectNode.builder()
+                                        .withMember("type", "string")
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        ObjectNode result = mapper.transformToArray(wrapped);
+
+        assertEquals(1, result.expectNumberMember("minItems").getValue().intValue());
+        assertEquals(100, result.expectNumberMember("maxItems").getValue().intValue());
+        assertTrue(result.expectBooleanMember("uniqueItems").getValue());
+        assertTrue(result.expectBooleanMember("readOnly").getValue());
+    }
 }
