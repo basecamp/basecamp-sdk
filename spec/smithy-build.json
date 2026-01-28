@@ -10,7 +10,7 @@
     ],
     "repositories": [
       { "url": "https://repo1.maven.org/maven2/" },
-      { "url": "file://~/.m2/repository" }
+      { "url": "file://${user.home}/.m2/repository" }
     ]
   },
   "projections": {

@@ -10,8 +10,8 @@ $version: "2"
 //
 // As a result:
 //   - This Smithy model uses wrapped outputs (e.g., ListProjectsOutput.projects)
-//   - The generated OpenAPI is post-processed by fix-list-response-schemas.sh
-//     to convert these to bare arrays, matching the actual wire format
+//   - A custom OpenApiMapper (BareArrayResponseMapper) transforms List*ResponseContent
+//     schemas to bare arrays during OpenAPI generation, matching the actual wire format
 //   - Generated SDK clients correctly handle bare array responses
 //
 // This is a known protocol limitation, not a modeling error.

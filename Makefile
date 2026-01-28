@@ -49,7 +49,7 @@ smithy-clean:
 	rm -rf spec/build spec/smithy-bare-arrays/build spec/smithy-bare-arrays/.gradle
 
 # Generate behavior model from Smithy spec
-behavior-model:
+behavior-model: smithy-mapper
 	@echo "==> Generating behavior model..."
 	@cd spec && smithy build
 	./scripts/generate-behavior-model

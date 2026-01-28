@@ -139,6 +139,8 @@ public final class BareArrayResponseMapper implements OpenApiMapper {
 
     /**
      * Transforms a wrapped object schema to a bare array schema.
+     * Preserves metadata (description, title, nullable, vendor extensions) from
+     * both the wrapper object and the array property.
      *
      * @param wrapped the wrapped object schema
      * @return the bare array schema
@@ -154,6 +156,54 @@ public final class BareArrayResponseMapper implements OpenApiMapper {
         arrayProp.getObjectMember("items").ifPresent(items ->
                 result.withMember("items", items));
 
+        // Preserve metadata from the array property (takes precedence)
+        preserveMetadata(arrayProp, result);
+
+        // Preserve metadata from wrapper if not already set by array property
+        preserveMetadataIfAbsent(wrapped, result, arrayProp);
+
         return result.build();
+    }
+
+    /**
+     * Preserves standard OpenAPI metadata fields from source to builder.
+     */
+    private void preserveMetadata(ObjectNode source, ObjectNode.Builder builder) {
+        // Standard OpenAPI schema metadata
+        source.getStringMember("description").ifPresent(d ->
+                builder.withMember("description", d.getValue()));
+        source.getStringMember("title").ifPresent(t ->
+                builder.withMember("title", t.getValue()));
+        source.getBooleanMember("nullable").ifPresent(n ->
+                builder.withMember("nullable", n));
+        source.getBooleanMember("deprecated").ifPresent(d ->
+                builder.withMember("deprecated", d));
+
+        // Preserve vendor extensions (x-* fields)
+        for (Map.Entry<String, Node> entry : source.getStringMap().entrySet()) {
+            if (entry.getKey().startsWith("x-")) {
+                builder.withMember(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    /**
+     * Preserves metadata from source only if not already present (from higher-priority source).
+     */
+    private void preserveMetadataIfAbsent(ObjectNode source, ObjectNode.Builder builder, ObjectNode higherPriority) {
+        if (!higherPriority.getStringMember("description").isPresent()) {
+            source.getStringMember("description").ifPresent(d ->
+                    builder.withMember("description", d.getValue()));
+        }
+        if (!higherPriority.getStringMember("title").isPresent()) {
+            source.getStringMember("title").ifPresent(t ->
+                    builder.withMember("title", t.getValue()));
+        }
+        // Vendor extensions from wrapper (only if not already set)
+        for (Map.Entry<String, Node> entry : source.getStringMap().entrySet()) {
+            if (entry.getKey().startsWith("x-") && !higherPriority.getMember(entry.getKey()).isPresent()) {
+                builder.withMember(entry.getKey(), entry.getValue());
+            }
+        }
     }
 }
