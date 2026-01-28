@@ -600,7 +600,9 @@ func (c *Client) buildURL(path string) string {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	return c.cfg.BaseURL + path
+	// Normalize BaseURL to avoid double slashes when concatenating
+	base := strings.TrimSuffix(c.cfg.BaseURL, "/")
+	return base + path
 }
 
 func (c *Client) backoffDelay(attempt int) time.Duration {
