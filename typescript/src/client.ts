@@ -7,12 +7,147 @@
  */
 
 import createClient, { type Middleware } from "openapi-fetch";
+import { createRequire } from "node:module";
 import type { paths } from "./generated/schema.js";
-import metadata from "./generated/metadata.json" with { type: "json" };
+import type { BasecampHooks, RequestInfo, RequestResult } from "./hooks.js";
+
+// Use createRequire for JSON import (Node 18+ compatible)
+const require = createRequire(import.meta.url);
+const metadata = require("./generated/metadata.json") as OperationMetadata;
+
+// Services
+import { ProjectsService } from "./services/projects.js";
+import { TodosService } from "./services/todos.js";
+import { TodolistsService } from "./services/todolists.js";
+import { TodosetsService } from "./services/todosets.js";
+import { PeopleService } from "./services/people.js";
+import { AuthorizationService } from "./services/authorization.js";
+import { MessagesService } from "./services/messages.js";
+import { CommentsService } from "./services/comments.js";
+import { CampfiresService } from "./services/campfires.js";
+import {
+  CardTablesService,
+  CardsService,
+  CardColumnsService,
+  CardStepsService,
+} from "./services/cards.js";
+import { MessageBoardsService } from "./services/message-boards.js";
+import { MessageTypesService } from "./services/message-types.js";
+import { ForwardsService } from "./services/forwards.js";
+import { CheckinsService } from "./services/checkins.js";
+import { ClientApprovalsService } from "./services/client-approvals.js";
+import { ClientCorrespondencesService } from "./services/client-correspondences.js";
+import { ClientRepliesService } from "./services/client-replies.js";
+import { WebhooksService } from "./services/webhooks.js";
+import { SubscriptionsService } from "./services/subscriptions.js";
+import { AttachmentsService } from "./services/attachments.js";
+import { VaultsService } from "./services/vaults.js";
+import { DocumentsService } from "./services/documents.js";
+import { UploadsService } from "./services/uploads.js";
+import { SchedulesService } from "./services/schedules.js";
+import { EventsService } from "./services/events.js";
+import { RecordingsService } from "./services/recordings.js";
+import { SearchService } from "./services/search.js";
+import { ReportsService } from "./services/reports.js";
+import { TemplatesService } from "./services/templates.js";
+import { LineupService } from "./services/lineup.js";
+import { TodolistGroupsService } from "./services/todolistGroups.js";
+import { ToolsService } from "./services/tools.js";
 
 // Re-export types for consumer convenience
 export type { paths };
-export type BasecampClient = ReturnType<typeof createClient<paths>>;
+
+/**
+ * Raw client type from openapi-fetch.
+ * Use this when you need direct access to GET/POST/PUT/DELETE methods.
+ */
+export type RawClient = ReturnType<typeof createClient<paths>>;
+
+/**
+ * Enhanced Basecamp client with hooks support and service accessors.
+ * Wraps the raw openapi-fetch client with observability features.
+ */
+export interface BasecampClient extends RawClient {
+  /** The underlying raw client (for advanced use cases) */
+  readonly raw: RawClient;
+  /** Hooks for observability (if configured) */
+  readonly hooks?: BasecampHooks;
+
+  // =========================================================================
+  // Service Accessors
+  // =========================================================================
+
+  /** Projects service - list, get, create, update, and trash projects */
+  readonly projects: ProjectsService;
+  /** Todos service - list, get, create, update, complete, and manage todos */
+  readonly todos: TodosService;
+  /** Todolists service - list, get, create, and update todo lists */
+  readonly todolists: TodolistsService;
+  /** Todosets service - get todo sets (container for todo lists) */
+  readonly todosets: TodosetsService;
+  /** People service - list, get, and manage people in your account */
+  readonly people: PeopleService;
+  /** Authorization service - get authorization info and identity */
+  readonly authorization: AuthorizationService;
+  /** Messages service - list, get, create, update, pin/unpin messages */
+  readonly messages: MessagesService;
+  /** Comments service - list, get, create, and update comments */
+  readonly comments: CommentsService;
+  /** Campfires service - list, get campfires and manage lines */
+  readonly campfires: CampfiresService;
+  /** Card tables service - get card tables (kanban boards) */
+  readonly cardTables: CardTablesService;
+  /** Cards service - list, get, create, update, and move cards */
+  readonly cards: CardsService;
+  /** Card columns service - get, create, update, and manage columns */
+  readonly cardColumns: CardColumnsService;
+  /** Card steps service - create, update, complete, and manage card steps */
+  readonly cardSteps: CardStepsService;
+  /** Message boards service - get message boards */
+  readonly messageBoards: MessageBoardsService;
+  /** Message types service - list, get, create, update, delete message types */
+  readonly messageTypes: MessageTypesService;
+  /** Forwards service - manage email forwards and replies */
+  readonly forwards: ForwardsService;
+  /** Checkins service - manage questionnaires, questions, and answers */
+  readonly checkins: CheckinsService;
+  /** Client approvals service - list and get client approvals */
+  readonly clientApprovals: ClientApprovalsService;
+  /** Client correspondences service - list and get client correspondences */
+  readonly clientCorrespondences: ClientCorrespondencesService;
+  /** Client replies service - list and get client replies */
+  readonly clientReplies: ClientRepliesService;
+  /** Webhooks service - create, update, delete webhooks */
+  readonly webhooks: WebhooksService;
+  /** Subscriptions service - manage notification subscriptions */
+  readonly subscriptions: SubscriptionsService;
+  /** Attachments service - upload files for embedding in rich text */
+  readonly attachments: AttachmentsService;
+  /** Vaults service - manage folders in the Files tool */
+  readonly vaults: VaultsService;
+  /** Documents service - manage documents in vaults */
+  readonly documents: DocumentsService;
+  /** Uploads service - manage files in vaults */
+  readonly uploads: UploadsService;
+  /** Schedules service - manage schedules and calendar entries */
+  readonly schedules: SchedulesService;
+  /** Events service - view recording change events */
+  readonly events: EventsService;
+  /** Recordings service - manage recordings (base type for most content) */
+  readonly recordings: RecordingsService;
+  /** Search service - full-text search across all content */
+  readonly search: SearchService;
+  /** Reports service - timesheet and other reports */
+  readonly reports: ReportsService;
+  /** Templates service - manage project templates */
+  readonly templates: TemplatesService;
+  /** Lineup service - manage timeline markers */
+  readonly lineup: LineupService;
+  /** Todolist groups service - manage groups within todolists */
+  readonly todolistGroups: TodolistGroupsService;
+  /** Tools service - manage project dock tools */
+  readonly tools: ToolsService;
+}
 
 /**
  * Token provider - either a static token string or an async function that returns a token.
@@ -36,6 +171,8 @@ export interface BasecampClientOptions {
   enableCache?: boolean;
   /** Enable automatic retry on 429/503 (defaults to true) */
   enableRetry?: boolean;
+  /** Hooks for observability (logging, metrics, tracing) */
+  hooks?: BasecampHooks;
 }
 
 const VERSION = "0.1.0";
@@ -67,22 +204,93 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     userAgent = DEFAULT_USER_AGENT,
     enableCache = true,
     enableRetry = true,
+    hooks,
   } = options;
 
   const client = createClient<paths>({ baseUrl });
 
-  // Apply middleware in order: auth first, then cache, then retry
+  // Apply middleware in order: auth first, then hooks, then cache, then retry
   client.use(createAuthMiddleware(accessToken, userAgent));
+
+  if (hooks) {
+    client.use(createHooksMiddleware(hooks));
+  }
 
   if (enableCache) {
     client.use(createCacheMiddleware());
   }
 
   if (enableRetry) {
-    client.use(createRetryMiddleware());
+    client.use(createRetryMiddleware(hooks));
   }
 
-  return client;
+  // Create enhanced client with additional properties
+  const enhancedClient = client as BasecampClient;
+  Object.defineProperty(enhancedClient, "raw", {
+    value: client,
+    writable: false,
+    enumerable: false,
+  });
+  Object.defineProperty(enhancedClient, "hooks", {
+    value: hooks,
+    writable: false,
+    enumerable: false,
+  });
+
+  // Add lazy-initialized service accessors
+  // Services are created on first access and cached
+  const serviceCache: Record<string, unknown> = {};
+
+  const defineService = <T>(name: string, factory: () => T) => {
+    Object.defineProperty(enhancedClient, name, {
+      get() {
+        if (!serviceCache[name]) {
+          serviceCache[name] = factory();
+        }
+        return serviceCache[name] as T;
+      },
+      enumerable: true,
+      configurable: false,
+    });
+  };
+
+  defineService("projects", () => new ProjectsService(client, hooks));
+  defineService("todos", () => new TodosService(client, hooks));
+  defineService("todolists", () => new TodolistsService(client, hooks));
+  defineService("todosets", () => new TodosetsService(client, hooks));
+  defineService("people", () => new PeopleService(client, hooks));
+  defineService("authorization", () => new AuthorizationService(client, hooks, accessToken, userAgent));
+  defineService("messages", () => new MessagesService(client, hooks));
+  defineService("comments", () => new CommentsService(client, hooks));
+  defineService("campfires", () => new CampfiresService(client, hooks));
+  defineService("cardTables", () => new CardTablesService(client, hooks));
+  defineService("cards", () => new CardsService(client, hooks));
+  defineService("cardColumns", () => new CardColumnsService(client, hooks));
+  defineService("cardSteps", () => new CardStepsService(client, hooks));
+  defineService("messageBoards", () => new MessageBoardsService(client, hooks));
+  defineService("messageTypes", () => new MessageTypesService(client, hooks));
+  defineService("forwards", () => new ForwardsService(client, hooks));
+  defineService("checkins", () => new CheckinsService(client, hooks));
+  defineService("clientApprovals", () => new ClientApprovalsService(client, hooks));
+  defineService("clientCorrespondences", () => new ClientCorrespondencesService(client, hooks));
+  defineService("clientReplies", () => new ClientRepliesService(client, hooks));
+  defineService("webhooks", () => new WebhooksService(client, hooks));
+  defineService("subscriptions", () => new SubscriptionsService(client, hooks));
+  defineService("attachments", () => new AttachmentsService(client, hooks));
+  defineService("vaults", () => new VaultsService(client, hooks));
+  defineService("documents", () => new DocumentsService(client, hooks));
+  defineService("uploads", () => new UploadsService(client, hooks));
+  defineService("schedules", () => new SchedulesService(client, hooks));
+  defineService("events", () => new EventsService(client, hooks));
+  defineService("recordings", () => new RecordingsService(client, hooks));
+  defineService("search", () => new SearchService(client, hooks));
+  defineService("reports", () => new ReportsService(client, hooks));
+  defineService("templates", () => new TemplatesService(client, hooks));
+  defineService("lineup", () => new LineupService(client, hooks));
+  defineService("todolistGroups", () => new TodolistGroupsService(client, hooks));
+  defineService("tools", () => new ToolsService(client, hooks));
+
+  return enhancedClient;
 }
 
 // =============================================================================
@@ -97,10 +305,93 @@ function createAuthMiddleware(tokenProvider: TokenProvider, userAgent: string): 
 
       request.headers.set("Authorization", `Bearer ${token}`);
       request.headers.set("User-Agent", userAgent);
-      request.headers.set("Content-Type", "application/json");
+      // Only set Content-Type if not already set (preserves binary uploads, etc.)
+      if (!request.headers.has("Content-Type")) {
+        request.headers.set("Content-Type", "application/json");
+      }
       request.headers.set("Accept", "application/json");
 
       return request;
+    },
+  };
+}
+
+// =============================================================================
+// Hooks Middleware
+// =============================================================================
+
+/** Tracks request timing for hooks */
+interface RequestTiming {
+  startTime: number;
+  attempt: number;
+}
+
+/** Counter for generating unique request IDs */
+let requestIdCounter = 0;
+
+function createHooksMiddleware(hooks: BasecampHooks): Middleware {
+  // Track request timing by unique request ID
+  const timings = new Map<string, RequestTiming>();
+
+  return {
+    async onRequest({ request }) {
+      // Generate unique request ID to handle concurrent identical requests
+      const requestId = `${++requestIdCounter}`;
+      request.headers.set("X-SDK-Request-Id", requestId);
+
+      const attemptHeader = request.headers.get("X-Retry-Attempt");
+      const attempt = attemptHeader ? parseInt(attemptHeader, 10) + 1 : 1;
+
+      timings.set(requestId, { startTime: performance.now(), attempt });
+
+      const info: RequestInfo = {
+        method: request.method,
+        url: request.url,
+        attempt,
+      };
+
+      try {
+        hooks.onRequestStart?.(info);
+      } catch {
+        // Hooks should not interrupt the request
+      }
+
+      return request;
+    },
+
+    async onResponse({ request, response }) {
+      const requestId = request.headers.get("X-SDK-Request-Id") ?? "";
+      const timing = timings.get(requestId);
+      const durationMs = timing ? Math.round(performance.now() - timing.startTime) : 0;
+      const attempt = timing?.attempt ?? 1;
+
+      timings.delete(requestId);
+
+      const info: RequestInfo = {
+        method: request.method,
+        url: request.url,
+        attempt,
+      };
+
+      // Check for cache hit via header set by cache middleware
+      const fromCacheHeader = response.headers.get("X-From-Cache");
+      const fromCache =
+        fromCacheHeader === "1" ||
+        response.status === 304;
+
+      const result: RequestResult = {
+        statusCode: response.status,
+        durationMs,
+        fromCache,
+      };
+
+      try {
+        hooks.onRequestEnd?.(info, result);
+      } catch {
+        // Hooks should not interrupt the response
+      }
+
+      return response;
     },
   };
 }
@@ -147,13 +438,15 @@ function createCacheMiddleware(): Middleware {
 
       const cacheKey = getCacheKey(request.url);
 
-      // Handle 304 Not Modified - return cached body
+      // Handle 304 Not Modified - return cached body with cache indicator
       if (response.status === 304) {
         const entry = cache.get(cacheKey);
         if (entry) {
+          const headers = new Headers(response.headers);
+          headers.set("X-From-Cache", "1");
           return new Response(entry.body, {
             status: 200,
-            headers: response.headers,
+            headers,
           });
         }
       }
@@ -182,6 +475,16 @@ function getCacheKey(url: string): string {
 // =============================================================================
 
 /**
+ * Type for the metadata.json file structure.
+ */
+interface OperationMetadata {
+  operations: Record<string, {
+    retry?: RetryConfig;
+    idempotent?: { natural: boolean };
+  }>;
+}
+
+/**
  * Retry configuration matching x-basecamp-retry extension schema.
  */
 interface RetryConfig {
@@ -204,9 +507,13 @@ const MAX_JITTER_MS = 100;
 /**
  * Mapping from "METHOD:/path/pattern" to operation name.
  * Built from the OpenAPI paths definition.
+ * IMPORTANT: These paths MUST exactly match the OpenAPI spec paths for retry config to work.
  */
 const PATH_TO_OPERATION: Record<string, string> = {
+  // Attachments
   "POST:/attachments.json": "CreateAttachment",
+
+  // Card Tables
   "GET:/buckets/{projectId}/card_tables/cards/{cardId}": "GetCard",
   "PUT:/buckets/{projectId}/card_tables/cards/{cardId}": "UpdateCard",
   "POST:/buckets/{projectId}/card_tables/cards/{cardId}/moves.json": "MoveCard",
@@ -225,11 +532,15 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/buckets/{projectId}/card_tables/{cardTableId}": "GetCardTable",
   "POST:/buckets/{projectId}/card_tables/{cardTableId}/columns.json": "CreateCardColumn",
   "POST:/buckets/{projectId}/card_tables/{cardTableId}/moves.json": "MoveCardColumn",
+
+  // Message Categories/Types
   "GET:/buckets/{projectId}/categories.json": "ListMessageTypes",
   "POST:/buckets/{projectId}/categories.json": "CreateMessageType",
   "GET:/buckets/{projectId}/categories/{typeId}": "GetMessageType",
   "PUT:/buckets/{projectId}/categories/{typeId}": "UpdateMessageType",
   "DELETE:/buckets/{projectId}/categories/{typeId}": "DeleteMessageType",
+
+  // Campfires/Chats
   "GET:/buckets/{projectId}/chats/{campfireId}": "GetCampfire",
   "GET:/buckets/{projectId}/chats/{campfireId}/integrations.json": "ListChatbots",
   "POST:/buckets/{projectId}/chats/{campfireId}/integrations.json": "CreateChatbot",
@@ -240,34 +551,50 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/buckets/{projectId}/chats/{campfireId}/lines.json": "CreateCampfireLine",
   "GET:/buckets/{projectId}/chats/{campfireId}/lines/{lineId}": "GetCampfireLine",
   "DELETE:/buckets/{projectId}/chats/{campfireId}/lines/{lineId}": "DeleteCampfireLine",
+
+  // Client Portal
   "GET:/buckets/{projectId}/client/approvals.json": "ListClientApprovals",
   "GET:/buckets/{projectId}/client/approvals/{approvalId}": "GetClientApproval",
   "GET:/buckets/{projectId}/client/correspondences.json": "ListClientCorrespondences",
   "GET:/buckets/{projectId}/client/correspondences/{correspondenceId}": "GetClientCorrespondence",
   "GET:/buckets/{projectId}/client/recordings/{recordingId}/replies.json": "ListClientReplies",
-  "GET:/buckets/{projectId}/client/replies/{replyId}": "GetClientReply",
+  "GET:/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}": "GetClientReply",
+
+  // Comments
   "GET:/buckets/{projectId}/comments/{commentId}": "GetComment",
   "PUT:/buckets/{projectId}/comments/{commentId}": "UpdateComment",
-  "POST:/buckets/{projectId}/copy_tool/{toolId}": "CloneTool",
-  "GET:/buckets/{projectId}/dock/{toolId}": "GetTool",
-  "PUT:/buckets/{projectId}/dock/{toolId}": "UpdateTool",
-  "DELETE:/buckets/{projectId}/dock/{toolId}": "DeleteTool",
-  "PUT:/buckets/{projectId}/dock/{toolId}/position": "RepositionTool",
-  "POST:/buckets/{projectId}/dock/{toolId}/enable": "EnableTool",
-  "DELETE:/buckets/{projectId}/dock/{toolId}/enable": "DisableTool",
+
+  // Dock/Tools (paths include /dock/tools/)
+  "POST:/buckets/{projectId}/dock/tools/{toolId}/clone.json": "CloneTool",
+  "GET:/buckets/{projectId}/dock/tools/{toolId}": "GetTool",
+  "PUT:/buckets/{projectId}/dock/tools/{toolId}": "UpdateTool",
+  "DELETE:/buckets/{projectId}/dock/tools/{toolId}": "DeleteTool",
+  "PUT:/buckets/{projectId}/dock/tools/{toolId}/position.json": "RepositionTool",
+  "POST:/buckets/{projectId}/dock/tools/{toolId}/position.json": "EnableTool",
+  "DELETE:/buckets/{projectId}/dock/tools/{toolId}/position.json": "DisableTool",
+
+  // Documents
   "GET:/buckets/{projectId}/documents/{documentId}": "GetDocument",
   "PUT:/buckets/{projectId}/documents/{documentId}": "UpdateDocument",
+
+  // Forwards (Inbox)
   "GET:/buckets/{projectId}/inbox_forwards/{forwardId}": "GetForward",
   "GET:/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json": "ListForwardReplies",
   "POST:/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json": "CreateForwardReply",
-  "GET:/buckets/{projectId}/inbox_replies/{replyId}": "GetForwardReply",
+  "GET:/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}": "GetForwardReply",
   "GET:/buckets/{projectId}/inboxes/{inboxId}": "GetInbox",
   "GET:/buckets/{projectId}/inboxes/{inboxId}/forwards.json": "ListForwards",
+
+  // Message Boards
   "GET:/buckets/{projectId}/message_boards/{boardId}": "GetMessageBoard",
   "GET:/buckets/{projectId}/message_boards/{boardId}/messages.json": "ListMessages",
   "POST:/buckets/{projectId}/message_boards/{boardId}/messages.json": "CreateMessage",
+
+  // Messages
   "GET:/buckets/{projectId}/messages/{messageId}": "GetMessage",
   "PUT:/buckets/{projectId}/messages/{messageId}": "UpdateMessage",
+
+  // Question & Answers (Checkins)
   "GET:/buckets/{projectId}/question_answers/{answerId}": "GetAnswer",
   "PUT:/buckets/{projectId}/question_answers/{answerId}": "UpdateAnswer",
   "GET:/buckets/{projectId}/questionnaires/{questionnaireId}": "GetQuestionnaire",
@@ -277,47 +604,67 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/buckets/{projectId}/questions/{questionId}": "UpdateQuestion",
   "GET:/buckets/{projectId}/questions/{questionId}/answers.json": "ListAnswers",
   "POST:/buckets/{projectId}/questions/{questionId}/answers.json": "CreateAnswer",
+
+  // Recordings
   "POST:/buckets/{projectId}/recordings/{recordingId}/pin.json": "PinMessage",
   "DELETE:/buckets/{projectId}/recordings/{recordingId}/pin.json": "UnpinMessage",
   "GET:/buckets/{projectId}/recordings/{recordingId}": "GetRecording",
-  "PUT:/buckets/{projectId}/recordings/{recordingId}/client_visibility": "SetClientVisibility",
+  "PUT:/buckets/{projectId}/recordings/{recordingId}/client_visibility.json": "SetClientVisibility",
   "GET:/buckets/{projectId}/recordings/{recordingId}/comments.json": "ListComments",
   "POST:/buckets/{projectId}/recordings/{recordingId}/comments.json": "CreateComment",
   "GET:/buckets/{projectId}/recordings/{recordingId}/events.json": "ListEvents",
   "PUT:/buckets/{projectId}/recordings/{recordingId}/status/active.json": "UnarchiveRecording",
   "PUT:/buckets/{projectId}/recordings/{recordingId}/status/archived.json": "ArchiveRecording",
   "PUT:/buckets/{projectId}/recordings/{recordingId}/status/trashed.json": "TrashRecording",
-  "GET:/buckets/{projectId}/recordings/{recordingId}/subscription": "GetSubscription",
-  "POST:/buckets/{projectId}/recordings/{recordingId}/subscription": "Subscribe",
-  "PUT:/buckets/{projectId}/recordings/{recordingId}/subscription": "UpdateSubscription",
-  "DELETE:/buckets/{projectId}/recordings/{recordingId}/subscription": "Unsubscribe",
-  "GET:/buckets/{projectId}/recordings/{recordingId}/timesheet": "GetRecordingTimesheet",
+  "GET:/buckets/{projectId}/recordings/{recordingId}/subscription.json": "GetSubscription",
+  "POST:/buckets/{projectId}/recordings/{recordingId}/subscription.json": "Subscribe",
+  "PUT:/buckets/{projectId}/recordings/{recordingId}/subscription.json": "UpdateSubscription",
+  "DELETE:/buckets/{projectId}/recordings/{recordingId}/subscription.json": "Unsubscribe",
+  "GET:/buckets/{projectId}/recordings/{recordingId}/timesheet.json": "GetRecordingTimesheet",
+
+  // Schedules
   "GET:/buckets/{projectId}/schedule_entries/{entryId}": "GetScheduleEntry",
   "PUT:/buckets/{projectId}/schedule_entries/{entryId}": "UpdateScheduleEntry",
-  "GET:/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{occurrenceId}": "GetScheduleEntryOccurrence",
+  "GET:/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}": "GetScheduleEntryOccurrence",
   "GET:/buckets/{projectId}/schedules/{scheduleId}": "GetSchedule",
-  "PUT:/buckets/{projectId}/schedules/{scheduleId}/settings": "UpdateScheduleSettings",
+  "PUT:/buckets/{projectId}/schedules/{scheduleId}": "UpdateScheduleSettings",
   "GET:/buckets/{projectId}/schedules/{scheduleId}/entries.json": "ListScheduleEntries",
   "POST:/buckets/{projectId}/schedules/{scheduleId}/entries.json": "CreateScheduleEntry",
-  "GET:/buckets/{projectId}/timesheet": "GetProjectTimesheet",
-  "PUT:/buckets/{projectId}/todolist_groups/{groupId}/position": "RepositionTodolistGroup",
+
+  // Timeline & Timesheet
+  "GET:/buckets/{projectId}/timeline.json": "GetProjectTimeline",
+  "GET:/buckets/{projectId}/timesheet.json": "GetProjectTimesheet",
+
+  // Todolist Groups (all use {todolistId} for consistent normalization)
+  "PUT:/buckets/{projectId}/todolists/{todolistId}/position.json": "RepositionTodolistGroup",
   "GET:/buckets/{projectId}/todolists/{todolistId}": "GetTodolistOrGroup",
   "PUT:/buckets/{projectId}/todolists/{todolistId}": "UpdateTodolistOrGroup",
   "GET:/buckets/{projectId}/todolists/{todolistId}/groups.json": "ListTodolistGroups",
   "POST:/buckets/{projectId}/todolists/{todolistId}/groups.json": "CreateTodolistGroup",
+
+  // Todolists
   "GET:/buckets/{projectId}/todolists/{todolistId}/todos.json": "ListTodos",
   "POST:/buckets/{projectId}/todolists/{todolistId}/todos.json": "CreateTodo",
+
+  // Todos
   "GET:/buckets/{projectId}/todos/{todoId}": "GetTodo",
   "PUT:/buckets/{projectId}/todos/{todoId}": "UpdateTodo",
-  "PUT:/buckets/{projectId}/todos/{todoId}/status/trashed.json": "TrashTodo",
+  "DELETE:/buckets/{projectId}/todos/{todoId}": "TrashTodo",
   "POST:/buckets/{projectId}/todos/{todoId}/completion.json": "CompleteTodo",
   "DELETE:/buckets/{projectId}/todos/{todoId}/completion.json": "UncompleteTodo",
+  "PUT:/buckets/{projectId}/todos/{todoId}/position.json": "RepositionTodo",
+
+  // Todosets
   "GET:/buckets/{projectId}/todosets/{todosetId}": "GetTodoset",
   "GET:/buckets/{projectId}/todosets/{todosetId}/todolists.json": "ListTodolists",
   "POST:/buckets/{projectId}/todosets/{todosetId}/todolists.json": "CreateTodolist",
+
+  // Uploads
   "GET:/buckets/{projectId}/uploads/{uploadId}": "GetUpload",
   "PUT:/buckets/{projectId}/uploads/{uploadId}": "UpdateUpload",
   "GET:/buckets/{projectId}/uploads/{uploadId}/versions.json": "ListUploadVersions",
+
+  // Vaults
   "GET:/buckets/{projectId}/vaults/{vaultId}": "GetVault",
   "PUT:/buckets/{projectId}/vaults/{vaultId}": "UpdateVault",
   "GET:/buckets/{projectId}/vaults/{vaultId}/documents.json": "ListDocuments",
@@ -326,19 +673,29 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/buckets/{projectId}/vaults/{vaultId}/uploads.json": "CreateUpload",
   "GET:/buckets/{projectId}/vaults/{vaultId}/vaults.json": "ListVaults",
   "POST:/buckets/{projectId}/vaults/{vaultId}/vaults.json": "CreateVault",
+
+  // Webhooks
   "GET:/buckets/{projectId}/webhooks.json": "ListWebhooks",
   "POST:/buckets/{projectId}/webhooks.json": "CreateWebhook",
   "GET:/buckets/{projectId}/webhooks/{webhookId}": "GetWebhook",
   "PUT:/buckets/{projectId}/webhooks/{webhookId}": "UpdateWebhook",
   "DELETE:/buckets/{projectId}/webhooks/{webhookId}": "DeleteWebhook",
+
+  // Campfires (global)
   "GET:/chats.json": "ListCampfires",
+
+  // People
   "GET:/circles/people.json": "ListPingablePeople",
-  "POST:/my/lineup_markers.json": "CreateLineupMarker",
-  "PUT:/my/lineup_markers/{markerId}": "UpdateLineupMarker",
-  "DELETE:/my/lineup_markers/{markerId}": "DeleteLineupMarker",
   "GET:/my/profile.json": "GetMyProfile",
   "GET:/people.json": "ListPeople",
   "GET:/people/{personId}": "GetPerson",
+
+  // Lineup Markers
+  "POST:/lineup/markers.json": "CreateLineupMarker",
+  "PUT:/lineup/markers/{markerId}": "UpdateLineupMarker",
+  "DELETE:/lineup/markers/{markerId}": "DeleteLineupMarker",
+
+  // Projects
   "GET:/projects.json": "ListProjects",
   "POST:/projects.json": "CreateProject",
   "GET:/projects/recordings.json": "ListRecordings",
@@ -346,10 +703,22 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/projects/{projectId}": "UpdateProject",
   "DELETE:/projects/{projectId}": "TrashProject",
   "GET:/projects/{projectId}/people.json": "ListProjectPeople",
-  "PUT:/projects/{projectId}/people/users": "UpdateProjectAccess",
-  "GET:/reports/timesheets": "GetTimesheetReport",
+  "PUT:/projects/{projectId}/people/users.json": "UpdateProjectAccess",
+
+  // Reports
+  "GET:/reports/progress.json": "GetProgressReport",
+  "GET:/reports/schedules/upcoming.json": "GetUpcomingSchedule",
+  "GET:/reports/timesheet.json": "GetTimesheetReport",
+  "GET:/reports/todos/assigned.json": "ListAssignablePeople",
+  "GET:/reports/todos/assigned/{personId}": "GetAssignedTodos",
+  "GET:/reports/todos/overdue.json": "GetOverdueTodos",
+  "GET:/reports/users/progress/{personId}": "GetPersonProgress",
+
+  // Search
   "GET:/search.json": "Search",
-  "GET:/search/metadata.json": "GetSearchMetadata",
+  "GET:/searches/metadata.json": "GetSearchMetadata",
+
+  // Templates
   "GET:/templates.json": "ListTemplates",
   "POST:/templates.json": "CreateTemplate",
   "GET:/templates/{templateId}": "GetTemplate",
@@ -378,6 +747,8 @@ function normalizeUrlPath(url: string): string {
   const segments = path.split("/").filter(Boolean);
 
   // Map of resource names to their ID placeholder tokens
+  // Note: Some paths have context-dependent placeholders, but we use consistent
+  // placeholders that match our PATH_TO_OPERATION entries
   const idMapping: Record<string, string> = {
     buckets: "{projectId}",
     projects: "{projectId}",
@@ -396,11 +767,9 @@ function normalizeUrlPath(url: string): string {
     replies: "{replyId}",
     recordings: "{recordingId}",
     comments: "{commentId}",
-    copy_tool: "{toolId}",
-    dock: "{toolId}",
+    tools: "{toolId}",  // dock/tools/{toolId}
     documents: "{documentId}",
     inbox_forwards: "{forwardId}",
-    inbox_replies: "{replyId}",
     inboxes: "{inboxId}",
     message_boards: "{boardId}",
     messages: "{messageId}",
@@ -408,18 +777,21 @@ function normalizeUrlPath(url: string): string {
     questionnaires: "{questionnaireId}",
     questions: "{questionId}",
     schedule_entries: "{entryId}",
-    occurrences: "{occurrenceId}",
+    occurrences: "{date}",  // schedule_entries/{entryId}/occurrences/{date}
     schedules: "{scheduleId}",
-    todolist_groups: "{groupId}",
-    todolists: "{todolistId}",
+    todolists: "{todolistId}",  // Also handles {id} and {groupId} via context
+    groups: "{groupId}",  // todolists/{todolistId}/groups
     todos: "{todoId}",
     todosets: "{todosetId}",
     uploads: "{uploadId}",
     vaults: "{vaultId}",
     webhooks: "{webhookId}",
     people: "{personId}",
-    lineup_markers: "{markerId}",
+    markers: "{markerId}",  // lineup/markers/{markerId}
     project_constructions: "{constructionId}",
+    assigned: "{personId}",  // reports/todos/assigned/{personId}
+    progress: "{personId}",  // reports/users/progress/{personId}
+    users: "{personId}",  // Alternative for users/progress
   };
 
   // Build normalized path by replacing numeric IDs based on context
@@ -465,7 +837,7 @@ function getRetryConfigForRequest(method: string, url: string): RetryConfig {
   return DEFAULT_RETRY_CONFIG;
 }
 
-function createRetryMiddleware(): Middleware {
+function createRetryMiddleware(hooks?: BasecampHooks): Middleware {
   // Store request body clones keyed by a request identifier
   // This is needed because Request.body can only be read once
   const bodyCache = new Map<string, ArrayBuffer | null>();
@@ -537,6 +909,21 @@ function createRetryMiddleware(): Middleware {
         }
       } else {
         delay = calculateBackoffDelay(retryConfig, attempt);
+      }
+
+      // Notify hooks of retry
+      if (hooks?.onRetry) {
+        const info: RequestInfo = {
+          method: request.method,
+          url: request.url,
+          attempt: attempt + 1,
+        };
+        const error = new Error(`HTTP ${response.status}: ${response.statusText || "Request failed"}`);
+        try {
+          hooks.onRetry(info, attempt + 1, error, delay);
+        } catch {
+          // Hooks should not interrupt the retry
+        }
       }
 
       // Wait before retry

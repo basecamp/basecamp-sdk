@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "./setup.js";
 import { createBasecampClient } from "../src/client.js";
+import type { BasecampHooks } from "../src/hooks.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -228,6 +229,127 @@ describe("BasecampClient", () => {
 
       expect(data).toBeUndefined();
       expect(error).toBeDefined();
+    });
+  });
+
+  describe("hooks integration", () => {
+    it("should call onRequestStart and onRequestEnd hooks", async () => {
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, () => {
+          return HttpResponse.json([{ id: 1, name: "Test" }]);
+        })
+      );
+
+      const hooks: BasecampHooks = {
+        onRequestStart: vi.fn(),
+        onRequestEnd: vi.fn(),
+      };
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        hooks,
+      });
+
+      await client.GET("/projects.json");
+
+      expect(hooks.onRequestStart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: "GET",
+          url: expect.stringContaining("/projects.json"),
+          attempt: 1,
+        })
+      );
+
+      expect(hooks.onRequestEnd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: "GET",
+          url: expect.stringContaining("/projects.json"),
+          attempt: 1,
+        }),
+        expect.objectContaining({
+          statusCode: 200,
+          durationMs: expect.any(Number),
+          fromCache: false,
+        })
+      );
+    });
+
+    it("should call onRetry hook when retrying", async () => {
+      let attempts = 0;
+
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return new HttpResponse(null, {
+              status: 429,
+              headers: { "Retry-After": "1" },
+            });
+          }
+          return HttpResponse.json([]);
+        })
+      );
+
+      const hooks: BasecampHooks = {
+        onRetry: vi.fn(),
+      };
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        hooks,
+      });
+
+      await client.GET("/projects.json");
+
+      expect(hooks.onRetry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: "GET",
+          url: expect.stringContaining("/projects.json"),
+        }),
+        1,
+        expect.any(Error),
+        expect.any(Number)
+      );
+    });
+
+    it("should expose hooks on client", () => {
+      const hooks: BasecampHooks = {
+        onRequestStart: vi.fn(),
+      };
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        hooks,
+      });
+
+      expect(client.hooks).toBe(hooks);
+    });
+
+    it("should report duration for all requests", async () => {
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, () => {
+          return HttpResponse.json([{ id: 1, name: "Test" }]);
+        })
+      );
+
+      const hooks: BasecampHooks = {
+        onRequestEnd: vi.fn(),
+      };
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        hooks,
+      });
+
+      await client.GET("/projects.json");
+
+      const call = (hooks.onRequestEnd as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(call[1].durationMs).toBeGreaterThanOrEqual(0);
+      expect(call[1].statusCode).toBe(200);
     });
   });
 });

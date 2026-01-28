@@ -170,6 +170,14 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	}
 
 	// Initialize generated client with auth
+	c.initGeneratedClient()
+
+	return c
+}
+
+// initGeneratedClient initializes or reinitializes the generated OpenAPI client.
+// This is called during NewClient and whenever the account ID changes.
+func (c *Client) initGeneratedClient() {
 	serverURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(c.cfg.BaseURL, "/"), c.cfg.AccountID)
 	authEditor := func(ctx context.Context, req *http.Request) error {
 		token, err := c.tokenProvider.AccessToken(ctx)
@@ -192,8 +200,6 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 		panic(fmt.Sprintf("basecamp: failed to create generated client: %v", err))
 	}
 	c.gen = gen
-
-	return c
 }
 
 // discardHandler is a slog.Handler that discards all log records.
@@ -584,6 +590,14 @@ func (c *Client) RequireAccount() error {
 // Config returns the client configuration.
 func (c *Client) Config() *Config {
 	return c.cfg
+}
+
+// SetAccountID updates the account ID and reinitializes the generated client.
+// This is useful when the account ID is determined after client creation,
+// such as through interactive prompts or multi-account selection.
+func (c *Client) SetAccountID(accountID string) {
+	c.cfg.AccountID = accountID
+	c.initGeneratedClient()
 }
 
 // Projects returns the ProjectsService for project operations.

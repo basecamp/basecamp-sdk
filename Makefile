@@ -86,7 +86,7 @@ go-check-drift:
 # TypeScript SDK targets
 #------------------------------------------------------------------------------
 
-.PHONY: ts-generate ts-build ts-test ts-typecheck ts-check ts-clean
+.PHONY: ts-generate ts-build ts-test ts-typecheck ts-check-path-mapping ts-check ts-clean
 
 # Generate TypeScript types and metadata from OpenAPI
 ts-generate:
@@ -108,8 +108,13 @@ ts-typecheck:
 	@echo "==> Type checking TypeScript SDK..."
 	cd typescript && npm run typecheck
 
+# Validate PATH_TO_OPERATION matches OpenAPI spec
+ts-check-path-mapping:
+	@echo "==> Checking PATH_TO_OPERATION sync..."
+	cd typescript && npm run check:path-mapping
+
 # Run all TypeScript checks
-ts-check: ts-typecheck ts-test
+ts-check: ts-typecheck ts-check-path-mapping ts-test
 	@echo "==> TypeScript SDK checks passed"
 
 # Clean TypeScript build artifacts
@@ -170,12 +175,13 @@ help:
 	@echo "  go-clean         Remove Go build artifacts"
 	@echo ""
 	@echo "TypeScript SDK:"
-	@echo "  ts-generate      Generate types and metadata from OpenAPI"
-	@echo "  ts-build         Build TypeScript SDK"
-	@echo "  ts-test          Run TypeScript tests"
-	@echo "  ts-typecheck     Run TypeScript type checking"
-	@echo "  ts-check         Run all TypeScript checks"
-	@echo "  ts-clean         Remove TypeScript build artifacts"
+	@echo "  ts-generate           Generate types and metadata from OpenAPI"
+	@echo "  ts-build              Build TypeScript SDK"
+	@echo "  ts-test               Run TypeScript tests"
+	@echo "  ts-typecheck          Run TypeScript type checking"
+	@echo "  ts-check-path-mapping Validate PATH_TO_OPERATION sync with OpenAPI"
+	@echo "  ts-check              Run all TypeScript checks"
+	@echo "  ts-clean              Remove TypeScript build artifacts"
 	@echo ""
 	@echo "Conformance:"
 	@echo "  conformance      Run all conformance tests"
