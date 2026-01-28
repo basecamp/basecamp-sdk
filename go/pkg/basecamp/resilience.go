@@ -42,6 +42,39 @@ var _ GatingHooks = (*resilienceHooks)(nil)
 // bulkheadReleaseKey is the context key for storing bulkhead release functions.
 type bulkheadReleaseKey struct{}
 
+// shouldTripCircuit returns true if the error should count as a circuit breaker failure.
+// Only server-side errors (5xx, network) trip the circuit. Client-side errors (4xx,
+// validation, auth, not-found) do not trip the circuit since they indicate problems
+// with the request, not the service.
+func shouldTripCircuit(err error) bool {
+	// Gating errors never trip the circuit
+	if err == ErrCircuitOpen || err == ErrBulkheadFull || err == ErrRateLimited {
+		return false
+	}
+
+	// Context errors (canceled, deadline exceeded) don't indicate server problems
+	if err == context.Canceled || err == context.DeadlineExceeded {
+		return false
+	}
+
+	// Check if it's our structured Error type
+	if e, ok := err.(*Error); ok {
+		// Network errors and explicit retryable errors trip the circuit
+		if e.Code == CodeNetwork || e.Retryable {
+			return true
+		}
+		// 5xx errors trip the circuit
+		if e.HTTPStatus >= 500 {
+			return true
+		}
+		// 4xx errors (auth, not-found, forbidden, rate-limit, usage) don't trip
+		return false
+	}
+
+	// Unknown error types are assumed to be server-side failures
+	return true
+}
+
 // OnOperationGate checks all resilience gates before allowing an operation.
 // Gates are checked in order: circuit breaker, bulkhead, rate limiter.
 // Returns a context that may contain cleanup functions (e.g., bulkhead release).
@@ -61,13 +94,17 @@ func (h *resilienceHooks) OnOperationGate(ctx context.Context, op OperationInfo)
 		bh := h.bulkheads.get(scope)
 		release, err := bh.Acquire(ctx)
 		if err != nil {
+			// Preserve context errors (canceled, deadline exceeded) rather than masking
+			if ctx.Err() != nil {
+				return ctx, ctx.Err()
+			}
 			return ctx, ErrBulkheadFull
 		}
 		// Store release function in context for OnOperationEnd to call
 		ctx = context.WithValue(ctx, bulkheadReleaseKey{}, release)
 	}
 
-	// Rate limit (may block waiting for token)
+	// Rate limit (fail fast if no tokens available)
 	if h.rateLimiter != nil {
 		if !h.rateLimiter.Allow() {
 			// Release bulkhead if we acquired one
@@ -98,14 +135,12 @@ func (h *resilienceHooks) OnOperationEnd(ctx context.Context, op OperationInfo, 
 	// Update circuit breaker state based on result
 	if h.circuitBreakers != nil {
 		cb := h.circuitBreakers.get(scope)
-		if err != nil {
-			// Don't count gating errors as failures
-			if err != ErrCircuitOpen && err != ErrBulkheadFull && err != ErrRateLimited {
-				cb.RecordFailure()
-			}
-		} else {
+		if err != nil && shouldTripCircuit(err) {
+			cb.RecordFailure()
+		} else if err == nil {
 			cb.RecordSuccess()
 		}
+		// Note: client-side errors (validation, 4xx) neither trip nor heal the circuit
 	}
 
 	// Delegate to inner hooks

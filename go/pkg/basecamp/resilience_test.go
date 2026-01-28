@@ -101,6 +101,26 @@ func TestResilienceHooks_OnOperationGate_Bulkhead(t *testing.T) {
 		}
 	})
 
+	t.Run("preserves context cancellation error", func(t *testing.T) {
+		rh := &resilienceHooks{
+			inner:     NoopHooks{},
+			bulkheads: newBulkheadRegistry(&BulkheadConfig{MaxConcurrent: 1, MaxWait: time.Second}),
+		}
+
+		// Acquire the only slot
+		bh := rh.bulkheads.get("Todos.Create")
+		_, _ = bh.TryAcquire()
+
+		// Use a canceled context
+		canceledCtx, cancel := context.WithCancel(context.Background())
+		cancel() // Cancel immediately
+
+		_, err := rh.OnOperationGate(canceledCtx, op)
+		if err != context.Canceled {
+			t.Errorf("should preserve context.Canceled: got %v", err)
+		}
+	})
+
 	t.Run("stores release function in context", func(t *testing.T) {
 		rh := &resilienceHooks{
 			inner:     NoopHooks{},
@@ -208,14 +228,40 @@ func TestResilienceHooks_OnOperationEnd_UpdatesCircuitBreaker(t *testing.T) {
 		// Gate first
 		_, _ = rh.OnOperationGate(ctx, op)
 
-		// Record failures
-		rh.OnOperationEnd(ctx, op, ErrNotFound("test", "1"), time.Second)
-		rh.OnOperationEnd(ctx, op, ErrNotFound("test", "2"), time.Second)
+		// Record server-side failures (5xx errors trip the circuit)
+		serverErr := ErrAPI(503, "service unavailable")
+		rh.OnOperationEnd(ctx, op, serverErr, time.Second)
+		rh.OnOperationEnd(ctx, op, serverErr, time.Second)
 
 		// Breaker should be open
 		cb := rh.circuitBreakers.get("Todos.Get")
 		if cb.State() != "open" {
 			t.Errorf("circuit should be open after failures: got %s", cb.State())
+		}
+	})
+
+	t.Run("does not count client errors as failures", func(t *testing.T) {
+		cfg := &CircuitBreakerConfig{
+			FailureThreshold: 2,
+			OpenTimeout:      time.Hour,
+		}
+		rh := &resilienceHooks{
+			inner:           NoopHooks{},
+			circuitBreakers: newCircuitBreakerRegistry(cfg),
+		}
+
+		// Gate first
+		_, _ = rh.OnOperationGate(ctx, op)
+
+		// Record client-side errors (4xx errors don't trip the circuit)
+		rh.OnOperationEnd(ctx, op, ErrNotFound("test", "1"), time.Second)
+		rh.OnOperationEnd(ctx, op, ErrNotFound("test", "2"), time.Second)
+		rh.OnOperationEnd(ctx, op, ErrAuth("bad token"), time.Second)
+
+		// Breaker should still be closed (client errors don't trip)
+		cb := rh.circuitBreakers.get("Todos.Get")
+		if cb.State() != "closed" {
+			t.Errorf("circuit should be closed after client errors: got %s", cb.State())
 		}
 	})
 
