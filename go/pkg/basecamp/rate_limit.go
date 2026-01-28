@@ -137,7 +137,7 @@ func (r *rateLimiter) Wait(ctx context.Context) error {
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
-				case <-time.After(time.Until(waitUntil)):
+				case <-time.After(waitUntil.Sub(r.now())):
 					continue
 				}
 			}
@@ -245,7 +245,7 @@ func (r *rateLimiter) RetryAfterRemaining() time.Duration {
 		return 0
 	}
 
-	remaining := time.Until(r.retryAfterUntil)
+	remaining := r.retryAfterUntil.Sub(r.now())
 	if remaining < 0 {
 		return 0
 	}
