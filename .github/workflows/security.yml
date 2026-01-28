@@ -35,6 +35,7 @@ jobs:
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true  # Requires GitHub Advanced Security
         with:
           sarif_file: 'trivy-go-results.sarif'
           category: 'trivy-go'
@@ -60,6 +61,7 @@ jobs:
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true  # Requires GitHub Advanced Security
         with:
           sarif_file: 'trivy-ts-results.sarif'
           category: 'trivy-typescript'
@@ -105,6 +107,7 @@ jobs:
       - name: Upload gosec scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true  # Requires GitHub Advanced Security
         with:
           sarif_file: 'gosec-results.sarif'
 
@@ -133,6 +136,8 @@ jobs:
     name: Dependency Review
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    # Requires Dependency Graph + GitHub Advanced Security to be enabled
+    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
