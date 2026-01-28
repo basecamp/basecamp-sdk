@@ -4,12 +4,7 @@ on:
   push:
     tags:
       - 'ts/v*'
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Run without publishing (rehearsal mode)'
-        type: boolean
-        default: true
+  workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
 
 permissions:
   contents: write
@@ -107,10 +102,10 @@ jobs:
         id: version
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Manual trigger: read from package.json
+            # Manual trigger (dry-run): read from package.json
             VERSION=$(node -p "require('./package.json').version")
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "Dry run for version: $VERSION"
+            echo "Rehearsal for version: $VERSION"
           else
             # Tag trigger: extract from tag and verify match
             VERSION="${GITHUB_REF#refs/tags/ts/v}"
@@ -135,17 +130,17 @@ jobs:
 
       - name: Publish to npm
         run: |
-          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
+          else
             echo "::notice::Dry run mode - not actually publishing"
             npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --dry-run
-          else
-            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Generate changelog
-        if: inputs.dry_run != true
+        if: github.event_name == 'push'
         id: changelog
         run: |
           cd ..
@@ -175,7 +170,7 @@ jobs:
           echo '```' >> changelog.md
 
       - name: Create GitHub Release
-        if: inputs.dry_run != true
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           name: TypeScript SDK v${{ steps.version.outputs.version }}
