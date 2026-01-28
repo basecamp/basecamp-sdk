@@ -1,5 +1,22 @@
 $version: "2"
 
+// =============================================================================
+// ARCHITECTURAL NOTE: List Response Format
+// =============================================================================
+// The BC3 API returns bare arrays for list endpoints (GET /projects.json returns
+// [...] not {"projects": [...]}). Smithy's AWS restJson1 protocol requires list
+// outputs to be modeled as wrapped structures because @httpPayload only supports
+// string, blob, structure, union, and document types—not arrays.
+//
+// As a result:
+//   - This Smithy model uses wrapped outputs (e.g., ListProjectsOutput.projects)
+//   - The generated OpenAPI is post-processed by fix-list-response-schemas.sh
+//     to convert these to bare arrays, matching the actual wire format
+//   - Generated SDK clients correctly handle bare array responses
+//
+// This is a known protocol limitation, not a modeling error.
+// =============================================================================
+
 namespace basecamp
 
 use smithy.api#documentation

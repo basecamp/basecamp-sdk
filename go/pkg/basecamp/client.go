@@ -264,7 +264,11 @@ func (ac *AccountClient) GetAll(ctx context.Context, path string) ([]json.RawMes
 
 // accountPath prepends the account ID to the path.
 // Absolute URLs are returned unchanged (e.g., pagination Link headers).
-// Paths already prefixed with /{accountId}/ are returned unchanged.
+// Paths already prefixed with the account ID are returned unchanged.
+//
+// Callers should pass account-less paths (e.g., "/projects.json").
+// If a path is already prefixed (e.g., "/12345/projects.json"), it is
+// returned as-is to avoid double-prefixing.
 func (ac *AccountClient) accountPath(path string) string {
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		return path
@@ -272,10 +276,14 @@ func (ac *AccountClient) accountPath(path string) string {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	// Guard against double-prefixing if caller already included account ID
-	prefix := "/" + ac.accountID + "/"
+	// Guard against double-prefixing if caller already included account ID.
+	// Check for /{accountId}/, /{accountId}?, or /{accountId} (exact).
+	prefix := "/" + ac.accountID
 	if strings.HasPrefix(path, prefix) {
-		return path
+		rest := path[len(prefix):]
+		if rest == "" || rest[0] == '/' || rest[0] == '?' {
+			return path
+		}
 	}
 	return "/" + ac.accountID + path
 }

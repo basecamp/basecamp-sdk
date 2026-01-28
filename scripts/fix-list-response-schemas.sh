@@ -2,8 +2,30 @@
 #
 # Fix List*ResponseContent schemas to match BC3 API response format.
 #
-# Problem: Smithy generates wrapped responses like {"projects": [...]}
-# Reality: BC3 API returns raw arrays like [...]
+# ARCHITECTURAL NOTE: Why this post-processor exists
+# ===================================================
+# The BC3 API returns bare arrays for list endpoints (e.g., GET /projects.json
+# returns [...] not {"projects": [...]}). However, Smithy's AWS restJson1
+# protocol only supports binding structures/strings/blobs to HTTP payloads,
+# not arrays directly. The @httpPayload trait cannot be applied to list members.
+#
+# This creates an unavoidable divergence:
+#   - Smithy model: wrapped responses (ListProjectsOutput { projects: ProjectList })
+#   - Actual API:   bare arrays ([...])
+#
+# This script bridges that gap by transforming the generated OpenAPI to match
+# the actual wire format. The Smithy model remains technically "incorrect" for
+# the wire format but is required by Smithy's protocol constraints.
+#
+# Impact:
+#   - OpenAPI spec: correctly reflects bare array responses (after this script)
+#   - Generated clients: work correctly with bare arrays
+#   - Smithy-based tools: may see wrapped structure (behavior-model, etc.)
+#
+# Alternatives considered:
+#   - @httpPayload on list members: Not supported by AWS protocols
+#   - Custom Smithy trait: Would require custom generators for all artifacts
+#   - Different protocol: Would lose AWS protocol ecosystem benefits
 #
 # This script transforms all List*ResponseContent schemas from:
 #   {"type": "object", "properties": {"items": {"type": "array", ...}}}
