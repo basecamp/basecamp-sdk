@@ -201,12 +201,12 @@ func TestHttpStatusToLabel(t *testing.T) {
 		{502, "502"},
 		{503, "503"},
 		{504, "504"},
-		{202, "2xx"},       // Uncommon 2xx
-		{301, "3xx"},       // Uncommon 3xx
-		{418, "4xx"},       // Uncommon 4xx (I'm a teapot)
-		{599, "5xx"},       // Uncommon 5xx
-		{0, "unknown"},     // Invalid
-		{99, "unknown"},    // Invalid
+		{202, "2xx"},    // Uncommon 2xx
+		{301, "3xx"},    // Uncommon 3xx
+		{418, "4xx"},    // Uncommon 4xx (I'm a teapot)
+		{599, "5xx"},    // Uncommon 5xx
+		{0, "unknown"},  // Invalid
+		{99, "unknown"}, // Invalid
 	}
 
 	for _, tt := range tests {

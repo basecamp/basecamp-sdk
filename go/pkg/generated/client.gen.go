@@ -2168,8 +2168,7 @@ func (s SensitiveString) Value() string {
 
 // CreateAttachmentParams defines parameters for CreateAttachment.
 type CreateAttachmentParams struct {
-	Name        string `form:"name" json:"name"`
-	ContentType string `json:"Content-Type"`
+	Name string `form:"name" json:"name"`
 }
 
 // GetRecordingTimesheetParams defines parameters for GetRecordingTimesheet.
@@ -5711,19 +5710,6 @@ func NewCreateAttachmentRequestWithBody(server string, params *CreateAttachmentP
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "Content-Type", runtime.ParamLocationHeader, params.ContentType)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("Content-Type", headerParam0)
-
-	}
 
 	return req, nil
 }

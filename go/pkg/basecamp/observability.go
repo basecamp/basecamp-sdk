@@ -176,4 +176,3 @@ func WithHooks(hooks Hooks) ClientOption {
 		}
 	}
 }
-

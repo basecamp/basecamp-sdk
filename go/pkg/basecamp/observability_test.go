@@ -164,12 +164,12 @@ func TestChainHooks_OperationLevel(t *testing.T) {
 
 // recordingHooks records all hook calls for testing
 type recordingHooks struct {
-	id              string
-	startCalls      []RequestInfo
-	endCalls        []RequestResult
-	retryCalls      []int
-	opStartCalls    []OperationInfo
-	opEndCalls      []OperationInfo
+	id           string
+	startCalls   []RequestInfo
+	endCalls     []RequestResult
+	retryCalls   []int
+	opStartCalls []OperationInfo
+	opEndCalls   []OperationInfo
 }
 
 func (h *recordingHooks) OnOperationStart(ctx context.Context, op OperationInfo) context.Context {
@@ -204,13 +204,15 @@ func (h *contextAddingHooks) OnOperationStart(ctx context.Context, op OperationI
 	return ctx
 }
 
-func (h *contextAddingHooks) OnOperationEnd(ctx context.Context, op OperationInfo, err error, duration time.Duration) {}
+func (h *contextAddingHooks) OnOperationEnd(ctx context.Context, op OperationInfo, err error, duration time.Duration) {
+}
 
 func (h *contextAddingHooks) OnRequestStart(ctx context.Context, info RequestInfo) context.Context {
 	return context.WithValue(ctx, h.key, h.value)
 }
 
-func (h *contextAddingHooks) OnRequestEnd(ctx context.Context, info RequestInfo, result RequestResult) {}
+func (h *contextAddingHooks) OnRequestEnd(ctx context.Context, info RequestInfo, result RequestResult) {
+}
 
 func (h *contextAddingHooks) OnRetry(ctx context.Context, info RequestInfo, attempt int, err error) {}
 

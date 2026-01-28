@@ -185,9 +185,9 @@ type Assignable struct {
 
 // UpcomingScheduleResponse contains upcoming schedule entries.
 type UpcomingScheduleResponse struct {
-	ScheduleEntries            []ScheduleEntry `json:"schedule_entries"`
-	RecurringOccurrences       []ScheduleEntry `json:"recurring_schedule_entry_occurrences"`
-	Assignables                []Assignable    `json:"assignables"`
+	ScheduleEntries      []ScheduleEntry `json:"schedule_entries"`
+	RecurringOccurrences []ScheduleEntry `json:"recurring_schedule_entry_occurrences"`
+	Assignables          []Assignable    `json:"assignables"`
 }
 
 // UpcomingSchedule returns schedule entries within a date window.
