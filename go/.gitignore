@@ -6,5 +6,5 @@ coverage.html
 bench-baseline.txt
 bench-current.txt
 
-# NOTE: default.pgo is NOT ignored - PGO profiles should be committed
-# to enable profile-guided optimization in builds
+# NOTE: pkg/basecamp/default.pgo is NOT ignored - PGO profiles should be committed
+# to enable profile-guided optimization in builds (Go auto-detects in package dir)

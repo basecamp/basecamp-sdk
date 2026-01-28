@@ -39,8 +39,8 @@ bench:
 .PHONY: bench-pgo
 bench-pgo:
 	@echo "Running benchmarks to generate CPU profile for PGO..."
-	$(GOTEST) -run=^$$ -bench=. -benchtime=5s -cpuprofile=default.pgo ./pkg/basecamp/
-	@echo "Profile saved to default.pgo"
+	$(GOTEST) -run=^$$ -bench=. -benchtime=5s -cpuprofile=pkg/basecamp/default.pgo ./pkg/basecamp/
+	@echo "Profile saved to pkg/basecamp/default.pgo"
 	@echo "Commit this file to enable PGO in builds"
 
 # Run benchmarks and compare with baseline (requires benchstat)
@@ -95,11 +95,11 @@ tidy:
 verify:
 	$(GOMOD) verify
 
-# Clean build artifacts
+# Clean build artifacts (preserves committed pkg/basecamp/default.pgo)
 .PHONY: clean
 clean:
 	rm -f coverage.out coverage.html
-	rm -f default.pgo bench-baseline.txt bench-current.txt
+	rm -f bench-baseline.txt bench-current.txt
 	rm -f pkg/generated/*.gen.go
 
 # Run all checks (local development gate)
