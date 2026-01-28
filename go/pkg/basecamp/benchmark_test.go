@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -191,7 +192,7 @@ func BenchmarkJSONUnmarshalProjectList(b *testing.B) {
 			buf.WriteString(",")
 		}
 		buf.WriteString(`{"id":`)
-		buf.WriteString(string(rune('0' + i%10)))
+		buf.WriteString(strconv.Itoa(i))
 		buf.WriteString(`,"status":"active","name":"Project `)
 		buf.WriteString(string(rune('A' + i%26)))
 		buf.WriteString(`","description":"Description","url":"https://example.com"}`)
