@@ -535,11 +535,15 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 		CommentsCount:    int(ga.CommentsCount),
 		CommentsURL:      ga.CommentsUrl,
 		Content:          ga.Content,
-		GroupOn:          ga.GroupOn.String(),
 	}
 
 	if ga.Id != nil {
 		a.ID = *ga.Id
+	}
+
+	// Convert date fields to strings
+	if !ga.GroupOn.IsZero() {
+		a.GroupOn = ga.GroupOn.String()
 	}
 
 	if ga.Parent.Id != nil || ga.Parent.Title != "" {

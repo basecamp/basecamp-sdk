@@ -47,7 +47,7 @@ func (d Date) String() string {
 
 // GoString returns a Go-syntax representation for debugging.
 func (d Date) GoString() string {
-	return fmt.Sprintf("basecamp.Date{Year: %d, Month: %d, Day: %d}", d.Year, d.Month, d.Day)
+	return fmt.Sprintf("types.Date{Year: %d, Month: %d, Day: %d}", d.Year, d.Month, d.Day)
 }
 
 // IsZero reports whether the date is the zero value.

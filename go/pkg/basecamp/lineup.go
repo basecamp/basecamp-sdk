@@ -182,8 +182,6 @@ func lineupMarkerFromGenerated(gm generated.LineupMarker) LineupMarker {
 		Status:      gm.Status,
 		Color:       gm.Color,
 		Title:       gm.Title,
-		StartsOn:    gm.StartsOn.String(),
-		EndsOn:      gm.EndsOn.String(),
 		Description: gm.Description,
 		CreatedAt:   gm.CreatedAt,
 		UpdatedAt:   gm.UpdatedAt,
@@ -194,6 +192,14 @@ func lineupMarkerFromGenerated(gm generated.LineupMarker) LineupMarker {
 
 	if gm.Id != nil {
 		m.ID = *gm.Id
+	}
+
+	// Convert date fields to strings
+	if !gm.StartsOn.IsZero() {
+		m.StartsOn = gm.StartsOn.String()
+	}
+	if !gm.EndsOn.IsZero() {
+		m.EndsOn = gm.EndsOn.String()
 	}
 
 	if gm.Creator.Id != nil || gm.Creator.Name != "" {

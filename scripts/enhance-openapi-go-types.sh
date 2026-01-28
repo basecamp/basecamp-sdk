@@ -66,5 +66,5 @@ id_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == fa
 
 echo "Enhanced OpenAPI spec with Go type extensions:"
 echo "  Timestamp fields (time.Time): $timestamp_count"
-echo "  Date fields (basecamp.Date): $date_count"
+echo "  Date fields (types.Date): $date_count"
 echo "  Id fields (keeping pointers): $id_count"
