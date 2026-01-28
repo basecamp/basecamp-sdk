@@ -73,8 +73,8 @@ func (s *PeopleService) List(ctx context.Context) (result []Person, err error) {
 		return nil, nil
 	}
 
-	people := make([]Person, 0, len(resp.JSON200.People))
-	for _, gp := range resp.JSON200.People {
+	people := make([]Person, 0, len(*resp.JSON200))
+	for _, gp := range *resp.JSON200 {
 		people = append(people, personFromGenerated(gp))
 	}
 
@@ -169,8 +169,8 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (
 		return nil, nil
 	}
 
-	people := make([]Person, 0, len(resp.JSON200.People))
-	for _, gp := range resp.JSON200.People {
+	people := make([]Person, 0, len(*resp.JSON200))
+	for _, gp := range *resp.JSON200 {
 		people = append(people, personFromGenerated(gp))
 	}
 
@@ -203,8 +203,8 @@ func (s *PeopleService) Pingable(ctx context.Context) (result []Person, err erro
 		return nil, nil
 	}
 
-	people := make([]Person, 0, len(resp.JSON200.People))
-	for _, gp := range resp.JSON200.People {
+	people := make([]Person, 0, len(*resp.JSON200))
+	for _, gp := range *resp.JSON200 {
 		people = append(people, personFromGenerated(gp))
 	}
 

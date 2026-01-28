@@ -73,8 +73,8 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64)
 	}
 
 	// Convert generated types to our clean types
-	comments := make([]Comment, 0, len(resp.JSON200.Comments))
-	for _, gc := range resp.JSON200.Comments {
+	comments := make([]Comment, 0, len(*resp.JSON200))
+	for _, gc := range *resp.JSON200 {
 		comments = append(comments, commentFromGenerated(gc))
 	}
 	return comments, nil

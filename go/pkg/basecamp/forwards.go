@@ -129,8 +129,8 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) (re
 		return nil, nil
 	}
 
-	forwards := make([]Forward, 0, len(resp.JSON200.Forwards))
-	for _, gf := range resp.JSON200.Forwards {
+	forwards := make([]Forward, 0, len(*resp.JSON200))
+	for _, gf := range *resp.JSON200 {
 		forwards = append(forwards, forwardFromGenerated(gf))
 	}
 
@@ -196,8 +196,8 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 		return nil, nil
 	}
 
-	replies := make([]ForwardReply, 0, len(resp.JSON200.Replies))
-	for _, gr := range resp.JSON200.Replies {
+	replies := make([]ForwardReply, 0, len(*resp.JSON200))
+	for _, gr := range *resp.JSON200 {
 		replies = append(replies, forwardReplyFromGenerated(gr))
 	}
 

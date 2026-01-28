@@ -86,8 +86,8 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) (re
 		return nil, nil
 	}
 
-	messages := make([]Message, 0, len(resp.JSON200.Messages))
-	for _, gm := range resp.JSON200.Messages {
+	messages := make([]Message, 0, len(*resp.JSON200))
+	for _, gm := range *resp.JSON200 {
 		messages = append(messages, messageFromGenerated(gm))
 	}
 	return messages, nil

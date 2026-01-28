@@ -135,8 +135,8 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 		return nil, nil
 	}
 
-	projects := make([]Project, 0, len(resp.JSON200.Projects))
-	for _, gp := range resp.JSON200.Projects {
+	projects := make([]Project, 0, len(*resp.JSON200))
+	for _, gp := range *resp.JSON200 {
 		projects = append(projects, projectFromGenerated(gp))
 	}
 

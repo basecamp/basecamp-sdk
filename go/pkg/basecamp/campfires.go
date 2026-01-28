@@ -114,8 +114,8 @@ func (s *CampfiresService) List(ctx context.Context) (result []Campfire, err err
 		return nil, nil
 	}
 
-	campfires := make([]Campfire, 0, len(resp.JSON200.Campfires))
-	for _, gc := range resp.JSON200.Campfires {
+	campfires := make([]Campfire, 0, len(*resp.JSON200))
+	for _, gc := range *resp.JSON200 {
 		campfires = append(campfires, campfireFromGenerated(gc))
 	}
 	return campfires, nil
@@ -180,8 +180,8 @@ func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID i
 		return nil, nil
 	}
 
-	lines := make([]CampfireLine, 0, len(resp.JSON200.Lines))
-	for _, gl := range resp.JSON200.Lines {
+	lines := make([]CampfireLine, 0, len(*resp.JSON200))
+	for _, gl := range *resp.JSON200 {
 		lines = append(lines, campfireLineFromGenerated(gl))
 	}
 	return lines, nil
@@ -312,8 +312,8 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireI
 		return nil, nil
 	}
 
-	chatbots := make([]Chatbot, 0, len(resp.JSON200.Chatbots))
-	for _, gc := range resp.JSON200.Chatbots {
+	chatbots := make([]Chatbot, 0, len(*resp.JSON200))
+	for _, gc := range *resp.JSON200 {
 		chatbots = append(chatbots, chatbotFromGenerated(gc))
 	}
 	return chatbots, nil

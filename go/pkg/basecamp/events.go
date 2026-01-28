@@ -65,8 +65,8 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64) (
 		return nil, nil
 	}
 
-	events := make([]Event, 0, len(resp.JSON200.Events))
-	for _, ge := range resp.JSON200.Events {
+	events := make([]Event, 0, len(*resp.JSON200))
+	for _, ge := range *resp.JSON200 {
 		events = append(events, eventFromGenerated(ge))
 	}
 

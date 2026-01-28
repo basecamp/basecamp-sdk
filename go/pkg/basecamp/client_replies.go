@@ -64,8 +64,8 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 		return nil, nil
 	}
 
-	replies := make([]ClientReply, 0, len(resp.JSON200.Replies))
-	for _, gr := range resp.JSON200.Replies {
+	replies := make([]ClientReply, 0, len(*resp.JSON200))
+	for _, gr := range *resp.JSON200 {
 		replies = append(replies, clientReplyFromGenerated(gr))
 	}
 

@@ -43,8 +43,8 @@ func (s *ReportsService) AssignablePeople(ctx context.Context) (result []Person,
 		return nil, nil
 	}
 
-	people := make([]Person, 0, len(resp.JSON200.People))
-	for _, gp := range resp.JSON200.People {
+	people := make([]Person, 0, len(*resp.JSON200))
+	for _, gp := range *resp.JSON200 {
 		people = append(people, personFromGenerated(gp))
 	}
 

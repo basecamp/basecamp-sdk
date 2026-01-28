@@ -1004,159 +1004,97 @@ type LineupMarker struct {
 }
 
 // ListAnswersResponseContent defines model for ListAnswersResponseContent.
-type ListAnswersResponseContent struct {
-	Answers []QuestionAnswer `json:"answers,omitempty"`
-}
+type ListAnswersResponseContent = []QuestionAnswer
 
 // ListAssignablePeopleResponseContent defines model for ListAssignablePeopleResponseContent.
-type ListAssignablePeopleResponseContent struct {
-	People []Person `json:"people,omitempty"`
-}
+type ListAssignablePeopleResponseContent = []Person
 
 // ListCampfireLinesResponseContent defines model for ListCampfireLinesResponseContent.
-type ListCampfireLinesResponseContent struct {
-	Lines []CampfireLine `json:"lines,omitempty"`
-}
+type ListCampfireLinesResponseContent = []CampfireLine
 
 // ListCampfiresResponseContent defines model for ListCampfiresResponseContent.
-type ListCampfiresResponseContent struct {
-	Campfires []Campfire `json:"campfires,omitempty"`
-}
+type ListCampfiresResponseContent = []Campfire
 
 // ListCardsResponseContent defines model for ListCardsResponseContent.
-type ListCardsResponseContent struct {
-	Cards []Card `json:"cards,omitempty"`
-}
+type ListCardsResponseContent = []Card
 
 // ListChatbotsResponseContent defines model for ListChatbotsResponseContent.
-type ListChatbotsResponseContent struct {
-	Chatbots []Chatbot `json:"chatbots,omitempty"`
-}
+type ListChatbotsResponseContent = []Chatbot
 
 // ListClientApprovalsResponseContent defines model for ListClientApprovalsResponseContent.
-type ListClientApprovalsResponseContent struct {
-	Approvals []ClientApproval `json:"approvals,omitempty"`
-}
+type ListClientApprovalsResponseContent = []ClientApproval
 
 // ListClientCorrespondencesResponseContent defines model for ListClientCorrespondencesResponseContent.
-type ListClientCorrespondencesResponseContent struct {
-	Correspondences []ClientCorrespondence `json:"correspondences,omitempty"`
-}
+type ListClientCorrespondencesResponseContent = []ClientCorrespondence
 
 // ListClientRepliesResponseContent defines model for ListClientRepliesResponseContent.
-type ListClientRepliesResponseContent struct {
-	Replies []ClientReply `json:"replies,omitempty"`
-}
+type ListClientRepliesResponseContent = []ClientReply
 
 // ListCommentsResponseContent defines model for ListCommentsResponseContent.
-type ListCommentsResponseContent struct {
-	Comments []Comment `json:"comments,omitempty"`
-}
+type ListCommentsResponseContent = []Comment
 
 // ListDocumentsResponseContent defines model for ListDocumentsResponseContent.
-type ListDocumentsResponseContent struct {
-	Documents []Document `json:"documents,omitempty"`
-}
+type ListDocumentsResponseContent = []Document
 
 // ListEventsResponseContent defines model for ListEventsResponseContent.
-type ListEventsResponseContent struct {
-	Events []Event `json:"events,omitempty"`
-}
+type ListEventsResponseContent = []Event
 
 // ListForwardRepliesResponseContent defines model for ListForwardRepliesResponseContent.
-type ListForwardRepliesResponseContent struct {
-	Replies []ForwardReply `json:"replies,omitempty"`
-}
+type ListForwardRepliesResponseContent = []ForwardReply
 
 // ListForwardsResponseContent defines model for ListForwardsResponseContent.
-type ListForwardsResponseContent struct {
-	Forwards []Forward `json:"forwards,omitempty"`
-}
+type ListForwardsResponseContent = []Forward
 
 // ListMessageTypesResponseContent defines model for ListMessageTypesResponseContent.
-type ListMessageTypesResponseContent struct {
-	MessageTypes []MessageType `json:"message_types,omitempty"`
-}
+type ListMessageTypesResponseContent = []MessageType
 
 // ListMessagesResponseContent defines model for ListMessagesResponseContent.
-type ListMessagesResponseContent struct {
-	Messages []Message `json:"messages,omitempty"`
-}
+type ListMessagesResponseContent = []Message
 
 // ListPeopleResponseContent defines model for ListPeopleResponseContent.
-type ListPeopleResponseContent struct {
-	People []Person `json:"people,omitempty"`
-}
+type ListPeopleResponseContent = []Person
 
 // ListPingablePeopleResponseContent defines model for ListPingablePeopleResponseContent.
-type ListPingablePeopleResponseContent struct {
-	People []Person `json:"people,omitempty"`
-}
+type ListPingablePeopleResponseContent = []Person
 
 // ListProjectPeopleResponseContent defines model for ListProjectPeopleResponseContent.
-type ListProjectPeopleResponseContent struct {
-	People []Person `json:"people,omitempty"`
-}
+type ListProjectPeopleResponseContent = []Person
 
 // ListProjectsResponseContent defines model for ListProjectsResponseContent.
-type ListProjectsResponseContent struct {
-	Projects []Project `json:"projects,omitempty"`
-}
+type ListProjectsResponseContent = []Project
 
 // ListQuestionsResponseContent defines model for ListQuestionsResponseContent.
-type ListQuestionsResponseContent struct {
-	Questions []Question `json:"questions,omitempty"`
-}
+type ListQuestionsResponseContent = []Question
 
 // ListRecordingsResponseContent defines model for ListRecordingsResponseContent.
-type ListRecordingsResponseContent struct {
-	Recordings []Recording `json:"recordings,omitempty"`
-}
+type ListRecordingsResponseContent = []Recording
 
 // ListScheduleEntriesResponseContent defines model for ListScheduleEntriesResponseContent.
-type ListScheduleEntriesResponseContent struct {
-	Entries []ScheduleEntry `json:"entries,omitempty"`
-}
+type ListScheduleEntriesResponseContent = []ScheduleEntry
 
 // ListTemplatesResponseContent defines model for ListTemplatesResponseContent.
-type ListTemplatesResponseContent struct {
-	Templates []Template `json:"templates,omitempty"`
-}
+type ListTemplatesResponseContent = []Template
 
 // ListTodolistGroupsResponseContent defines model for ListTodolistGroupsResponseContent.
-type ListTodolistGroupsResponseContent struct {
-	Groups []TodolistGroup `json:"groups,omitempty"`
-}
+type ListTodolistGroupsResponseContent = []TodolistGroup
 
 // ListTodolistsResponseContent defines model for ListTodolistsResponseContent.
-type ListTodolistsResponseContent struct {
-	Todolists []Todolist `json:"todolists,omitempty"`
-}
+type ListTodolistsResponseContent = []Todolist
 
 // ListTodosResponseContent defines model for ListTodosResponseContent.
-type ListTodosResponseContent struct {
-	Todos []Todo `json:"todos,omitempty"`
-}
+type ListTodosResponseContent = []Todo
 
 // ListUploadVersionsResponseContent defines model for ListUploadVersionsResponseContent.
-type ListUploadVersionsResponseContent struct {
-	Uploads []Upload `json:"uploads,omitempty"`
-}
+type ListUploadVersionsResponseContent = []Upload
 
 // ListUploadsResponseContent defines model for ListUploadsResponseContent.
-type ListUploadsResponseContent struct {
-	Uploads []Upload `json:"uploads,omitempty"`
-}
+type ListUploadsResponseContent = []Upload
 
 // ListVaultsResponseContent defines model for ListVaultsResponseContent.
-type ListVaultsResponseContent struct {
-	Vaults []Vault `json:"vaults,omitempty"`
-}
+type ListVaultsResponseContent = []Vault
 
 // ListWebhooksResponseContent defines model for ListWebhooksResponseContent.
-type ListWebhooksResponseContent struct {
-	Webhooks []Webhook `json:"webhooks,omitempty"`
-}
+type ListWebhooksResponseContent = []Webhook
 
 // Message defines model for Message.
 type Message struct {
