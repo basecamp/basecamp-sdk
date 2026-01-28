@@ -68,28 +68,41 @@ func NewLineupService(client *Client) *LineupService {
 
 // CreateMarker creates a new marker on the lineup.
 // Returns the created marker.
-func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerRequest) (*LineupMarker, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerRequest) (result *LineupMarker, err error) {
+	op := OperationInfo{
+		Service: "Lineup", Operation: "CreateMarker",
+		ResourceType: "lineup_marker", IsMutation: true,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Title == "" {
-		return nil, ErrUsage("marker title is required")
+		err = ErrUsage("marker title is required")
+		return nil, err
 	}
 	if req.StartsOn == "" {
-		return nil, ErrUsage("marker starts_on date is required")
+		err = ErrUsage("marker starts_on date is required")
+		return nil, err
 	}
 	if req.EndsOn == "" {
-		return nil, ErrUsage("marker ends_on date is required")
+		err = ErrUsage("marker ends_on date is required")
+		return nil, err
 	}
 
-	startsOn, err := types.ParseDate(req.StartsOn)
-	if err != nil {
-		return nil, ErrUsage("marker starts_on date must be in YYYY-MM-DD format")
+	startsOn, parseErr := types.ParseDate(req.StartsOn)
+	if parseErr != nil {
+		err = ErrUsage("marker starts_on date must be in YYYY-MM-DD format")
+		return nil, err
 	}
-	endsOn, err := types.ParseDate(req.EndsOn)
-	if err != nil {
-		return nil, ErrUsage("marker ends_on date must be in YYYY-MM-DD format")
+	endsOn, parseErr := types.ParseDate(req.EndsOn)
+	if parseErr != nil {
+		err = ErrUsage("marker ends_on date must be in YYYY-MM-DD format")
+		return nil, err
 	}
 
 	body := generated.CreateLineupMarkerJSONRequestBody{
@@ -104,11 +117,12 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	marker := lineupMarkerFromGenerated(resp.JSON200.Marker)
@@ -118,13 +132,23 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 // UpdateMarker updates an existing marker.
 // markerID is the marker ID.
 // Returns the updated marker.
-func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *UpdateMarkerRequest) (*LineupMarker, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *UpdateMarkerRequest) (result *LineupMarker, err error) {
+	op := OperationInfo{
+		Service: "Lineup", Operation: "UpdateMarker",
+		ResourceType: "lineup_marker", IsMutation: true,
+		ResourceID: markerID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update request is required")
+		err = ErrUsage("update request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateLineupMarkerJSONRequestBody{
@@ -133,16 +157,18 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 		Title:       req.Title,
 	}
 	if req.StartsOn != "" {
-		startsOn, err := types.ParseDate(req.StartsOn)
-		if err != nil {
-			return nil, ErrUsage("marker starts_on date must be in YYYY-MM-DD format")
+		startsOn, parseErr := types.ParseDate(req.StartsOn)
+		if parseErr != nil {
+			err = ErrUsage("marker starts_on date must be in YYYY-MM-DD format")
+			return nil, err
 		}
 		body.StartsOn = startsOn
 	}
 	if req.EndsOn != "" {
-		endsOn, err := types.ParseDate(req.EndsOn)
-		if err != nil {
-			return nil, ErrUsage("marker ends_on date must be in YYYY-MM-DD format")
+		endsOn, parseErr := types.ParseDate(req.EndsOn)
+		if parseErr != nil {
+			err = ErrUsage("marker ends_on date must be in YYYY-MM-DD format")
+			return nil, err
 		}
 		body.EndsOn = endsOn
 	}
@@ -151,11 +177,12 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	marker := lineupMarkerFromGenerated(resp.JSON200.Marker)
@@ -164,8 +191,17 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 
 // DeleteMarker deletes a marker.
 // markerID is the marker ID.
-func (s *LineupService) DeleteMarker(ctx context.Context, markerID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *LineupService) DeleteMarker(ctx context.Context, markerID int64) (err error) {
+	op := OperationInfo{
+		Service: "Lineup", Operation: "DeleteMarker",
+		ResourceType: "lineup_marker", IsMutation: true,
+		ResourceID: markerID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 

@@ -138,8 +138,17 @@ func NewTodosService(client *Client) *TodosService {
 
 // List returns all todos in a todolist.
 // bucketID is the project ID, todolistID is the todolist ID.
-func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opts *TodoListOptions) ([]Todo, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opts *TodoListOptions) (result []Todo, err error) {
+	op := OperationInfo{
+		Service: "Todos", Operation: "List",
+		ResourceType: "todo", IsMutation: false,
+		BucketID: bucketID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -153,7 +162,7 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -170,8 +179,17 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 
 // Get returns a todo by ID.
 // bucketID is the project ID, todoID is the todo ID.
-func (s *TodosService) Get(ctx context.Context, bucketID, todoID int64) (*Todo, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodosService) Get(ctx context.Context, bucketID, todoID int64) (result *Todo, err error) {
+	op := OperationInfo{
+		Service: "Todos", Operation: "Get",
+		ResourceType: "todo", IsMutation: false,
+		BucketID: bucketID, ResourceID: todoID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -179,11 +197,12 @@ func (s *TodosService) Get(ctx context.Context, bucketID, todoID int64) (*Todo, 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	todo := todoFromGenerated(resp.JSON200.Todo)
@@ -193,13 +212,23 @@ func (s *TodosService) Get(ctx context.Context, bucketID, todoID int64) (*Todo, 
 // Create creates a new todo in a todolist.
 // bucketID is the project ID, todolistID is the todolist ID.
 // Returns the created todo.
-func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, req *CreateTodoRequest) (*Todo, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, req *CreateTodoRequest) (result *Todo, err error) {
+	op := OperationInfo{
+		Service: "Todos", Operation: "Create",
+		ResourceType: "todo", IsMutation: true,
+		BucketID: bucketID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req.Content == "" {
-		return nil, ErrUsage("todo content is required")
+		err = ErrUsage("todo content is required")
+		return nil, err
 	}
 
 	body := generated.CreateTodoJSONRequestBody{
@@ -211,16 +240,18 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 	}
 	// Parse date strings to types.Date for the generated client
 	if req.DueOn != "" {
-		d, err := types.ParseDate(req.DueOn)
-		if err != nil {
-			return nil, ErrUsage("todo due_on must be in YYYY-MM-DD format")
+		d, parseErr := types.ParseDate(req.DueOn)
+		if parseErr != nil {
+			err = ErrUsage("todo due_on must be in YYYY-MM-DD format")
+			return nil, err
 		}
 		body.DueOn = d
 	}
 	if req.StartsOn != "" {
-		d, err := types.ParseDate(req.StartsOn)
-		if err != nil {
-			return nil, ErrUsage("todo starts_on must be in YYYY-MM-DD format")
+		d, parseErr := types.ParseDate(req.StartsOn)
+		if parseErr != nil {
+			err = ErrUsage("todo starts_on must be in YYYY-MM-DD format")
+			return nil, err
 		}
 		body.StartsOn = d
 	}
@@ -229,11 +260,12 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	todo := todoFromGenerated(resp.JSON200.Todo)
@@ -243,8 +275,17 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 // Update updates an existing todo.
 // bucketID is the project ID, todoID is the todo ID.
 // Returns the updated todo.
-func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *UpdateTodoRequest) (*Todo, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *UpdateTodoRequest) (result *Todo, err error) {
+	op := OperationInfo{
+		Service: "Todos", Operation: "Update",
+		ResourceType: "todo", IsMutation: true,
+		BucketID: bucketID, ResourceID: todoID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -257,16 +298,18 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 	}
 	// Parse date strings to types.Date for the generated client
 	if req.DueOn != "" {
-		d, err := types.ParseDate(req.DueOn)
-		if err != nil {
-			return nil, ErrUsage("todo due_on must be in YYYY-MM-DD format")
+		d, parseErr := types.ParseDate(req.DueOn)
+		if parseErr != nil {
+			err = ErrUsage("todo due_on must be in YYYY-MM-DD format")
+			return nil, err
 		}
 		body.DueOn = d
 	}
 	if req.StartsOn != "" {
-		d, err := types.ParseDate(req.StartsOn)
-		if err != nil {
-			return nil, ErrUsage("todo starts_on must be in YYYY-MM-DD format")
+		d, parseErr := types.ParseDate(req.StartsOn)
+		if parseErr != nil {
+			err = ErrUsage("todo starts_on must be in YYYY-MM-DD format")
+			return nil, err
 		}
 		body.StartsOn = d
 	}
@@ -275,11 +318,12 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	todo := todoFromGenerated(resp.JSON200.Todo)
@@ -289,8 +333,17 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 // Trash moves a todo to the trash.
 // bucketID is the project ID, todoID is the todo ID.
 // Trashed todos can be recovered from the trash.
-func (s *TodosService) Trash(ctx context.Context, bucketID, todoID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodosService) Trash(ctx context.Context, bucketID, todoID int64) (err error) {
+	op := OperationInfo{
+		Service: "Todos", Operation: "Trash",
+		ResourceType: "todo", IsMutation: true,
+		BucketID: bucketID, ResourceID: todoID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -303,8 +356,17 @@ func (s *TodosService) Trash(ctx context.Context, bucketID, todoID int64) error 
 
 // Complete marks a todo as completed.
 // bucketID is the project ID, todoID is the todo ID.
-func (s *TodosService) Complete(ctx context.Context, bucketID, todoID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodosService) Complete(ctx context.Context, bucketID, todoID int64) (err error) {
+	op := OperationInfo{
+		Service: "Todos", Operation: "Complete",
+		ResourceType: "todo", IsMutation: true,
+		BucketID: bucketID, ResourceID: todoID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -317,8 +379,17 @@ func (s *TodosService) Complete(ctx context.Context, bucketID, todoID int64) err
 
 // Uncomplete marks a completed todo as incomplete (reopens it).
 // bucketID is the project ID, todoID is the todo ID.
-func (s *TodosService) Uncomplete(ctx context.Context, bucketID, todoID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodosService) Uncomplete(ctx context.Context, bucketID, todoID int64) (err error) {
+	op := OperationInfo{
+		Service: "Todos", Operation: "Uncomplete",
+		ResourceType: "todo", IsMutation: true,
+		BucketID: bucketID, ResourceID: todoID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -332,13 +403,23 @@ func (s *TodosService) Uncomplete(ctx context.Context, bucketID, todoID int64) e
 // Reposition changes the position of a todo within its todolist.
 // bucketID is the project ID, todoID is the todo ID.
 // position is 1-based (1 = first position).
-func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, position int) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, position int) (err error) {
+	op := OperationInfo{
+		Service: "Todos", Operation: "Reposition",
+		ResourceType: "todo", IsMutation: true,
+		BucketID: bucketID, ResourceID: todoID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
 	if position < 1 {
-		return ErrUsage("position must be at least 1")
+		err = ErrUsage("position must be at least 1")
+		return err
 	}
 
 	body := generated.RepositionTodoJSONRequestBody{

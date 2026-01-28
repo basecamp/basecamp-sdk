@@ -40,8 +40,17 @@ func NewEventsService(client *Client) *EventsService {
 
 // List returns all events for a recording.
 // bucketID is the project ID, recordingID is the ID of the recording.
-func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64) ([]Event, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64) (result []Event, err error) {
+	op := OperationInfo{
+		Service: "Events", Operation: "List",
+		ResourceType: "event", IsMutation: false,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -49,7 +58,7 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64) (
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

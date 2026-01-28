@@ -85,13 +85,22 @@ func NewRecordingsService(client *Client) *RecordingsService {
 // List returns all recordings of a given type across projects.
 // recordingType is required and specifies what type of recordings to list.
 // Use the RecordingType constants (e.g., RecordingTypeTodo, RecordingTypeMessage).
-func (s *RecordingsService) List(ctx context.Context, recordingType RecordingType, opts *RecordingsListOptions) ([]Recording, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *RecordingsService) List(ctx context.Context, recordingType RecordingType, opts *RecordingsListOptions) (result []Recording, err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "List",
+		ResourceType: "recording", IsMutation: false,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if recordingType == "" {
-		return nil, ErrUsage("recording type is required")
+		err = ErrUsage("recording type is required")
+		return nil, err
 	}
 
 	typeStr := string(recordingType)
@@ -123,7 +132,7 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -140,8 +149,17 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 
 // Get returns a recording by ID.
 // bucketID is the project ID, recordingID is the recording ID.
-func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64) (*Recording, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64) (result *Recording, err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "Get",
+		ResourceType: "recording", IsMutation: false,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -149,11 +167,12 @@ func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	recording := recordingFromGenerated(resp.JSON200.Recording)
@@ -163,8 +182,17 @@ func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64
 // Trash moves a recording to the trash.
 // bucketID is the project ID, recordingID is the recording ID.
 // Trashed recordings can be recovered from the trash.
-func (s *RecordingsService) Trash(ctx context.Context, bucketID, recordingID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *RecordingsService) Trash(ctx context.Context, bucketID, recordingID int64) (err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "Trash",
+		ResourceType: "recording", IsMutation: true,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -178,8 +206,17 @@ func (s *RecordingsService) Trash(ctx context.Context, bucketID, recordingID int
 // Archive archives a recording.
 // bucketID is the project ID, recordingID is the recording ID.
 // Archived recordings are hidden but not deleted.
-func (s *RecordingsService) Archive(ctx context.Context, bucketID, recordingID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *RecordingsService) Archive(ctx context.Context, bucketID, recordingID int64) (err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "Archive",
+		ResourceType: "recording", IsMutation: true,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -192,8 +229,17 @@ func (s *RecordingsService) Archive(ctx context.Context, bucketID, recordingID i
 
 // Unarchive restores an archived recording to active status.
 // bucketID is the project ID, recordingID is the recording ID.
-func (s *RecordingsService) Unarchive(ctx context.Context, bucketID, recordingID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *RecordingsService) Unarchive(ctx context.Context, bucketID, recordingID int64) (err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "Unarchive",
+		ResourceType: "recording", IsMutation: true,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -209,8 +255,17 @@ func (s *RecordingsService) Unarchive(ctx context.Context, bucketID, recordingID
 // visible specifies whether the recording should be visible to clients.
 // Returns the updated recording.
 // Note: Not all recordings support client visibility. Some inherit visibility from their parent.
-func (s *RecordingsService) SetClientVisibility(ctx context.Context, bucketID, recordingID int64, visible bool) (*Recording, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *RecordingsService) SetClientVisibility(ctx context.Context, bucketID, recordingID int64, visible bool) (result *Recording, err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "SetClientVisibility",
+		ResourceType: "recording", IsMutation: true,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -222,11 +277,12 @@ func (s *RecordingsService) SetClientVisibility(ctx context.Context, bucketID, r
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	recording := recordingFromGenerated(resp.JSON200.Recording)

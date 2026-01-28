@@ -62,8 +62,16 @@ func (s *TimesheetService) buildTimesheetParams(opts *TimesheetReportOptions) *g
 
 // Report returns the account-wide timesheet report.
 // This includes time entries across all projects in the account.
-func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOptions) ([]TimesheetEntry, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOptions) (result []TimesheetEntry, err error) {
+	op := OperationInfo{
+		Service: "Timesheet", Operation: "Report",
+		ResourceType: "timesheet_entry", IsMutation: false,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -73,7 +81,7 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -90,8 +98,17 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 
 // ProjectReport returns the timesheet report for a specific project.
 // projectID is the project (bucket) ID.
-func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, opts *TimesheetReportOptions) ([]TimesheetEntry, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, opts *TimesheetReportOptions) (result []TimesheetEntry, err error) {
+	op := OperationInfo{
+		Service: "Timesheet", Operation: "ProjectReport",
+		ResourceType: "timesheet_entry", IsMutation: false,
+		BucketID: projectID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -108,7 +125,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -125,8 +142,17 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 
 // RecordingReport returns the timesheet report for a specific recording within a project.
 // projectID is the project (bucket) ID, recordingID is the recording ID (e.g., a todo).
-func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recordingID int64, opts *TimesheetReportOptions) ([]TimesheetEntry, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recordingID int64, opts *TimesheetReportOptions) (result []TimesheetEntry, err error) {
+	op := OperationInfo{
+		Service: "Timesheet", Operation: "RecordingReport",
+		ResourceType: "timesheet_entry", IsMutation: false,
+		BucketID: projectID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -143,7 +169,7 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recor
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

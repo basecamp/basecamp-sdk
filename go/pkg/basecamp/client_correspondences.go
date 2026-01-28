@@ -43,8 +43,17 @@ func NewClientCorrespondencesService(client *Client) *ClientCorrespondencesServi
 
 // List returns all client correspondences in a project.
 // bucketID is the project ID.
-func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64) ([]ClientCorrespondence, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64) (result []ClientCorrespondence, err error) {
+	op := OperationInfo{
+		Service: "ClientCorrespondences", Operation: "List",
+		ResourceType: "client_correspondence", IsMutation: false,
+		BucketID: bucketID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -52,7 +61,7 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -69,8 +78,17 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64)
 
 // Get returns a client correspondence by ID.
 // bucketID is the project ID, correspondenceID is the client correspondence ID.
-func (s *ClientCorrespondencesService) Get(ctx context.Context, bucketID, correspondenceID int64) (*ClientCorrespondence, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ClientCorrespondencesService) Get(ctx context.Context, bucketID, correspondenceID int64) (result *ClientCorrespondence, err error) {
+	op := OperationInfo{
+		Service: "ClientCorrespondences", Operation: "Get",
+		ResourceType: "client_correspondence", IsMutation: false,
+		BucketID: bucketID, ResourceID: correspondenceID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -78,11 +96,12 @@ func (s *ClientCorrespondencesService) Get(ctx context.Context, bucketID, corres
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	correspondence := clientCorrespondenceFromGenerated(resp.JSON200.Correspondence)

@@ -66,8 +66,17 @@ func NewClientApprovalsService(client *Client) *ClientApprovalsService {
 
 // List returns all client approvals in a project.
 // bucketID is the project ID.
-func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) ([]ClientApproval, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (result []ClientApproval, err error) {
+	op := OperationInfo{
+		Service: "ClientApprovals", Operation: "List",
+		ResourceType: "client_approval", IsMutation: false,
+		BucketID: bucketID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -75,7 +84,7 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) ([]Cl
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -92,8 +101,17 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) ([]Cl
 
 // Get returns a client approval by ID.
 // bucketID is the project ID, approvalID is the client approval ID.
-func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID int64) (*ClientApproval, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID int64) (result *ClientApproval, err error) {
+	op := OperationInfo{
+		Service: "ClientApprovals", Operation: "Get",
+		ResourceType: "client_approval", IsMutation: false,
+		BucketID: bucketID, ResourceID: approvalID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -101,11 +119,12 @@ func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID i
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	approval := clientApprovalFromGenerated(resp.JSON200.Approval)

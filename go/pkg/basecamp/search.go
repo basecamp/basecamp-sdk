@@ -59,13 +59,22 @@ func NewSearchService(client *Client) *SearchService {
 // Search searches for content across the account.
 // The query parameter is the search string.
 // Returns a list of matching results.
-func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOptions) ([]SearchResult, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOptions) (result []SearchResult, err error) {
+	op := OperationInfo{
+		Service: "Search", Operation: "Search",
+		ResourceType: "search", IsMutation: false,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if query == "" {
-		return nil, ErrUsage("search query is required")
+		err = ErrUsage("search query is required")
+		return nil, err
 	}
 
 	params := &generated.SearchParams{
@@ -79,7 +88,7 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -96,8 +105,16 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 
 // Metadata returns metadata about available search scopes.
 // This includes the list of projects available for filtering.
-func (s *SearchService) Metadata(ctx context.Context) (*SearchMetadata, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SearchService) Metadata(ctx context.Context) (result *SearchMetadata, err error) {
+	op := OperationInfo{
+		Service: "Search", Operation: "Metadata",
+		ResourceType: "search", IsMutation: false,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -105,11 +122,12 @@ func (s *SearchService) Metadata(ctx context.Context) (*SearchMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	// Convert metadata

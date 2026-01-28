@@ -47,8 +47,17 @@ func NewCommentsService(client *Client) *CommentsService {
 
 // List returns all comments on a recording.
 // bucketID is the project ID, recordingID is the ID of the recording (todo, message, etc.).
-func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64) ([]Comment, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64) (result []Comment, err error) {
+	op := OperationInfo{
+		Service: "Comments", Operation: "List",
+		ResourceType: "comment", IsMutation: false,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -56,7 +65,7 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -73,8 +82,17 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64)
 
 // Get returns a comment by ID.
 // bucketID is the project ID, commentID is the comment ID.
-func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (*Comment, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (result *Comment, err error) {
+	op := OperationInfo{
+		Service: "Comments", Operation: "Get",
+		ResourceType: "comment", IsMutation: false,
+		BucketID: bucketID, ResourceID: commentID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -82,11 +100,12 @@ func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (*
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	comment := commentFromGenerated(resp.JSON200.Comment)
@@ -96,13 +115,23 @@ func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (*
 // Create creates a new comment on a recording.
 // bucketID is the project ID, recordingID is the ID of the recording to comment on.
 // Returns the created comment.
-func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int64, req *CreateCommentRequest) (*Comment, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int64, req *CreateCommentRequest) (result *Comment, err error) {
+	op := OperationInfo{
+		Service: "Comments", Operation: "Create",
+		ResourceType: "comment", IsMutation: true,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Content == "" {
-		return nil, ErrUsage("comment content is required")
+		err = ErrUsage("comment content is required")
+		return nil, err
 	}
 
 	body := generated.CreateCommentJSONRequestBody{
@@ -113,11 +142,12 @@ func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int6
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	comment := commentFromGenerated(resp.JSON200.Comment)
@@ -127,13 +157,23 @@ func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int6
 // Update updates an existing comment.
 // bucketID is the project ID, commentID is the comment ID.
 // Returns the updated comment.
-func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64, req *UpdateCommentRequest) (*Comment, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64, req *UpdateCommentRequest) (result *Comment, err error) {
+	op := OperationInfo{
+		Service: "Comments", Operation: "Update",
+		ResourceType: "comment", IsMutation: true,
+		BucketID: bucketID, ResourceID: commentID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Content == "" {
-		return nil, ErrUsage("comment content is required")
+		err = ErrUsage("comment content is required")
+		return nil, err
 	}
 
 	body := generated.UpdateCommentJSONRequestBody{
@@ -144,11 +184,12 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	comment := commentFromGenerated(resp.JSON200.Comment)
@@ -158,8 +199,17 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 // Trash moves a comment to the trash.
 // bucketID is the project ID, commentID is the comment ID.
 // Trashed comments can be recovered from the trash.
-func (s *CommentsService) Trash(ctx context.Context, bucketID, commentID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CommentsService) Trash(ctx context.Context, bucketID, commentID int64) (err error) {
+	op := OperationInfo{
+		Service: "Comments", Operation: "Trash",
+		ResourceType: "comment", IsMutation: true,
+		BucketID: bucketID, ResourceID: commentID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 

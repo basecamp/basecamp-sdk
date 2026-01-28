@@ -39,8 +39,17 @@ func NewClientRepliesService(client *Client) *ClientRepliesService {
 
 // List returns all replies for a client recording (correspondence or approval).
 // bucketID is the project ID, recordingID is the parent correspondence/approval ID.
-func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID int64) ([]ClientReply, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID int64) (result []ClientReply, err error) {
+	op := OperationInfo{
+		Service: "ClientReplies", Operation: "List",
+		ResourceType: "client_reply", IsMutation: false,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -48,7 +57,7 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -66,8 +75,17 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 // Get returns a specific client reply.
 // bucketID is the project ID, recordingID is the parent correspondence/approval ID,
 // replyID is the client reply ID.
-func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, replyID int64) (*ClientReply, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, replyID int64) (result *ClientReply, err error) {
+	op := OperationInfo{
+		Service: "ClientReplies", Operation: "Get",
+		ResourceType: "client_reply", IsMutation: false,
+		BucketID: bucketID, ResourceID: replyID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -75,11 +93,12 @@ func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, r
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	reply := clientReplyFromGenerated(resp.JSON200.Reply)

@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
@@ -48,8 +49,16 @@ func NewPeopleService(client *Client) *PeopleService {
 }
 
 // List returns all people visible to the current user in the account.
-func (s *PeopleService) List(ctx context.Context) ([]Person, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *PeopleService) List(ctx context.Context) (result []Person, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "List",
+		ResourceType: "person", IsMutation: false,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -57,7 +66,7 @@ func (s *PeopleService) List(ctx context.Context) ([]Person, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -73,8 +82,17 @@ func (s *PeopleService) List(ctx context.Context) ([]Person, error) {
 }
 
 // Get returns a person by ID.
-func (s *PeopleService) Get(ctx context.Context, personID int64) (*Person, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *PeopleService) Get(ctx context.Context, personID int64) (result *Person, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "Get",
+		ResourceType: "person", IsMutation: false,
+		ResourceID: personID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -82,11 +100,12 @@ func (s *PeopleService) Get(ctx context.Context, personID int64) (*Person, error
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	person := personFromGenerated(resp.JSON200.Person)
@@ -94,8 +113,16 @@ func (s *PeopleService) Get(ctx context.Context, personID int64) (*Person, error
 }
 
 // Me returns the current authenticated user's profile.
-func (s *PeopleService) Me(ctx context.Context) (*Person, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "Me",
+		ResourceType: "person", IsMutation: false,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -103,11 +130,12 @@ func (s *PeopleService) Me(ctx context.Context) (*Person, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	person := personFromGenerated(resp.JSON200.Person)
@@ -116,8 +144,17 @@ func (s *PeopleService) Me(ctx context.Context) (*Person, error) {
 
 // ListProjectPeople returns all active people on a project.
 // bucketID is the project ID.
-func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) ([]Person, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (result []Person, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "ListProjectPeople",
+		ResourceType: "person", IsMutation: false,
+		BucketID: bucketID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -125,7 +162,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -142,8 +179,16 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (
 
 // Pingable returns all account users who can be pinged.
 // Note: This endpoint is not paginated in the Basecamp API.
-func (s *PeopleService) Pingable(ctx context.Context) ([]Person, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *PeopleService) Pingable(ctx context.Context) (result []Person, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "Pingable",
+		ResourceType: "person", IsMutation: false,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -151,7 +196,7 @@ func (s *PeopleService) Pingable(ctx context.Context) ([]Person, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -169,13 +214,23 @@ func (s *PeopleService) Pingable(ctx context.Context) ([]Person, error) {
 // UpdateProjectAccess grants or revokes project access for people.
 // bucketID is the project ID.
 // Returns the list of people who were granted and revoked access.
-func (s *PeopleService) UpdateProjectAccess(ctx context.Context, bucketID int64, req *UpdateProjectAccessRequest) (*UpdateProjectAccessResponse, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *PeopleService) UpdateProjectAccess(ctx context.Context, bucketID int64, req *UpdateProjectAccessRequest) (result *UpdateProjectAccessResponse, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "UpdateProjectAccess",
+		ResourceType: "person", IsMutation: true,
+		BucketID: bucketID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || (len(req.Grant) == 0 && len(req.Revoke) == 0 && len(req.Create) == 0) {
-		return nil, ErrUsage("at least one of grant, revoke, or create must be specified")
+		err = ErrUsage("at least one of grant, revoke, or create must be specified")
+		return nil, err
 	}
 
 	body := generated.UpdateProjectAccessJSONRequestBody{
@@ -198,26 +253,27 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, bucketID int64,
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	// Convert the response
-	result := &UpdateProjectAccessResponse{
+	accessResult := &UpdateProjectAccessResponse{
 		Granted: make([]Person, 0, len(resp.JSON200.Result.Granted)),
 		Revoked: make([]Person, 0, len(resp.JSON200.Result.Revoked)),
 	}
 	for _, gp := range resp.JSON200.Result.Granted {
-		result.Granted = append(result.Granted, personFromGenerated(gp))
+		accessResult.Granted = append(accessResult.Granted, personFromGenerated(gp))
 	}
 	for _, gp := range resp.JSON200.Result.Revoked {
-		result.Revoked = append(result.Revoked, personFromGenerated(gp))
+		accessResult.Revoked = append(accessResult.Revoked, personFromGenerated(gp))
 	}
 
-	return result, nil
+	return accessResult, nil
 }
 
 // personFromGenerated converts a generated Person to our clean Person type.

@@ -53,8 +53,17 @@ func NewWebhooksService(client *Client) *WebhooksService {
 
 // List returns all webhooks for a project (bucket).
 // bucketID is the project ID.
-func (s *WebhooksService) List(ctx context.Context, bucketID int64) ([]Webhook, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result []Webhook, err error) {
+	op := OperationInfo{
+		Service: "Webhooks", Operation: "List",
+		ResourceType: "webhook", IsMutation: false,
+		BucketID: bucketID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -62,7 +71,7 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64) ([]Webhook, 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -79,8 +88,17 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64) ([]Webhook, 
 
 // Get returns a webhook by ID.
 // bucketID is the project ID, webhookID is the webhook ID.
-func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (*Webhook, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (result *Webhook, err error) {
+	op := OperationInfo{
+		Service: "Webhooks", Operation: "Get",
+		ResourceType: "webhook", IsMutation: false,
+		BucketID: bucketID, ResourceID: webhookID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -88,11 +106,12 @@ func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (*
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	webhook := webhookFromGenerated(resp.JSON200.Webhook)
@@ -102,20 +121,32 @@ func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (*
 // Create creates a new webhook for a project (bucket).
 // bucketID is the project ID.
 // Returns the created webhook.
-func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *CreateWebhookRequest) (*Webhook, error) {
+func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *CreateWebhookRequest) (result *Webhook, err error) {
+	op := OperationInfo{
+		Service: "Webhooks", Operation: "Create",
+		ResourceType: "webhook", IsMutation: true,
+		BucketID: bucketID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
 	if req == nil {
-		return nil, ErrUsage("webhook request is required")
+		err = ErrUsage("webhook request is required")
+		return nil, err
 	}
 
-	if err := s.client.RequireAccount(); err != nil {
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req.PayloadURL == "" {
-		return nil, ErrUsage("webhook payload_url is required")
+		err = ErrUsage("webhook payload_url is required")
+		return nil, err
 	}
 	if len(req.Types) == 0 {
-		return nil, ErrUsage("webhook types are required")
+		err = ErrUsage("webhook types are required")
+		return nil, err
 	}
 
 	body := generated.CreateWebhookJSONRequestBody{
@@ -128,11 +159,12 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	webhook := webhookFromGenerated(resp.JSON200.Webhook)
@@ -142,8 +174,17 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 // Update updates an existing webhook.
 // bucketID is the project ID, webhookID is the webhook ID.
 // Returns the updated webhook.
-func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64, req *UpdateWebhookRequest) (*Webhook, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64, req *UpdateWebhookRequest) (result *Webhook, err error) {
+	op := OperationInfo{
+		Service: "Webhooks", Operation: "Update",
+		ResourceType: "webhook", IsMutation: true,
+		BucketID: bucketID, ResourceID: webhookID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -157,11 +198,12 @@ func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64,
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	webhook := webhookFromGenerated(resp.JSON200.Webhook)
@@ -170,8 +212,17 @@ func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64,
 
 // Delete removes a webhook.
 // bucketID is the project ID, webhookID is the webhook ID.
-func (s *WebhooksService) Delete(ctx context.Context, bucketID, webhookID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *WebhooksService) Delete(ctx context.Context, bucketID, webhookID int64) (err error) {
+	op := OperationInfo{
+		Service: "Webhooks", Operation: "Delete",
+		ResourceType: "webhook", IsMutation: true,
+		BucketID: bucketID, ResourceID: webhookID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 

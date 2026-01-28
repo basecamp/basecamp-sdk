@@ -144,8 +144,17 @@ func NewCheckinsService(client *Client) *CheckinsService {
 
 // GetQuestionnaire returns a questionnaire by ID.
 // bucketID is the project ID, questionnaireID is the questionnaire ID.
-func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questionnaireID int64) (*Questionnaire, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questionnaireID int64) (result *Questionnaire, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "GetQuestionnaire",
+		ResourceType: "questionnaire", IsMutation: false,
+		BucketID: bucketID, ResourceID: questionnaireID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -153,11 +162,12 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questi
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	questionnaire := questionnaireFromGenerated(resp.JSON200.Questionnaire)
@@ -166,8 +176,17 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questi
 
 // ListQuestions returns all questions in a questionnaire.
 // bucketID is the project ID, questionnaireID is the questionnaire ID.
-func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionnaireID int64) ([]Question, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionnaireID int64) (result []Question, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "ListQuestions",
+		ResourceType: "question", IsMutation: false,
+		BucketID: bucketID, ResourceID: questionnaireID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -175,7 +194,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -192,8 +211,17 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 
 // GetQuestion returns a question by ID.
 // bucketID is the project ID, questionID is the question ID.
-func (s *CheckinsService) GetQuestion(ctx context.Context, bucketID, questionID int64) (*Question, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CheckinsService) GetQuestion(ctx context.Context, bucketID, questionID int64) (result *Question, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "GetQuestion",
+		ResourceType: "question", IsMutation: false,
+		BucketID: bucketID, ResourceID: questionID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -201,11 +229,12 @@ func (s *CheckinsService) GetQuestion(ctx context.Context, bucketID, questionID 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	question := questionFromGenerated(resp.JSON200.Question)
@@ -215,16 +244,27 @@ func (s *CheckinsService) GetQuestion(ctx context.Context, bucketID, questionID 
 // CreateQuestion creates a new question in a questionnaire.
 // bucketID is the project ID, questionnaireID is the questionnaire ID.
 // Returns the created question.
-func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, questionnaireID int64, req *CreateQuestionRequest) (*Question, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, questionnaireID int64, req *CreateQuestionRequest) (result *Question, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "CreateQuestion",
+		ResourceType: "question", IsMutation: true,
+		BucketID: bucketID, ResourceID: questionnaireID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Title == "" {
-		return nil, ErrUsage("question title is required")
+		err = ErrUsage("question title is required")
+		return nil, err
 	}
 	if req.Schedule == nil {
-		return nil, ErrUsage("question schedule is required")
+		err = ErrUsage("question schedule is required")
+		return nil, err
 	}
 
 	body := generated.CreateQuestionJSONRequestBody{
@@ -236,11 +276,12 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, question
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	question := questionFromGenerated(resp.JSON200.Question)
@@ -250,13 +291,23 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, question
 // UpdateQuestion updates an existing question.
 // bucketID is the project ID, questionID is the question ID.
 // Returns the updated question.
-func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, questionID int64, req *UpdateQuestionRequest) (*Question, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, questionID int64, req *UpdateQuestionRequest) (result *Question, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "UpdateQuestion",
+		ResourceType: "question", IsMutation: true,
+		BucketID: bucketID, ResourceID: questionID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update request is required")
+		err = ErrUsage("update request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateQuestionJSONRequestBody{}
@@ -274,11 +325,12 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	question := questionFromGenerated(resp.JSON200.Question)
@@ -287,8 +339,17 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 
 // ListAnswers returns all answers for a question.
 // bucketID is the project ID, questionID is the question ID.
-func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID int64) ([]QuestionAnswer, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID int64) (result []QuestionAnswer, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "ListAnswers",
+		ResourceType: "answer", IsMutation: false,
+		BucketID: bucketID, ResourceID: questionID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -296,7 +357,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -313,8 +374,17 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 
 // GetAnswer returns a question answer by ID.
 // bucketID is the project ID, answerID is the answer ID.
-func (s *CheckinsService) GetAnswer(ctx context.Context, bucketID, answerID int64) (*QuestionAnswer, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CheckinsService) GetAnswer(ctx context.Context, bucketID, answerID int64) (result *QuestionAnswer, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "GetAnswer",
+		ResourceType: "answer", IsMutation: false,
+		BucketID: bucketID, ResourceID: answerID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -322,11 +392,12 @@ func (s *CheckinsService) GetAnswer(ctx context.Context, bucketID, answerID int6
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	answer := questionAnswerFromGenerated(resp.JSON200.Answer)
@@ -336,20 +407,30 @@ func (s *CheckinsService) GetAnswer(ctx context.Context, bucketID, answerID int6
 // CreateAnswer creates a new answer for a question.
 // bucketID is the project ID, questionID is the question ID.
 // Returns the created answer.
-func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID int64, req *CreateAnswerRequest) (*QuestionAnswer, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID int64, req *CreateAnswerRequest) (result *QuestionAnswer, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "CreateAnswer",
+		ResourceType: "answer", IsMutation: true,
+		BucketID: bucketID, ResourceID: questionID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Content == "" {
-		return nil, ErrUsage("answer content is required")
+		err = ErrUsage("answer content is required")
+		return nil, err
 	}
 
 	body := generated.CreateAnswerJSONRequestBody{
 		Content: req.Content,
 	}
 	if req.GroupOn != "" {
-		if d, err := types.ParseDate(req.GroupOn); err == nil {
+		if d, parseErr := types.ParseDate(req.GroupOn); parseErr == nil {
 			body.GroupOn = d
 		}
 	}
@@ -358,11 +439,12 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	answer := questionAnswerFromGenerated(resp.JSON200.Answer)
@@ -372,13 +454,23 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 // UpdateAnswer updates an existing question answer.
 // bucketID is the project ID, answerID is the answer ID.
 // Returns nil on success (204 No Content).
-func (s *CheckinsService) UpdateAnswer(ctx context.Context, bucketID, answerID int64, req *UpdateAnswerRequest) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CheckinsService) UpdateAnswer(ctx context.Context, bucketID, answerID int64, req *UpdateAnswerRequest) (err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "UpdateAnswer",
+		ResourceType: "answer", IsMutation: true,
+		BucketID: bucketID, ResourceID: answerID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
 	if req == nil || req.Content == "" {
-		return ErrUsage("answer content is required")
+		err = ErrUsage("answer content is required")
+		return err
 	}
 
 	body := generated.UpdateAnswerJSONRequestBody{
