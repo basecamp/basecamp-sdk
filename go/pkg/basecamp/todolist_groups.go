@@ -59,8 +59,17 @@ func NewTodolistGroupsService(client *Client) *TodolistGroupsService {
 
 // List returns all groups in a todolist.
 // bucketID is the project ID, todolistID is the todolist ID.
-func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID int64) ([]TodolistGroup, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID int64) (result []TodolistGroup, err error) {
+	op := OperationInfo{
+		Service: "TodolistGroups", Operation: "List",
+		ResourceType: "todolist_group", IsMutation: false,
+		BucketID: bucketID, ResourceID: todolistID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -68,7 +77,7 @@ func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID i
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -85,8 +94,17 @@ func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID i
 
 // Get returns a todolist group by ID.
 // bucketID is the project ID, groupID is the group ID.
-func (s *TodolistGroupsService) Get(ctx context.Context, bucketID, groupID int64) (*TodolistGroup, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodolistGroupsService) Get(ctx context.Context, bucketID, groupID int64) (result *TodolistGroup, err error) {
+	op := OperationInfo{
+		Service: "TodolistGroups", Operation: "Get",
+		ResourceType: "todolist_group", IsMutation: false,
+		BucketID: bucketID, ResourceID: groupID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -95,17 +113,19 @@ func (s *TodolistGroupsService) Get(ctx context.Context, bucketID, groupID int64
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	// The response is a union type, try to extract as TodolistGroup
 	g, err := resp.JSON200.Result.AsTodolistOrGroup1()
 	if err != nil {
-		return nil, fmt.Errorf("response is not a todolist group: %w", err)
+		err = fmt.Errorf("response is not a todolist group: %w", err)
+		return nil, err
 	}
 
 	group := todolistGroupFromGenerated(g.Group)
@@ -115,13 +135,23 @@ func (s *TodolistGroupsService) Get(ctx context.Context, bucketID, groupID int64
 // Create creates a new group in a todolist.
 // bucketID is the project ID, todolistID is the todolist ID.
 // Returns the created group.
-func (s *TodolistGroupsService) Create(ctx context.Context, bucketID, todolistID int64, req *CreateTodolistGroupRequest) (*TodolistGroup, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodolistGroupsService) Create(ctx context.Context, bucketID, todolistID int64, req *CreateTodolistGroupRequest) (result *TodolistGroup, err error) {
+	op := OperationInfo{
+		Service: "TodolistGroups", Operation: "Create",
+		ResourceType: "todolist_group", IsMutation: true,
+		BucketID: bucketID, ResourceID: todolistID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req.Name == "" {
-		return nil, ErrUsage("group name is required")
+		err = ErrUsage("group name is required")
+		return nil, err
 	}
 
 	body := generated.CreateTodolistGroupJSONRequestBody{
@@ -132,11 +162,12 @@ func (s *TodolistGroupsService) Create(ctx context.Context, bucketID, todolistID
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	group := todolistGroupFromGenerated(resp.JSON200.Group)
@@ -146,8 +177,17 @@ func (s *TodolistGroupsService) Create(ctx context.Context, bucketID, todolistID
 // Update updates an existing todolist group.
 // bucketID is the project ID, groupID is the group ID.
 // Returns the updated group.
-func (s *TodolistGroupsService) Update(ctx context.Context, bucketID, groupID int64, req *UpdateTodolistGroupRequest) (*TodolistGroup, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodolistGroupsService) Update(ctx context.Context, bucketID, groupID int64, req *UpdateTodolistGroupRequest) (result *TodolistGroup, err error) {
+	op := OperationInfo{
+		Service: "TodolistGroups", Operation: "Update",
+		ResourceType: "todolist_group", IsMutation: true,
+		BucketID: bucketID, ResourceID: groupID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -160,17 +200,19 @@ func (s *TodolistGroupsService) Update(ctx context.Context, bucketID, groupID in
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	// The response is a union type, try to extract as TodolistGroup
 	g, err := resp.JSON200.Result.AsTodolistOrGroup1()
 	if err != nil {
-		return nil, fmt.Errorf("response is not a todolist group: %w", err)
+		err = fmt.Errorf("response is not a todolist group: %w", err)
+		return nil, err
 	}
 
 	group := todolistGroupFromGenerated(g.Group)
@@ -180,13 +222,23 @@ func (s *TodolistGroupsService) Update(ctx context.Context, bucketID, groupID in
 // Reposition changes the position of a group within its todolist.
 // bucketID is the project ID, groupID is the group ID.
 // position is 1-based (1 = first position).
-func (s *TodolistGroupsService) Reposition(ctx context.Context, bucketID, groupID int64, position int) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodolistGroupsService) Reposition(ctx context.Context, bucketID, groupID int64, position int) (err error) {
+	op := OperationInfo{
+		Service: "TodolistGroups", Operation: "Reposition",
+		ResourceType: "todolist_group", IsMutation: true,
+		BucketID: bucketID, ResourceID: groupID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
 	if position < 1 {
-		return ErrUsage("position must be at least 1")
+		err = ErrUsage("position must be at least 1")
+		return err
 	}
 
 	body := generated.RepositionTodolistGroupJSONRequestBody{
@@ -203,8 +255,17 @@ func (s *TodolistGroupsService) Reposition(ctx context.Context, bucketID, groupI
 // Trash moves a todolist group to the trash.
 // bucketID is the project ID, groupID is the group ID.
 // Trashed groups can be recovered from the trash.
-func (s *TodolistGroupsService) Trash(ctx context.Context, bucketID, groupID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodolistGroupsService) Trash(ctx context.Context, bucketID, groupID int64) (err error) {
+	op := OperationInfo{
+		Service: "TodolistGroups", Operation: "Trash",
+		ResourceType: "todolist_group", IsMutation: true,
+		BucketID: bucketID, ResourceID: groupID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 

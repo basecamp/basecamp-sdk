@@ -110,8 +110,17 @@ func NewSchedulesService(client *Client) *SchedulesService {
 
 // Get returns a schedule by ID.
 // bucketID is the project ID, scheduleID is the schedule ID.
-func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) (*Schedule, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) (result *Schedule, err error) {
+	op := OperationInfo{
+		Service: "Schedules", Operation: "Get",
+		ResourceType: "schedule", IsMutation: false,
+		BucketID: bucketID, ResourceID: scheduleID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -119,11 +128,12 @@ func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	schedule := scheduleFromGenerated(resp.JSON200.Schedule)
@@ -132,8 +142,17 @@ func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) 
 
 // ListEntries returns all entries on a schedule.
 // bucketID is the project ID, scheduleID is the schedule ID.
-func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID int64) ([]ScheduleEntry, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID int64) (result []ScheduleEntry, err error) {
+	op := OperationInfo{
+		Service: "Schedules", Operation: "ListEntries",
+		ResourceType: "schedule_entry", IsMutation: false,
+		BucketID: bucketID, ResourceID: scheduleID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -141,7 +160,7 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -158,8 +177,17 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 
 // GetEntry returns a schedule entry by ID.
 // bucketID is the project ID, entryID is the schedule entry ID.
-func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64) (*ScheduleEntry, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64) (result *ScheduleEntry, err error) {
+	op := OperationInfo{
+		Service: "Schedules", Operation: "GetEntry",
+		ResourceType: "schedule_entry", IsMutation: false,
+		BucketID: bucketID, ResourceID: entryID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -167,11 +195,12 @@ func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
@@ -181,28 +210,42 @@ func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64
 // CreateEntry creates a new entry on a schedule.
 // bucketID is the project ID, scheduleID is the schedule ID.
 // Returns the created schedule entry.
-func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID int64, req *CreateScheduleEntryRequest) (*ScheduleEntry, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID int64, req *CreateScheduleEntryRequest) (result *ScheduleEntry, err error) {
+	op := OperationInfo{
+		Service: "Schedules", Operation: "CreateEntry",
+		ResourceType: "schedule_entry", IsMutation: true,
+		BucketID: bucketID, ResourceID: scheduleID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Summary == "" {
-		return nil, ErrUsage("schedule entry summary is required")
+		err = ErrUsage("schedule entry summary is required")
+		return nil, err
 	}
 	if req.StartsAt == "" {
-		return nil, ErrUsage("schedule entry starts_at is required")
+		err = ErrUsage("schedule entry starts_at is required")
+		return nil, err
 	}
 	if req.EndsAt == "" {
-		return nil, ErrUsage("schedule entry ends_at is required")
+		err = ErrUsage("schedule entry ends_at is required")
+		return nil, err
 	}
 
-	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
-	if err != nil {
-		return nil, ErrUsage("schedule entry starts_at must be in RFC3339 format (e.g., 2024-01-15T09:00:00Z)")
+	startsAt, parseErr := time.Parse(time.RFC3339, req.StartsAt)
+	if parseErr != nil {
+		err = ErrUsage("schedule entry starts_at must be in RFC3339 format (e.g., 2024-01-15T09:00:00Z)")
+		return nil, err
 	}
-	endsAt, err := time.Parse(time.RFC3339, req.EndsAt)
-	if err != nil {
-		return nil, ErrUsage("schedule entry ends_at must be in RFC3339 format (e.g., 2024-01-15T17:00:00Z)")
+	endsAt, parseErr := time.Parse(time.RFC3339, req.EndsAt)
+	if parseErr != nil {
+		err = ErrUsage("schedule entry ends_at must be in RFC3339 format (e.g., 2024-01-15T17:00:00Z)")
+		return nil, err
 	}
 
 	body := generated.CreateScheduleEntryJSONRequestBody{
@@ -219,11 +262,12 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
@@ -233,13 +277,23 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 // UpdateEntry updates an existing schedule entry.
 // bucketID is the project ID, entryID is the schedule entry ID.
 // Returns the updated schedule entry.
-func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID int64, req *UpdateScheduleEntryRequest) (*ScheduleEntry, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID int64, req *UpdateScheduleEntryRequest) (result *ScheduleEntry, err error) {
+	op := OperationInfo{
+		Service: "Schedules", Operation: "UpdateEntry",
+		ResourceType: "schedule_entry", IsMutation: true,
+		BucketID: bucketID, ResourceID: entryID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update request is required")
+		err = ErrUsage("update request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateScheduleEntryJSONRequestBody{
@@ -250,16 +304,18 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 		Summary:        req.Summary,
 	}
 	if req.StartsAt != "" {
-		startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
-		if err != nil {
-			return nil, ErrUsage("schedule entry starts_at must be in RFC3339 format (e.g., 2024-01-15T09:00:00Z)")
+		startsAt, parseErr := time.Parse(time.RFC3339, req.StartsAt)
+		if parseErr != nil {
+			err = ErrUsage("schedule entry starts_at must be in RFC3339 format (e.g., 2024-01-15T09:00:00Z)")
+			return nil, err
 		}
 		body.StartsAt = startsAt
 	}
 	if req.EndsAt != "" {
-		endsAt, err := time.Parse(time.RFC3339, req.EndsAt)
-		if err != nil {
-			return nil, ErrUsage("schedule entry ends_at must be in RFC3339 format (e.g., 2024-01-15T17:00:00Z)")
+		endsAt, parseErr := time.Parse(time.RFC3339, req.EndsAt)
+		if parseErr != nil {
+			err = ErrUsage("schedule entry ends_at must be in RFC3339 format (e.g., 2024-01-15T17:00:00Z)")
+			return nil, err
 		}
 		body.EndsAt = endsAt
 	}
@@ -268,11 +324,12 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
@@ -281,24 +338,35 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 
 // GetEntryOccurrence returns a specific occurrence of a recurring schedule entry.
 // bucketID is the project ID, entryID is the schedule entry ID, date is the occurrence date (YYYY-MM-DD format).
-func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, entryID int64, date string) (*ScheduleEntry, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, entryID int64, date string) (result *ScheduleEntry, err error) {
+	op := OperationInfo{
+		Service: "Schedules", Operation: "GetEntryOccurrence",
+		ResourceType: "schedule_entry", IsMutation: false,
+		BucketID: bucketID, ResourceID: entryID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if date == "" {
-		return nil, ErrUsage("occurrence date is required")
+		err = ErrUsage("occurrence date is required")
+		return nil, err
 	}
 
 	resp, err := s.client.gen.GetScheduleEntryOccurrenceWithResponse(ctx, bucketID, entryID, date)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
@@ -308,13 +376,23 @@ func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, ent
 // UpdateSettings updates the settings for a schedule.
 // bucketID is the project ID, scheduleID is the schedule ID.
 // Returns the updated schedule.
-func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, scheduleID int64, req *UpdateScheduleSettingsRequest) (*Schedule, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, scheduleID int64, req *UpdateScheduleSettingsRequest) (result *Schedule, err error) {
+	op := OperationInfo{
+		Service: "Schedules", Operation: "UpdateSettings",
+		ResourceType: "schedule", IsMutation: true,
+		BucketID: bucketID, ResourceID: scheduleID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update settings request is required")
+		err = ErrUsage("update settings request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateScheduleSettingsJSONRequestBody{
@@ -325,11 +403,12 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, schedul
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	schedule := scheduleFromGenerated(resp.JSON200.Schedule)
@@ -339,8 +418,17 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, schedul
 // TrashEntry moves a schedule entry to the trash.
 // bucketID is the project ID, entryID is the schedule entry ID.
 // Trashed entries can be recovered from the trash.
-func (s *SchedulesService) TrashEntry(ctx context.Context, bucketID, entryID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SchedulesService) TrashEntry(ctx context.Context, bucketID, entryID int64) (err error) {
+	op := OperationInfo{
+		Service: "Schedules", Operation: "TrashEntry",
+		ResourceType: "schedule_entry", IsMutation: true,
+		BucketID: bucketID, ResourceID: entryID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 

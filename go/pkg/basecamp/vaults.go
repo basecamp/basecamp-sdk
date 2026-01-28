@@ -146,8 +146,17 @@ func NewVaultsService(client *Client) *VaultsService {
 
 // Get returns a vault by ID.
 // bucketID is the project ID, vaultID is the vault ID.
-func (s *VaultsService) Get(ctx context.Context, bucketID, vaultID int64) (*Vault, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *VaultsService) Get(ctx context.Context, bucketID, vaultID int64) (result *Vault, err error) {
+	op := OperationInfo{
+		Service: "Vaults", Operation: "Get",
+		ResourceType: "vault", IsMutation: false,
+		BucketID: bucketID, ResourceID: vaultID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -155,11 +164,12 @@ func (s *VaultsService) Get(ctx context.Context, bucketID, vaultID int64) (*Vaul
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	vault := vaultFromGenerated(resp.JSON200.Vault)
@@ -168,8 +178,17 @@ func (s *VaultsService) Get(ctx context.Context, bucketID, vaultID int64) (*Vaul
 
 // List returns all subfolders (child vaults) in a vault.
 // bucketID is the project ID, vaultID is the parent vault ID.
-func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64) ([]Vault, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64) (result []Vault, err error) {
+	op := OperationInfo{
+		Service: "Vaults", Operation: "List",
+		ResourceType: "vault", IsMutation: false,
+		BucketID: bucketID, ResourceID: vaultID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -177,7 +196,7 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64) ([]Va
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -194,13 +213,23 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64) ([]Va
 // Create creates a new subfolder (child vault) in a vault.
 // bucketID is the project ID, vaultID is the parent vault ID.
 // Returns the created vault.
-func (s *VaultsService) Create(ctx context.Context, bucketID, vaultID int64, req *CreateVaultRequest) (*Vault, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *VaultsService) Create(ctx context.Context, bucketID, vaultID int64, req *CreateVaultRequest) (result *Vault, err error) {
+	op := OperationInfo{
+		Service: "Vaults", Operation: "Create",
+		ResourceType: "vault", IsMutation: true,
+		BucketID: bucketID, ResourceID: vaultID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Title == "" {
-		return nil, ErrUsage("vault title is required")
+		err = ErrUsage("vault title is required")
+		return nil, err
 	}
 
 	body := generated.CreateVaultJSONRequestBody{
@@ -211,11 +240,12 @@ func (s *VaultsService) Create(ctx context.Context, bucketID, vaultID int64, req
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	vault := vaultFromGenerated(resp.JSON200.Vault)
@@ -225,13 +255,23 @@ func (s *VaultsService) Create(ctx context.Context, bucketID, vaultID int64, req
 // Update updates an existing vault.
 // bucketID is the project ID, vaultID is the vault ID.
 // Returns the updated vault.
-func (s *VaultsService) Update(ctx context.Context, bucketID, vaultID int64, req *UpdateVaultRequest) (*Vault, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *VaultsService) Update(ctx context.Context, bucketID, vaultID int64, req *UpdateVaultRequest) (result *Vault, err error) {
+	op := OperationInfo{
+		Service: "Vaults", Operation: "Update",
+		ResourceType: "vault", IsMutation: true,
+		BucketID: bucketID, ResourceID: vaultID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update request is required")
+		err = ErrUsage("update request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateVaultJSONRequestBody{
@@ -242,11 +282,12 @@ func (s *VaultsService) Update(ctx context.Context, bucketID, vaultID int64, req
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	vault := vaultFromGenerated(resp.JSON200.Vault)
@@ -265,8 +306,17 @@ func NewDocumentsService(client *Client) *DocumentsService {
 
 // Get returns a document by ID.
 // bucketID is the project ID, documentID is the document ID.
-func (s *DocumentsService) Get(ctx context.Context, bucketID, documentID int64) (*Document, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *DocumentsService) Get(ctx context.Context, bucketID, documentID int64) (result *Document, err error) {
+	op := OperationInfo{
+		Service: "Documents", Operation: "Get",
+		ResourceType: "document", IsMutation: false,
+		BucketID: bucketID, ResourceID: documentID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -274,11 +324,12 @@ func (s *DocumentsService) Get(ctx context.Context, bucketID, documentID int64) 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	document := documentFromGenerated(resp.JSON200.Document)
@@ -287,8 +338,17 @@ func (s *DocumentsService) Get(ctx context.Context, bucketID, documentID int64) 
 
 // List returns all documents in a vault.
 // bucketID is the project ID, vaultID is the vault ID.
-func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64) ([]Document, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64) (result []Document, err error) {
+	op := OperationInfo{
+		Service: "Documents", Operation: "List",
+		ResourceType: "document", IsMutation: false,
+		BucketID: bucketID, ResourceID: vaultID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -296,7 +356,7 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64) ([
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -313,13 +373,23 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64) ([
 // Create creates a new document in a vault.
 // bucketID is the project ID, vaultID is the vault ID.
 // Returns the created document.
-func (s *DocumentsService) Create(ctx context.Context, bucketID, vaultID int64, req *CreateDocumentRequest) (*Document, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *DocumentsService) Create(ctx context.Context, bucketID, vaultID int64, req *CreateDocumentRequest) (result *Document, err error) {
+	op := OperationInfo{
+		Service: "Documents", Operation: "Create",
+		ResourceType: "document", IsMutation: true,
+		BucketID: bucketID, ResourceID: vaultID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Title == "" {
-		return nil, ErrUsage("document title is required")
+		err = ErrUsage("document title is required")
+		return nil, err
 	}
 
 	body := generated.CreateDocumentJSONRequestBody{
@@ -332,11 +402,12 @@ func (s *DocumentsService) Create(ctx context.Context, bucketID, vaultID int64, 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	document := documentFromGenerated(resp.JSON200.Document)
@@ -346,13 +417,23 @@ func (s *DocumentsService) Create(ctx context.Context, bucketID, vaultID int64, 
 // Update updates an existing document.
 // bucketID is the project ID, documentID is the document ID.
 // Returns the updated document.
-func (s *DocumentsService) Update(ctx context.Context, bucketID, documentID int64, req *UpdateDocumentRequest) (*Document, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *DocumentsService) Update(ctx context.Context, bucketID, documentID int64, req *UpdateDocumentRequest) (result *Document, err error) {
+	op := OperationInfo{
+		Service: "Documents", Operation: "Update",
+		ResourceType: "document", IsMutation: true,
+		BucketID: bucketID, ResourceID: documentID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update request is required")
+		err = ErrUsage("update request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateDocumentJSONRequestBody{
@@ -364,11 +445,12 @@ func (s *DocumentsService) Update(ctx context.Context, bucketID, documentID int6
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	document := documentFromGenerated(resp.JSON200.Document)
@@ -378,8 +460,17 @@ func (s *DocumentsService) Update(ctx context.Context, bucketID, documentID int6
 // Trash moves a document to the trash.
 // bucketID is the project ID, documentID is the document ID.
 // Trashed documents can be recovered from the trash.
-func (s *DocumentsService) Trash(ctx context.Context, bucketID, documentID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *DocumentsService) Trash(ctx context.Context, bucketID, documentID int64) (err error) {
+	op := OperationInfo{
+		Service: "Documents", Operation: "Trash",
+		ResourceType: "document", IsMutation: true,
+		BucketID: bucketID, ResourceID: documentID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -402,8 +493,17 @@ func NewUploadsService(client *Client) *UploadsService {
 
 // Get returns an upload by ID.
 // bucketID is the project ID, uploadID is the upload ID.
-func (s *UploadsService) Get(ctx context.Context, bucketID, uploadID int64) (*Upload, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *UploadsService) Get(ctx context.Context, bucketID, uploadID int64) (result *Upload, err error) {
+	op := OperationInfo{
+		Service: "Uploads", Operation: "Get",
+		ResourceType: "upload", IsMutation: false,
+		BucketID: bucketID, ResourceID: uploadID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -411,11 +511,12 @@ func (s *UploadsService) Get(ctx context.Context, bucketID, uploadID int64) (*Up
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	upload := uploadFromGenerated(resp.JSON200.Upload)
@@ -424,8 +525,17 @@ func (s *UploadsService) Get(ctx context.Context, bucketID, uploadID int64) (*Up
 
 // List returns all uploads in a vault.
 // bucketID is the project ID, vaultID is the vault ID.
-func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64) ([]Upload, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64) (result []Upload, err error) {
+	op := OperationInfo{
+		Service: "Uploads", Operation: "List",
+		ResourceType: "upload", IsMutation: false,
+		BucketID: bucketID, ResourceID: vaultID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -433,7 +543,7 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64) ([]U
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -450,13 +560,23 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64) ([]U
 // Update updates an existing upload.
 // bucketID is the project ID, uploadID is the upload ID.
 // Returns the updated upload.
-func (s *UploadsService) Update(ctx context.Context, bucketID, uploadID int64, req *UpdateUploadRequest) (*Upload, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *UploadsService) Update(ctx context.Context, bucketID, uploadID int64, req *UpdateUploadRequest) (result *Upload, err error) {
+	op := OperationInfo{
+		Service: "Uploads", Operation: "Update",
+		ResourceType: "upload", IsMutation: true,
+		BucketID: bucketID, ResourceID: uploadID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update request is required")
+		err = ErrUsage("update request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateUploadJSONRequestBody{
@@ -468,11 +588,12 @@ func (s *UploadsService) Update(ctx context.Context, bucketID, uploadID int64, r
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	upload := uploadFromGenerated(resp.JSON200.Upload)
@@ -483,13 +604,23 @@ func (s *UploadsService) Update(ctx context.Context, bucketID, uploadID int64, r
 // bucketID is the project ID, vaultID is the vault ID.
 // The attachable_sgid must be obtained from the Create Attachment endpoint.
 // Returns the created upload.
-func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, req *CreateUploadRequest) (*Upload, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, req *CreateUploadRequest) (result *Upload, err error) {
+	op := OperationInfo{
+		Service: "Uploads", Operation: "Create",
+		ResourceType: "upload", IsMutation: true,
+		BucketID: bucketID, ResourceID: vaultID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.AttachableSGID == "" {
-		return nil, ErrUsage("upload attachable_sgid is required")
+		err = ErrUsage("upload attachable_sgid is required")
+		return nil, err
 	}
 
 	body := generated.CreateUploadJSONRequestBody{
@@ -502,11 +633,12 @@ func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, re
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	upload := uploadFromGenerated(resp.JSON200.Upload)
@@ -516,8 +648,17 @@ func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, re
 // Trash moves an upload to the trash.
 // bucketID is the project ID, uploadID is the upload ID.
 // Trashed uploads can be recovered from the trash.
-func (s *UploadsService) Trash(ctx context.Context, bucketID, uploadID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *UploadsService) Trash(ctx context.Context, bucketID, uploadID int64) (err error) {
+	op := OperationInfo{
+		Service: "Uploads", Operation: "Trash",
+		ResourceType: "upload", IsMutation: true,
+		BucketID: bucketID, ResourceID: uploadID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -530,8 +671,17 @@ func (s *UploadsService) Trash(ctx context.Context, bucketID, uploadID int64) er
 
 // ListVersions returns all versions of an upload.
 // bucketID is the project ID, uploadID is the upload ID.
-func (s *UploadsService) ListVersions(ctx context.Context, bucketID, uploadID int64) ([]Upload, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *UploadsService) ListVersions(ctx context.Context, bucketID, uploadID int64) (result []Upload, err error) {
+	op := OperationInfo{
+		Service: "Uploads", Operation: "ListVersions",
+		ResourceType: "upload", IsMutation: false,
+		BucketID: bucketID, ResourceID: uploadID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -539,7 +689,7 @@ func (s *UploadsService) ListVersions(ctx context.Context, bucketID, uploadID in
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

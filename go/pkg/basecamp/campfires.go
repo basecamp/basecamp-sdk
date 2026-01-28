@@ -90,8 +90,16 @@ func NewCampfiresService(client *Client) *CampfiresService {
 }
 
 // List returns all campfires across the account.
-func (s *CampfiresService) List(ctx context.Context) ([]Campfire, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CampfiresService) List(ctx context.Context) (result []Campfire, err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "List",
+		ResourceType: "campfire", IsMutation: false,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -99,7 +107,7 @@ func (s *CampfiresService) List(ctx context.Context) ([]Campfire, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -115,8 +123,17 @@ func (s *CampfiresService) List(ctx context.Context) ([]Campfire, error) {
 
 // Get returns a campfire by ID.
 // bucketID is the project ID, campfireID is the campfire ID.
-func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) (*Campfire, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) (result *Campfire, err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "Get",
+		ResourceType: "campfire", IsMutation: false,
+		BucketID: bucketID, ResourceID: campfireID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -124,11 +141,12 @@ func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	campfire := campfireFromGenerated(resp.JSON200.Campfire)
@@ -137,8 +155,17 @@ func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) 
 
 // ListLines returns all lines (messages) in a campfire.
 // bucketID is the project ID, campfireID is the campfire ID.
-func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID int64) ([]CampfireLine, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID int64) (result []CampfireLine, err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "ListLines",
+		ResourceType: "campfire_line", IsMutation: false,
+		BucketID: bucketID, ResourceID: campfireID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -146,7 +173,7 @@ func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID i
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -162,8 +189,17 @@ func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID i
 
 // GetLine returns a single line (message) from a campfire.
 // bucketID is the project ID, campfireID is the campfire ID, lineID is the line ID.
-func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, lineID int64) (*CampfireLine, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, lineID int64) (result *CampfireLine, err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "GetLine",
+		ResourceType: "campfire_line", IsMutation: false,
+		BucketID: bucketID, ResourceID: lineID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -171,11 +207,12 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	line := campfireLineFromGenerated(resp.JSON200.Line)
@@ -185,13 +222,23 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 // CreateLine creates a new line (message) in a campfire.
 // bucketID is the project ID, campfireID is the campfire ID.
 // Returns the created line.
-func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID int64, content string) (*CampfireLine, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID int64, content string) (result *CampfireLine, err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "CreateLine",
+		ResourceType: "campfire_line", IsMutation: true,
+		BucketID: bucketID, ResourceID: campfireID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if content == "" {
-		return nil, ErrUsage("campfire line content is required")
+		err = ErrUsage("campfire line content is required")
+		return nil, err
 	}
 
 	body := generated.CreateCampfireLineJSONRequestBody{
@@ -202,11 +249,12 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	line := campfireLineFromGenerated(resp.JSON200.Line)
@@ -215,8 +263,17 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 
 // DeleteLine deletes a line (message) from a campfire.
 // bucketID is the project ID, campfireID is the campfire ID, lineID is the line ID.
-func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID, lineID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID, lineID int64) (err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "DeleteLine",
+		ResourceType: "campfire_line", IsMutation: true,
+		BucketID: bucketID, ResourceID: lineID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -230,8 +287,17 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID,
 // ListChatbots returns all chatbots for a campfire.
 // bucketID is the project ID, campfireID is the campfire ID.
 // Note: Chatbots are account-wide but with basecamp-specific callback URLs.
-func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireID int64) ([]Chatbot, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireID int64) (result []Chatbot, err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "ListChatbots",
+		ResourceType: "chatbot", IsMutation: false,
+		BucketID: bucketID, ResourceID: campfireID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -239,7 +305,7 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireI
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -255,8 +321,17 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireI
 
 // GetChatbot returns a chatbot by ID.
 // bucketID is the project ID, campfireID is the campfire ID, chatbotID is the chatbot ID.
-func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64) (*Chatbot, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64) (result *Chatbot, err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "GetChatbot",
+		ResourceType: "chatbot", IsMutation: false,
+		BucketID: bucketID, ResourceID: chatbotID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -264,11 +339,12 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID,
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	chatbot := chatbotFromGenerated(resp.JSON200.Chatbot)
@@ -279,13 +355,23 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID,
 // bucketID is the project ID, campfireID is the campfire ID.
 // Note: Chatbots are account-wide and can only be managed by administrators.
 // Returns the created chatbot with its lines_url for posting.
-func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfireID int64, req *CreateChatbotRequest) (*Chatbot, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfireID int64, req *CreateChatbotRequest) (result *Chatbot, err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "CreateChatbot",
+		ResourceType: "chatbot", IsMutation: true,
+		BucketID: bucketID, ResourceID: campfireID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.ServiceName == "" {
-		return nil, ErrUsage("chatbot service_name is required")
+		err = ErrUsage("chatbot service_name is required")
+		return nil, err
 	}
 
 	body := generated.CreateChatbotJSONRequestBody{
@@ -299,11 +385,12 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfire
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	chatbot := chatbotFromGenerated(resp.JSON200.Chatbot)
@@ -314,13 +401,23 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfire
 // bucketID is the project ID, campfireID is the campfire ID, chatbotID is the chatbot ID.
 // Note: Updates to chatbots are account-wide.
 // Returns the updated chatbot.
-func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64, req *UpdateChatbotRequest) (*Chatbot, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64, req *UpdateChatbotRequest) (result *Chatbot, err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "UpdateChatbot",
+		ResourceType: "chatbot", IsMutation: true,
+		BucketID: bucketID, ResourceID: chatbotID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.ServiceName == "" {
-		return nil, ErrUsage("chatbot service_name is required")
+		err = ErrUsage("chatbot service_name is required")
+		return nil, err
 	}
 
 	body := generated.UpdateChatbotJSONRequestBody{
@@ -334,11 +431,12 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfire
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	chatbot := chatbotFromGenerated(resp.JSON200.Chatbot)
@@ -348,8 +446,17 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfire
 // DeleteChatbot deletes a chatbot.
 // bucketID is the project ID, campfireID is the campfire ID, chatbotID is the chatbot ID.
 // Note: Deleting a chatbot removes it from the entire account.
-func (s *CampfiresService) DeleteChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CampfiresService) DeleteChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64) (err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "DeleteChatbot",
+		ResourceType: "chatbot", IsMutation: true,
+		BucketID: bucketID, ResourceID: chatbotID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 

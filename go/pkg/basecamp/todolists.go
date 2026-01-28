@@ -72,8 +72,17 @@ func NewTodolistsService(client *Client) *TodolistsService {
 
 // List returns all todolists in a todoset.
 // bucketID is the project ID, todosetID is the todoset ID.
-func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, opts *TodolistListOptions) ([]Todolist, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, opts *TodolistListOptions) (result []Todolist, err error) {
+	op := OperationInfo{
+		Service: "Todolists", Operation: "List",
+		ResourceType: "todolist", IsMutation: false,
+		BucketID: bucketID, ResourceID: todosetID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -86,7 +95,7 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -103,8 +112,17 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 
 // Get returns a todolist by ID.
 // bucketID is the project ID, todolistID is the todolist ID.
-func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) (*Todolist, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) (result *Todolist, err error) {
+	op := OperationInfo{
+		Service: "Todolists", Operation: "Get",
+		ResourceType: "todolist", IsMutation: false,
+		BucketID: bucketID, ResourceID: todolistID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -112,17 +130,19 @@ func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	// The response is a union type, try to extract as Todolist
 	tl, err := resp.JSON200.Result.AsTodolistOrGroup0()
 	if err != nil {
-		return nil, fmt.Errorf("response is not a todolist: %w", err)
+		err = fmt.Errorf("response is not a todolist: %w", err)
+		return nil, err
 	}
 
 	todolist := todolistFromGenerated(tl.Todolist)
@@ -132,13 +152,23 @@ func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) 
 // Create creates a new todolist in a todoset.
 // bucketID is the project ID, todosetID is the todoset ID.
 // Returns the created todolist.
-func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64, req *CreateTodolistRequest) (*Todolist, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64, req *CreateTodolistRequest) (result *Todolist, err error) {
+	op := OperationInfo{
+		Service: "Todolists", Operation: "Create",
+		ResourceType: "todolist", IsMutation: true,
+		BucketID: bucketID, ResourceID: todosetID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req.Name == "" {
-		return nil, ErrUsage("todolist name is required")
+		err = ErrUsage("todolist name is required")
+		return nil, err
 	}
 
 	body := generated.CreateTodolistJSONRequestBody{
@@ -150,11 +180,12 @@ func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	todolist := todolistFromGenerated(resp.JSON200.Todolist)
@@ -164,8 +195,17 @@ func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64
 // Update updates an existing todolist.
 // bucketID is the project ID, todolistID is the todolist ID.
 // Returns the updated todolist.
-func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int64, req *UpdateTodolistRequest) (*Todolist, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int64, req *UpdateTodolistRequest) (result *Todolist, err error) {
+	op := OperationInfo{
+		Service: "Todolists", Operation: "Update",
+		ResourceType: "todolist", IsMutation: true,
+		BucketID: bucketID, ResourceID: todolistID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -178,17 +218,19 @@ func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int6
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	// The response is a union type, try to extract as Todolist
 	tl, err := resp.JSON200.Result.AsTodolistOrGroup0()
 	if err != nil {
-		return nil, fmt.Errorf("response is not a todolist: %w", err)
+		err = fmt.Errorf("response is not a todolist: %w", err)
+		return nil, err
 	}
 
 	todolist := todolistFromGenerated(tl.Todolist)
@@ -198,8 +240,17 @@ func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int6
 // Trash moves a todolist to the trash.
 // bucketID is the project ID, todolistID is the todolist ID.
 // Trashed todolists can be recovered from the trash.
-func (s *TodolistsService) Trash(ctx context.Context, bucketID, todolistID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodolistsService) Trash(ctx context.Context, bucketID, todolistID int64) (err error) {
+	op := OperationInfo{
+		Service: "Todolists", Operation: "Trash",
+		ResourceType: "todolist", IsMutation: true,
+		BucketID: bucketID, ResourceID: todolistID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 

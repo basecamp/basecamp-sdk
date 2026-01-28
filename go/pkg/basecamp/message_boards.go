@@ -36,8 +36,17 @@ func NewMessageBoardsService(client *Client) *MessageBoardsService {
 
 // Get returns a message board by ID.
 // bucketID is the project ID, boardID is the message board ID.
-func (s *MessageBoardsService) Get(ctx context.Context, bucketID, boardID int64) (*MessageBoard, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessageBoardsService) Get(ctx context.Context, bucketID, boardID int64) (result *MessageBoard, err error) {
+	op := OperationInfo{
+		Service: "MessageBoards", Operation: "Get",
+		ResourceType: "message_board", IsMutation: false,
+		BucketID: bucketID, ResourceID: boardID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -45,11 +54,12 @@ func (s *MessageBoardsService) Get(ctx context.Context, bucketID, boardID int64)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	board := messageBoardFromGenerated(resp.JSON200.MessageBoard)

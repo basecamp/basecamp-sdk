@@ -61,8 +61,16 @@ func NewTemplatesService(client *Client) *TemplatesService {
 }
 
 // List returns all templates visible to the current user.
-func (s *TemplatesService) List(ctx context.Context) ([]Template, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TemplatesService) List(ctx context.Context) (result []Template, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "List",
+		ResourceType: "template", IsMutation: false,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -70,7 +78,7 @@ func (s *TemplatesService) List(ctx context.Context) ([]Template, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -86,8 +94,17 @@ func (s *TemplatesService) List(ctx context.Context) ([]Template, error) {
 }
 
 // Get returns a template by ID.
-func (s *TemplatesService) Get(ctx context.Context, templateID int64) (*Template, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TemplatesService) Get(ctx context.Context, templateID int64) (result *Template, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "Get",
+		ResourceType: "template", IsMutation: false,
+		ResourceID: templateID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -95,11 +112,12 @@ func (s *TemplatesService) Get(ctx context.Context, templateID int64) (*Template
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	template := templateFromGenerated(resp.JSON200.Template)
@@ -108,13 +126,22 @@ func (s *TemplatesService) Get(ctx context.Context, templateID int64) (*Template
 
 // Create creates a new template.
 // Returns the created template.
-func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateRequest) (*Template, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateRequest) (result *Template, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "Create",
+		ResourceType: "template", IsMutation: true,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req.Name == "" {
-		return nil, ErrUsage("template name is required")
+		err = ErrUsage("template name is required")
+		return nil, err
 	}
 
 	body := generated.CreateTemplateJSONRequestBody{
@@ -126,11 +153,12 @@ func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateReques
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	template := templateFromGenerated(resp.JSON200.Template)
@@ -139,13 +167,23 @@ func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateReques
 
 // Update updates an existing template.
 // Returns the updated template.
-func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *UpdateTemplateRequest) (*Template, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *UpdateTemplateRequest) (result *Template, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "Update",
+		ResourceType: "template", IsMutation: true,
+		ResourceID: templateID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req.Name == "" {
-		return nil, ErrUsage("template name is required")
+		err = ErrUsage("template name is required")
+		return nil, err
 	}
 
 	body := generated.UpdateTemplateJSONRequestBody{
@@ -157,11 +195,12 @@ func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *Up
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	template := templateFromGenerated(resp.JSON200.Template)
@@ -169,8 +208,17 @@ func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *Up
 }
 
 // Delete deletes a template.
-func (s *TemplatesService) Delete(ctx context.Context, templateID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TemplatesService) Delete(ctx context.Context, templateID int64) (err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "Delete",
+		ResourceType: "template", IsMutation: true,
+		ResourceID: templateID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -183,13 +231,23 @@ func (s *TemplatesService) Delete(ctx context.Context, templateID int64) error {
 
 // CreateProject creates a new project from a template.
 // This operation is asynchronous; use GetConstruction to check the status.
-func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, name, description string) (*ProjectConstruction, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, name, description string) (result *ProjectConstruction, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "CreateProject",
+		ResourceType: "project_construction", IsMutation: true,
+		ResourceID: templateID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if name == "" {
-		return nil, ErrUsage("project name is required")
+		err = ErrUsage("project name is required")
+		return nil, err
 	}
 
 	body := generated.CreateProjectFromTemplateJSONRequestBody{
@@ -201,11 +259,12 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	construction := projectConstructionFromGenerated(resp.JSON200.Construction)
@@ -213,8 +272,17 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 }
 
 // GetConstruction returns the status of a project construction.
-func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, constructionID int64) (*ProjectConstruction, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, constructionID int64) (result *ProjectConstruction, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "GetConstruction",
+		ResourceType: "project_construction", IsMutation: false,
+		ResourceID: constructionID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -222,11 +290,12 @@ func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, cons
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	construction := projectConstructionFromGenerated(resp.JSON200.Construction)

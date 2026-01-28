@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
@@ -35,8 +36,17 @@ func NewSubscriptionsService(client *Client) *SubscriptionsService {
 
 // Get returns the subscription information for a recording.
 // bucketID is the project ID, recordingID is the ID of the recording.
-func (s *SubscriptionsService) Get(ctx context.Context, bucketID, recordingID int64) (*Subscription, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SubscriptionsService) Get(ctx context.Context, bucketID, recordingID int64) (result *Subscription, err error) {
+	op := OperationInfo{
+		Service: "Subscriptions", Operation: "Get",
+		ResourceType: "subscription", IsMutation: false,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -44,11 +54,12 @@ func (s *SubscriptionsService) Get(ctx context.Context, bucketID, recordingID in
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	subscription := subscriptionFromGenerated(resp.JSON200.Subscription)
@@ -58,8 +69,17 @@ func (s *SubscriptionsService) Get(ctx context.Context, bucketID, recordingID in
 // Subscribe subscribes the current user to the recording.
 // bucketID is the project ID, recordingID is the ID of the recording.
 // Returns the updated subscription information.
-func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordingID int64) (*Subscription, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordingID int64) (result *Subscription, err error) {
+	op := OperationInfo{
+		Service: "Subscriptions", Operation: "Subscribe",
+		ResourceType: "subscription", IsMutation: true,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -67,11 +87,12 @@ func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordin
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	subscription := subscriptionFromGenerated(resp.JSON200.Subscription)
@@ -81,8 +102,17 @@ func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordin
 // Unsubscribe unsubscribes the current user from the recording.
 // bucketID is the project ID, recordingID is the ID of the recording.
 // Returns nil on success (204 No Content).
-func (s *SubscriptionsService) Unsubscribe(ctx context.Context, bucketID, recordingID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SubscriptionsService) Unsubscribe(ctx context.Context, bucketID, recordingID int64) (err error) {
+	op := OperationInfo{
+		Service: "Subscriptions", Operation: "Unsubscribe",
+		ResourceType: "subscription", IsMutation: true,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -96,13 +126,23 @@ func (s *SubscriptionsService) Unsubscribe(ctx context.Context, bucketID, record
 // Update batch modifies subscriptions by adding or removing specific users.
 // bucketID is the project ID, recordingID is the ID of the recording.
 // Returns the updated subscription information.
-func (s *SubscriptionsService) Update(ctx context.Context, bucketID, recordingID int64, req *UpdateSubscriptionRequest) (*Subscription, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *SubscriptionsService) Update(ctx context.Context, bucketID, recordingID int64, req *UpdateSubscriptionRequest) (result *Subscription, err error) {
+	op := OperationInfo{
+		Service: "Subscriptions", Operation: "Update",
+		ResourceType: "subscription", IsMutation: true,
+		BucketID: bucketID, ResourceID: recordingID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || (len(req.Subscriptions) == 0 && len(req.Unsubscriptions) == 0) {
-		return nil, ErrUsage("at least one of subscriptions or unsubscriptions must be specified")
+		err = ErrUsage("at least one of subscriptions or unsubscriptions must be specified")
+		return nil, err
 	}
 
 	body := generated.UpdateSubscriptionJSONRequestBody{
@@ -114,11 +154,12 @@ func (s *SubscriptionsService) Update(ctx context.Context, bucketID, recordingID
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	subscription := subscriptionFromGenerated(resp.JSON200.Subscription)

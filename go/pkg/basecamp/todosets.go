@@ -48,8 +48,17 @@ func NewTodosetsService(client *Client) *TodosetsService {
 
 // Get returns a todoset by ID.
 // bucketID is the project ID, todosetID is the todoset ID.
-func (s *TodosetsService) Get(ctx context.Context, bucketID, todosetID int64) (*Todoset, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TodosetsService) Get(ctx context.Context, bucketID, todosetID int64) (result *Todoset, err error) {
+	op := OperationInfo{
+		Service: "Todosets", Operation: "Get",
+		ResourceType: "todoset", IsMutation: false,
+		BucketID: bucketID, ResourceID: todosetID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -57,11 +66,12 @@ func (s *TodosetsService) Get(ctx context.Context, bucketID, todosetID int64) (*
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	todoset := todosetFromGenerated(resp.JSON200.Todoset)

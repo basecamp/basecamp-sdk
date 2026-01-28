@@ -61,8 +61,17 @@ func NewMessagesService(client *Client) *MessagesService {
 
 // List returns all messages on a message board.
 // bucketID is the project ID, boardID is the message board ID.
-func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) ([]Message, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) (result []Message, err error) {
+	op := OperationInfo{
+		Service: "Messages", Operation: "List",
+		ResourceType: "message", IsMutation: false,
+		BucketID: bucketID, ResourceID: boardID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -70,7 +79,7 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) ([]
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -86,8 +95,17 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) ([]
 
 // Get returns a message by ID.
 // bucketID is the project ID, messageID is the message ID.
-func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (*Message, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (result *Message, err error) {
+	op := OperationInfo{
+		Service: "Messages", Operation: "Get",
+		ResourceType: "message", IsMutation: false,
+		BucketID: bucketID, ResourceID: messageID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -95,11 +113,12 @@ func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (*
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	message := messageFromGenerated(resp.JSON200.Message)
@@ -109,13 +128,23 @@ func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (*
 // Create creates a new message on a message board.
 // bucketID is the project ID, boardID is the message board ID.
 // Returns the created message.
-func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, req *CreateMessageRequest) (*Message, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, req *CreateMessageRequest) (result *Message, err error) {
+	op := OperationInfo{
+		Service: "Messages", Operation: "Create",
+		ResourceType: "message", IsMutation: true,
+		BucketID: bucketID, ResourceID: boardID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Subject == "" {
-		return nil, ErrUsage("message subject is required")
+		err = ErrUsage("message subject is required")
+		return nil, err
 	}
 
 	body := generated.CreateMessageJSONRequestBody{
@@ -131,11 +160,12 @@ func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, r
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	message := messageFromGenerated(resp.JSON200.Message)
@@ -145,13 +175,23 @@ func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, r
 // Update updates an existing message.
 // bucketID is the project ID, messageID is the message ID.
 // Returns the updated message.
-func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64, req *UpdateMessageRequest) (*Message, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64, req *UpdateMessageRequest) (result *Message, err error) {
+	op := OperationInfo{
+		Service: "Messages", Operation: "Update",
+		ResourceType: "message", IsMutation: true,
+		BucketID: bucketID, ResourceID: messageID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update request is required")
+		err = ErrUsage("update request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateMessageJSONRequestBody{
@@ -167,11 +207,12 @@ func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64,
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	message := messageFromGenerated(resp.JSON200.Message)
@@ -180,8 +221,17 @@ func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64,
 
 // Pin pins a message to the top of the message board.
 // bucketID is the project ID, messageID is the message ID.
-func (s *MessagesService) Pin(ctx context.Context, bucketID, messageID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessagesService) Pin(ctx context.Context, bucketID, messageID int64) (err error) {
+	op := OperationInfo{
+		Service: "Messages", Operation: "Pin",
+		ResourceType: "message", IsMutation: true,
+		BucketID: bucketID, ResourceID: messageID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -194,8 +244,17 @@ func (s *MessagesService) Pin(ctx context.Context, bucketID, messageID int64) er
 
 // Unpin unpins a message from the top of the message board.
 // bucketID is the project ID, messageID is the message ID.
-func (s *MessagesService) Unpin(ctx context.Context, bucketID, messageID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessagesService) Unpin(ctx context.Context, bucketID, messageID int64) (err error) {
+	op := OperationInfo{
+		Service: "Messages", Operation: "Unpin",
+		ResourceType: "message", IsMutation: true,
+		BucketID: bucketID, ResourceID: messageID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -209,8 +268,17 @@ func (s *MessagesService) Unpin(ctx context.Context, bucketID, messageID int64) 
 // Trash moves a message to the trash.
 // bucketID is the project ID, messageID is the message ID.
 // Trashed messages can be recovered from the trash.
-func (s *MessagesService) Trash(ctx context.Context, bucketID, messageID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessagesService) Trash(ctx context.Context, bucketID, messageID int64) (err error) {
+	op := OperationInfo{
+		Service: "Messages", Operation: "Trash",
+		ResourceType: "message", IsMutation: true,
+		BucketID: bucketID, ResourceID: messageID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -224,8 +292,17 @@ func (s *MessagesService) Trash(ctx context.Context, bucketID, messageID int64) 
 // Archive moves a message to the archive.
 // bucketID is the project ID, messageID is the message ID.
 // Archived messages can be unarchived.
-func (s *MessagesService) Archive(ctx context.Context, bucketID, messageID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessagesService) Archive(ctx context.Context, bucketID, messageID int64) (err error) {
+	op := OperationInfo{
+		Service: "Messages", Operation: "Archive",
+		ResourceType: "message", IsMutation: true,
+		BucketID: bucketID, ResourceID: messageID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -238,8 +315,17 @@ func (s *MessagesService) Archive(ctx context.Context, bucketID, messageID int64
 
 // Unarchive restores an archived message to active status.
 // bucketID is the project ID, messageID is the message ID.
-func (s *MessagesService) Unarchive(ctx context.Context, bucketID, messageID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessagesService) Unarchive(ctx context.Context, bucketID, messageID int64) (err error) {
+	op := OperationInfo{
+		Service: "Messages", Operation: "Unarchive",
+		ResourceType: "message", IsMutation: true,
+		BucketID: bucketID, ResourceID: messageID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 

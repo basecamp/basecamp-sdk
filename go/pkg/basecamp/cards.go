@@ -206,8 +206,17 @@ func NewCardTablesService(client *Client) *CardTablesService {
 
 // Get returns a card table by ID.
 // bucketID is the project ID, cardTableID is the card table ID.
-func (s *CardTablesService) Get(ctx context.Context, bucketID, cardTableID int64) (*CardTable, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardTablesService) Get(ctx context.Context, bucketID, cardTableID int64) (result *CardTable, err error) {
+	op := OperationInfo{
+		Service: "CardTables", Operation: "Get",
+		ResourceType: "card_table", IsMutation: false,
+		BucketID: bucketID, ResourceID: cardTableID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -215,11 +224,12 @@ func (s *CardTablesService) Get(ctx context.Context, bucketID, cardTableID int64
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	cardTable := cardTableFromGenerated(resp.JSON200.CardTable)
@@ -238,8 +248,17 @@ func NewCardsService(client *Client) *CardsService {
 
 // List returns all cards in a column.
 // bucketID is the project ID, columnID is the column ID.
-func (s *CardsService) List(ctx context.Context, bucketID, columnID int64) ([]Card, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardsService) List(ctx context.Context, bucketID, columnID int64) (result []Card, err error) {
+	op := OperationInfo{
+		Service: "Cards", Operation: "List",
+		ResourceType: "card", IsMutation: false,
+		BucketID: bucketID, ResourceID: columnID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -247,7 +266,7 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64) ([]Ca
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -263,8 +282,17 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64) ([]Ca
 
 // Get returns a card by ID.
 // bucketID is the project ID, cardID is the card ID.
-func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (*Card, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (result *Card, err error) {
+	op := OperationInfo{
+		Service: "Cards", Operation: "Get",
+		ResourceType: "card", IsMutation: false,
+		BucketID: bucketID, ResourceID: cardID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -272,11 +300,12 @@ func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (*Card, 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	card := cardFromGenerated(resp.JSON200.Card)
@@ -286,13 +315,23 @@ func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (*Card, 
 // Create creates a new card in a column.
 // bucketID is the project ID, columnID is the column ID.
 // Returns the created card.
-func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req *CreateCardRequest) (*Card, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req *CreateCardRequest) (result *Card, err error) {
+	op := OperationInfo{
+		Service: "Cards", Operation: "Create",
+		ResourceType: "card", IsMutation: true,
+		BucketID: bucketID, ResourceID: columnID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Title == "" {
-		return nil, ErrUsage("card title is required")
+		err = ErrUsage("card title is required")
+		return nil, err
 	}
 
 	body := generated.CreateCardJSONRequestBody{
@@ -302,9 +341,10 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 		body.Content = req.Content
 	}
 	if req.DueOn != "" {
-		d, err := types.ParseDate(req.DueOn)
-		if err != nil {
-			return nil, ErrUsage("card due_on must be in YYYY-MM-DD format")
+		d, parseErr := types.ParseDate(req.DueOn)
+		if parseErr != nil {
+			err = ErrUsage("card due_on must be in YYYY-MM-DD format")
+			return nil, err
 		}
 		body.DueOn = d
 	}
@@ -316,11 +356,12 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	card := cardFromGenerated(resp.JSON200.Card)
@@ -330,13 +371,23 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 // Update updates an existing card.
 // bucketID is the project ID, cardID is the card ID.
 // Returns the updated card.
-func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *UpdateCardRequest) (*Card, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *UpdateCardRequest) (result *Card, err error) {
+	op := OperationInfo{
+		Service: "Cards", Operation: "Update",
+		ResourceType: "card", IsMutation: true,
+		BucketID: bucketID, ResourceID: cardID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update request is required")
+		err = ErrUsage("update request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateCardJSONRequestBody{}
@@ -347,9 +398,10 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 		body.Content = req.Content
 	}
 	if req.DueOn != "" {
-		d, err := types.ParseDate(req.DueOn)
-		if err != nil {
-			return nil, ErrUsage("card due_on must be in YYYY-MM-DD format")
+		d, parseErr := types.ParseDate(req.DueOn)
+		if parseErr != nil {
+			err = ErrUsage("card due_on must be in YYYY-MM-DD format")
+			return nil, err
 		}
 		body.DueOn = d
 	}
@@ -361,11 +413,12 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	card := cardFromGenerated(resp.JSON200.Card)
@@ -374,8 +427,17 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 
 // Move moves a card to a different column.
 // bucketID is the project ID, cardID is the card ID, columnID is the destination column ID.
-func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int64) (err error) {
+	op := OperationInfo{
+		Service: "Cards", Operation: "Move",
+		ResourceType: "card", IsMutation: true,
+		BucketID: bucketID, ResourceID: cardID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -393,8 +455,17 @@ func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int6
 // Trash moves a card to the trash.
 // bucketID is the project ID, cardID is the card ID.
 // Trashed cards can be recovered from the trash.
-func (s *CardsService) Trash(ctx context.Context, bucketID, cardID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardsService) Trash(ctx context.Context, bucketID, cardID int64) (err error) {
+	op := OperationInfo{
+		Service: "Cards", Operation: "Trash",
+		ResourceType: "card", IsMutation: true,
+		BucketID: bucketID, ResourceID: cardID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -417,8 +488,17 @@ func NewCardColumnsService(client *Client) *CardColumnsService {
 
 // Get returns a column by ID.
 // bucketID is the project ID, columnID is the column ID.
-func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) (*CardColumn, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) (result *CardColumn, err error) {
+	op := OperationInfo{
+		Service: "CardColumns", Operation: "Get",
+		ResourceType: "card_column", IsMutation: false,
+		BucketID: bucketID, ResourceID: columnID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -426,11 +506,12 @@ func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	column := cardColumnFromGenerated(resp.JSON200.Column)
@@ -440,13 +521,23 @@ func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) 
 // Create creates a new column in a card table.
 // bucketID is the project ID, cardTableID is the card table ID.
 // Returns the created column.
-func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID int64, req *CreateColumnRequest) (*CardColumn, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID int64, req *CreateColumnRequest) (result *CardColumn, err error) {
+	op := OperationInfo{
+		Service: "CardColumns", Operation: "Create",
+		ResourceType: "card_column", IsMutation: true,
+		BucketID: bucketID, ResourceID: cardTableID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Title == "" {
-		return nil, ErrUsage("column title is required")
+		err = ErrUsage("column title is required")
+		return nil, err
 	}
 
 	body := generated.CreateCardColumnJSONRequestBody{
@@ -458,11 +549,12 @@ func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID i
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	column := cardColumnFromGenerated(resp.JSON200.Column)
@@ -472,13 +564,23 @@ func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID i
 // Update updates an existing column.
 // bucketID is the project ID, columnID is the column ID.
 // Returns the updated column.
-func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int64, req *UpdateColumnRequest) (*CardColumn, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int64, req *UpdateColumnRequest) (result *CardColumn, err error) {
+	op := OperationInfo{
+		Service: "CardColumns", Operation: "Update",
+		ResourceType: "card_column", IsMutation: true,
+		BucketID: bucketID, ResourceID: columnID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update request is required")
+		err = ErrUsage("update request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateCardColumnJSONRequestBody{
@@ -490,11 +592,12 @@ func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int6
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	column := cardColumnFromGenerated(resp.JSON200.Column)
@@ -503,13 +606,23 @@ func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int6
 
 // Move moves a column within a card table.
 // bucketID is the project ID, cardTableID is the card table ID.
-func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int64, req *MoveColumnRequest) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int64, req *MoveColumnRequest) (err error) {
+	op := OperationInfo{
+		Service: "CardColumns", Operation: "Move",
+		ResourceType: "card_column", IsMutation: true,
+		BucketID: bucketID, ResourceID: cardTableID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
 	if req == nil {
-		return ErrUsage("move request is required")
+		err = ErrUsage("move request is required")
+		return err
 	}
 
 	body := generated.MoveCardColumnJSONRequestBody{
@@ -529,13 +642,23 @@ func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int
 // bucketID is the project ID, columnID is the column ID.
 // Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown.
 // Returns the updated column.
-func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID int64, color string) (*CardColumn, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID int64, color string) (result *CardColumn, err error) {
+	op := OperationInfo{
+		Service: "CardColumns", Operation: "SetColor",
+		ResourceType: "card_column", IsMutation: true,
+		BucketID: bucketID, ResourceID: columnID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if color == "" {
-		return nil, ErrUsage("color is required")
+		err = ErrUsage("color is required")
+		return nil, err
 	}
 
 	body := generated.SetCardColumnColorJSONRequestBody{
@@ -546,11 +669,12 @@ func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID in
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	column := cardColumnFromGenerated(resp.JSON200.Column)
@@ -560,8 +684,17 @@ func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID in
 // EnableOnHold adds an on-hold section to a column.
 // bucketID is the project ID, columnID is the column ID.
 // Returns the updated column.
-func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnID int64) (*CardColumn, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnID int64) (result *CardColumn, err error) {
+	op := OperationInfo{
+		Service: "CardColumns", Operation: "EnableOnHold",
+		ResourceType: "card_column", IsMutation: true,
+		BucketID: bucketID, ResourceID: columnID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -569,11 +702,12 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnI
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	column := cardColumnFromGenerated(resp.JSON200.Column)
@@ -583,8 +717,17 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnI
 // DisableOnHold removes the on-hold section from a column.
 // bucketID is the project ID, columnID is the column ID.
 // Returns the updated column.
-func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, columnID int64) (*CardColumn, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, columnID int64) (result *CardColumn, err error) {
+	op := OperationInfo{
+		Service: "CardColumns", Operation: "DisableOnHold",
+		ResourceType: "card_column", IsMutation: true,
+		BucketID: bucketID, ResourceID: columnID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -592,11 +735,12 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, column
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	column := cardColumnFromGenerated(resp.JSON200.Column)
@@ -606,8 +750,17 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, column
 // Watch subscribes the current user to the column.
 // bucketID is the project ID, columnID is the column ID.
 // Returns the updated subscription information.
-func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64) (*Subscription, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64) (result *Subscription, err error) {
+	op := OperationInfo{
+		Service: "CardColumns", Operation: "Watch",
+		ResourceType: "card_column", IsMutation: true,
+		BucketID: bucketID, ResourceID: columnID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -615,11 +768,12 @@ func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	sub := subscriptionFromGenerated(resp.JSON200.Subscription)
@@ -629,8 +783,17 @@ func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64
 // Unwatch unsubscribes the current user from the column.
 // bucketID is the project ID, columnID is the column ID.
 // Returns nil on success (204 No Content).
-func (s *CardColumnsService) Unwatch(ctx context.Context, bucketID, columnID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardColumnsService) Unwatch(ctx context.Context, bucketID, columnID int64) (err error) {
+	op := OperationInfo{
+		Service: "CardColumns", Operation: "Unwatch",
+		ResourceType: "card_column", IsMutation: true,
+		BucketID: bucketID, ResourceID: columnID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
@@ -654,13 +817,23 @@ func NewCardStepsService(client *Client) *CardStepsService {
 // Create creates a new step on a card.
 // bucketID is the project ID, cardID is the card ID.
 // Returns the created step.
-func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, req *CreateStepRequest) (*CardStep, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, req *CreateStepRequest) (result *CardStep, err error) {
+	op := OperationInfo{
+		Service: "CardSteps", Operation: "Create",
+		ResourceType: "card_step", IsMutation: true,
+		BucketID: bucketID, ResourceID: cardID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Title == "" {
-		return nil, ErrUsage("step title is required")
+		err = ErrUsage("step title is required")
+		return nil, err
 	}
 
 	body := generated.CreateCardStepJSONRequestBody{
@@ -668,9 +841,10 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 		Assignees: req.Assignees,
 	}
 	if req.DueOn != "" {
-		d, err := types.ParseDate(req.DueOn)
-		if err != nil {
-			return nil, ErrUsage("step due_on must be in YYYY-MM-DD format")
+		d, parseErr := types.ParseDate(req.DueOn)
+		if parseErr != nil {
+			err = ErrUsage("step due_on must be in YYYY-MM-DD format")
+			return nil, err
 		}
 		body.DueOn = d
 	}
@@ -679,11 +853,12 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	step := cardStepFromGenerated(resp.JSON200.Step)
@@ -693,13 +868,23 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 // Update updates an existing step.
 // bucketID is the project ID, stepID is the step ID.
 // Returns the updated step.
-func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, req *UpdateStepRequest) (*CardStep, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, req *UpdateStepRequest) (result *CardStep, err error) {
+	op := OperationInfo{
+		Service: "CardSteps", Operation: "Update",
+		ResourceType: "card_step", IsMutation: true,
+		BucketID: bucketID, ResourceID: stepID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update request is required")
+		err = ErrUsage("update request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateCardStepJSONRequestBody{
@@ -707,9 +892,10 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 		Assignees: req.Assignees,
 	}
 	if req.DueOn != "" {
-		d, err := types.ParseDate(req.DueOn)
-		if err != nil {
-			return nil, ErrUsage("step due_on must be in YYYY-MM-DD format")
+		d, parseErr := types.ParseDate(req.DueOn)
+		if parseErr != nil {
+			err = ErrUsage("step due_on must be in YYYY-MM-DD format")
+			return nil, err
 		}
 		body.DueOn = d
 	}
@@ -718,11 +904,12 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	step := cardStepFromGenerated(resp.JSON200.Step)
@@ -732,8 +919,17 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 // Complete marks a step as completed.
 // bucketID is the project ID, stepID is the step ID.
 // Returns the updated step.
-func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64) (*CardStep, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64) (result *CardStep, err error) {
+	op := OperationInfo{
+		Service: "CardSteps", Operation: "Complete",
+		ResourceType: "card_step", IsMutation: true,
+		BucketID: bucketID, ResourceID: stepID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -741,11 +937,12 @@ func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	step := cardStepFromGenerated(resp.JSON200.Step)
@@ -755,8 +952,17 @@ func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64)
 // Uncomplete marks a step as incomplete.
 // bucketID is the project ID, stepID is the step ID.
 // Returns the updated step.
-func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int64) (*CardStep, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int64) (result *CardStep, err error) {
+	op := OperationInfo{
+		Service: "CardSteps", Operation: "Uncomplete",
+		ResourceType: "card_step", IsMutation: true,
+		BucketID: bucketID, ResourceID: stepID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -764,11 +970,12 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int6
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	step := cardStepFromGenerated(resp.JSON200.Step)
@@ -778,13 +985,23 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int6
 // Reposition changes the position of a step within a card.
 // bucketID is the project ID, cardID is the card ID, stepID is the step ID.
 // position is 0-indexed.
-func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, stepID int64, position int) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, stepID int64, position int) (err error) {
+	op := OperationInfo{
+		Service: "CardSteps", Operation: "Reposition",
+		ResourceType: "card_step", IsMutation: true,
+		BucketID: bucketID, ResourceID: stepID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
 	if position < 0 {
-		return ErrUsage("position must be at least 0")
+		err = ErrUsage("position must be at least 0")
+		return err
 	}
 
 	body := generated.RepositionCardStepJSONRequestBody{
@@ -801,8 +1018,17 @@ func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, ste
 
 // Delete deletes a step (moves it to trash).
 // bucketID is the project ID, stepID is the step ID.
-func (s *CardStepsService) Delete(ctx context.Context, bucketID, stepID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *CardStepsService) Delete(ctx context.Context, bucketID, stepID int64) (err error) {
+	op := OperationInfo{
+		Service: "CardSteps", Operation: "Delete",
+		ResourceType: "card_step", IsMutation: true,
+		BucketID: bucketID, ResourceID: stepID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 

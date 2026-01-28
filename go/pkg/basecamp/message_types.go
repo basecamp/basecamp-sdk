@@ -45,8 +45,17 @@ func NewMessageTypesService(client *Client) *MessageTypesService {
 
 // List returns all message types in a project.
 // bucketID is the project ID.
-func (s *MessageTypesService) List(ctx context.Context, bucketID int64) ([]MessageType, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessageTypesService) List(ctx context.Context, bucketID int64) (result []MessageType, err error) {
+	op := OperationInfo{
+		Service: "MessageTypes", Operation: "List",
+		ResourceType: "message_type", IsMutation: false,
+		BucketID: bucketID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -54,7 +63,7 @@ func (s *MessageTypesService) List(ctx context.Context, bucketID int64) ([]Messa
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -70,8 +79,17 @@ func (s *MessageTypesService) List(ctx context.Context, bucketID int64) ([]Messa
 
 // Get returns a message type by ID.
 // bucketID is the project ID, typeID is the message type ID.
-func (s *MessageTypesService) Get(ctx context.Context, bucketID, typeID int64) (*MessageType, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessageTypesService) Get(ctx context.Context, bucketID, typeID int64) (result *MessageType, err error) {
+	op := OperationInfo{
+		Service: "MessageTypes", Operation: "Get",
+		ResourceType: "message_type", IsMutation: false,
+		BucketID: bucketID, ResourceID: typeID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -79,11 +97,12 @@ func (s *MessageTypesService) Get(ctx context.Context, bucketID, typeID int64) (
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	msgType := messageTypeFromGenerated(resp.JSON200.MessageType)
@@ -93,16 +112,27 @@ func (s *MessageTypesService) Get(ctx context.Context, bucketID, typeID int64) (
 // Create creates a new message type in a project.
 // bucketID is the project ID.
 // Returns the created message type.
-func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *CreateMessageTypeRequest) (*MessageType, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *CreateMessageTypeRequest) (result *MessageType, err error) {
+	op := OperationInfo{
+		Service: "MessageTypes", Operation: "Create",
+		ResourceType: "message_type", IsMutation: true,
+		BucketID: bucketID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Name == "" {
-		return nil, ErrUsage("message type name is required")
+		err = ErrUsage("message type name is required")
+		return nil, err
 	}
 	if req.Icon == "" {
-		return nil, ErrUsage("message type icon is required")
+		err = ErrUsage("message type icon is required")
+		return nil, err
 	}
 
 	body := generated.CreateMessageTypeJSONRequestBody{
@@ -114,11 +144,12 @@ func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *C
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	msgType := messageTypeFromGenerated(resp.JSON200.MessageType)
@@ -128,13 +159,23 @@ func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *C
 // Update updates an existing message type.
 // bucketID is the project ID, typeID is the message type ID.
 // Returns the updated message type.
-func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64, req *UpdateMessageTypeRequest) (*MessageType, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64, req *UpdateMessageTypeRequest) (result *MessageType, err error) {
+	op := OperationInfo{
+		Service: "MessageTypes", Operation: "Update",
+		ResourceType: "message_type", IsMutation: true,
+		BucketID: bucketID, ResourceID: typeID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil {
-		return nil, ErrUsage("update request is required")
+		err = ErrUsage("update request is required")
+		return nil, err
 	}
 
 	body := generated.UpdateMessageTypeJSONRequestBody{
@@ -146,11 +187,12 @@ func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	msgType := messageTypeFromGenerated(resp.JSON200.MessageType)
@@ -159,8 +201,17 @@ func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64
 
 // Delete deletes a message type from a project.
 // bucketID is the project ID, typeID is the message type ID.
-func (s *MessageTypesService) Delete(ctx context.Context, bucketID, typeID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *MessageTypesService) Delete(ctx context.Context, bucketID, typeID int64) (err error) {
+	op := OperationInfo{
+		Service: "MessageTypes", Operation: "Delete",
+		ResourceType: "message_type", IsMutation: true,
+		BucketID: bucketID, ResourceID: typeID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 

@@ -72,8 +72,17 @@ func NewForwardsService(client *Client) *ForwardsService {
 
 // GetInbox returns an inbox by ID.
 // bucketID is the project ID, inboxID is the inbox ID.
-func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64) (*Inbox, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64) (result *Inbox, err error) {
+	op := OperationInfo{
+		Service: "Forwards", Operation: "GetInbox",
+		ResourceType: "inbox", IsMutation: false,
+		BucketID: bucketID, ResourceID: inboxID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -81,11 +90,12 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	inbox := inboxFromGenerated(resp.JSON200.Inbox)
@@ -94,8 +104,17 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 
 // List returns all forwards in an inbox.
 // bucketID is the project ID, inboxID is the inbox ID.
-func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) ([]Forward, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) (result []Forward, err error) {
+	op := OperationInfo{
+		Service: "Forwards", Operation: "List",
+		ResourceType: "forward", IsMutation: false,
+		BucketID: bucketID, ResourceID: inboxID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -103,7 +122,7 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) ([]
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -120,8 +139,17 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) ([]
 
 // Get returns a forward by ID.
 // bucketID is the project ID, forwardID is the forward ID.
-func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (*Forward, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (result *Forward, err error) {
+	op := OperationInfo{
+		Service: "Forwards", Operation: "Get",
+		ResourceType: "forward", IsMutation: false,
+		BucketID: bucketID, ResourceID: forwardID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -129,11 +157,12 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (*
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	forward := forwardFromGenerated(resp.JSON200.Forward)
@@ -142,8 +171,17 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (*
 
 // ListReplies returns all replies to a forward.
 // bucketID is the project ID, forwardID is the forward ID.
-func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID int64) ([]ForwardReply, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID int64) (result []ForwardReply, err error) {
+	op := OperationInfo{
+		Service: "Forwards", Operation: "ListReplies",
+		ResourceType: "forward_reply", IsMutation: false,
+		BucketID: bucketID, ResourceID: forwardID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -151,7 +189,7 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -168,8 +206,17 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 
 // GetReply returns a forward reply by ID.
 // bucketID is the project ID, forwardID is the forward ID, replyID is the reply ID.
-func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, replyID int64) (*ForwardReply, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, replyID int64) (result *ForwardReply, err error) {
+	op := OperationInfo{
+		Service: "Forwards", Operation: "GetReply",
+		ResourceType: "forward_reply", IsMutation: false,
+		BucketID: bucketID, ResourceID: replyID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -177,11 +224,12 @@ func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, rep
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	reply := forwardReplyFromGenerated(resp.JSON200.Reply)
@@ -191,13 +239,23 @@ func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, rep
 // CreateReply creates a new reply to a forwarded email.
 // bucketID is the project ID, forwardID is the forward ID.
 // Returns the created reply.
-func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID int64, req *CreateForwardReplyRequest) (*ForwardReply, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID int64, req *CreateForwardReplyRequest) (result *ForwardReply, err error) {
+	op := OperationInfo{
+		Service: "Forwards", Operation: "CreateReply",
+		ResourceType: "forward_reply", IsMutation: true,
+		BucketID: bucketID, ResourceID: forwardID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req == nil || req.Content == "" {
-		return nil, ErrUsage("reply content is required")
+		err = ErrUsage("reply content is required")
+		return nil, err
 	}
 
 	body := generated.CreateForwardReplyJSONRequestBody{
@@ -208,11 +266,12 @@ func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID i
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	reply := forwardReplyFromGenerated(resp.JSON200.Reply)

@@ -35,8 +35,16 @@ func NewTimelineService(client *Client) *TimelineService {
 
 // Progress returns the account-wide activity feed.
 // This shows recent activity across all projects.
-func (s *TimelineService) Progress(ctx context.Context) ([]TimelineEvent, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TimelineService) Progress(ctx context.Context) (result []TimelineEvent, err error) {
+	op := OperationInfo{
+		Service: "Timeline", Operation: "Progress",
+		ResourceType: "timeline_event", IsMutation: false,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -44,7 +52,7 @@ func (s *TimelineService) Progress(ctx context.Context) ([]TimelineEvent, error)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -60,8 +68,17 @@ func (s *TimelineService) Progress(ctx context.Context) ([]TimelineEvent, error)
 }
 
 // ProjectTimeline returns the activity timeline for a specific project.
-func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64) ([]TimelineEvent, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64) (result []TimelineEvent, err error) {
+	op := OperationInfo{
+		Service: "Timeline", Operation: "ProjectTimeline",
+		ResourceType: "timeline_event", IsMutation: false,
+		BucketID: projectID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -69,7 +86,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64) 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -91,8 +108,17 @@ type PersonProgressResponse struct {
 }
 
 // PersonProgress returns the activity timeline for a specific person.
-func (s *TimelineService) PersonProgress(ctx context.Context, personID int64) (*PersonProgressResponse, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *TimelineService) PersonProgress(ctx context.Context, personID int64) (result *PersonProgressResponse, err error) {
+	op := OperationInfo{
+		Service: "Timeline", Operation: "PersonProgress",
+		ResourceType: "timeline_event", IsMutation: false,
+		ResourceID: personID,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -100,14 +126,14 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64) (*
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
 		return nil, nil
 	}
 
-	result := &PersonProgressResponse{}
+	result = &PersonProgressResponse{}
 
 	if resp.JSON200.Person.Id != nil || resp.JSON200.Person.Name != "" {
 		result.Person = &Person{

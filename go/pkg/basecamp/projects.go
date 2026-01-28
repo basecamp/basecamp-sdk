@@ -106,8 +106,16 @@ func NewProjectsService(client *Client) *ProjectsService {
 
 // List returns all projects visible to the current user.
 // By default, returns active projects sorted by most recently created first.
-func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) ([]Project, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (result []Project, err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "List",
+		ResourceType: "project", IsMutation: false,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -120,7 +128,7 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) ([
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -136,8 +144,17 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) ([
 }
 
 // Get returns a project by ID.
-func (s *ProjectsService) Get(ctx context.Context, id int64) (*Project, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ProjectsService) Get(ctx context.Context, id int64) (result *Project, err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "Get",
+		ResourceType: "project", IsMutation: false,
+		ResourceID: id,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -145,11 +162,12 @@ func (s *ProjectsService) Get(ctx context.Context, id int64) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	project := projectFromGenerated(resp.JSON200.Project)
@@ -158,13 +176,22 @@ func (s *ProjectsService) Get(ctx context.Context, id int64) (*Project, error) {
 
 // Create creates a new project.
 // Returns the created project.
-func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest) (*Project, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest) (result *Project, err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "Create",
+		ResourceType: "project", IsMutation: true,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req.Name == "" {
-		return nil, ErrUsage("project name is required")
+		err = ErrUsage("project name is required")
+		return nil, err
 	}
 
 	body := generated.CreateProjectJSONRequestBody{
@@ -176,11 +203,12 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	project := projectFromGenerated(resp.JSON200.Project)
@@ -189,13 +217,23 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 
 // Update updates an existing project.
 // Returns the updated project.
-func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProjectRequest) (*Project, error) {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProjectRequest) (result *Project, err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "Update",
+		ResourceType: "project", IsMutation: true,
+		ResourceID: id,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
 	if req.Name == "" {
-		return nil, ErrUsage("project name is required")
+		err = ErrUsage("project name is required")
+		return nil, err
 	}
 
 	body := generated.UpdateProjectJSONRequestBody{
@@ -214,11 +252,12 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 	if err != nil {
 		return nil, err
 	}
-	if err := checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("unexpected empty response")
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
 	}
 
 	project := projectFromGenerated(resp.JSON200.Project)
@@ -227,8 +266,17 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 
 // Trash moves a project to the trash.
 // Trashed projects are deleted after 30 days.
-func (s *ProjectsService) Trash(ctx context.Context, id int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+func (s *ProjectsService) Trash(ctx context.Context, id int64) (err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "Trash",
+		ResourceType: "project", IsMutation: true,
+		ResourceID: id,
+	}
+	start := time.Now()
+	ctx = s.client.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if err = s.client.RequireAccount(); err != nil {
 		return err
 	}
 
