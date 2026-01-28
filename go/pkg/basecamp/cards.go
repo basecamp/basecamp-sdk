@@ -301,9 +301,11 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 		body.Content = req.Content
 	}
 	if req.DueOn != "" {
-		if t, err := time.Parse("2006-01-02", req.DueOn); err == nil {
-			body.DueOn = t
+		t, err := time.Parse("2006-01-02", req.DueOn)
+		if err != nil {
+			return nil, ErrUsage("card due_on must be in YYYY-MM-DD format")
 		}
+		body.DueOn = t
 	}
 	if req.Notify {
 		body.Notify = req.Notify
@@ -344,9 +346,11 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 		body.Content = req.Content
 	}
 	if req.DueOn != "" {
-		if t, err := time.Parse("2006-01-02", req.DueOn); err == nil {
-			body.DueOn = t
+		t, err := time.Parse("2006-01-02", req.DueOn)
+		if err != nil {
+			return nil, ErrUsage("card due_on must be in YYYY-MM-DD format")
 		}
+		body.DueOn = t
 	}
 	if len(req.AssigneeIDs) > 0 {
 		body.AssigneeIds = req.AssigneeIDs
@@ -663,9 +667,11 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 		Assignees: req.Assignees,
 	}
 	if req.DueOn != "" {
-		if t, err := time.Parse("2006-01-02", req.DueOn); err == nil {
-			body.DueOn = t
+		t, err := time.Parse("2006-01-02", req.DueOn)
+		if err != nil {
+			return nil, ErrUsage("step due_on must be in YYYY-MM-DD format")
 		}
+		body.DueOn = t
 	}
 
 	resp, err := s.client.gen.CreateCardStepWithResponse(ctx, bucketID, cardID, body)
@@ -700,9 +706,11 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 		Assignees: req.Assignees,
 	}
 	if req.DueOn != "" {
-		if t, err := time.Parse("2006-01-02", req.DueOn); err == nil {
-			body.DueOn = t
+		t, err := time.Parse("2006-01-02", req.DueOn)
+		if err != nil {
+			return nil, ErrUsage("step due_on must be in YYYY-MM-DD format")
 		}
+		body.DueOn = t
 	}
 
 	resp, err := s.client.gen.UpdateCardStepWithResponse(ctx, bucketID, stepID, body)

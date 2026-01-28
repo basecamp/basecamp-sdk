@@ -142,9 +142,10 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 		return nil, err
 	}
 
-	params := &generated.ListTodosParams{}
+	// Only pass params when there are actual filters to avoid serializing zero values
+	var params *generated.ListTodosParams
 	if opts != nil && opts.Status != "" {
-		params.Status = opts.Status
+		params = &generated.ListTodosParams{Status: opts.Status}
 	}
 
 	resp, err := s.client.gen.ListTodosWithResponse(ctx, bucketID, todolistID, params)

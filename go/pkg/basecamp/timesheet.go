@@ -42,18 +42,22 @@ func NewTimesheetService(client *Client) *TimesheetService {
 }
 
 // buildTimesheetParams builds query parameters for the generated client.
+// Returns nil if no filters are specified to avoid serializing zero values.
 func (s *TimesheetService) buildTimesheetParams(opts *TimesheetReportOptions) *generated.GetTimesheetReportParams {
 	if opts == nil {
 		return nil
 	}
 
-	params := &generated.GetTimesheetReportParams{
+	// Only create params if there are actual filter values
+	if opts.From == "" && opts.To == "" && opts.PersonID == 0 {
+		return nil
+	}
+
+	return &generated.GetTimesheetReportParams{
 		From:     opts.From,
 		To:       opts.To,
 		PersonId: opts.PersonID,
 	}
-
-	return params
 }
 
 // Report returns the account-wide timesheet report.
