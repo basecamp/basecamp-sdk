@@ -1377,6 +1377,11 @@ type RepositionCardStepRequestContent struct {
 	SourceId int64 `json:"source_id"`
 }
 
+// RepositionTodoRequestContent defines model for RepositionTodoRequestContent.
+type RepositionTodoRequestContent struct {
+	Position int32 `json:"position"`
+}
+
 // RepositionTodolistGroupRequestContent defines model for RepositionTodolistGroupRequestContent.
 type RepositionTodolistGroupRequestContent struct {
 	Position int32 `json:"position"`
@@ -2280,6 +2285,9 @@ type CreateTodoJSONRequestBody = CreateTodoRequestContent
 // UpdateTodoJSONRequestBody defines body for UpdateTodo for application/json ContentType.
 type UpdateTodoJSONRequestBody = UpdateTodoRequestContent
 
+// RepositionTodoJSONRequestBody defines body for RepositionTodo for application/json ContentType.
+type RepositionTodoJSONRequestBody = RepositionTodoRequestContent
+
 // CreateTodolistJSONRequestBody defines body for CreateTodolist for application/json ContentType.
 type CreateTodolistJSONRequestBody = CreateTodolistRequestContent
 
@@ -3009,6 +3017,11 @@ type ClientInterface interface {
 
 	// CompleteTodo request
 	CompleteTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RepositionTodoWithBody request with any body
+	RepositionTodoWithBody(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RepositionTodo(ctx context.Context, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTodoset request
 	GetTodoset(ctx context.Context, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4771,6 +4784,24 @@ func (c *Client) CompleteTodo(ctx context.Context, projectId int64, todoId int64
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewCompleteTodoRequest(c.Server, projectId, todoId)
 	}, true, "CompleteTodo", reqEditors...)
+
+}
+
+// RepositionTodoWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) RepositionTodoWithBody(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRepositionTodoRequestWithBody(c.Server, projectId, todoId, contentType, body)
+	}, true, "RepositionTodo", reqEditors...)
+
+}
+
+func (c *Client) RepositionTodo(ctx context.Context, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRepositionTodoRequest(c.Server, projectId, todoId, body)
+	}, true, "RepositionTodo", reqEditors...)
 
 }
 
@@ -10459,6 +10490,60 @@ func NewCompleteTodoRequest(server string, projectId int64, todoId int64) (*http
 	return req, nil
 }
 
+// NewRepositionTodoRequest calls the generic RepositionTodo builder with application/json body
+func NewRepositionTodoRequest(server string, projectId int64, todoId int64, body RepositionTodoJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRepositionTodoRequestWithBody(server, projectId, todoId, "application/json", bodyReader)
+}
+
+// NewRepositionTodoRequestWithBody generates requests for RepositionTodo with any type of body
+func NewRepositionTodoRequestWithBody(server string, projectId int64, todoId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/buckets/%s/todos/%s/position.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetTodosetRequest generates requests for GetTodoset
 func NewGetTodosetRequest(server string, projectId int64, todosetId int64) (*http.Request, error) {
 	var err error
@@ -12556,6 +12641,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateTodo":                 {Idempotent: true, HasSensitiveParams: false},
 	"UncompleteTodo":             {Idempotent: true, HasSensitiveParams: false},
 	"CompleteTodo":               {Idempotent: true, HasSensitiveParams: false},
+	"RepositionTodo":             {Idempotent: true, HasSensitiveParams: false},
 	"GetTodoset":                 {Idempotent: true, HasSensitiveParams: false},
 	"ListTodolists":              {Idempotent: true, HasSensitiveParams: false},
 	"CreateTodolist":             {Idempotent: false, HasSensitiveParams: false},
@@ -13928,6 +14014,11 @@ type ClientWithResponsesInterface interface {
 
 	// CompleteTodoWithResponse request
 	CompleteTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*CompleteTodoResponse, error)
+
+	// RepositionTodoWithBodyWithResponse request with any body
+	RepositionTodoWithBodyWithResponse(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error)
+
+	RepositionTodoWithResponse(ctx context.Context, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error)
 
 	// GetTodosetWithResponse request
 	GetTodosetWithResponse(ctx context.Context, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*GetTodosetResponse, error)
@@ -16881,6 +16972,32 @@ func (r CompleteTodoResponse) StatusCode() int {
 	return 0
 }
 
+type RepositionTodoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r RepositionTodoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RepositionTodoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetTodosetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19311,6 +19428,23 @@ func (c *ClientWithResponses) CompleteTodoWithResponse(ctx context.Context, proj
 		return nil, err
 	}
 	return ParseCompleteTodoResponse(rsp)
+}
+
+// RepositionTodoWithBodyWithResponse request with arbitrary body returning *RepositionTodoResponse
+func (c *ClientWithResponses) RepositionTodoWithBodyWithResponse(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error) {
+	rsp, err := c.RepositionTodoWithBody(ctx, projectId, todoId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRepositionTodoResponse(rsp)
+}
+
+func (c *ClientWithResponses) RepositionTodoWithResponse(ctx context.Context, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error) {
+	rsp, err := c.RepositionTodo(ctx, projectId, todoId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRepositionTodoResponse(rsp)
 }
 
 // GetTodosetWithResponse request returning *GetTodosetResponse
@@ -25753,6 +25887,60 @@ func ParseCompleteTodoResponse(rsp *http.Response) (*CompleteTodoResponse, error
 			return nil, err
 		}
 		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRepositionTodoResponse parses an HTTP response from a RepositionTodoWithResponse call
+func ParseRepositionTodoResponse(rsp *http.Response) (*RepositionTodoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RepositionTodoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

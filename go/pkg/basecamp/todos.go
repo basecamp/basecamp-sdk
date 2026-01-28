@@ -331,7 +331,6 @@ func (s *TodosService) Uncomplete(ctx context.Context, bucketID, todoID int64) e
 // Reposition changes the position of a todo within its todolist.
 // bucketID is the project ID, todoID is the todo ID.
 // position is 1-based (1 = first position).
-// NOTE: This operation is not yet available in the generated client (RepositionTodo missing from spec).
 func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, position int) error {
 	if err := s.client.RequireAccount(); err != nil {
 		return err
@@ -341,11 +340,14 @@ func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, p
 		return ErrUsage("position must be at least 1")
 	}
 
-	// TODO: Migrate to generated client once RepositionTodo operation is added to the spec
-	path := fmt.Sprintf("/buckets/%d/todos/%d/position.json", bucketID, todoID)
-	body := map[string]int{"position": position}
-	_, err := s.client.Put(ctx, path, body)
-	return err
+	body := generated.RepositionTodoJSONRequestBody{
+		Position: int32(position),
+	}
+	resp, err := s.client.gen.RepositionTodoWithResponse(ctx, bucketID, todoID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // todoFromGenerated converts a generated Todo to our clean Todo type.
