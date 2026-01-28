@@ -9,10 +9,141 @@
 import createClient, { type Middleware } from "openapi-fetch";
 import type { paths } from "./generated/schema.js";
 import metadata from "./generated/metadata.json" with { type: "json" };
+import type { BasecampHooks, RequestInfo, RequestResult } from "./hooks.js";
+
+// Services
+import { ProjectsService } from "./services/projects.js";
+import { TodosService } from "./services/todos.js";
+import { TodolistsService } from "./services/todolists.js";
+import { TodosetsService } from "./services/todosets.js";
+import { PeopleService } from "./services/people.js";
+import { AuthorizationService } from "./services/authorization.js";
+import { MessagesService } from "./services/messages.js";
+import { CommentsService } from "./services/comments.js";
+import { CampfiresService } from "./services/campfires.js";
+import {
+  CardTablesService,
+  CardsService,
+  CardColumnsService,
+  CardStepsService,
+} from "./services/cards.js";
+import { MessageBoardsService } from "./services/message-boards.js";
+import { MessageTypesService } from "./services/message-types.js";
+import { ForwardsService } from "./services/forwards.js";
+import { CheckinsService } from "./services/checkins.js";
+import { ClientApprovalsService } from "./services/client-approvals.js";
+import { ClientCorrespondencesService } from "./services/client-correspondences.js";
+import { ClientRepliesService } from "./services/client-replies.js";
+import { WebhooksService } from "./services/webhooks.js";
+import { SubscriptionsService } from "./services/subscriptions.js";
+import { AttachmentsService } from "./services/attachments.js";
+import { VaultsService } from "./services/vaults.js";
+import { DocumentsService } from "./services/documents.js";
+import { UploadsService } from "./services/uploads.js";
+import { SchedulesService } from "./services/schedules.js";
+import { EventsService } from "./services/events.js";
+import { RecordingsService } from "./services/recordings.js";
+import { SearchService } from "./services/search.js";
+import { ReportsService } from "./services/reports.js";
+import { TemplatesService } from "./services/templates.js";
+import { LineupService } from "./services/lineup.js";
+import { TodolistGroupsService } from "./services/todolistGroups.js";
+import { ToolsService } from "./services/tools.js";
 
 // Re-export types for consumer convenience
 export type { paths };
-export type BasecampClient = ReturnType<typeof createClient<paths>>;
+
+/**
+ * Raw client type from openapi-fetch.
+ * Use this when you need direct access to GET/POST/PUT/DELETE methods.
+ */
+export type RawClient = ReturnType<typeof createClient<paths>>;
+
+/**
+ * Enhanced Basecamp client with hooks support and service accessors.
+ * Wraps the raw openapi-fetch client with observability features.
+ */
+export interface BasecampClient extends RawClient {
+  /** The underlying raw client (for advanced use cases) */
+  readonly raw: RawClient;
+  /** Hooks for observability (if configured) */
+  readonly hooks?: BasecampHooks;
+
+  // =========================================================================
+  // Service Accessors
+  // =========================================================================
+
+  /** Projects service - list, get, create, update, and trash projects */
+  readonly projects: ProjectsService;
+  /** Todos service - list, get, create, update, complete, and manage todos */
+  readonly todos: TodosService;
+  /** Todolists service - list, get, create, and update todo lists */
+  readonly todolists: TodolistsService;
+  /** Todosets service - get todo sets (container for todo lists) */
+  readonly todosets: TodosetsService;
+  /** People service - list, get, and manage people in your account */
+  readonly people: PeopleService;
+  /** Authorization service - get authorization info and identity */
+  readonly authorization: AuthorizationService;
+  /** Messages service - list, get, create, update, pin/unpin messages */
+  readonly messages: MessagesService;
+  /** Comments service - list, get, create, and update comments */
+  readonly comments: CommentsService;
+  /** Campfires service - list, get campfires and manage lines */
+  readonly campfires: CampfiresService;
+  /** Card tables service - get card tables (kanban boards) */
+  readonly cardTables: CardTablesService;
+  /** Cards service - list, get, create, update, and move cards */
+  readonly cards: CardsService;
+  /** Card columns service - get, create, update, and manage columns */
+  readonly cardColumns: CardColumnsService;
+  /** Card steps service - create, update, complete, and manage card steps */
+  readonly cardSteps: CardStepsService;
+  /** Message boards service - get message boards */
+  readonly messageBoards: MessageBoardsService;
+  /** Message types service - list, get, create, update, delete message types */
+  readonly messageTypes: MessageTypesService;
+  /** Forwards service - manage email forwards and replies */
+  readonly forwards: ForwardsService;
+  /** Checkins service - manage questionnaires, questions, and answers */
+  readonly checkins: CheckinsService;
+  /** Client approvals service - list and get client approvals */
+  readonly clientApprovals: ClientApprovalsService;
+  /** Client correspondences service - list and get client correspondences */
+  readonly clientCorrespondences: ClientCorrespondencesService;
+  /** Client replies service - list and get client replies */
+  readonly clientReplies: ClientRepliesService;
+  /** Webhooks service - create, update, delete webhooks */
+  readonly webhooks: WebhooksService;
+  /** Subscriptions service - manage notification subscriptions */
+  readonly subscriptions: SubscriptionsService;
+  /** Attachments service - upload files for embedding in rich text */
+  readonly attachments: AttachmentsService;
+  /** Vaults service - manage folders in the Files tool */
+  readonly vaults: VaultsService;
+  /** Documents service - manage documents in vaults */
+  readonly documents: DocumentsService;
+  /** Uploads service - manage files in vaults */
+  readonly uploads: UploadsService;
+  /** Schedules service - manage schedules and calendar entries */
+  readonly schedules: SchedulesService;
+  /** Events service - view recording change events */
+  readonly events: EventsService;
+  /** Recordings service - manage recordings (base type for most content) */
+  readonly recordings: RecordingsService;
+  /** Search service - full-text search across all content */
+  readonly search: SearchService;
+  /** Reports service - timesheet and other reports */
+  readonly reports: ReportsService;
+  /** Templates service - manage project templates */
+  readonly templates: TemplatesService;
+  /** Lineup service - manage timeline markers */
+  readonly lineup: LineupService;
+  /** Todolist groups service - manage groups within todolists */
+  readonly todolistGroups: TodolistGroupsService;
+  /** Tools service - manage project dock tools */
+  readonly tools: ToolsService;
+}
 
 /**
  * Token provider - either a static token string or an async function that returns a token.
@@ -36,6 +167,8 @@ export interface BasecampClientOptions {
   enableCache?: boolean;
   /** Enable automatic retry on 429/503 (defaults to true) */
   enableRetry?: boolean;
+  /** Hooks for observability (logging, metrics, tracing) */
+  hooks?: BasecampHooks;
 }
 
 const VERSION = "0.1.0";
@@ -67,22 +200,93 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     userAgent = DEFAULT_USER_AGENT,
     enableCache = true,
     enableRetry = true,
+    hooks,
   } = options;
 
   const client = createClient<paths>({ baseUrl });
 
-  // Apply middleware in order: auth first, then cache, then retry
+  // Apply middleware in order: auth first, then hooks, then cache, then retry
   client.use(createAuthMiddleware(accessToken, userAgent));
+
+  if (hooks) {
+    client.use(createHooksMiddleware(hooks));
+  }
 
   if (enableCache) {
     client.use(createCacheMiddleware());
   }
 
   if (enableRetry) {
-    client.use(createRetryMiddleware());
+    client.use(createRetryMiddleware(hooks));
   }
 
-  return client;
+  // Create enhanced client with additional properties
+  const enhancedClient = client as BasecampClient;
+  Object.defineProperty(enhancedClient, "raw", {
+    value: client,
+    writable: false,
+    enumerable: false,
+  });
+  Object.defineProperty(enhancedClient, "hooks", {
+    value: hooks,
+    writable: false,
+    enumerable: false,
+  });
+
+  // Add lazy-initialized service accessors
+  // Services are created on first access and cached
+  const serviceCache: Record<string, unknown> = {};
+
+  const defineService = <T>(name: string, factory: () => T) => {
+    Object.defineProperty(enhancedClient, name, {
+      get() {
+        if (!serviceCache[name]) {
+          serviceCache[name] = factory();
+        }
+        return serviceCache[name] as T;
+      },
+      enumerable: true,
+      configurable: false,
+    });
+  };
+
+  defineService("projects", () => new ProjectsService(client, hooks));
+  defineService("todos", () => new TodosService(client, hooks));
+  defineService("todolists", () => new TodolistsService(client, hooks));
+  defineService("todosets", () => new TodosetsService(client, hooks));
+  defineService("people", () => new PeopleService(client, hooks));
+  defineService("authorization", () => new AuthorizationService(client, hooks, accessToken, userAgent));
+  defineService("messages", () => new MessagesService(client, hooks));
+  defineService("comments", () => new CommentsService(client, hooks));
+  defineService("campfires", () => new CampfiresService(client, hooks));
+  defineService("cardTables", () => new CardTablesService(client, hooks));
+  defineService("cards", () => new CardsService(client, hooks));
+  defineService("cardColumns", () => new CardColumnsService(client, hooks));
+  defineService("cardSteps", () => new CardStepsService(client, hooks));
+  defineService("messageBoards", () => new MessageBoardsService(client, hooks));
+  defineService("messageTypes", () => new MessageTypesService(client, hooks));
+  defineService("forwards", () => new ForwardsService(client, hooks));
+  defineService("checkins", () => new CheckinsService(client, hooks));
+  defineService("clientApprovals", () => new ClientApprovalsService(client, hooks));
+  defineService("clientCorrespondences", () => new ClientCorrespondencesService(client, hooks));
+  defineService("clientReplies", () => new ClientRepliesService(client, hooks));
+  defineService("webhooks", () => new WebhooksService(client, hooks));
+  defineService("subscriptions", () => new SubscriptionsService(client, hooks));
+  defineService("attachments", () => new AttachmentsService(client, hooks));
+  defineService("vaults", () => new VaultsService(client, hooks));
+  defineService("documents", () => new DocumentsService(client, hooks));
+  defineService("uploads", () => new UploadsService(client, hooks));
+  defineService("schedules", () => new SchedulesService(client, hooks));
+  defineService("events", () => new EventsService(client, hooks));
+  defineService("recordings", () => new RecordingsService(client, hooks));
+  defineService("search", () => new SearchService(client, hooks));
+  defineService("reports", () => new ReportsService(client, hooks));
+  defineService("templates", () => new TemplatesService(client, hooks));
+  defineService("lineup", () => new LineupService(client, hooks));
+  defineService("todolistGroups", () => new TodolistGroupsService(client, hooks));
+  defineService("tools", () => new ToolsService(client, hooks));
+
+  return enhancedClient;
 }
 
 // =============================================================================
@@ -101,6 +305,74 @@ function createAuthMiddleware(tokenProvider: TokenProvider, userAgent: string): 
       request.headers.set("Accept", "application/json");
 
       return request;
+    },
+  };
+}
+
+// =============================================================================
+// Hooks Middleware
+// =============================================================================
+
+/** Tracks request timing for hooks */
+interface RequestTiming {
+  startTime: number;
+  attempt: number;
+}
+
+function createHooksMiddleware(hooks: BasecampHooks): Middleware {
+  // Track request timing by URL + method
+  const timings = new Map<string, RequestTiming>();
+
+  return {
+    async onRequest({ request }) {
+      const key = `${request.method}:${request.url}`;
+      const attemptHeader = request.headers.get("X-Retry-Attempt");
+      const attempt = attemptHeader ? parseInt(attemptHeader, 10) + 1 : 1;
+
+      timings.set(key, { startTime: performance.now(), attempt });
+
+      const info: RequestInfo = {
+        method: request.method,
+        url: request.url,
+        attempt,
+      };
+
+      try {
+        hooks.onRequestStart?.(info);
+      } catch {
+        // Hooks should not interrupt the request
+      }
+
+      return request;
+    },
+
+    async onResponse({ request, response }) {
+      const key = `${request.method}:${request.url}`;
+      const timing = timings.get(key);
+      const durationMs = timing ? Math.round(performance.now() - timing.startTime) : 0;
+      const attempt = timing?.attempt ?? 1;
+
+      timings.delete(key);
+
+      const info: RequestInfo = {
+        method: request.method,
+        url: request.url,
+        attempt,
+      };
+
+      const result: RequestResult = {
+        statusCode: response.status,
+        durationMs,
+        fromCache: response.status === 304,
+      };
+
+      try {
+        hooks.onRequestEnd?.(info, result);
+      } catch {
+        // Hooks should not interrupt the response
+      }
+
+      return response;
     },
   };
 }
@@ -465,7 +737,7 @@ function getRetryConfigForRequest(method: string, url: string): RetryConfig {
   return DEFAULT_RETRY_CONFIG;
 }
 
-function createRetryMiddleware(): Middleware {
+function createRetryMiddleware(hooks?: BasecampHooks): Middleware {
   // Store request body clones keyed by a request identifier
   // This is needed because Request.body can only be read once
   const bodyCache = new Map<string, ArrayBuffer | null>();
@@ -537,6 +809,21 @@ function createRetryMiddleware(): Middleware {
         }
       } else {
         delay = calculateBackoffDelay(retryConfig, attempt);
+      }
+
+      // Notify hooks of retry
+      if (hooks?.onRetry) {
+        const info: RequestInfo = {
+          method: request.method,
+          url: request.url,
+          attempt: attempt + 1,
+        };
+        const error = new Error(`HTTP ${response.status}: ${response.statusText || "Request failed"}`);
+        try {
+          hooks.onRetry(info, attempt + 1, error, delay);
+        } catch {
+          // Hooks should not interrupt the retry
+        }
       }
 
       // Wait before retry
