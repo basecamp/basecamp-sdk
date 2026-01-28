@@ -147,10 +147,7 @@ func timelineEventFromGenerated(ge generated.TimelineEvent) TimelineEvent {
 		e.ParentRecordingID = *ge.ParentRecordingId
 	}
 
-	// CreatedAt might be a float64 (Unix timestamp) due to OpenAPI generation issues
-	if ge.CreatedAt != 0 {
-		e.CreatedAt = time.Unix(int64(ge.CreatedAt), 0)
-	}
+	e.CreatedAt = ge.CreatedAt
 
 	if ge.Creator.Id != nil || ge.Creator.Name != "" {
 		e.Creator = &Person{
