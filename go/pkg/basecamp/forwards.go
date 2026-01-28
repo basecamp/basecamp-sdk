@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Inbox represents a Basecamp email inbox (forwards tool).
@@ -76,17 +77,18 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/inboxes/%d.json", bucketID, inboxID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetInboxWithResponse(ctx, bucketID, inboxID)
 	if err != nil {
 		return nil, err
 	}
-
-	var inbox Inbox
-	if err := resp.UnmarshalData(&inbox); err != nil {
-		return nil, fmt.Errorf("failed to parse inbox: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	inbox := inboxFromGenerated(resp.JSON200.Inbox)
 	return &inbox, nil
 }
 
@@ -97,19 +99,20 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) ([]
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/inboxes/%d/forwards.json", bucketID, inboxID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListForwardsWithResponse(ctx, bucketID, inboxID)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	forwards := make([]Forward, 0, len(results))
-	for _, raw := range results {
-		var f Forward
-		if err := json.Unmarshal(raw, &f); err != nil {
-			return nil, fmt.Errorf("failed to parse forward: %w", err)
-		}
-		forwards = append(forwards, f)
+	forwards := make([]Forward, 0, len(resp.JSON200.Forwards))
+	for _, gf := range resp.JSON200.Forwards {
+		forwards = append(forwards, forwardFromGenerated(gf))
 	}
 
 	return forwards, nil
@@ -122,17 +125,18 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (*
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/inbox_forwards/%d.json", bucketID, forwardID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetForwardWithResponse(ctx, bucketID, forwardID)
 	if err != nil {
 		return nil, err
 	}
-
-	var forward Forward
-	if err := resp.UnmarshalData(&forward); err != nil {
-		return nil, fmt.Errorf("failed to parse forward: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	forward := forwardFromGenerated(resp.JSON200.Forward)
 	return &forward, nil
 }
 
@@ -143,19 +147,20 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/inbox_forwards/%d/replies.json", bucketID, forwardID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListForwardRepliesWithResponse(ctx, bucketID, forwardID)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	replies := make([]ForwardReply, 0, len(results))
-	for _, raw := range results {
-		var r ForwardReply
-		if err := json.Unmarshal(raw, &r); err != nil {
-			return nil, fmt.Errorf("failed to parse forward reply: %w", err)
-		}
-		replies = append(replies, r)
+	replies := make([]ForwardReply, 0, len(resp.JSON200.Replies))
+	for _, gr := range resp.JSON200.Replies {
+		replies = append(replies, forwardReplyFromGenerated(gr))
 	}
 
 	return replies, nil
@@ -168,17 +173,18 @@ func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, rep
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/inbox_forwards/%d/replies/%d.json", bucketID, forwardID, replyID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetForwardReplyWithResponse(ctx, bucketID, forwardID, replyID)
 	if err != nil {
 		return nil, err
 	}
-
-	var reply ForwardReply
-	if err := resp.UnmarshalData(&reply); err != nil {
-		return nil, fmt.Errorf("failed to parse forward reply: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	reply := forwardReplyFromGenerated(resp.JSON200.Reply)
 	return &reply, nil
 }
 
@@ -194,16 +200,157 @@ func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID i
 		return nil, ErrUsage("reply content is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/inbox_forwards/%d/replies.json", bucketID, forwardID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateForwardReplyJSONRequestBody{
+		Content: req.Content,
+	}
+
+	resp, err := s.client.gen.CreateForwardReplyWithResponse(ctx, bucketID, forwardID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var reply ForwardReply
-	if err := resp.UnmarshalData(&reply); err != nil {
-		return nil, fmt.Errorf("failed to parse forward reply: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	reply := forwardReplyFromGenerated(resp.JSON200.Reply)
 	return &reply, nil
+}
+
+// inboxFromGenerated converts a generated Inbox to our clean type.
+func inboxFromGenerated(gi generated.Inbox) Inbox {
+	i := Inbox{
+		Status:    gi.Status,
+		CreatedAt: gi.CreatedAt,
+		UpdatedAt: gi.UpdatedAt,
+		Title:     gi.Title,
+		Type:      gi.Type,
+		URL:       gi.Url,
+		AppURL:    gi.AppUrl,
+	}
+
+	if gi.Id != nil {
+		i.ID = *gi.Id
+	}
+
+	if gi.Bucket.Id != nil || gi.Bucket.Name != "" {
+		i.Bucket = &Bucket{
+			ID:   derefInt64(gi.Bucket.Id),
+			Name: gi.Bucket.Name,
+			Type: gi.Bucket.Type,
+		}
+	}
+
+	if gi.Creator.Id != nil || gi.Creator.Name != "" {
+		i.Creator = &Person{
+			ID:           derefInt64(gi.Creator.Id),
+			Name:         gi.Creator.Name,
+			EmailAddress: gi.Creator.EmailAddress,
+			AvatarURL:    gi.Creator.AvatarUrl,
+			Admin:        gi.Creator.Admin,
+			Owner:        gi.Creator.Owner,
+		}
+	}
+
+	return i
+}
+
+// forwardFromGenerated converts a generated Forward to our clean type.
+func forwardFromGenerated(gf generated.Forward) Forward {
+	f := Forward{
+		Status:    gf.Status,
+		CreatedAt: gf.CreatedAt,
+		UpdatedAt: gf.UpdatedAt,
+		Subject:   gf.Subject,
+		Content:   gf.Content,
+		From:      gf.From,
+		Type:      gf.Type,
+		URL:       gf.Url,
+		AppURL:    gf.AppUrl,
+	}
+
+	if gf.Id != nil {
+		f.ID = *gf.Id
+	}
+
+	if gf.Parent.Id != nil || gf.Parent.Title != "" {
+		f.Parent = &Parent{
+			ID:     derefInt64(gf.Parent.Id),
+			Title:  gf.Parent.Title,
+			Type:   gf.Parent.Type,
+			URL:    gf.Parent.Url,
+			AppURL: gf.Parent.AppUrl,
+		}
+	}
+
+	if gf.Bucket.Id != nil || gf.Bucket.Name != "" {
+		f.Bucket = &Bucket{
+			ID:   derefInt64(gf.Bucket.Id),
+			Name: gf.Bucket.Name,
+			Type: gf.Bucket.Type,
+		}
+	}
+
+	if gf.Creator.Id != nil || gf.Creator.Name != "" {
+		f.Creator = &Person{
+			ID:           derefInt64(gf.Creator.Id),
+			Name:         gf.Creator.Name,
+			EmailAddress: gf.Creator.EmailAddress,
+			AvatarURL:    gf.Creator.AvatarUrl,
+			Admin:        gf.Creator.Admin,
+			Owner:        gf.Creator.Owner,
+		}
+	}
+
+	return f
+}
+
+// forwardReplyFromGenerated converts a generated ForwardReply to our clean type.
+func forwardReplyFromGenerated(gr generated.ForwardReply) ForwardReply {
+	r := ForwardReply{
+		Status:    gr.Status,
+		CreatedAt: gr.CreatedAt,
+		UpdatedAt: gr.UpdatedAt,
+		Content:   gr.Content,
+		Type:      gr.Type,
+		URL:       gr.Url,
+		AppURL:    gr.AppUrl,
+	}
+
+	if gr.Id != nil {
+		r.ID = *gr.Id
+	}
+
+	if gr.Parent.Id != nil || gr.Parent.Title != "" {
+		r.Parent = &Parent{
+			ID:     derefInt64(gr.Parent.Id),
+			Title:  gr.Parent.Title,
+			Type:   gr.Parent.Type,
+			URL:    gr.Parent.Url,
+			AppURL: gr.Parent.AppUrl,
+		}
+	}
+
+	if gr.Bucket.Id != nil || gr.Bucket.Name != "" {
+		r.Bucket = &Bucket{
+			ID:   derefInt64(gr.Bucket.Id),
+			Name: gr.Bucket.Name,
+			Type: gr.Bucket.Type,
+		}
+	}
+
+	if gr.Creator.Id != nil || gr.Creator.Name != "" {
+		r.Creator = &Person{
+			ID:           derefInt64(gr.Creator.Id),
+			Name:         gr.Creator.Name,
+			EmailAddress: gr.Creator.EmailAddress,
+			AvatarURL:    gr.Creator.AvatarUrl,
+			Admin:        gr.Creator.Admin,
+			Owner:        gr.Creator.Owner,
+		}
+	}
+
+	return r
 }

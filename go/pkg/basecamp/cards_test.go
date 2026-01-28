@@ -586,7 +586,7 @@ func TestCreateStepRequest_Marshal(t *testing.T) {
 	req := CreateStepRequest{
 		Title:     "Write tests",
 		DueOn:     "2024-02-15",
-		Assignees: "1049715914,1049715915",
+		Assignees: []int64{1049715914, 1049715915},
 	}
 
 	out, err := json.Marshal(req)
@@ -605,7 +605,8 @@ func TestCreateStepRequest_Marshal(t *testing.T) {
 	if data["due_on"] != "2024-02-15" {
 		t.Errorf("unexpected due_on: %v", data["due_on"])
 	}
-	if data["assignees"] != "1049715914,1049715915" {
+	assignees, ok := data["assignees"].([]interface{})
+	if !ok || len(assignees) != 2 {
 		t.Errorf("unexpected assignees: %v", data["assignees"])
 	}
 }

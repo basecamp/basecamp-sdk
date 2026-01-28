@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Campfire represents a Basecamp Campfire (real-time chat room).
@@ -94,20 +95,21 @@ func (s *CampfiresService) List(ctx context.Context) ([]Campfire, error) {
 		return nil, err
 	}
 
-	results, err := s.client.GetAll(ctx, "/chats.json")
+	resp, err := s.client.gen.ListCampfiresWithResponse(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	campfires := make([]Campfire, 0, len(results))
-	for _, raw := range results {
-		var c Campfire
-		if err := json.Unmarshal(raw, &c); err != nil {
-			return nil, fmt.Errorf("failed to parse campfire: %w", err)
-		}
-		campfires = append(campfires, c)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
 	}
 
+	campfires := make([]Campfire, 0, len(resp.JSON200.Campfires))
+	for _, gc := range resp.JSON200.Campfires {
+		campfires = append(campfires, campfireFromGenerated(gc))
+	}
 	return campfires, nil
 }
 
@@ -118,17 +120,18 @@ func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/chats/%d.json", bucketID, campfireID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetCampfireWithResponse(ctx, bucketID, campfireID)
 	if err != nil {
 		return nil, err
 	}
-
-	var campfire Campfire
-	if err := resp.UnmarshalData(&campfire); err != nil {
-		return nil, fmt.Errorf("failed to parse campfire: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	campfire := campfireFromGenerated(resp.JSON200.Campfire)
 	return &campfire, nil
 }
 
@@ -139,21 +142,21 @@ func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID i
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/chats/%d/lines.json", bucketID, campfireID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListCampfireLinesWithResponse(ctx, bucketID, campfireID)
 	if err != nil {
 		return nil, err
 	}
-
-	lines := make([]CampfireLine, 0, len(results))
-	for _, raw := range results {
-		var l CampfireLine
-		if err := json.Unmarshal(raw, &l); err != nil {
-			return nil, fmt.Errorf("failed to parse campfire line: %w", err)
-		}
-		lines = append(lines, l)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
 	}
 
+	lines := make([]CampfireLine, 0, len(resp.JSON200.Lines))
+	for _, gl := range resp.JSON200.Lines {
+		lines = append(lines, campfireLineFromGenerated(gl))
+	}
 	return lines, nil
 }
 
@@ -164,17 +167,18 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/chats/%d/lines/%d.json", bucketID, campfireID, lineID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetCampfireLineWithResponse(ctx, bucketID, campfireID, lineID)
 	if err != nil {
 		return nil, err
 	}
-
-	var line CampfireLine
-	if err := resp.UnmarshalData(&line); err != nil {
-		return nil, fmt.Errorf("failed to parse campfire line: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	line := campfireLineFromGenerated(resp.JSON200.Line)
 	return &line, nil
 }
 
@@ -190,18 +194,22 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 		return nil, ErrUsage("campfire line content is required")
 	}
 
-	req := &CreateCampfireLineRequest{Content: content}
-	path := fmt.Sprintf("/buckets/%d/chats/%d/lines.json", bucketID, campfireID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateCampfireLineJSONRequestBody{
+		Content: content,
+	}
+
+	resp, err := s.client.gen.CreateCampfireLineWithResponse(ctx, bucketID, campfireID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var line CampfireLine
-	if err := resp.UnmarshalData(&line); err != nil {
-		return nil, fmt.Errorf("failed to parse campfire line: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	line := campfireLineFromGenerated(resp.JSON200.Line)
 	return &line, nil
 }
 
@@ -212,9 +220,11 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID,
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/chats/%d/lines/%d.json", bucketID, campfireID, lineID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.DeleteCampfireLineWithResponse(ctx, bucketID, campfireID, lineID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // ListChatbots returns all chatbots for a campfire.
@@ -225,17 +235,21 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireI
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/chats/%d/integrations.json", bucketID, campfireID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.ListChatbotsWithResponse(ctx, bucketID, campfireID)
 	if err != nil {
 		return nil, err
 	}
-
-	var chatbots []Chatbot
-	if err := resp.UnmarshalData(&chatbots); err != nil {
-		return nil, fmt.Errorf("failed to parse chatbots: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
 	}
 
+	chatbots := make([]Chatbot, 0, len(resp.JSON200.Chatbots))
+	for _, gc := range resp.JSON200.Chatbots {
+		chatbots = append(chatbots, chatbotFromGenerated(gc))
+	}
 	return chatbots, nil
 }
 
@@ -246,17 +260,18 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID,
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/chats/%d/integrations/%d.json", bucketID, campfireID, chatbotID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetChatbotWithResponse(ctx, bucketID, campfireID, chatbotID)
 	if err != nil {
 		return nil, err
 	}
-
-	var chatbot Chatbot
-	if err := resp.UnmarshalData(&chatbot); err != nil {
-		return nil, fmt.Errorf("failed to parse chatbot: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	chatbot := chatbotFromGenerated(resp.JSON200.Chatbot)
 	return &chatbot, nil
 }
 
@@ -273,17 +288,25 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfire
 		return nil, ErrUsage("chatbot service_name is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/chats/%d/integrations.json", bucketID, campfireID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateChatbotJSONRequestBody{
+		ServiceName: req.ServiceName,
+	}
+	if req.CommandURL != "" {
+		body.CommandUrl = req.CommandURL
+	}
+
+	resp, err := s.client.gen.CreateChatbotWithResponse(ctx, bucketID, campfireID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var chatbot Chatbot
-	if err := resp.UnmarshalData(&chatbot); err != nil {
-		return nil, fmt.Errorf("failed to parse chatbot: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	chatbot := chatbotFromGenerated(resp.JSON200.Chatbot)
 	return &chatbot, nil
 }
 
@@ -300,17 +323,25 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfire
 		return nil, ErrUsage("chatbot service_name is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/chats/%d/integrations/%d.json", bucketID, campfireID, chatbotID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateChatbotJSONRequestBody{
+		ServiceName: req.ServiceName,
+	}
+	if req.CommandURL != "" {
+		body.CommandUrl = req.CommandURL
+	}
+
+	resp, err := s.client.gen.UpdateChatbotWithResponse(ctx, bucketID, campfireID, chatbotID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var chatbot Chatbot
-	if err := resp.UnmarshalData(&chatbot); err != nil {
-		return nil, fmt.Errorf("failed to parse chatbot: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	chatbot := chatbotFromGenerated(resp.JSON200.Chatbot)
 	return &chatbot, nil
 }
 
@@ -322,7 +353,120 @@ func (s *CampfiresService) DeleteChatbot(ctx context.Context, bucketID, campfire
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/chats/%d/integrations/%d.json", bucketID, campfireID, chatbotID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.DeleteChatbotWithResponse(ctx, bucketID, campfireID, chatbotID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
+}
+
+// campfireFromGenerated converts a generated Campfire to our clean Campfire type.
+func campfireFromGenerated(gc generated.Campfire) Campfire {
+	c := Campfire{
+		Status:           gc.Status,
+		VisibleToClients: gc.VisibleToClients,
+		Title:            gc.Title,
+		InheritsStatus:   gc.InheritsStatus,
+		Type:             gc.Type,
+		URL:              gc.Url,
+		AppURL:           gc.AppUrl,
+		LinesURL:         gc.LinesUrl,
+		CreatedAt:        gc.CreatedAt,
+		UpdatedAt:        gc.UpdatedAt,
+	}
+
+	if gc.Id != nil {
+		c.ID = *gc.Id
+	}
+
+	if gc.Bucket.Id != nil || gc.Bucket.Name != "" {
+		c.Bucket = &Bucket{
+			ID:   derefInt64(gc.Bucket.Id),
+			Name: gc.Bucket.Name,
+			Type: gc.Bucket.Type,
+		}
+	}
+
+	if gc.Creator.Id != nil || gc.Creator.Name != "" {
+		c.Creator = &Person{
+			ID:           derefInt64(gc.Creator.Id),
+			Name:         gc.Creator.Name,
+			EmailAddress: gc.Creator.EmailAddress,
+			AvatarURL:    gc.Creator.AvatarUrl,
+			Admin:        gc.Creator.Admin,
+			Owner:        gc.Creator.Owner,
+		}
+	}
+
+	return c
+}
+
+// campfireLineFromGenerated converts a generated CampfireLine to our clean CampfireLine type.
+func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
+	l := CampfireLine{
+		Status:           gl.Status,
+		VisibleToClients: gl.VisibleToClients,
+		Title:            gl.Title,
+		InheritsStatus:   gl.InheritsStatus,
+		Type:             gl.Type,
+		URL:              gl.Url,
+		AppURL:           gl.AppUrl,
+		Content:          gl.Content,
+		CreatedAt:        gl.CreatedAt,
+		UpdatedAt:        gl.UpdatedAt,
+	}
+
+	if gl.Id != nil {
+		l.ID = *gl.Id
+	}
+
+	if gl.Parent.Id != nil || gl.Parent.Title != "" {
+		l.Parent = &Parent{
+			ID:     derefInt64(gl.Parent.Id),
+			Title:  gl.Parent.Title,
+			Type:   gl.Parent.Type,
+			URL:    gl.Parent.Url,
+			AppURL: gl.Parent.AppUrl,
+		}
+	}
+
+	if gl.Bucket.Id != nil || gl.Bucket.Name != "" {
+		l.Bucket = &Bucket{
+			ID:   derefInt64(gl.Bucket.Id),
+			Name: gl.Bucket.Name,
+			Type: gl.Bucket.Type,
+		}
+	}
+
+	if gl.Creator.Id != nil || gl.Creator.Name != "" {
+		l.Creator = &Person{
+			ID:           derefInt64(gl.Creator.Id),
+			Name:         gl.Creator.Name,
+			EmailAddress: gl.Creator.EmailAddress,
+			AvatarURL:    gl.Creator.AvatarUrl,
+			Admin:        gl.Creator.Admin,
+			Owner:        gl.Creator.Owner,
+		}
+	}
+
+	return l
+}
+
+// chatbotFromGenerated converts a generated Chatbot to our clean Chatbot type.
+func chatbotFromGenerated(gc generated.Chatbot) Chatbot {
+	c := Chatbot{
+		ServiceName: gc.ServiceName,
+		CommandURL:  gc.CommandUrl,
+		URL:         gc.Url,
+		AppURL:      gc.AppUrl,
+		LinesURL:    gc.LinesUrl,
+		CreatedAt:   gc.CreatedAt,
+		UpdatedAt:   gc.UpdatedAt,
+	}
+
+	if gc.Id != nil {
+		c.ID = *gc.Id
+	}
+
+	return c
 }

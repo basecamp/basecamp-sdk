@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // MessageBoard represents a Basecamp message board in a project.
@@ -39,16 +41,57 @@ func (s *MessageBoardsService) Get(ctx context.Context, bucketID, boardID int64)
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/message_boards/%d.json", bucketID, boardID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetMessageBoardWithResponse(ctx, bucketID, boardID)
 	if err != nil {
 		return nil, err
 	}
-
-	var board MessageBoard
-	if err := resp.UnmarshalData(&board); err != nil {
-		return nil, fmt.Errorf("failed to parse message board: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	board := messageBoardFromGenerated(resp.JSON200.MessageBoard)
 	return &board, nil
+}
+
+// messageBoardFromGenerated converts a generated MessageBoard to our clean MessageBoard type.
+func messageBoardFromGenerated(gb generated.MessageBoard) MessageBoard {
+	mb := MessageBoard{
+		Status:        gb.Status,
+		Title:         gb.Title,
+		Type:          gb.Type,
+		URL:           gb.Url,
+		AppURL:        gb.AppUrl,
+		MessagesCount: int(gb.MessagesCount),
+		MessagesURL:   gb.MessagesUrl,
+		CreatedAt:     gb.CreatedAt,
+		UpdatedAt:     gb.UpdatedAt,
+	}
+
+	if gb.Id != nil {
+		mb.ID = *gb.Id
+	}
+
+	if gb.Bucket.Id != nil || gb.Bucket.Name != "" {
+		mb.Bucket = &Bucket{
+			ID:   derefInt64(gb.Bucket.Id),
+			Name: gb.Bucket.Name,
+			Type: gb.Bucket.Type,
+		}
+	}
+
+	if gb.Creator.Id != nil || gb.Creator.Name != "" {
+		mb.Creator = &Person{
+			ID:           derefInt64(gb.Creator.Id),
+			Name:         gb.Creator.Name,
+			EmailAddress: gb.Creator.EmailAddress,
+			AvatarURL:    gb.Creator.AvatarUrl,
+			Admin:        gb.Creator.Admin,
+			Owner:        gb.Creator.Owner,
+		}
+	}
+
+	return mb
 }

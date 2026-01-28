@@ -543,3 +543,954 @@ func IsIdempotent(operationId string) bool {
 	}
 	return false
 }
+
+// =============================================================================
+// Auth Transport
+// =============================================================================
+
+// TokenProvider is the interface for obtaining access tokens.
+type TokenProvider interface {
+	// AccessToken returns a valid access token, refreshing if needed.
+	AccessToken(ctx context.Context) (string, error)
+}
+
+// StaticTokenProvider provides a fixed token (e.g., from environment variable).
+type StaticTokenProvider struct {
+	Token string
+}
+
+// AccessToken returns the static token.
+func (p *StaticTokenProvider) AccessToken(ctx context.Context) (string, error) {
+	if p.Token == "" {
+		return "", &APIError{Code: ErrCodeAuth, Message: "no token configured"}
+	}
+	return p.Token, nil
+}
+
+// AuthTransport is an http.RoundTripper that adds Bearer token authentication.
+type AuthTransport struct {
+	// TokenProvider supplies access tokens for requests.
+	TokenProvider TokenProvider
+	// Base is the underlying transport. If nil, http.DefaultTransport is used.
+	Base http.RoundTripper
+	// UserAgent is the User-Agent header value. If empty, a default is used.
+	UserAgent string
+}
+
+// RoundTrip implements http.RoundTripper, adding the Authorization header.
+func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Get access token
+	token, err := t.TokenProvider.AccessToken(req.Context())
+	if err != nil {
+		return nil, err
+	}
+
+	// Clone request to avoid mutating the original
+	req2 := req.Clone(req.Context())
+	req2.Header.Set("Authorization", "Bearer "+token)
+
+	if t.UserAgent != "" {
+		req2.Header.Set("User-Agent", t.UserAgent)
+	}
+
+	// Set default headers if not present
+	if req2.Header.Get("Content-Type") == "" && req2.Body != nil {
+		req2.Header.Set("Content-Type", "application/json")
+	}
+	if req2.Header.Get("Accept") == "" {
+		req2.Header.Set("Accept", "application/json")
+	}
+
+	base := t.Base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	return base.RoundTrip(req2)
+}
+
+// WithAuthTransport returns a ClientOption that configures authentication.
+func WithAuthTransport(tokenProvider TokenProvider, userAgent string) ClientOption {
+	return func(c *{{ $clientTypeName }}) error {
+		// Wrap the existing client's transport
+		existingTransport := http.DefaultTransport
+		if c.Client != nil {
+			if httpClient, ok := c.Client.(*http.Client); ok && httpClient.Transport != nil {
+				existingTransport = httpClient.Transport
+			}
+		}
+
+		authTransport := &AuthTransport{
+			TokenProvider: tokenProvider,
+			Base:          existingTransport,
+			UserAgent:     userAgent,
+		}
+
+		c.Client = &http.Client{Transport: authTransport}
+		return nil
+	}
+}
+
+// =============================================================================
+// Caching Transport
+// =============================================================================
+
+// ResponseCache is the interface for caching HTTP responses.
+type ResponseCache interface {
+	// Get returns the cached ETag and body for a URL, or empty values if not cached.
+	Get(url string) (etag string, body []byte, ok bool)
+	// Set stores the ETag and body for a URL.
+	Set(url string, etag string, body []byte)
+	// Invalidate removes a cached entry.
+	Invalidate(url string)
+	// Clear removes all cached entries.
+	Clear()
+}
+
+// InMemoryCache is a simple in-memory cache implementation.
+type InMemoryCache struct {
+	mu      sync.RWMutex
+	entries map[string]*cacheEntry
+}
+
+type cacheEntry struct {
+	etag string
+	body []byte
+}
+
+// NewInMemoryCache creates a new in-memory cache.
+func NewInMemoryCache() *InMemoryCache {
+	return &InMemoryCache{
+		entries: make(map[string]*cacheEntry),
+	}
+}
+
+// Get returns the cached ETag and body for a URL.
+func (c *InMemoryCache) Get(url string) (etag string, body []byte, ok bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if entry, exists := c.entries[url]; exists {
+		return entry.etag, entry.body, true
+	}
+	return "", nil, false
+}
+
+// Set stores the ETag and body for a URL.
+func (c *InMemoryCache) Set(url string, etag string, body []byte) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries[url] = &cacheEntry{etag: etag, body: body}
+}
+
+// Invalidate removes a cached entry.
+func (c *InMemoryCache) Invalidate(url string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.entries, url)
+}
+
+// Clear removes all cached entries.
+func (c *InMemoryCache) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries = make(map[string]*cacheEntry)
+}
+
+// CachingTransport is an http.RoundTripper that implements ETag-based caching.
+type CachingTransport struct {
+	// Cache stores responses by URL.
+	Cache ResponseCache
+	// Base is the underlying transport. If nil, http.DefaultTransport is used.
+	Base http.RoundTripper
+}
+
+// RoundTrip implements http.RoundTripper with ETag-based caching.
+func (t *CachingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	base := t.Base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+
+	// Only cache GET requests
+	if req.Method != http.MethodGet {
+		// Invalidate cache for mutating requests to the same URL
+		if req.Method == http.MethodPost || req.Method == http.MethodPut ||
+			req.Method == http.MethodPatch || req.Method == http.MethodDelete {
+			t.Cache.Invalidate(req.URL.String())
+		}
+		return base.RoundTrip(req)
+	}
+
+	url := req.URL.String()
+
+	// Check cache for ETag
+	etag, cachedBody, hasCached := t.Cache.Get(url)
+	if hasCached && etag != "" {
+		// Clone request and add If-None-Match header
+		req2 := req.Clone(req.Context())
+		req2.Header.Set("If-None-Match", etag)
+		req = req2
+	}
+
+	resp, err := base.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle 304 Not Modified - return cached response
+	if resp.StatusCode == http.StatusNotModified && hasCached {
+		_ = resp.Body.Close()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK (cached)",
+			Header:     resp.Header,
+			Body:       io.NopCloser(bytes.NewReader(cachedBody)),
+			Request:    req,
+		}, nil
+	}
+
+	// Cache successful GET responses with ETag
+	if resp.StatusCode == http.StatusOK {
+		if newETag := resp.Header.Get("ETag"); newETag != "" {
+			// Read and cache the body
+			body, err := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if err != nil {
+				return nil, err
+			}
+			t.Cache.Set(url, newETag, body)
+			// Return response with new body reader
+			resp.Body = io.NopCloser(bytes.NewReader(body))
+		}
+	}
+
+	return resp, nil
+}
+
+// WithCachingTransport returns a ClientOption that enables ETag-based caching.
+func WithCachingTransport(cache ResponseCache) ClientOption {
+	return func(c *{{ $clientTypeName }}) error {
+		// Wrap the existing client's transport
+		existingTransport := http.DefaultTransport
+		if c.Client != nil {
+			if httpClient, ok := c.Client.(*http.Client); ok && httpClient.Transport != nil {
+				existingTransport = httpClient.Transport
+			}
+		}
+
+		cachingTransport := &CachingTransport{
+			Cache: cache,
+			Base:  existingTransport,
+		}
+
+		c.Client = &http.Client{Transport: cachingTransport}
+		return nil
+	}
+}
+
+// =============================================================================
+// Structured Error Types
+// =============================================================================
+
+// Error codes for API responses.
+const (
+	ErrCodeUsage     = "usage"
+	ErrCodeNotFound  = "not_found"
+	ErrCodeAuth      = "auth_required"
+	ErrCodeForbidden = "forbidden"
+	ErrCodeRateLimit = "rate_limit"
+	ErrCodeNetwork   = "network"
+	ErrCodeAPI       = "api_error"
+	ErrCodeAmbiguous = "ambiguous"
+)
+
+// APIError is a structured error with code, message, and optional hint.
+type APIError struct {
+	// Code is a machine-readable error code.
+	Code string
+	// Message is a human-readable error message.
+	Message string
+	// Hint provides additional context or suggestions for resolution.
+	Hint string
+	// HTTPStatus is the HTTP status code that triggered this error.
+	HTTPStatus int
+	// Retryable indicates whether the operation can be retried.
+	Retryable bool
+	// Cause is the underlying error, if any.
+	Cause error
+}
+
+// Error implements the error interface.
+func (e *APIError) Error() string {
+	if e.Hint != "" {
+		return fmt.Sprintf("%s: %s", e.Message, e.Hint)
+	}
+	return e.Message
+}
+
+// Unwrap returns the underlying cause for errors.Is/As support.
+func (e *APIError) Unwrap() error {
+	return e.Cause
+}
+
+// IsRetryable returns whether this error indicates a retryable condition.
+func (e *APIError) IsRetryable() bool {
+	return e.Retryable
+}
+
+// NewUsageError creates a usage error.
+func NewUsageError(msg string) *APIError {
+	return &APIError{Code: ErrCodeUsage, Message: msg}
+}
+
+// NewUsageErrorWithHint creates a usage error with a hint.
+func NewUsageErrorWithHint(msg, hint string) *APIError {
+	return &APIError{Code: ErrCodeUsage, Message: msg, Hint: hint}
+}
+
+// NewNotFoundError creates a not-found error.
+func NewNotFoundError(resource, identifier string) *APIError {
+	return &APIError{
+		Code:       ErrCodeNotFound,
+		Message:    fmt.Sprintf("%s not found: %s", resource, identifier),
+		HTTPStatus: http.StatusNotFound,
+	}
+}
+
+// NewNotFoundErrorWithHint creates a not-found error with a hint.
+func NewNotFoundErrorWithHint(resource, identifier, hint string) *APIError {
+	return &APIError{
+		Code:       ErrCodeNotFound,
+		Message:    fmt.Sprintf("%s not found: %s", resource, identifier),
+		Hint:       hint,
+		HTTPStatus: http.StatusNotFound,
+	}
+}
+
+// NewAuthError creates an authentication error.
+func NewAuthError(msg string) *APIError {
+	return &APIError{
+		Code:       ErrCodeAuth,
+		Message:    msg,
+		HTTPStatus: http.StatusUnauthorized,
+	}
+}
+
+// NewForbiddenError creates a forbidden error.
+func NewForbiddenError(msg string) *APIError {
+	return &APIError{
+		Code:       ErrCodeForbidden,
+		Message:    msg,
+		HTTPStatus: http.StatusForbidden,
+	}
+}
+
+// NewForbiddenScopeError creates a forbidden error due to insufficient scope.
+func NewForbiddenScopeError() *APIError {
+	return &APIError{
+		Code:       ErrCodeForbidden,
+		Message:    "Access denied: insufficient scope",
+		Hint:       "Re-authenticate with full scope",
+		HTTPStatus: http.StatusForbidden,
+	}
+}
+
+// NewRateLimitError creates a rate-limit error.
+func NewRateLimitError(retryAfter int) *APIError {
+	hint := "Try again later"
+	if retryAfter > 0 {
+		hint = fmt.Sprintf("Try again in %d seconds", retryAfter)
+	}
+	return &APIError{
+		Code:       ErrCodeRateLimit,
+		Message:    "Rate limited",
+		Hint:       hint,
+		HTTPStatus: http.StatusTooManyRequests,
+		Retryable:  true,
+	}
+}
+
+// NewNetworkError creates a network error.
+func NewNetworkError(cause error) *APIError {
+	return &APIError{
+		Code:      ErrCodeNetwork,
+		Message:   "Network error",
+		Hint:      cause.Error(),
+		Retryable: true,
+		Cause:     cause,
+	}
+}
+
+// NewAPIError creates an API error with an HTTP status code.
+func NewAPIError(status int, msg string) *APIError {
+	return &APIError{
+		Code:       ErrCodeAPI,
+		Message:    msg,
+		HTTPStatus: status,
+	}
+}
+
+// NewAmbiguousError creates an ambiguous match error.
+func NewAmbiguousError(resource string, matches []string) *APIError {
+	hint := "Be more specific"
+	if len(matches) > 0 && len(matches) <= 5 {
+		hint = fmt.Sprintf("Did you mean: %v", matches)
+	}
+	return &APIError{
+		Code:    ErrCodeAmbiguous,
+		Message: fmt.Sprintf("Ambiguous %s", resource),
+		Hint:    hint,
+	}
+}
+
+// AsAPIError attempts to convert an error to an *APIError.
+// If the error is not an *APIError, it wraps it in one.
+func AsAPIError(err error) *APIError {
+	if err == nil {
+		return nil
+	}
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
+	}
+	return &APIError{
+		Code:    ErrCodeAPI,
+		Message: err.Error(),
+		Cause:   err,
+	}
+}
+
+// ParseHTTPError converts an HTTP response to an appropriate APIError.
+func ParseHTTPError(resp *http.Response) *APIError {
+	// Success cases - no error
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+	// Error cases
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return NewAuthError("Authentication required")
+	case http.StatusForbidden:
+		return NewForbiddenError("Access denied")
+	case http.StatusNotFound:
+		return NewNotFoundError("Resource", resp.Request.URL.Path)
+	case http.StatusTooManyRequests:
+		retryAfter := 0
+		if ra := resp.Header.Get("Retry-After"); ra != "" {
+			retryAfter, _ = strconv.Atoi(ra)
+		}
+		return NewRateLimitError(retryAfter)
+	case http.StatusInternalServerError, http.StatusBadGateway,
+		http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return &APIError{
+			Code:       ErrCodeAPI,
+			Message:    fmt.Sprintf("Server error (%d)", resp.StatusCode),
+			HTTPStatus: resp.StatusCode,
+			Retryable:  true,
+		}
+	default:
+		return NewAPIError(resp.StatusCode, fmt.Sprintf("Request failed (%d)", resp.StatusCode))
+	}
+}
+
+// =============================================================================
+// Service Accessor Pattern
+// =============================================================================
+//
+// Service types group related operations for better discoverability.
+// Example: client.Todos().List(...) instead of client.ListTodos(...)
+
+// TodosService provides todo-related operations.
+type TodosService struct { client *{{ $clientTypeName }} }
+
+// Todos returns the TodosService.
+func (c *{{ $clientTypeName }}) Todos() *TodosService { return &TodosService{client: c} }
+
+// ProjectsService provides project-related operations.
+type ProjectsService struct { client *{{ $clientTypeName }} }
+
+// Projects returns the ProjectsService.
+func (c *{{ $clientTypeName }}) Projects() *ProjectsService { return &ProjectsService{client: c} }
+
+// CommentsService provides comment-related operations.
+type CommentsService struct { client *{{ $clientTypeName }} }
+
+// Comments returns the CommentsService.
+func (c *{{ $clientTypeName }}) Comments() *CommentsService { return &CommentsService{client: c} }
+
+// MessagesService provides message-related operations.
+type MessagesService struct { client *{{ $clientTypeName }} }
+
+// Messages returns the MessagesService.
+func (c *{{ $clientTypeName }}) Messages() *MessagesService { return &MessagesService{client: c} }
+
+// PeopleService provides people-related operations.
+type PeopleService struct { client *{{ $clientTypeName }} }
+
+// People returns the PeopleService.
+func (c *{{ $clientTypeName }}) People() *PeopleService { return &PeopleService{client: c} }
+
+// CardsService provides card-related operations.
+type CardsService struct { client *{{ $clientTypeName }} }
+
+// Cards returns the CardsService.
+func (c *{{ $clientTypeName }}) Cards() *CardsService { return &CardsService{client: c} }
+
+// RecordingsService provides recording-related operations.
+type RecordingsService struct { client *{{ $clientTypeName }} }
+
+// Recordings returns the RecordingsService.
+func (c *{{ $clientTypeName }}) Recordings() *RecordingsService { return &RecordingsService{client: c} }
+
+// WebhooksService provides webhook-related operations.
+type WebhooksService struct { client *{{ $clientTypeName }} }
+
+// Webhooks returns the WebhooksService.
+func (c *{{ $clientTypeName }}) Webhooks() *WebhooksService { return &WebhooksService{client: c} }
+
+// DocumentsService provides document-related operations.
+type DocumentsService struct { client *{{ $clientTypeName }} }
+
+// Documents returns the DocumentsService.
+func (c *{{ $clientTypeName }}) Documents() *DocumentsService { return &DocumentsService{client: c} }
+
+// UploadsService provides upload-related operations.
+type UploadsService struct { client *{{ $clientTypeName }} }
+
+// Uploads returns the UploadsService.
+func (c *{{ $clientTypeName }}) Uploads() *UploadsService { return &UploadsService{client: c} }
+
+// SchedulesService provides schedule-related operations.
+type SchedulesService struct { client *{{ $clientTypeName }} }
+
+// Schedules returns the SchedulesService.
+func (c *{{ $clientTypeName }}) Schedules() *SchedulesService { return &SchedulesService{client: c} }
+
+// VaultsService provides vault-related operations.
+type VaultsService struct { client *{{ $clientTypeName }} }
+
+// Vaults returns the VaultsService.
+func (c *{{ $clientTypeName }}) Vaults() *VaultsService { return &VaultsService{client: c} }
+
+// TemplatesService provides template-related operations.
+type TemplatesService struct { client *{{ $clientTypeName }} }
+
+// Templates returns the TemplatesService.
+func (c *{{ $clientTypeName }}) Templates() *TemplatesService { return &TemplatesService{client: c} }
+
+// EventsService provides event-related operations.
+type EventsService struct { client *{{ $clientTypeName }} }
+
+// Events returns the EventsService.
+func (c *{{ $clientTypeName }}) Events() *EventsService { return &EventsService{client: c} }
+
+// CampfiresService provides campfire-related operations.
+type CampfiresService struct { client *{{ $clientTypeName }} }
+
+// Campfires returns the CampfiresService.
+func (c *{{ $clientTypeName }}) Campfires() *CampfiresService { return &CampfiresService{client: c} }
+
+// Generate service methods by delegating to client methods
+{{range . -}}
+{{$hasParams := .RequiresParamObject -}}
+{{$pathParams := .PathParams -}}
+{{$opid := .OperationId -}}
+
+{{/* Todos operations */}}
+{{if eq $opid "ListTodos"}}
+func (s *TodosService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetTodo"}}
+func (s *TodosService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "CreateTodo"}}
+func (s *TodosService) CreateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *TodosService) Create{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "UpdateTodo"}}
+func (s *TodosService) UpdateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *TodosService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "CompleteTodo"}}
+func (s *TodosService) Complete(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "UncompleteTodo"}}
+func (s *TodosService) Uncomplete(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "TrashTodo"}}
+func (s *TodosService) Trash(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+
+{{/* Projects operations */}}
+{{else if eq $opid "ListProjects"}}
+func (s *ProjectsService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetProject"}}
+func (s *ProjectsService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "CreateProject"}}
+func (s *ProjectsService) CreateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *ProjectsService) Create{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "UpdateProject"}}
+func (s *ProjectsService) UpdateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *ProjectsService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "TrashProject"}}
+func (s *ProjectsService) Trash(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+
+{{/* Comments operations */}}
+{{else if eq $opid "ListComments"}}
+func (s *CommentsService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetComment"}}
+func (s *CommentsService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "CreateComment"}}
+func (s *CommentsService) CreateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *CommentsService) Create{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "UpdateComment"}}
+func (s *CommentsService) UpdateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *CommentsService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+
+{{/* Messages operations */}}
+{{else if eq $opid "ListMessages"}}
+func (s *MessagesService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetMessage"}}
+func (s *MessagesService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "CreateMessage"}}
+func (s *MessagesService) CreateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *MessagesService) Create{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "UpdateMessage"}}
+func (s *MessagesService) UpdateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *MessagesService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+
+{{/* People operations */}}
+{{else if eq $opid "ListPeople"}}
+func (s *PeopleService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetPerson"}}
+func (s *PeopleService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetMyProfile"}}
+func (s *PeopleService) GetMyProfile(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+
+{{/* Cards operations */}}
+{{else if eq $opid "ListCards"}}
+func (s *CardsService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetCard"}}
+func (s *CardsService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "CreateCard"}}
+func (s *CardsService) CreateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *CardsService) Create{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "UpdateCard"}}
+func (s *CardsService) UpdateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *CardsService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "MoveCard"}}
+func (s *CardsService) MoveWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *CardsService) Move{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+
+{{/* Recordings operations */}}
+{{else if eq $opid "ListRecordings"}}
+func (s *RecordingsService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetRecording"}}
+func (s *RecordingsService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "TrashRecording"}}
+func (s *RecordingsService) Trash(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "ArchiveRecording"}}
+func (s *RecordingsService) Archive(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "UnarchiveRecording"}}
+func (s *RecordingsService) Unarchive(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+
+{{/* Webhooks operations */}}
+{{else if eq $opid "ListWebhooks"}}
+func (s *WebhooksService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetWebhook"}}
+func (s *WebhooksService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "CreateWebhook"}}
+func (s *WebhooksService) CreateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *WebhooksService) Create{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "UpdateWebhook"}}
+func (s *WebhooksService) UpdateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *WebhooksService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "DeleteWebhook"}}
+func (s *WebhooksService) Delete(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+
+{{/* Documents operations */}}
+{{else if eq $opid "ListDocuments"}}
+func (s *DocumentsService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetDocument"}}
+func (s *DocumentsService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "CreateDocument"}}
+func (s *DocumentsService) CreateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *DocumentsService) Create{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "UpdateDocument"}}
+func (s *DocumentsService) UpdateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *DocumentsService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+
+{{/* Uploads operations */}}
+{{else if eq $opid "ListUploads"}}
+func (s *UploadsService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetUpload"}}
+func (s *UploadsService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "CreateUpload"}}
+func (s *UploadsService) CreateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *UploadsService) Create{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "UpdateUpload"}}
+func (s *UploadsService) UpdateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *UploadsService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+
+{{/* Vaults operations */}}
+{{else if eq $opid "ListVaults"}}
+func (s *VaultsService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetVault"}}
+func (s *VaultsService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "CreateVault"}}
+func (s *VaultsService) CreateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *VaultsService) Create{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "UpdateVault"}}
+func (s *VaultsService) UpdateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *VaultsService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+
+{{/* Templates operations */}}
+{{else if eq $opid "ListTemplates"}}
+func (s *TemplatesService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetTemplate"}}
+func (s *TemplatesService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "CreateTemplate"}}
+func (s *TemplatesService) CreateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *TemplatesService) Create{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "UpdateTemplate"}}
+func (s *TemplatesService) UpdateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *TemplatesService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "DeleteTemplate"}}
+func (s *TemplatesService) Delete(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+
+{{/* Events operations */}}
+{{else if eq $opid "ListEvents"}}
+func (s *EventsService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+
+{{/* Campfires operations */}}
+{{else if eq $opid "ListCampfires"}}
+func (s *CampfiresService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetCampfire"}}
+func (s *CampfiresService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+
+{{/* Schedules operations */}}
+{{else if eq $opid "GetSchedule"}}
+func (s *SchedulesService) Get(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "ListScheduleEntries"}}
+func (s *SchedulesService) ListEntries(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "GetScheduleEntry"}}
+func (s *SchedulesService) GetEntry(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "CreateScheduleEntry"}}
+func (s *SchedulesService) CreateEntryWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *SchedulesService) CreateEntry{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "UpdateScheduleEntry"}}
+func (s *SchedulesService) UpdateEntryWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *SchedulesService) UpdateEntry{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+
+{{end}}{{/* end of operation matching */}}
+{{end}}{{/* range operations */}}

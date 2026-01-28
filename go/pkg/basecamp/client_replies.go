@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // ClientReply represents a reply to a client correspondence or approval.
@@ -43,19 +44,20 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/client/recordings/%d/replies.json", bucketID, recordingID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListClientRepliesWithResponse(ctx, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	replies := make([]ClientReply, 0, len(results))
-	for _, raw := range results {
-		var r ClientReply
-		if err := json.Unmarshal(raw, &r); err != nil {
-			return nil, fmt.Errorf("failed to parse client reply: %w", err)
-		}
-		replies = append(replies, r)
+	replies := make([]ClientReply, 0, len(resp.JSON200.Replies))
+	for _, gr := range resp.JSON200.Replies {
+		replies = append(replies, clientReplyFromGenerated(gr))
 	}
 
 	return replies, nil
@@ -69,16 +71,69 @@ func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, r
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/client/recordings/%d/replies/%d.json", bucketID, recordingID, replyID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetClientReplyWithResponse(ctx, bucketID, recordingID, replyID)
 	if err != nil {
 		return nil, err
 	}
-
-	var reply ClientReply
-	if err := resp.UnmarshalData(&reply); err != nil {
-		return nil, fmt.Errorf("failed to parse client reply: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	reply := clientReplyFromGenerated(resp.JSON200.Reply)
 	return &reply, nil
+}
+
+// clientReplyFromGenerated converts a generated ClientReply to our clean type.
+func clientReplyFromGenerated(gr generated.ClientReply) ClientReply {
+	r := ClientReply{
+		Status:           gr.Status,
+		VisibleToClients: gr.VisibleToClients,
+		CreatedAt:        gr.CreatedAt,
+		UpdatedAt:        gr.UpdatedAt,
+		Title:            gr.Title,
+		InheritsStatus:   gr.InheritsStatus,
+		Type:             gr.Type,
+		URL:              gr.Url,
+		AppURL:           gr.AppUrl,
+		BookmarkURL:      gr.BookmarkUrl,
+		Content:          gr.Content,
+	}
+
+	if gr.Id != nil {
+		r.ID = *gr.Id
+	}
+
+	if gr.Parent.Id != nil || gr.Parent.Title != "" {
+		r.Parent = &Parent{
+			ID:     derefInt64(gr.Parent.Id),
+			Title:  gr.Parent.Title,
+			Type:   gr.Parent.Type,
+			URL:    gr.Parent.Url,
+			AppURL: gr.Parent.AppUrl,
+		}
+	}
+
+	if gr.Bucket.Id != nil || gr.Bucket.Name != "" {
+		r.Bucket = &Bucket{
+			ID:   derefInt64(gr.Bucket.Id),
+			Name: gr.Bucket.Name,
+			Type: gr.Bucket.Type,
+		}
+	}
+
+	if gr.Creator.Id != nil || gr.Creator.Name != "" {
+		r.Creator = &Person{
+			ID:           derefInt64(gr.Creator.Id),
+			Name:         gr.Creator.Name,
+			EmailAddress: gr.Creator.EmailAddress,
+			AvatarURL:    gr.Creator.AvatarUrl,
+			Admin:        gr.Creator.Admin,
+			Owner:        gr.Creator.Owner,
+		}
+	}
+
+	return r
 }

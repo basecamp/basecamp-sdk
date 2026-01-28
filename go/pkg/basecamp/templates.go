@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Template represents a Basecamp project template.
@@ -65,18 +66,20 @@ func (s *TemplatesService) List(ctx context.Context) ([]Template, error) {
 		return nil, err
 	}
 
-	results, err := s.client.GetAll(ctx, "/templates.json")
+	resp, err := s.client.gen.ListTemplatesWithResponse(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	templates := make([]Template, 0, len(results))
-	for _, raw := range results {
-		var t Template
-		if err := json.Unmarshal(raw, &t); err != nil {
-			return nil, fmt.Errorf("failed to parse template: %w", err)
-		}
-		templates = append(templates, t)
+	templates := make([]Template, 0, len(resp.JSON200.Templates))
+	for _, gt := range resp.JSON200.Templates {
+		templates = append(templates, templateFromGenerated(gt))
 	}
 
 	return templates, nil
@@ -88,17 +91,18 @@ func (s *TemplatesService) Get(ctx context.Context, templateID int64) (*Template
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/templates/%d.json", templateID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetTemplateWithResponse(ctx, templateID)
 	if err != nil {
 		return nil, err
 	}
-
-	var template Template
-	if err := resp.UnmarshalData(&template); err != nil {
-		return nil, fmt.Errorf("failed to parse template: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	template := templateFromGenerated(resp.JSON200.Template)
 	return &template, nil
 }
 
@@ -113,16 +117,23 @@ func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateReques
 		return nil, ErrUsage("template name is required")
 	}
 
-	resp, err := s.client.Post(ctx, "/templates.json", req)
+	body := generated.CreateTemplateJSONRequestBody{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	resp, err := s.client.gen.CreateTemplateWithResponse(ctx, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var template Template
-	if err := resp.UnmarshalData(&template); err != nil {
-		return nil, fmt.Errorf("failed to parse template: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	template := templateFromGenerated(resp.JSON200.Template)
 	return &template, nil
 }
 
@@ -137,17 +148,23 @@ func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *Up
 		return nil, ErrUsage("template name is required")
 	}
 
-	path := fmt.Sprintf("/templates/%d.json", templateID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateTemplateJSONRequestBody{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	resp, err := s.client.gen.UpdateTemplateWithResponse(ctx, templateID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var template Template
-	if err := resp.UnmarshalData(&template); err != nil {
-		return nil, fmt.Errorf("failed to parse template: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	template := templateFromGenerated(resp.JSON200.Template)
 	return &template, nil
 }
 
@@ -157,9 +174,11 @@ func (s *TemplatesService) Delete(ctx context.Context, templateID int64) error {
 		return err
 	}
 
-	path := fmt.Sprintf("/templates/%d.json", templateID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.DeleteTemplateWithResponse(ctx, templateID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // CreateProject creates a new project from a template.
@@ -173,22 +192,23 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 		return nil, ErrUsage("project name is required")
 	}
 
-	path := fmt.Sprintf("/templates/%d/project_constructions.json", templateID)
-	req := &CreateProjectFromTemplateRequest{
+	body := generated.CreateProjectFromTemplateJSONRequestBody{
 		Name:        name,
 		Description: description,
 	}
 
-	resp, err := s.client.Post(ctx, path, req)
+	resp, err := s.client.gen.CreateProjectFromTemplateWithResponse(ctx, templateID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var construction ProjectConstruction
-	if err := resp.UnmarshalData(&construction); err != nil {
-		return nil, fmt.Errorf("failed to parse project construction: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	construction := projectConstructionFromGenerated(resp.JSON200.Construction)
 	return &construction, nil
 }
 
@@ -198,16 +218,64 @@ func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, cons
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/templates/%d/project_constructions/%d.json", templateID, constructionID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetProjectConstructionWithResponse(ctx, templateID, constructionID)
 	if err != nil {
 		return nil, err
 	}
-
-	var construction ProjectConstruction
-	if err := resp.UnmarshalData(&construction); err != nil {
-		return nil, fmt.Errorf("failed to parse project construction: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	construction := projectConstructionFromGenerated(resp.JSON200.Construction)
 	return &construction, nil
+}
+
+// templateFromGenerated converts a generated Template to our clean type.
+func templateFromGenerated(gt generated.Template) Template {
+	t := Template{
+		Status:      gt.Status,
+		CreatedAt:   gt.CreatedAt,
+		UpdatedAt:   gt.UpdatedAt,
+		Name:        gt.Name,
+		Description: gt.Description,
+	}
+
+	if gt.Id != nil {
+		t.ID = *gt.Id
+	}
+
+	return t
+}
+
+// projectConstructionFromGenerated converts a generated ProjectConstruction to our clean type.
+func projectConstructionFromGenerated(gc generated.ProjectConstruction) ProjectConstruction {
+	c := ProjectConstruction{
+		Status: gc.Status,
+		URL:    gc.Url,
+	}
+
+	if gc.Id != nil {
+		c.ID = *gc.Id
+	}
+
+	if gc.Project.Id != nil || gc.Project.Name != "" {
+		c.Project = &Project{
+			Name:        gc.Project.Name,
+			Description: gc.Project.Description,
+			Purpose:     gc.Project.Purpose,
+			CreatedAt:   gc.Project.CreatedAt,
+			UpdatedAt:   gc.Project.UpdatedAt,
+			Status:      gc.Project.Status,
+			URL:         gc.Project.Url,
+			AppURL:      gc.Project.AppUrl,
+		}
+		if gc.Project.Id != nil {
+			c.Project.ID = *gc.Project.Id
+		}
+	}
+
+	return c
 }

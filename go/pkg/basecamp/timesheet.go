@@ -2,10 +2,9 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"net/url"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // TimesheetEntry represents a single time entry in a Basecamp timesheet report.
@@ -42,27 +41,19 @@ func NewTimesheetService(client *Client) *TimesheetService {
 	return &TimesheetService{client: client}
 }
 
-// buildQueryParams builds query parameters from options.
-func (s *TimesheetService) buildQueryParams(opts *TimesheetReportOptions) string {
+// buildTimesheetParams builds query parameters for the generated client.
+func (s *TimesheetService) buildTimesheetParams(opts *TimesheetReportOptions) *generated.GetTimesheetReportParams {
 	if opts == nil {
-		return ""
+		return nil
 	}
 
-	params := url.Values{}
-	if opts.From != "" {
-		params.Set("from", opts.From)
-	}
-	if opts.To != "" {
-		params.Set("to", opts.To)
-	}
-	if opts.PersonID != 0 {
-		params.Set("person_id", fmt.Sprintf("%d", opts.PersonID))
+	params := &generated.GetTimesheetReportParams{
+		From:     opts.From,
+		To:       opts.To,
+		PersonId: opts.PersonID,
 	}
 
-	if len(params) == 0 {
-		return ""
-	}
-	return "?" + params.Encode()
+	return params
 }
 
 // Report returns the account-wide timesheet report.
@@ -72,19 +63,22 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 		return nil, err
 	}
 
-	path := "/reports/timesheet.json" + s.buildQueryParams(opts)
-	results, err := s.client.GetAll(ctx, path)
+	params := s.buildTimesheetParams(opts)
+
+	resp, err := s.client.gen.GetTimesheetReportWithResponse(ctx, params)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	entries := make([]TimesheetEntry, 0, len(results))
-	for _, raw := range results {
-		var e TimesheetEntry
-		if err := json.Unmarshal(raw, &e); err != nil {
-			return nil, fmt.Errorf("failed to parse timesheet entry: %w", err)
-		}
-		entries = append(entries, e)
+	entries := make([]TimesheetEntry, 0, len(resp.JSON200.Entries))
+	for _, ge := range resp.JSON200.Entries {
+		entries = append(entries, timesheetEntryFromGenerated(ge))
 	}
 
 	return entries, nil
@@ -97,19 +91,29 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/timesheet.json", projectID) + s.buildQueryParams(opts)
-	results, err := s.client.GetAll(ctx, path)
+	var params *generated.GetProjectTimesheetParams
+	if opts != nil {
+		params = &generated.GetProjectTimesheetParams{
+			From:     opts.From,
+			To:       opts.To,
+			PersonId: opts.PersonID,
+		}
+	}
+
+	resp, err := s.client.gen.GetProjectTimesheetWithResponse(ctx, projectID, params)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	entries := make([]TimesheetEntry, 0, len(results))
-	for _, raw := range results {
-		var e TimesheetEntry
-		if err := json.Unmarshal(raw, &e); err != nil {
-			return nil, fmt.Errorf("failed to parse timesheet entry: %w", err)
-		}
-		entries = append(entries, e)
+	entries := make([]TimesheetEntry, 0, len(resp.JSON200.Entries))
+	for _, ge := range resp.JSON200.Entries {
+		entries = append(entries, timesheetEntryFromGenerated(ge))
 	}
 
 	return entries, nil
@@ -122,20 +126,76 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recor
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/timesheet.json", projectID, recordingID) + s.buildQueryParams(opts)
-	results, err := s.client.GetAll(ctx, path)
+	var params *generated.GetRecordingTimesheetParams
+	if opts != nil {
+		params = &generated.GetRecordingTimesheetParams{
+			From:     opts.From,
+			To:       opts.To,
+			PersonId: opts.PersonID,
+		}
+	}
+
+	resp, err := s.client.gen.GetRecordingTimesheetWithResponse(ctx, projectID, recordingID, params)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	entries := make([]TimesheetEntry, 0, len(results))
-	for _, raw := range results {
-		var e TimesheetEntry
-		if err := json.Unmarshal(raw, &e); err != nil {
-			return nil, fmt.Errorf("failed to parse timesheet entry: %w", err)
-		}
-		entries = append(entries, e)
+	entries := make([]TimesheetEntry, 0, len(resp.JSON200.Entries))
+	for _, ge := range resp.JSON200.Entries {
+		entries = append(entries, timesheetEntryFromGenerated(ge))
 	}
 
 	return entries, nil
+}
+
+// timesheetEntryFromGenerated converts a generated TimesheetEntry to our clean type.
+func timesheetEntryFromGenerated(ge generated.TimesheetEntry) TimesheetEntry {
+	e := TimesheetEntry{
+		Date:        ge.Date,
+		Hours:       ge.Hours,
+		Description: ge.Description,
+		CreatedAt:   ge.CreatedAt,
+		UpdatedAt:   ge.UpdatedAt,
+	}
+
+	if ge.Id != nil {
+		e.ID = *ge.Id
+	}
+
+	if ge.Creator.Id != nil || ge.Creator.Name != "" {
+		e.Creator = &Person{
+			ID:           derefInt64(ge.Creator.Id),
+			Name:         ge.Creator.Name,
+			EmailAddress: ge.Creator.EmailAddress,
+			AvatarURL:    ge.Creator.AvatarUrl,
+			Admin:        ge.Creator.Admin,
+			Owner:        ge.Creator.Owner,
+		}
+	}
+
+	if ge.Parent.Id != nil || ge.Parent.Title != "" {
+		e.Parent = &Parent{
+			ID:     derefInt64(ge.Parent.Id),
+			Title:  ge.Parent.Title,
+			Type:   ge.Parent.Type,
+			URL:    ge.Parent.Url,
+			AppURL: ge.Parent.AppUrl,
+		}
+	}
+
+	if ge.Bucket.Id != nil || ge.Bucket.Name != "" {
+		e.Bucket = &Bucket{
+			ID:   derefInt64(ge.Bucket.Id),
+			Name: ge.Bucket.Name,
+			Type: ge.Bucket.Type,
+		}
+	}
+
+	return e
 }

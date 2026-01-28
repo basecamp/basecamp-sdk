@@ -2,10 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/url"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // SearchResult represents a single search result from the Basecamp API.
@@ -68,26 +68,27 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 		return nil, ErrUsage("search query is required")
 	}
 
-	// Build the query string
-	params := url.Values{}
-	params.Set("query", query)
+	params := &generated.SearchParams{
+		Query: query,
+	}
 	if opts != nil && opts.Sort != "" {
-		params.Set("sort", opts.Sort)
+		params.Sort = opts.Sort
 	}
 
-	path := fmt.Sprintf("/search.json?%s", params.Encode())
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.SearchWithResponse(ctx, params)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	searchResults := make([]SearchResult, 0, len(results))
-	for _, raw := range results {
-		var sr SearchResult
-		if err := json.Unmarshal(raw, &sr); err != nil {
-			return nil, fmt.Errorf("failed to parse search result: %w", err)
-		}
-		searchResults = append(searchResults, sr)
+	searchResults := make([]SearchResult, 0, len(resp.JSON200.Results))
+	for _, gsr := range resp.JSON200.Results {
+		searchResults = append(searchResults, searchResultFromGenerated(gsr))
 	}
 
 	return searchResults, nil
@@ -100,15 +101,82 @@ func (s *SearchService) Metadata(ctx context.Context) (*SearchMetadata, error) {
 		return nil, err
 	}
 
-	resp, err := s.client.Get(ctx, "/searches/metadata.json")
+	resp, err := s.client.gen.GetSearchMetadataWithResponse(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	var metadata SearchMetadata
-	if err := resp.UnmarshalData(&metadata); err != nil {
-		return nil, fmt.Errorf("failed to parse search metadata: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &metadata, nil
+	// Convert metadata
+	metadata := &SearchMetadata{
+		Projects: make([]SearchProject, 0, len(resp.JSON200.Metadata.Projects)),
+	}
+	for _, gsp := range resp.JSON200.Metadata.Projects {
+		metadata.Projects = append(metadata.Projects, SearchProject{
+			ID:   derefInt64(gsp.Id),
+			Name: gsp.Name,
+		})
+	}
+
+	return metadata, nil
+}
+
+// searchResultFromGenerated converts a generated SearchResult to our clean SearchResult type.
+func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
+	sr := SearchResult{
+		Status:           gsr.Status,
+		VisibleToClients: gsr.VisibleToClients,
+		CreatedAt:        gsr.CreatedAt,
+		UpdatedAt:        gsr.UpdatedAt,
+		Title:            gsr.Title,
+		InheritsStatus:   gsr.InheritsStatus,
+		Type:             gsr.Type,
+		URL:              gsr.Url,
+		AppURL:           gsr.AppUrl,
+		BookmarkURL:      gsr.BookmarkUrl,
+		Content:          gsr.Content,
+		Description:      gsr.Description,
+		Subject:          gsr.Subject,
+	}
+
+	if gsr.Id != nil {
+		sr.ID = *gsr.Id
+	}
+
+	// Convert nested types
+	if gsr.Parent.Id != nil || gsr.Parent.Title != "" {
+		sr.Parent = &Parent{
+			ID:     derefInt64(gsr.Parent.Id),
+			Title:  gsr.Parent.Title,
+			Type:   gsr.Parent.Type,
+			URL:    gsr.Parent.Url,
+			AppURL: gsr.Parent.AppUrl,
+		}
+	}
+
+	if gsr.Bucket.Id != nil || gsr.Bucket.Name != "" {
+		sr.Bucket = &Bucket{
+			ID:   derefInt64(gsr.Bucket.Id),
+			Name: gsr.Bucket.Name,
+			Type: gsr.Bucket.Type,
+		}
+	}
+
+	if gsr.Creator.Id != nil || gsr.Creator.Name != "" {
+		sr.Creator = &Person{
+			ID:           derefInt64(gsr.Creator.Id),
+			Name:         gsr.Creator.Name,
+			EmailAddress: gsr.Creator.EmailAddress,
+			AvatarURL:    gsr.Creator.AvatarUrl,
+			Admin:        gsr.Creator.Admin,
+			Owner:        gsr.Creator.Owner,
+		}
+	}
+
+	return sr
 }

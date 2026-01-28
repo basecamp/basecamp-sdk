@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // CardTable represents a Basecamp card table (kanban board).
@@ -178,8 +179,8 @@ type CreateStepRequest struct {
 	Title string `json:"title"`
 	// DueOn is the due date in ISO 8601 format (optional).
 	DueOn string `json:"due_on,omitempty"`
-	// Assignees is a comma-separated string of user IDs (optional).
-	Assignees string `json:"assignees,omitempty"`
+	// Assignees is a list of person IDs to assign this step to (optional).
+	Assignees []int64 `json:"assignees,omitempty"`
 }
 
 // UpdateStepRequest specifies the parameters for updating a step.
@@ -188,8 +189,8 @@ type UpdateStepRequest struct {
 	Title string `json:"title,omitempty"`
 	// DueOn is the due date in ISO 8601 format (optional).
 	DueOn string `json:"due_on,omitempty"`
-	// Assignees is a comma-separated string of user IDs (optional).
-	Assignees string `json:"assignees,omitempty"`
+	// Assignees is a list of person IDs to assign this step to (optional).
+	Assignees []int64 `json:"assignees,omitempty"`
 }
 
 // CardTablesService handles card table operations.
@@ -209,17 +210,18 @@ func (s *CardTablesService) Get(ctx context.Context, bucketID, cardTableID int64
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/%d.json", bucketID, cardTableID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetCardTableWithResponse(ctx, bucketID, cardTableID)
 	if err != nil {
 		return nil, err
 	}
-
-	var cardTable CardTable
-	if err := resp.UnmarshalData(&cardTable); err != nil {
-		return nil, fmt.Errorf("failed to parse card table: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	cardTable := cardTableFromGenerated(resp.JSON200.CardTable)
 	return &cardTable, nil
 }
 
@@ -240,21 +242,21 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64) ([]Ca
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/lists/%d/cards.json", bucketID, columnID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListCardsWithResponse(ctx, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
-
-	cards := make([]Card, 0, len(results))
-	for _, raw := range results {
-		var c Card
-		if err := json.Unmarshal(raw, &c); err != nil {
-			return nil, fmt.Errorf("failed to parse card: %w", err)
-		}
-		cards = append(cards, c)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
 	}
 
+	cards := make([]Card, 0, len(resp.JSON200.Cards))
+	for _, gc := range resp.JSON200.Cards {
+		cards = append(cards, cardFromGenerated(gc))
+	}
 	return cards, nil
 }
 
@@ -265,17 +267,18 @@ func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (*Card, 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/cards/%d.json", bucketID, cardID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetCardWithResponse(ctx, bucketID, cardID)
 	if err != nil {
 		return nil, err
 	}
-
-	var card Card
-	if err := resp.UnmarshalData(&card); err != nil {
-		return nil, fmt.Errorf("failed to parse card: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	card := cardFromGenerated(resp.JSON200.Card)
 	return &card, nil
 }
 
@@ -291,17 +294,33 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 		return nil, ErrUsage("card title is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/lists/%d/cards.json", bucketID, columnID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateCardJSONRequestBody{
+		Title: req.Title,
+	}
+	if req.Content != "" {
+		body.Content = req.Content
+	}
+	if req.DueOn != "" {
+		if t, err := time.Parse("2006-01-02", req.DueOn); err == nil {
+			body.DueOn = t
+		}
+	}
+	if req.Notify {
+		body.Notify = req.Notify
+	}
+
+	resp, err := s.client.gen.CreateCardWithResponse(ctx, bucketID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var card Card
-	if err := resp.UnmarshalData(&card); err != nil {
-		return nil, fmt.Errorf("failed to parse card: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	card := cardFromGenerated(resp.JSON200.Card)
 	return &card, nil
 }
 
@@ -317,17 +336,34 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 		return nil, ErrUsage("update request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/cards/%d.json", bucketID, cardID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateCardJSONRequestBody{}
+	if req.Title != "" {
+		body.Title = req.Title
+	}
+	if req.Content != "" {
+		body.Content = req.Content
+	}
+	if req.DueOn != "" {
+		if t, err := time.Parse("2006-01-02", req.DueOn); err == nil {
+			body.DueOn = t
+		}
+	}
+	if len(req.AssigneeIDs) > 0 {
+		body.AssigneeIds = req.AssigneeIDs
+	}
+
+	resp, err := s.client.gen.UpdateCardWithResponse(ctx, bucketID, cardID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var card Card
-	if err := resp.UnmarshalData(&card); err != nil {
-		return nil, fmt.Errorf("failed to parse card: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	card := cardFromGenerated(resp.JSON200.Card)
 	return &card, nil
 }
 
@@ -338,10 +374,15 @@ func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int6
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/cards/%d/moves.json", bucketID, cardID)
-	body := MoveCardRequest{ColumnID: columnID}
-	_, err := s.client.Post(ctx, path, body)
-	return err
+	body := generated.MoveCardJSONRequestBody{
+		ColumnId: columnID,
+	}
+
+	resp, err := s.client.gen.MoveCardWithResponse(ctx, bucketID, cardID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Trash moves a card to the trash.
@@ -352,9 +393,11 @@ func (s *CardsService) Trash(ctx context.Context, bucketID, cardID int64) error 
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, cardID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, cardID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // CardColumnsService handles card column operations.
@@ -374,17 +417,18 @@ func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/columns/%d.json", bucketID, columnID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetCardColumnWithResponse(ctx, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
-
-	var column CardColumn
-	if err := resp.UnmarshalData(&column); err != nil {
-		return nil, fmt.Errorf("failed to parse column: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	column := cardColumnFromGenerated(resp.JSON200.Column)
 	return &column, nil
 }
 
@@ -400,17 +444,23 @@ func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID i
 		return nil, ErrUsage("column title is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/%d/columns.json", bucketID, cardTableID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateCardColumnJSONRequestBody{
+		Title:       req.Title,
+		Description: req.Description,
+	}
+
+	resp, err := s.client.gen.CreateCardColumnWithResponse(ctx, bucketID, cardTableID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var column CardColumn
-	if err := resp.UnmarshalData(&column); err != nil {
-		return nil, fmt.Errorf("failed to parse column: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	column := cardColumnFromGenerated(resp.JSON200.Column)
 	return &column, nil
 }
 
@@ -426,17 +476,23 @@ func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int6
 		return nil, ErrUsage("update request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/columns/%d.json", bucketID, columnID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateCardColumnJSONRequestBody{
+		Title:       req.Title,
+		Description: req.Description,
+	}
+
+	resp, err := s.client.gen.UpdateCardColumnWithResponse(ctx, bucketID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var column CardColumn
-	if err := resp.UnmarshalData(&column); err != nil {
-		return nil, fmt.Errorf("failed to parse column: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	column := cardColumnFromGenerated(resp.JSON200.Column)
 	return &column, nil
 }
 
@@ -451,9 +507,17 @@ func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int
 		return ErrUsage("move request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/%d/moves.json", bucketID, cardTableID)
-	_, err := s.client.Post(ctx, path, req)
-	return err
+	body := generated.MoveCardColumnJSONRequestBody{
+		SourceId: req.SourceID,
+		TargetId: req.TargetID,
+		Position: int32(req.Position),
+	}
+
+	resp, err := s.client.gen.MoveCardColumnWithResponse(ctx, bucketID, cardTableID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // SetColor sets the color of a column.
@@ -469,18 +533,22 @@ func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID in
 		return nil, ErrUsage("color is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/columns/%d/color.json", bucketID, columnID)
-	body := SetColumnColorRequest{Color: color}
-	resp, err := s.client.Put(ctx, path, body)
+	body := generated.SetCardColumnColorJSONRequestBody{
+		Color: color,
+	}
+
+	resp, err := s.client.gen.SetCardColumnColorWithResponse(ctx, bucketID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var column CardColumn
-	if err := resp.UnmarshalData(&column); err != nil {
-		return nil, fmt.Errorf("failed to parse column: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	column := cardColumnFromGenerated(resp.JSON200.Column)
 	return &column, nil
 }
 
@@ -492,17 +560,18 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnI
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/columns/%d/on_hold.json", bucketID, columnID)
-	resp, err := s.client.Post(ctx, path, nil)
+	resp, err := s.client.gen.EnableCardColumnOnHoldWithResponse(ctx, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
-
-	var column CardColumn
-	if err := resp.UnmarshalData(&column); err != nil {
-		return nil, fmt.Errorf("failed to parse column: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	column := cardColumnFromGenerated(resp.JSON200.Column)
 	return &column, nil
 }
 
@@ -514,17 +583,18 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, column
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/columns/%d/on_hold.json", bucketID, columnID)
-	resp, err := s.client.Delete(ctx, path)
+	resp, err := s.client.gen.DisableCardColumnOnHoldWithResponse(ctx, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
-
-	var column CardColumn
-	if err := resp.UnmarshalData(&column); err != nil {
-		return nil, fmt.Errorf("failed to parse column: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	column := cardColumnFromGenerated(resp.JSON200.Column)
 	return &column, nil
 }
 
@@ -536,18 +606,19 @@ func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/subscription.json", bucketID, columnID)
-	resp, err := s.client.Post(ctx, path, nil)
+	resp, err := s.client.gen.SubscribeWithResponse(ctx, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
-
-	var subscription Subscription
-	if err := resp.UnmarshalData(&subscription); err != nil {
-		return nil, fmt.Errorf("failed to parse subscription: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &subscription, nil
+	sub := subscriptionFromGenerated(resp.JSON200.Subscription)
+	return &sub, nil
 }
 
 // Unwatch unsubscribes the current user from the column.
@@ -558,9 +629,11 @@ func (s *CardColumnsService) Unwatch(ctx context.Context, bucketID, columnID int
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/subscription.json", bucketID, columnID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.UnsubscribeWithResponse(ctx, bucketID, columnID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // CardStepsService handles card step operations.
@@ -585,17 +658,28 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 		return nil, ErrUsage("step title is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/cards/%d/steps.json", bucketID, cardID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateCardStepJSONRequestBody{
+		Title:     req.Title,
+		Assignees: req.Assignees,
+	}
+	if req.DueOn != "" {
+		if t, err := time.Parse("2006-01-02", req.DueOn); err == nil {
+			body.DueOn = t
+		}
+	}
+
+	resp, err := s.client.gen.CreateCardStepWithResponse(ctx, bucketID, cardID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var step CardStep
-	if err := resp.UnmarshalData(&step); err != nil {
-		return nil, fmt.Errorf("failed to parse step: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	step := cardStepFromGenerated(resp.JSON200.Step)
 	return &step, nil
 }
 
@@ -611,17 +695,28 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 		return nil, ErrUsage("update request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/steps/%d.json", bucketID, stepID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateCardStepJSONRequestBody{
+		Title:     req.Title,
+		Assignees: req.Assignees,
+	}
+	if req.DueOn != "" {
+		if t, err := time.Parse("2006-01-02", req.DueOn); err == nil {
+			body.DueOn = t
+		}
+	}
+
+	resp, err := s.client.gen.UpdateCardStepWithResponse(ctx, bucketID, stepID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var step CardStep
-	if err := resp.UnmarshalData(&step); err != nil {
-		return nil, fmt.Errorf("failed to parse step: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	step := cardStepFromGenerated(resp.JSON200.Step)
 	return &step, nil
 }
 
@@ -633,18 +728,18 @@ func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64)
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/steps/%d/completions.json", bucketID, stepID)
-	body := map[string]string{"completion": "on"}
-	resp, err := s.client.Put(ctx, path, body)
+	resp, err := s.client.gen.CompleteCardStepWithResponse(ctx, bucketID, stepID)
 	if err != nil {
 		return nil, err
 	}
-
-	var step CardStep
-	if err := resp.UnmarshalData(&step); err != nil {
-		return nil, fmt.Errorf("failed to parse step: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	step := cardStepFromGenerated(resp.JSON200.Step)
 	return &step, nil
 }
 
@@ -656,18 +751,18 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int6
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/steps/%d/completions.json", bucketID, stepID)
-	body := map[string]string{"completion": "off"}
-	resp, err := s.client.Put(ctx, path, body)
+	resp, err := s.client.gen.UncompleteCardStepWithResponse(ctx, bucketID, stepID)
 	if err != nil {
 		return nil, err
 	}
-
-	var step CardStep
-	if err := resp.UnmarshalData(&step); err != nil {
-		return nil, fmt.Errorf("failed to parse step: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	step := cardStepFromGenerated(resp.JSON200.Step)
 	return &step, nil
 }
 
@@ -683,10 +778,16 @@ func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, ste
 		return ErrUsage("position must be at least 0")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/cards/%d/positions.json", bucketID, cardID)
-	body := map[string]any{"source_id": stepID, "position": position}
-	_, err := s.client.Post(ctx, path, body)
-	return err
+	body := generated.RepositionCardStepJSONRequestBody{
+		SourceId: stepID,
+		Position: int32(position),
+	}
+
+	resp, err := s.client.gen.RepositionCardStepWithResponse(ctx, bucketID, cardID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Delete deletes a step (moves it to trash).
@@ -696,7 +797,315 @@ func (s *CardStepsService) Delete(ctx context.Context, bucketID, stepID int64) e
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, stepID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, stepID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
+
+// cardTableFromGenerated converts a generated CardTable to our clean CardTable type.
+func cardTableFromGenerated(gc generated.CardTable) CardTable {
+	ct := CardTable{
+		Status:           gc.Status,
+		VisibleToClients: gc.VisibleToClients,
+		Title:            gc.Title,
+		InheritsStatus:   gc.InheritsStatus,
+		Type:             gc.Type,
+		URL:              gc.Url,
+		AppURL:           gc.AppUrl,
+		BookmarkURL:      gc.BookmarkUrl,
+		SubscriptionURL:  gc.SubscriptionUrl,
+		CreatedAt:        gc.CreatedAt,
+		UpdatedAt:        gc.UpdatedAt,
+	}
+
+	if gc.Id != nil {
+		ct.ID = *gc.Id
+	}
+
+	if gc.Bucket.Id != nil || gc.Bucket.Name != "" {
+		ct.Bucket = &Bucket{
+			ID:   derefInt64(gc.Bucket.Id),
+			Name: gc.Bucket.Name,
+			Type: gc.Bucket.Type,
+		}
+	}
+
+	if gc.Creator.Id != nil || gc.Creator.Name != "" {
+		ct.Creator = &Person{
+			ID:           derefInt64(gc.Creator.Id),
+			Name:         gc.Creator.Name,
+			EmailAddress: gc.Creator.EmailAddress,
+			AvatarURL:    gc.Creator.AvatarUrl,
+			Admin:        gc.Creator.Admin,
+			Owner:        gc.Creator.Owner,
+		}
+	}
+
+	if len(gc.Subscribers) > 0 {
+		ct.Subscribers = make([]Person, 0, len(gc.Subscribers))
+		for _, gs := range gc.Subscribers {
+			ct.Subscribers = append(ct.Subscribers, personFromGenerated(gs))
+		}
+	}
+
+	if len(gc.Lists) > 0 {
+		ct.Lists = make([]CardColumn, 0, len(gc.Lists))
+		for _, gl := range gc.Lists {
+			ct.Lists = append(ct.Lists, cardColumnFromGenerated(gl))
+		}
+	}
+
+	return ct
+}
+
+// cardColumnFromGenerated converts a generated CardColumn to our clean CardColumn type.
+func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
+	cc := CardColumn{
+		Status:           gc.Status,
+		VisibleToClients: gc.VisibleToClients,
+		Title:            gc.Title,
+		InheritsStatus:   gc.InheritsStatus,
+		Type:             gc.Type,
+		URL:              gc.Url,
+		AppURL:           gc.AppUrl,
+		BookmarkURL:      gc.BookmarkUrl,
+		Position:         int(gc.Position),
+		Color:            gc.Color,
+		Description:      gc.Description,
+		CardsCount:       int(gc.CardsCount),
+		CommentCount:     int(gc.CommentsCount),
+		CardsURL:         gc.CardsUrl,
+		CreatedAt:        gc.CreatedAt,
+		UpdatedAt:        gc.UpdatedAt,
+	}
+
+	if gc.Id != nil {
+		cc.ID = *gc.Id
+	}
+
+	if gc.Parent.Id != nil || gc.Parent.Title != "" {
+		cc.Parent = &Parent{
+			ID:     derefInt64(gc.Parent.Id),
+			Title:  gc.Parent.Title,
+			Type:   gc.Parent.Type,
+			URL:    gc.Parent.Url,
+			AppURL: gc.Parent.AppUrl,
+		}
+	}
+
+	if gc.Bucket.Id != nil || gc.Bucket.Name != "" {
+		cc.Bucket = &Bucket{
+			ID:   derefInt64(gc.Bucket.Id),
+			Name: gc.Bucket.Name,
+			Type: gc.Bucket.Type,
+		}
+	}
+
+	if gc.Creator.Id != nil || gc.Creator.Name != "" {
+		cc.Creator = &Person{
+			ID:           derefInt64(gc.Creator.Id),
+			Name:         gc.Creator.Name,
+			EmailAddress: gc.Creator.EmailAddress,
+			AvatarURL:    gc.Creator.AvatarUrl,
+			Admin:        gc.Creator.Admin,
+			Owner:        gc.Creator.Owner,
+		}
+	}
+
+	if len(gc.Subscribers) > 0 {
+		cc.Subscribers = make([]Person, 0, len(gc.Subscribers))
+		for _, gs := range gc.Subscribers {
+			cc.Subscribers = append(cc.Subscribers, personFromGenerated(gs))
+		}
+	}
+
+	return cc
+}
+
+// cardFromGenerated converts a generated Card to our clean Card type.
+func cardFromGenerated(gc generated.Card) Card {
+	c := Card{
+		Status:           gc.Status,
+		VisibleToClients: gc.VisibleToClients,
+		Title:            gc.Title,
+		InheritsStatus:   gc.InheritsStatus,
+		Type:             gc.Type,
+		URL:              gc.Url,
+		AppURL:           gc.AppUrl,
+		BookmarkURL:      gc.BookmarkUrl,
+		SubscriptionURL:  gc.SubscriptionUrl,
+		Position:         int(gc.Position),
+		Content:          gc.Content,
+		Description:      gc.Description,
+		Completed:        gc.Completed,
+		CommentsCount:    int(gc.CommentsCount),
+		CommentsURL:      gc.CommentsUrl,
+		CompletionURL:    gc.CompletionUrl,
+		CreatedAt:        gc.CreatedAt,
+		UpdatedAt:        gc.UpdatedAt,
+	}
+
+	if gc.Id != nil {
+		c.ID = *gc.Id
+	}
+
+	// Handle due_on - it's a time.Time in generated but string in SDK
+	if !gc.DueOn.IsZero() {
+		c.DueOn = gc.DueOn.Format("2006-01-02")
+	}
+
+	// Handle completed_at
+	if !gc.CompletedAt.IsZero() {
+		c.CompletedAt = &gc.CompletedAt
+	}
+
+	if gc.Parent.Id != nil || gc.Parent.Title != "" {
+		c.Parent = &Parent{
+			ID:     derefInt64(gc.Parent.Id),
+			Title:  gc.Parent.Title,
+			Type:   gc.Parent.Type,
+			URL:    gc.Parent.Url,
+			AppURL: gc.Parent.AppUrl,
+		}
+	}
+
+	if gc.Bucket.Id != nil || gc.Bucket.Name != "" {
+		c.Bucket = &Bucket{
+			ID:   derefInt64(gc.Bucket.Id),
+			Name: gc.Bucket.Name,
+			Type: gc.Bucket.Type,
+		}
+	}
+
+	if gc.Creator.Id != nil || gc.Creator.Name != "" {
+		c.Creator = &Person{
+			ID:           derefInt64(gc.Creator.Id),
+			Name:         gc.Creator.Name,
+			EmailAddress: gc.Creator.EmailAddress,
+			AvatarURL:    gc.Creator.AvatarUrl,
+			Admin:        gc.Creator.Admin,
+			Owner:        gc.Creator.Owner,
+		}
+	}
+
+	if gc.Completer.Id != nil || gc.Completer.Name != "" {
+		c.Completer = &Person{
+			ID:           derefInt64(gc.Completer.Id),
+			Name:         gc.Completer.Name,
+			EmailAddress: gc.Completer.EmailAddress,
+			AvatarURL:    gc.Completer.AvatarUrl,
+			Admin:        gc.Completer.Admin,
+			Owner:        gc.Completer.Owner,
+		}
+	}
+
+	if len(gc.Assignees) > 0 {
+		c.Assignees = make([]Person, 0, len(gc.Assignees))
+		for _, ga := range gc.Assignees {
+			c.Assignees = append(c.Assignees, personFromGenerated(ga))
+		}
+	}
+
+	if len(gc.CompletionSubscribers) > 0 {
+		c.CompletionSubscribers = make([]Person, 0, len(gc.CompletionSubscribers))
+		for _, gs := range gc.CompletionSubscribers {
+			c.CompletionSubscribers = append(c.CompletionSubscribers, personFromGenerated(gs))
+		}
+	}
+
+	if len(gc.Steps) > 0 {
+		c.Steps = make([]CardStep, 0, len(gc.Steps))
+		for _, gs := range gc.Steps {
+			c.Steps = append(c.Steps, cardStepFromGenerated(gs))
+		}
+	}
+
+	return c
+}
+
+// cardStepFromGenerated converts a generated CardStep to our clean CardStep type.
+func cardStepFromGenerated(gs generated.CardStep) CardStep {
+	s := CardStep{
+		Status:           gs.Status,
+		VisibleToClients: gs.VisibleToClients,
+		Title:            gs.Title,
+		InheritsStatus:   gs.InheritsStatus,
+		Type:             gs.Type,
+		URL:              gs.Url,
+		AppURL:           gs.AppUrl,
+		BookmarkURL:      gs.BookmarkUrl,
+		Position:         int(gs.Position),
+		Completed:        gs.Completed,
+		CreatedAt:        gs.CreatedAt,
+		UpdatedAt:        gs.UpdatedAt,
+	}
+
+	if gs.Id != nil {
+		s.ID = *gs.Id
+	}
+
+	// Handle due_on - it's a time.Time in generated but string in SDK
+	if !gs.DueOn.IsZero() {
+		s.DueOn = gs.DueOn.Format("2006-01-02")
+	}
+
+	// Handle completed_at
+	if !gs.CompletedAt.IsZero() {
+		s.CompletedAt = &gs.CompletedAt
+	}
+
+	if gs.Parent.Id != nil || gs.Parent.Title != "" {
+		s.Parent = &Parent{
+			ID:     derefInt64(gs.Parent.Id),
+			Title:  gs.Parent.Title,
+			Type:   gs.Parent.Type,
+			URL:    gs.Parent.Url,
+			AppURL: gs.Parent.AppUrl,
+		}
+	}
+
+	if gs.Bucket.Id != nil || gs.Bucket.Name != "" {
+		s.Bucket = &Bucket{
+			ID:   derefInt64(gs.Bucket.Id),
+			Name: gs.Bucket.Name,
+			Type: gs.Bucket.Type,
+		}
+	}
+
+	if gs.Creator.Id != nil || gs.Creator.Name != "" {
+		s.Creator = &Person{
+			ID:           derefInt64(gs.Creator.Id),
+			Name:         gs.Creator.Name,
+			EmailAddress: gs.Creator.EmailAddress,
+			AvatarURL:    gs.Creator.AvatarUrl,
+			Admin:        gs.Creator.Admin,
+			Owner:        gs.Creator.Owner,
+		}
+	}
+
+	if gs.Completer.Id != nil || gs.Completer.Name != "" {
+		s.Completer = &Person{
+			ID:           derefInt64(gs.Completer.Id),
+			Name:         gs.Completer.Name,
+			EmailAddress: gs.Completer.EmailAddress,
+			AvatarURL:    gs.Completer.AvatarUrl,
+			Admin:        gs.Completer.Admin,
+			Owner:        gs.Completer.Owner,
+		}
+	}
+
+	if len(gs.Assignees) > 0 {
+		s.Assignees = make([]Person, 0, len(gs.Assignees))
+		for _, ga := range gs.Assignees {
+			s.Assignees = append(s.Assignees, personFromGenerated(ga))
+		}
+	}
+
+	return s
+}
+
+// personFromGenerated is defined in people.go
+
+// subscriptionFromGenerated is defined in subscriptions.go

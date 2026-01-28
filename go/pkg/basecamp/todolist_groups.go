@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // TodolistGroup represents a Basecamp todolist group (organizational folder within a todolist).
@@ -63,19 +64,20 @@ func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID i
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todolists/%d/groups.json", bucketID, todolistID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListTodolistGroupsWithResponse(ctx, bucketID, todolistID)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	groups := make([]TodolistGroup, 0, len(results))
-	for _, raw := range results {
-		var g TodolistGroup
-		if err := json.Unmarshal(raw, &g); err != nil {
-			return nil, fmt.Errorf("failed to parse todolist group: %w", err)
-		}
-		groups = append(groups, g)
+	groups := make([]TodolistGroup, 0, len(resp.JSON200.Groups))
+	for _, gg := range resp.JSON200.Groups {
+		groups = append(groups, todolistGroupFromGenerated(gg))
 	}
 
 	return groups, nil
@@ -88,18 +90,25 @@ func (s *TodolistGroupsService) Get(ctx context.Context, bucketID, groupID int64
 		return nil, err
 	}
 
-	// Groups are fetched via the todolists endpoint
-	path := fmt.Sprintf("/buckets/%d/todolists/%d.json", bucketID, groupID)
-	resp, err := s.client.Get(ctx, path)
+	// Groups are fetched via the todolists endpoint (polymorphic endpoint)
+	resp, err := s.client.gen.GetTodolistOrGroupWithResponse(ctx, bucketID, groupID)
 	if err != nil {
 		return nil, err
 	}
-
-	var group TodolistGroup
-	if err := resp.UnmarshalData(&group); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist group: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	// The response is a union type, try to extract as TodolistGroup
+	g, err := resp.JSON200.Result.AsTodolistOrGroup1()
+	if err != nil {
+		return nil, fmt.Errorf("response is not a todolist group: %w", err)
+	}
+
+	group := todolistGroupFromGenerated(g.Group)
 	return &group, nil
 }
 
@@ -115,17 +124,22 @@ func (s *TodolistGroupsService) Create(ctx context.Context, bucketID, todolistID
 		return nil, ErrUsage("group name is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todolists/%d/groups.json", bucketID, todolistID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateTodolistGroupJSONRequestBody{
+		Name: req.Name,
+	}
+
+	resp, err := s.client.gen.CreateTodolistGroupWithResponse(ctx, bucketID, todolistID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var group TodolistGroup
-	if err := resp.UnmarshalData(&group); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist group: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	group := todolistGroupFromGenerated(resp.JSON200.Group)
 	return &group, nil
 }
 
@@ -137,18 +151,29 @@ func (s *TodolistGroupsService) Update(ctx context.Context, bucketID, groupID in
 		return nil, err
 	}
 
-	// Groups are updated via the todolists endpoint
-	path := fmt.Sprintf("/buckets/%d/todolists/%d.json", bucketID, groupID)
-	resp, err := s.client.Put(ctx, path, req)
+	// Groups are updated via the todolists endpoint (polymorphic endpoint)
+	body := generated.UpdateTodolistOrGroupJSONRequestBody{
+		Name: req.Name,
+	}
+
+	resp, err := s.client.gen.UpdateTodolistOrGroupWithResponse(ctx, bucketID, groupID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var group TodolistGroup
-	if err := resp.UnmarshalData(&group); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist group: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	// The response is a union type, try to extract as TodolistGroup
+	g, err := resp.JSON200.Result.AsTodolistOrGroup1()
+	if err != nil {
+		return nil, fmt.Errorf("response is not a todolist group: %w", err)
+	}
+
+	group := todolistGroupFromGenerated(g.Group)
 	return &group, nil
 }
 
@@ -164,10 +189,15 @@ func (s *TodolistGroupsService) Reposition(ctx context.Context, bucketID, groupI
 		return ErrUsage("position must be at least 1")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todolists/%d/position.json", bucketID, groupID)
-	body := map[string]int{"position": position}
-	_, err := s.client.Put(ctx, path, body)
-	return err
+	body := generated.RepositionTodolistGroupJSONRequestBody{
+		Position: int32(position),
+	}
+
+	resp, err := s.client.gen.RepositionTodolistGroupWithResponse(ctx, bucketID, groupID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Trash moves a todolist group to the trash.
@@ -178,7 +208,70 @@ func (s *TodolistGroupsService) Trash(ctx context.Context, bucketID, groupID int
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, groupID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, groupID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
+}
+
+// todolistGroupFromGenerated converts a generated TodolistGroup to our clean TodolistGroup type.
+func todolistGroupFromGenerated(gg generated.TodolistGroup) TodolistGroup {
+	g := TodolistGroup{
+		Status:           gg.Status,
+		VisibleToClients: gg.VisibleToClients,
+		Title:            gg.Title,
+		InheritsStatus:   gg.InheritsStatus,
+		Type:             gg.Type,
+		URL:              gg.Url,
+		AppURL:           gg.AppUrl,
+		BookmarkURL:      gg.BookmarkUrl,
+		SubscriptionURL:  gg.SubscriptionUrl,
+		CommentsCount:    int(gg.CommentsCount),
+		CommentsURL:      gg.CommentsUrl,
+		Position:         int(gg.Position),
+		Name:             gg.Name,
+		Completed:        gg.Completed,
+		CompletedRatio:   gg.CompletedRatio,
+		TodosURL:         gg.TodosUrl,
+		AppTodosURL:      gg.AppTodosUrl,
+		CreatedAt:        gg.CreatedAt,
+		UpdatedAt:        gg.UpdatedAt,
+	}
+
+	if gg.Id != nil {
+		g.ID = *gg.Id
+	}
+
+	// Convert nested types
+	if gg.Parent.Id != nil || gg.Parent.Title != "" {
+		g.Parent = &Parent{
+			ID:     derefInt64(gg.Parent.Id),
+			Title:  gg.Parent.Title,
+			Type:   gg.Parent.Type,
+			URL:    gg.Parent.Url,
+			AppURL: gg.Parent.AppUrl,
+		}
+	}
+
+	if gg.Bucket.Id != nil || gg.Bucket.Name != "" {
+		g.Bucket = &Bucket{
+			ID:   derefInt64(gg.Bucket.Id),
+			Name: gg.Bucket.Name,
+			Type: gg.Bucket.Type,
+		}
+	}
+
+	if gg.Creator.Id != nil || gg.Creator.Name != "" {
+		g.Creator = &Person{
+			ID:           derefInt64(gg.Creator.Id),
+			Name:         gg.Creator.Name,
+			EmailAddress: gg.Creator.EmailAddress,
+			AvatarURL:    gg.Creator.AvatarUrl,
+			Admin:        gg.Creator.Admin,
+			Owner:        gg.Creator.Owner,
+		}
+	}
+
+	return g
 }

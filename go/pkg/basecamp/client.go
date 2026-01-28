@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Note: Default retry/backoff values are now in http.go as exported constants.
@@ -27,6 +29,7 @@ type Client struct {
 	userAgent     string
 	logger        *slog.Logger
 	httpOpts      HTTPOptions
+	gen           *generated.ClientWithResponses
 
 	// Services
 	projects              *ProjectsService
@@ -157,6 +160,30 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	if c.cache == nil && cfg.CacheEnabled {
 		c.cache = NewCache(cfg.CacheDir)
 	}
+
+	// Initialize generated client with auth
+	serverURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(c.cfg.BaseURL, "/"), c.cfg.AccountID)
+	authEditor := func(ctx context.Context, req *http.Request) error {
+		token, err := c.tokenProvider.AccessToken(ctx)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("User-Agent", c.userAgent)
+		// Only set Content-Type if not already set (preserves binary upload content types)
+		if req.Header.Get("Content-Type") == "" {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		req.Header.Set("Accept", "application/json")
+		return nil
+	}
+	gen, err := generated.NewClientWithResponses(serverURL,
+		generated.WithHTTPClient(c.httpClient),
+		generated.WithRequestEditorFn(authEditor))
+	if err != nil {
+		panic(fmt.Sprintf("basecamp: failed to create generated client: %v", err))
+	}
+	c.gen = gen
 
 	return c
 }

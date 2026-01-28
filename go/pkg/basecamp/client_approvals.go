@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // ClientApproval represents a Basecamp client approval request.
@@ -70,19 +71,20 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) ([]Cl
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/client/approvals.json", bucketID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListClientApprovalsWithResponse(ctx, bucketID)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	approvals := make([]ClientApproval, 0, len(results))
-	for _, raw := range results {
-		var a ClientApproval
-		if err := json.Unmarshal(raw, &a); err != nil {
-			return nil, fmt.Errorf("failed to parse client approval: %w", err)
-		}
-		approvals = append(approvals, a)
+	approvals := make([]ClientApproval, 0, len(resp.JSON200.Approvals))
+	for _, ga := range resp.JSON200.Approvals {
+		approvals = append(approvals, clientApprovalFromGenerated(ga))
 	}
 
 	return approvals, nil
@@ -95,16 +97,140 @@ func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID i
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/client/approvals/%d.json", bucketID, approvalID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetClientApprovalWithResponse(ctx, bucketID, approvalID)
 	if err != nil {
 		return nil, err
 	}
-
-	var approval ClientApproval
-	if err := resp.UnmarshalData(&approval); err != nil {
-		return nil, fmt.Errorf("failed to parse client approval: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	approval := clientApprovalFromGenerated(resp.JSON200.Approval)
 	return &approval, nil
+}
+
+// clientApprovalFromGenerated converts a generated ClientApproval to our clean type.
+func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
+	a := ClientApproval{
+		Status:           ga.Status,
+		VisibleToClients: ga.VisibleToClients,
+		CreatedAt:        ga.CreatedAt,
+		UpdatedAt:        ga.UpdatedAt,
+		Title:            ga.Title,
+		InheritsStatus:   ga.InheritsStatus,
+		Type:             ga.Type,
+		URL:              ga.Url,
+		AppURL:           ga.AppUrl,
+		BookmarkURL:      ga.BookmarkUrl,
+		SubscriptionURL:  ga.SubscriptionUrl,
+		Content:          ga.Content,
+		Subject:          ga.Subject,
+		RepliesCount:     int(ga.RepliesCount),
+		RepliesURL:       ga.RepliesUrl,
+		ApprovalStatus:   ga.ApprovalStatus,
+	}
+
+	if ga.Id != nil {
+		a.ID = *ga.Id
+	}
+
+	if !ga.DueOn.IsZero() {
+		dueOn := ga.DueOn.Format("2006-01-02")
+		a.DueOn = &dueOn
+	}
+
+	if ga.Parent.Id != nil || ga.Parent.Title != "" {
+		a.Parent = &Parent{
+			ID:     derefInt64(ga.Parent.Id),
+			Title:  ga.Parent.Title,
+			Type:   ga.Parent.Type,
+			URL:    ga.Parent.Url,
+			AppURL: ga.Parent.AppUrl,
+		}
+	}
+
+	if ga.Bucket.Id != nil || ga.Bucket.Name != "" {
+		a.Bucket = &Bucket{
+			ID:   derefInt64(ga.Bucket.Id),
+			Name: ga.Bucket.Name,
+			Type: ga.Bucket.Type,
+		}
+	}
+
+	if ga.Creator.Id != nil || ga.Creator.Name != "" {
+		a.Creator = &Person{
+			ID:           derefInt64(ga.Creator.Id),
+			Name:         ga.Creator.Name,
+			EmailAddress: ga.Creator.EmailAddress,
+			AvatarURL:    ga.Creator.AvatarUrl,
+			Admin:        ga.Creator.Admin,
+			Owner:        ga.Creator.Owner,
+		}
+	}
+
+	if ga.Approver.Id != nil || ga.Approver.Name != "" {
+		a.Approver = &Person{
+			ID:           derefInt64(ga.Approver.Id),
+			Name:         ga.Approver.Name,
+			EmailAddress: ga.Approver.EmailAddress,
+			AvatarURL:    ga.Approver.AvatarUrl,
+			Admin:        ga.Approver.Admin,
+			Owner:        ga.Approver.Owner,
+		}
+	}
+
+	// Convert responses
+	if len(ga.Responses) > 0 {
+		a.Responses = make([]ClientApprovalResponse, 0, len(ga.Responses))
+		for _, gr := range ga.Responses {
+			resp := ClientApprovalResponse{
+				Status:           gr.Status,
+				VisibleToClients: gr.VisibleToClients,
+				CreatedAt:        gr.CreatedAt,
+				UpdatedAt:        gr.UpdatedAt,
+				Title:            gr.Title,
+				InheritsStatus:   gr.InheritsStatus,
+				Type:             gr.Type,
+				AppURL:           gr.AppUrl,
+				BookmarkURL:      gr.BookmarkUrl,
+				Content:          gr.Content,
+				Approved:         gr.Approved,
+			}
+			if gr.Id != nil {
+				resp.ID = *gr.Id
+			}
+			if gr.Parent.Id != nil || gr.Parent.Title != "" {
+				resp.Parent = &Parent{
+					ID:     derefInt64(gr.Parent.Id),
+					Title:  gr.Parent.Title,
+					Type:   gr.Parent.Type,
+					URL:    gr.Parent.Url,
+					AppURL: gr.Parent.AppUrl,
+				}
+			}
+			if gr.Bucket.Id != nil || gr.Bucket.Name != "" {
+				resp.Bucket = &Bucket{
+					ID:   derefInt64(gr.Bucket.Id),
+					Name: gr.Bucket.Name,
+					Type: gr.Bucket.Type,
+				}
+			}
+			if gr.Creator.Id != nil || gr.Creator.Name != "" {
+				resp.Creator = &Person{
+					ID:           derefInt64(gr.Creator.Id),
+					Name:         gr.Creator.Name,
+					EmailAddress: gr.Creator.EmailAddress,
+					AvatarURL:    gr.Creator.AvatarUrl,
+					Admin:        gr.Creator.Admin,
+					Owner:        gr.Creator.Owner,
+				}
+			}
+			a.Responses = append(a.Responses, resp)
+		}
+	}
+
+	return a
 }

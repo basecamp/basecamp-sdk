@@ -2,9 +2,9 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Event represents a recording change event in Basecamp.
@@ -45,20 +45,56 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64) (
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/events.json", bucketID, recordingID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListEventsWithResponse(ctx, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	events := make([]Event, 0, len(results))
-	for _, raw := range results {
-		var e Event
-		if err := json.Unmarshal(raw, &e); err != nil {
-			return nil, fmt.Errorf("failed to parse event: %w", err)
-		}
-		events = append(events, e)
+	events := make([]Event, 0, len(resp.JSON200.Events))
+	for _, ge := range resp.JSON200.Events {
+		events = append(events, eventFromGenerated(ge))
 	}
 
 	return events, nil
+}
+
+// eventFromGenerated converts a generated Event to our clean type.
+func eventFromGenerated(ge generated.Event) Event {
+	e := Event{
+		RecordingID: derefInt64(ge.RecordingId),
+		Action:      ge.Action,
+		CreatedAt:   ge.CreatedAt,
+	}
+
+	if ge.Id != nil {
+		e.ID = *ge.Id
+	}
+
+	// Convert details
+	if ge.Details.AddedPersonIds != nil || ge.Details.RemovedPersonIds != nil || ge.Details.NotifiedRecipientIds != nil {
+		e.Details = &EventDetails{
+			AddedPersonIDs:       ge.Details.AddedPersonIds,
+			RemovedPersonIDs:     ge.Details.RemovedPersonIds,
+			NotifiedRecipientIDs: ge.Details.NotifiedRecipientIds,
+		}
+	}
+
+	if ge.Creator.Id != nil || ge.Creator.Name != "" {
+		e.Creator = &Person{
+			ID:           derefInt64(ge.Creator.Id),
+			Name:         ge.Creator.Name,
+			EmailAddress: ge.Creator.EmailAddress,
+			AvatarURL:    ge.Creator.AvatarUrl,
+			Admin:        ge.Creator.Admin,
+			Owner:        ge.Creator.Owner,
+		}
+	}
+
+	return e
 }

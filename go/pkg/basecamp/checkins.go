@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Questionnaire represents a Basecamp automatic check-in questionnaire.
@@ -147,17 +148,18 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questi
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/questionnaires/%d.json", bucketID, questionnaireID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetQuestionnaireWithResponse(ctx, bucketID, questionnaireID)
 	if err != nil {
 		return nil, err
 	}
-
-	var questionnaire Questionnaire
-	if err := resp.UnmarshalData(&questionnaire); err != nil {
-		return nil, fmt.Errorf("failed to parse questionnaire: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	questionnaire := questionnaireFromGenerated(resp.JSON200.Questionnaire)
 	return &questionnaire, nil
 }
 
@@ -168,19 +170,20 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/questionnaires/%d/questions.json", bucketID, questionnaireID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListQuestionsWithResponse(ctx, bucketID, questionnaireID)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	questions := make([]Question, 0, len(results))
-	for _, raw := range results {
-		var q Question
-		if err := json.Unmarshal(raw, &q); err != nil {
-			return nil, fmt.Errorf("failed to parse question: %w", err)
-		}
-		questions = append(questions, q)
+	questions := make([]Question, 0, len(resp.JSON200.Questions))
+	for _, gq := range resp.JSON200.Questions {
+		questions = append(questions, questionFromGenerated(gq))
 	}
 
 	return questions, nil
@@ -193,17 +196,18 @@ func (s *CheckinsService) GetQuestion(ctx context.Context, bucketID, questionID 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/questions/%d.json", bucketID, questionID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetQuestionWithResponse(ctx, bucketID, questionID)
 	if err != nil {
 		return nil, err
 	}
-
-	var question Question
-	if err := resp.UnmarshalData(&question); err != nil {
-		return nil, fmt.Errorf("failed to parse question: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	question := questionFromGenerated(resp.JSON200.Question)
 	return &question, nil
 }
 
@@ -222,17 +226,23 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, question
 		return nil, ErrUsage("question schedule is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/questionnaires/%d/questions.json", bucketID, questionnaireID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateQuestionJSONRequestBody{
+		Title:    req.Title,
+		Schedule: questionScheduleToGenerated(req.Schedule),
+	}
+
+	resp, err := s.client.gen.CreateQuestionWithResponse(ctx, bucketID, questionnaireID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var question Question
-	if err := resp.UnmarshalData(&question); err != nil {
-		return nil, fmt.Errorf("failed to parse question: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	question := questionFromGenerated(resp.JSON200.Question)
 	return &question, nil
 }
 
@@ -248,17 +258,29 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 		return nil, ErrUsage("update request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/questions/%d.json", bucketID, questionID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateQuestionJSONRequestBody{}
+	if req.Title != "" {
+		body.Title = req.Title
+	}
+	if req.Schedule != nil {
+		body.Schedule = questionScheduleToGenerated(req.Schedule)
+	}
+	if req.Paused != nil {
+		body.Paused = *req.Paused
+	}
+
+	resp, err := s.client.gen.UpdateQuestionWithResponse(ctx, bucketID, questionID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var question Question
-	if err := resp.UnmarshalData(&question); err != nil {
-		return nil, fmt.Errorf("failed to parse question: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	question := questionFromGenerated(resp.JSON200.Question)
 	return &question, nil
 }
 
@@ -269,19 +291,20 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/questions/%d/answers.json", bucketID, questionID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListAnswersWithResponse(ctx, bucketID, questionID)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	answers := make([]QuestionAnswer, 0, len(results))
-	for _, raw := range results {
-		var a QuestionAnswer
-		if err := json.Unmarshal(raw, &a); err != nil {
-			return nil, fmt.Errorf("failed to parse question answer: %w", err)
-		}
-		answers = append(answers, a)
+	answers := make([]QuestionAnswer, 0, len(resp.JSON200.Answers))
+	for _, ga := range resp.JSON200.Answers {
+		answers = append(answers, questionAnswerFromGenerated(ga))
 	}
 
 	return answers, nil
@@ -294,17 +317,18 @@ func (s *CheckinsService) GetAnswer(ctx context.Context, bucketID, answerID int6
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/question_answers/%d.json", bucketID, answerID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetAnswerWithResponse(ctx, bucketID, answerID)
 	if err != nil {
 		return nil, err
 	}
-
-	var answer QuestionAnswer
-	if err := resp.UnmarshalData(&answer); err != nil {
-		return nil, fmt.Errorf("failed to parse question answer: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	answer := questionAnswerFromGenerated(resp.JSON200.Answer)
 	return &answer, nil
 }
 
@@ -320,18 +344,27 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 		return nil, ErrUsage("answer content is required")
 	}
 
-	wrapper := &createAnswerRequestWrapper{QuestionAnswer: req}
-	path := fmt.Sprintf("/buckets/%d/questions/%d/answers.json", bucketID, questionID)
-	resp, err := s.client.Post(ctx, path, wrapper)
+	body := generated.CreateAnswerJSONRequestBody{
+		Content: req.Content,
+	}
+	if req.GroupOn != "" {
+		if t, err := time.Parse("2006-01-02", req.GroupOn); err == nil {
+			body.GroupOn = t
+		}
+	}
+
+	resp, err := s.client.gen.CreateAnswerWithResponse(ctx, bucketID, questionID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var answer QuestionAnswer
-	if err := resp.UnmarshalData(&answer); err != nil {
-		return nil, fmt.Errorf("failed to parse question answer: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	answer := questionAnswerFromGenerated(resp.JSON200.Answer)
 	return &answer, nil
 }
 
@@ -347,8 +380,224 @@ func (s *CheckinsService) UpdateAnswer(ctx context.Context, bucketID, answerID i
 		return ErrUsage("answer content is required")
 	}
 
-	wrapper := &updateAnswerRequestWrapper{QuestionAnswer: req}
-	path := fmt.Sprintf("/buckets/%d/question_answers/%d.json", bucketID, answerID)
-	_, err := s.client.Put(ctx, path, wrapper)
-	return err
+	body := generated.UpdateAnswerJSONRequestBody{
+		Content: req.Content,
+	}
+
+	resp, err := s.client.gen.UpdateAnswerWithResponse(ctx, bucketID, answerID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
+}
+
+// questionnaireFromGenerated converts a generated Questionnaire to our clean type.
+func questionnaireFromGenerated(gq generated.Questionnaire) Questionnaire {
+	q := Questionnaire{
+		Status:           gq.Status,
+		VisibleToClients: gq.VisibleToClients,
+		CreatedAt:        gq.CreatedAt,
+		UpdatedAt:        gq.UpdatedAt,
+		Title:            gq.Title,
+		InheritsStatus:   gq.InheritsStatus,
+		Type:             gq.Type,
+		URL:              gq.Url,
+		AppURL:           gq.AppUrl,
+		BookmarkURL:      gq.BookmarkUrl,
+		QuestionsURL:     gq.QuestionsUrl,
+		QuestionsCount:   int(gq.QuestionsCount),
+		Name:             gq.Name,
+	}
+
+	if gq.Id != nil {
+		q.ID = *gq.Id
+	}
+
+	if gq.Bucket.Id != nil || gq.Bucket.Name != "" {
+		q.Bucket = &Bucket{
+			ID:   derefInt64(gq.Bucket.Id),
+			Name: gq.Bucket.Name,
+			Type: gq.Bucket.Type,
+		}
+	}
+
+	if gq.Creator.Id != nil || gq.Creator.Name != "" {
+		q.Creator = &Person{
+			ID:           derefInt64(gq.Creator.Id),
+			Name:         gq.Creator.Name,
+			EmailAddress: gq.Creator.EmailAddress,
+			AvatarURL:    gq.Creator.AvatarUrl,
+			Admin:        gq.Creator.Admin,
+			Owner:        gq.Creator.Owner,
+		}
+	}
+
+	return q
+}
+
+// questionFromGenerated converts a generated Question to our clean type.
+func questionFromGenerated(gq generated.Question) Question {
+	q := Question{
+		Status:           gq.Status,
+		VisibleToClients: gq.VisibleToClients,
+		CreatedAt:        gq.CreatedAt,
+		UpdatedAt:        gq.UpdatedAt,
+		Title:            gq.Title,
+		InheritsStatus:   gq.InheritsStatus,
+		Type:             gq.Type,
+		URL:              gq.Url,
+		AppURL:           gq.AppUrl,
+		BookmarkURL:      gq.BookmarkUrl,
+		SubscriptionURL:  gq.SubscriptionUrl,
+		Paused:           gq.Paused,
+		AnswersCount:     int(gq.AnswersCount),
+		AnswersURL:       gq.AnswersUrl,
+	}
+
+	if gq.Id != nil {
+		q.ID = *gq.Id
+	}
+
+	if gq.Schedule.Frequency != "" {
+		days := make([]int, len(gq.Schedule.Days))
+		for i, d := range gq.Schedule.Days {
+			days[i] = int(d)
+		}
+		q.Schedule = &QuestionSchedule{
+			Frequency: gq.Schedule.Frequency,
+			Days:      days,
+			Hour:      int(gq.Schedule.Hour),
+			Minute:    int(gq.Schedule.Minute),
+			StartDate: gq.Schedule.StartDate,
+			EndDate:   gq.Schedule.EndDate,
+		}
+		if gq.Schedule.WeekInstance != 0 {
+			wi := int(gq.Schedule.WeekInstance)
+			q.Schedule.WeekInstance = &wi
+		}
+		if gq.Schedule.WeekInterval != 0 {
+			wi := int(gq.Schedule.WeekInterval)
+			q.Schedule.WeekInterval = &wi
+		}
+		if gq.Schedule.MonthInterval != 0 {
+			mi := int(gq.Schedule.MonthInterval)
+			q.Schedule.MonthInterval = &mi
+		}
+	}
+
+	if gq.Parent.Id != nil || gq.Parent.Title != "" {
+		q.Parent = &Parent{
+			ID:     derefInt64(gq.Parent.Id),
+			Title:  gq.Parent.Title,
+			Type:   gq.Parent.Type,
+			URL:    gq.Parent.Url,
+			AppURL: gq.Parent.AppUrl,
+		}
+	}
+
+	if gq.Bucket.Id != nil || gq.Bucket.Name != "" {
+		q.Bucket = &Bucket{
+			ID:   derefInt64(gq.Bucket.Id),
+			Name: gq.Bucket.Name,
+			Type: gq.Bucket.Type,
+		}
+	}
+
+	if gq.Creator.Id != nil || gq.Creator.Name != "" {
+		q.Creator = &Person{
+			ID:           derefInt64(gq.Creator.Id),
+			Name:         gq.Creator.Name,
+			EmailAddress: gq.Creator.EmailAddress,
+			AvatarURL:    gq.Creator.AvatarUrl,
+			Admin:        gq.Creator.Admin,
+			Owner:        gq.Creator.Owner,
+		}
+	}
+
+	return q
+}
+
+// questionAnswerFromGenerated converts a generated QuestionAnswer to our clean type.
+func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
+	a := QuestionAnswer{
+		Status:           ga.Status,
+		VisibleToClients: ga.VisibleToClients,
+		CreatedAt:        ga.CreatedAt,
+		UpdatedAt:        ga.UpdatedAt,
+		Title:            ga.Title,
+		InheritsStatus:   ga.InheritsStatus,
+		Type:             ga.Type,
+		URL:              ga.Url,
+		AppURL:           ga.AppUrl,
+		BookmarkURL:      ga.BookmarkUrl,
+		SubscriptionURL:  ga.SubscriptionUrl,
+		CommentsCount:    int(ga.CommentsCount),
+		CommentsURL:      ga.CommentsUrl,
+		Content:          ga.Content,
+		GroupOn:          ga.GroupOn.Format("2006-01-02"),
+	}
+
+	if ga.Id != nil {
+		a.ID = *ga.Id
+	}
+
+	if ga.Parent.Id != nil || ga.Parent.Title != "" {
+		a.Parent = &Parent{
+			ID:     derefInt64(ga.Parent.Id),
+			Title:  ga.Parent.Title,
+			Type:   ga.Parent.Type,
+			URL:    ga.Parent.Url,
+			AppURL: ga.Parent.AppUrl,
+		}
+	}
+
+	if ga.Bucket.Id != nil || ga.Bucket.Name != "" {
+		a.Bucket = &Bucket{
+			ID:   derefInt64(ga.Bucket.Id),
+			Name: ga.Bucket.Name,
+			Type: ga.Bucket.Type,
+		}
+	}
+
+	if ga.Creator.Id != nil || ga.Creator.Name != "" {
+		a.Creator = &Person{
+			ID:           derefInt64(ga.Creator.Id),
+			Name:         ga.Creator.Name,
+			EmailAddress: ga.Creator.EmailAddress,
+			AvatarURL:    ga.Creator.AvatarUrl,
+			Admin:        ga.Creator.Admin,
+			Owner:        ga.Creator.Owner,
+		}
+	}
+
+	return a
+}
+
+// questionScheduleToGenerated converts our QuestionSchedule to the generated type.
+func questionScheduleToGenerated(s *QuestionSchedule) generated.QuestionSchedule {
+	days := make([]int32, len(s.Days))
+	for i, d := range s.Days {
+		days[i] = int32(d)
+	}
+
+	gs := generated.QuestionSchedule{
+		Frequency: s.Frequency,
+		Days:      days,
+		Hour:      int32(s.Hour),
+		Minute:    int32(s.Minute),
+		StartDate: s.StartDate,
+		EndDate:   s.EndDate,
+	}
+
+	if s.WeekInstance != nil {
+		gs.WeekInstance = int32(*s.WeekInstance)
+	}
+	if s.WeekInterval != nil {
+		gs.WeekInterval = int32(*s.WeekInterval)
+	}
+	if s.MonthInterval != nil {
+		gs.MonthInterval = int32(*s.MonthInterval)
+	}
+
+	return gs
 }

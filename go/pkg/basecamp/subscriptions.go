@@ -3,6 +3,8 @@ package basecamp
 import (
 	"context"
 	"fmt"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Subscription represents the subscription state for a recording.
@@ -38,17 +40,18 @@ func (s *SubscriptionsService) Get(ctx context.Context, bucketID, recordingID in
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/subscription.json", bucketID, recordingID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetSubscriptionWithResponse(ctx, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
-
-	var subscription Subscription
-	if err := resp.UnmarshalData(&subscription); err != nil {
-		return nil, fmt.Errorf("failed to parse subscription: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	subscription := subscriptionFromGenerated(resp.JSON200.Subscription)
 	return &subscription, nil
 }
 
@@ -60,17 +63,18 @@ func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordin
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/subscription.json", bucketID, recordingID)
-	resp, err := s.client.Post(ctx, path, nil)
+	resp, err := s.client.gen.SubscribeWithResponse(ctx, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
-
-	var subscription Subscription
-	if err := resp.UnmarshalData(&subscription); err != nil {
-		return nil, fmt.Errorf("failed to parse subscription: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	subscription := subscriptionFromGenerated(resp.JSON200.Subscription)
 	return &subscription, nil
 }
 
@@ -82,9 +86,11 @@ func (s *SubscriptionsService) Unsubscribe(ctx context.Context, bucketID, record
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/subscription.json", bucketID, recordingID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.UnsubscribeWithResponse(ctx, bucketID, recordingID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Update batch modifies subscriptions by adding or removing specific users.
@@ -99,16 +105,50 @@ func (s *SubscriptionsService) Update(ctx context.Context, bucketID, recordingID
 		return nil, ErrUsage("at least one of subscriptions or unsubscriptions must be specified")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/subscription.json", bucketID, recordingID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateSubscriptionJSONRequestBody{
+		Subscriptions:   req.Subscriptions,
+		Unsubscriptions: req.Unsubscriptions,
+	}
+
+	resp, err := s.client.gen.UpdateSubscriptionWithResponse(ctx, bucketID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var subscription Subscription
-	if err := resp.UnmarshalData(&subscription); err != nil {
-		return nil, fmt.Errorf("failed to parse subscription: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	subscription := subscriptionFromGenerated(resp.JSON200.Subscription)
 	return &subscription, nil
+}
+
+// subscriptionFromGenerated converts a generated Subscription to our clean type.
+func subscriptionFromGenerated(gs generated.Subscription) Subscription {
+	s := Subscription{
+		Subscribed: gs.Subscribed,
+		Count:      int(gs.Count),
+		URL:        gs.Url,
+	}
+
+	if len(gs.Subscribers) > 0 {
+		s.Subscribers = make([]Person, 0, len(gs.Subscribers))
+		for _, gp := range gs.Subscribers {
+			p := Person{
+				Name:         gp.Name,
+				EmailAddress: gp.EmailAddress,
+				AvatarURL:    gp.AvatarUrl,
+				Admin:        gp.Admin,
+				Owner:        gp.Owner,
+			}
+			if gp.Id != nil {
+				p.ID = *gp.Id
+			}
+			s.Subscribers = append(s.Subscribers, p)
+		}
+	}
+
+	return s
 }

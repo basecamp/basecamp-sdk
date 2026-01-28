@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Todo represents a Basecamp todo item.
@@ -141,23 +142,25 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todolists/%d/todos.json", bucketID, todolistID)
+	params := &generated.ListTodosParams{}
 	if opts != nil && opts.Status != "" {
-		path = fmt.Sprintf("/buckets/%d/todolists/%d/todos.json?status=%s", bucketID, todolistID, opts.Status)
+		params.Status = opts.Status
 	}
 
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListTodosWithResponse(ctx, bucketID, todolistID, params)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	todos := make([]Todo, 0, len(results))
-	for _, raw := range results {
-		var t Todo
-		if err := json.Unmarshal(raw, &t); err != nil {
-			return nil, fmt.Errorf("failed to parse todo: %w", err)
-		}
-		todos = append(todos, t)
+	todos := make([]Todo, 0, len(resp.JSON200.Todos))
+	for _, gt := range resp.JSON200.Todos {
+		todos = append(todos, todoFromGenerated(gt))
 	}
 
 	return todos, nil
@@ -170,17 +173,18 @@ func (s *TodosService) Get(ctx context.Context, bucketID, todoID int64) (*Todo, 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todos/%d.json", bucketID, todoID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetTodoWithResponse(ctx, bucketID, todoID)
 	if err != nil {
 		return nil, err
 	}
-
-	var todo Todo
-	if err := resp.UnmarshalData(&todo); err != nil {
-		return nil, fmt.Errorf("failed to parse todo: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	todo := todoFromGenerated(resp.JSON200.Todo)
 	return &todo, nil
 }
 
@@ -196,17 +200,41 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 		return nil, ErrUsage("todo content is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todolists/%d/todos.json", bucketID, todolistID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateTodoJSONRequestBody{
+		Content:                 req.Content,
+		Description:             req.Description,
+		AssigneeIds:             req.AssigneeIDs,
+		CompletionSubscriberIds: req.CompletionSubscriberIDs,
+		Notify:                  req.Notify,
+	}
+	// Parse date strings to time.Time for the generated client
+	if req.DueOn != "" {
+		t, err := time.Parse("2006-01-02", req.DueOn)
+		if err != nil {
+			return nil, ErrUsage("todo due_on must be in YYYY-MM-DD format")
+		}
+		body.DueOn = t
+	}
+	if req.StartsOn != "" {
+		t, err := time.Parse("2006-01-02", req.StartsOn)
+		if err != nil {
+			return nil, ErrUsage("todo starts_on must be in YYYY-MM-DD format")
+		}
+		body.StartsOn = t
+	}
+
+	resp, err := s.client.gen.CreateTodoWithResponse(ctx, bucketID, todolistID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var todo Todo
-	if err := resp.UnmarshalData(&todo); err != nil {
-		return nil, fmt.Errorf("failed to parse todo: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	todo := todoFromGenerated(resp.JSON200.Todo)
 	return &todo, nil
 }
 
@@ -218,17 +246,41 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todos/%d.json", bucketID, todoID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateTodoJSONRequestBody{
+		Content:                 req.Content,
+		Description:             req.Description,
+		AssigneeIds:             req.AssigneeIDs,
+		CompletionSubscriberIds: req.CompletionSubscriberIDs,
+		Notify:                  req.Notify,
+	}
+	// Parse date strings to time.Time for the generated client
+	if req.DueOn != "" {
+		t, err := time.Parse("2006-01-02", req.DueOn)
+		if err != nil {
+			return nil, ErrUsage("todo due_on must be in YYYY-MM-DD format")
+		}
+		body.DueOn = t
+	}
+	if req.StartsOn != "" {
+		t, err := time.Parse("2006-01-02", req.StartsOn)
+		if err != nil {
+			return nil, ErrUsage("todo starts_on must be in YYYY-MM-DD format")
+		}
+		body.StartsOn = t
+	}
+
+	resp, err := s.client.gen.UpdateTodoWithResponse(ctx, bucketID, todoID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var todo Todo
-	if err := resp.UnmarshalData(&todo); err != nil {
-		return nil, fmt.Errorf("failed to parse todo: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	todo := todoFromGenerated(resp.JSON200.Todo)
 	return &todo, nil
 }
 
@@ -240,9 +292,11 @@ func (s *TodosService) Trash(ctx context.Context, bucketID, todoID int64) error 
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, todoID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.TrashTodoWithResponse(ctx, bucketID, todoID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Complete marks a todo as completed.
@@ -252,9 +306,11 @@ func (s *TodosService) Complete(ctx context.Context, bucketID, todoID int64) err
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todos/%d/completion.json", bucketID, todoID)
-	_, err := s.client.Post(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.CompleteTodoWithResponse(ctx, bucketID, todoID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Uncomplete marks a completed todo as incomplete (reopens it).
@@ -264,14 +320,17 @@ func (s *TodosService) Uncomplete(ctx context.Context, bucketID, todoID int64) e
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todos/%d/completion.json", bucketID, todoID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.UncompleteTodoWithResponse(ctx, bucketID, todoID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Reposition changes the position of a todo within its todolist.
 // bucketID is the project ID, todoID is the todo ID.
 // position is 1-based (1 = first position).
+// NOTE: This operation is not yet available in the generated client (RepositionTodo missing from spec).
 func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, position int) error {
 	if err := s.client.RequireAccount(); err != nil {
 		return err
@@ -281,8 +340,80 @@ func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, p
 		return ErrUsage("position must be at least 1")
 	}
 
+	// TODO: Migrate to generated client once RepositionTodo operation is added to the spec
 	path := fmt.Sprintf("/buckets/%d/todos/%d/position.json", bucketID, todoID)
 	body := map[string]int{"position": position}
 	_, err := s.client.Put(ctx, path, body)
 	return err
+}
+
+// todoFromGenerated converts a generated Todo to our clean Todo type.
+func todoFromGenerated(gt generated.Todo) Todo {
+	t := Todo{
+		Status:      gt.Status,
+		Title:       gt.Title,
+		Type:        gt.Type,
+		URL:         gt.Url,
+		AppURL:      gt.AppUrl,
+		BookmarkURL: gt.BookmarkUrl,
+		Content:     gt.Content,
+		Description: gt.Description,
+		Completed:   gt.Completed,
+		Position:    int(gt.Position),
+		CreatedAt:   gt.CreatedAt,
+		UpdatedAt:   gt.UpdatedAt,
+		InheritsVis: gt.InheritsStatus,
+	}
+
+	if gt.Id != nil {
+		t.ID = *gt.Id
+	}
+
+	// Convert date fields to strings
+	if !gt.StartsOn.IsZero() {
+		t.StartsOn = gt.StartsOn.Format("2006-01-02")
+	}
+	if !gt.DueOn.IsZero() {
+		t.DueOn = gt.DueOn.Format("2006-01-02")
+	}
+
+	// Convert nested types
+	if gt.Parent.Id != nil || gt.Parent.Title != "" {
+		t.Parent = &Parent{
+			ID:     derefInt64(gt.Parent.Id),
+			Title:  gt.Parent.Title,
+			Type:   gt.Parent.Type,
+			URL:    gt.Parent.Url,
+			AppURL: gt.Parent.AppUrl,
+		}
+	}
+
+	if gt.Bucket.Id != nil || gt.Bucket.Name != "" {
+		t.Bucket = &Bucket{
+			ID:   derefInt64(gt.Bucket.Id),
+			Name: gt.Bucket.Name,
+			Type: gt.Bucket.Type,
+		}
+	}
+
+	if gt.Creator.Id != nil || gt.Creator.Name != "" {
+		t.Creator = &Person{
+			ID:           derefInt64(gt.Creator.Id),
+			Name:         gt.Creator.Name,
+			EmailAddress: gt.Creator.EmailAddress,
+			AvatarURL:    gt.Creator.AvatarUrl,
+			Admin:        gt.Creator.Admin,
+			Owner:        gt.Creator.Owner,
+		}
+	}
+
+	// Convert assignees
+	if len(gt.Assignees) > 0 {
+		t.Assignees = make([]Person, 0, len(gt.Assignees))
+		for _, ga := range gt.Assignees {
+			t.Assignees = append(t.Assignees, personFromGenerated(ga))
+		}
+	}
+
+	return t
 }

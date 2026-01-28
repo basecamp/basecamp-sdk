@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Comment represents a Basecamp comment on a recording.
@@ -51,21 +52,22 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64)
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/comments.json", bucketID, recordingID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListCommentsWithResponse(ctx, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
-
-	comments := make([]Comment, 0, len(results))
-	for _, raw := range results {
-		var c Comment
-		if err := json.Unmarshal(raw, &c); err != nil {
-			return nil, fmt.Errorf("failed to parse comment: %w", err)
-		}
-		comments = append(comments, c)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
 	}
 
+	// Convert generated types to our clean types
+	comments := make([]Comment, 0, len(resp.JSON200.Comments))
+	for _, gc := range resp.JSON200.Comments {
+		comments = append(comments, commentFromGenerated(gc))
+	}
 	return comments, nil
 }
 
@@ -76,17 +78,18 @@ func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (*
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/comments/%d.json", bucketID, commentID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetCommentWithResponse(ctx, bucketID, commentID)
 	if err != nil {
 		return nil, err
 	}
-
-	var comment Comment
-	if err := resp.UnmarshalData(&comment); err != nil {
-		return nil, fmt.Errorf("failed to parse comment: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	comment := commentFromGenerated(resp.JSON200.Comment)
 	return &comment, nil
 }
 
@@ -102,17 +105,22 @@ func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int6
 		return nil, ErrUsage("comment content is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/comments.json", bucketID, recordingID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateCommentJSONRequestBody{
+		Content: req.Content,
+	}
+
+	resp, err := s.client.gen.CreateCommentWithResponse(ctx, bucketID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var comment Comment
-	if err := resp.UnmarshalData(&comment); err != nil {
-		return nil, fmt.Errorf("failed to parse comment: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	comment := commentFromGenerated(resp.JSON200.Comment)
 	return &comment, nil
 }
 
@@ -128,17 +136,22 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 		return nil, ErrUsage("comment content is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/comments/%d.json", bucketID, commentID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateCommentJSONRequestBody{
+		Content: req.Content,
+	}
+
+	resp, err := s.client.gen.UpdateCommentWithResponse(ctx, bucketID, commentID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var comment Comment
-	if err := resp.UnmarshalData(&comment); err != nil {
-		return nil, fmt.Errorf("failed to parse comment: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	comment := commentFromGenerated(resp.JSON200.Comment)
 	return &comment, nil
 }
 
@@ -150,20 +163,61 @@ func (s *CommentsService) Trash(ctx context.Context, bucketID, commentID int64) 
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, commentID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
-}
-
-// Delete permanently removes a comment.
-// bucketID is the project ID, commentID is the comment ID.
-// Note: This permanently deletes the comment. Use Trash for recoverable deletion.
-func (s *CommentsService) Delete(ctx context.Context, bucketID, commentID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, commentID)
+	if err != nil {
 		return err
 	}
+	return checkResponse(resp.HTTPResponse)
+}
 
-	path := fmt.Sprintf("/buckets/%d/comments/%d.json", bucketID, commentID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+// Note: Permanent deletion of comments is not supported by the Basecamp API.
+// Use Trash() to move comments to trash (recoverable via the web UI).
+
+// commentFromGenerated converts a generated Comment to our clean Comment type.
+func commentFromGenerated(gc generated.Comment) Comment {
+	c := Comment{
+		Status:    gc.Status,
+		Content:   gc.Content,
+		Type:      gc.Type,
+		URL:       gc.Url,
+		AppURL:    gc.AppUrl,
+		CreatedAt: gc.CreatedAt,
+		UpdatedAt: gc.UpdatedAt,
+	}
+
+	if gc.Id != nil {
+		c.ID = *gc.Id
+	}
+
+	// Convert nested types
+	if gc.Parent.Id != nil || gc.Parent.Title != "" {
+		c.Parent = &Parent{
+			ID:     derefInt64(gc.Parent.Id),
+			Title:  gc.Parent.Title,
+			Type:   gc.Parent.Type,
+			URL:    gc.Parent.Url,
+			AppURL: gc.Parent.AppUrl,
+		}
+	}
+
+	if gc.Bucket.Id != nil || gc.Bucket.Name != "" {
+		c.Bucket = &Bucket{
+			ID:   derefInt64(gc.Bucket.Id),
+			Name: gc.Bucket.Name,
+			Type: gc.Bucket.Type,
+		}
+	}
+
+	if gc.Creator.Id != nil || gc.Creator.Name != "" {
+		c.Creator = &Person{
+			ID:           derefInt64(gc.Creator.Id),
+			Name:         gc.Creator.Name,
+			EmailAddress: gc.Creator.EmailAddress,
+			AvatarURL:    gc.Creator.AvatarUrl,
+			Admin:        gc.Creator.Admin,
+			Owner:        gc.Creator.Owner,
+		}
+	}
+
+	return c
 }

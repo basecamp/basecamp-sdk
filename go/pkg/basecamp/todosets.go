@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Todoset represents a Basecamp todoset (container for todolists in a project).
@@ -51,16 +53,73 @@ func (s *TodosetsService) Get(ctx context.Context, bucketID, todosetID int64) (*
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todosets/%d.json", bucketID, todosetID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetTodosetWithResponse(ctx, bucketID, todosetID)
 	if err != nil {
 		return nil, err
 	}
-
-	var todoset Todoset
-	if err := resp.UnmarshalData(&todoset); err != nil {
-		return nil, fmt.Errorf("failed to parse todoset: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	todoset := todosetFromGenerated(resp.JSON200.Todoset)
 	return &todoset, nil
+}
+
+// todosetFromGenerated converts a generated Todoset to our clean Todoset type.
+func todosetFromGenerated(gts generated.Todoset) Todoset {
+	ts := Todoset{
+		Status:            gts.Status,
+		VisibleToClients:  gts.VisibleToClients,
+		Title:             gts.Title,
+		InheritsStatus:    gts.InheritsStatus,
+		Type:              gts.Type,
+		URL:               gts.Url,
+		AppURL:            gts.AppUrl,
+		BookmarkURL:       gts.BookmarkUrl,
+		Name:              gts.Name,
+		TodolistsCount:    int(gts.TodolistsCount),
+		TodolistsURL:      gts.TodolistsUrl,
+		CompletedRatio:    gts.CompletedRatio,
+		Completed:         gts.Completed,
+		CompletedCount:    int(gts.CompletedCount),
+		OnScheduleCount:   int(gts.OnScheduleCount),
+		OverScheduleCount: int(gts.OverScheduleCount),
+		AppTodolistsURL:   gts.AppTodolistsUrl,
+		CreatedAt:         gts.CreatedAt,
+		UpdatedAt:         gts.UpdatedAt,
+	}
+
+	if gts.Id != nil {
+		ts.ID = *gts.Id
+	}
+
+	if gts.Position != 0 {
+		pos := int(gts.Position)
+		ts.Position = &pos
+	}
+
+	// Convert nested types
+	if gts.Bucket.Id != nil || gts.Bucket.Name != "" {
+		ts.Bucket = &Bucket{
+			ID:   derefInt64(gts.Bucket.Id),
+			Name: gts.Bucket.Name,
+			Type: gts.Bucket.Type,
+		}
+	}
+
+	if gts.Creator.Id != nil || gts.Creator.Name != "" {
+		ts.Creator = &Person{
+			ID:           derefInt64(gts.Creator.Id),
+			Name:         gts.Creator.Name,
+			EmailAddress: gts.Creator.EmailAddress,
+			AvatarURL:    gts.Creator.AvatarUrl,
+			Admin:        gts.Creator.Admin,
+			Owner:        gts.Creator.Owner,
+		}
+	}
+
+	return ts
 }
