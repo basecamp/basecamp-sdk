@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Message represents a Basecamp message on a message board.
@@ -65,21 +66,21 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) ([]
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/message_boards/%d/messages.json", bucketID, boardID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListMessagesWithResponse(ctx, bucketID, boardID)
 	if err != nil {
 		return nil, err
 	}
-
-	messages := make([]Message, 0, len(results))
-	for _, raw := range results {
-		var m Message
-		if err := json.Unmarshal(raw, &m); err != nil {
-			return nil, fmt.Errorf("failed to parse message: %w", err)
-		}
-		messages = append(messages, m)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
 	}
 
+	messages := make([]Message, 0, len(resp.JSON200.Messages))
+	for _, gm := range resp.JSON200.Messages {
+		messages = append(messages, messageFromGenerated(gm))
+	}
 	return messages, nil
 }
 
@@ -90,17 +91,18 @@ func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (*
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/messages/%d.json", bucketID, messageID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetMessageWithResponse(ctx, bucketID, messageID)
 	if err != nil {
 		return nil, err
 	}
-
-	var message Message
-	if err := resp.UnmarshalData(&message); err != nil {
-		return nil, fmt.Errorf("failed to parse message: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	message := messageFromGenerated(resp.JSON200.Message)
 	return &message, nil
 }
 
@@ -116,17 +118,27 @@ func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, r
 		return nil, ErrUsage("message subject is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/message_boards/%d/messages.json", bucketID, boardID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateMessageJSONRequestBody{
+		Subject: req.Subject,
+		Content: req.Content,
+		Status:  req.Status,
+	}
+	if req.CategoryID != 0 {
+		body.CategoryId = &req.CategoryID
+	}
+
+	resp, err := s.client.gen.CreateMessageWithResponse(ctx, bucketID, boardID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var message Message
-	if err := resp.UnmarshalData(&message); err != nil {
-		return nil, fmt.Errorf("failed to parse message: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	message := messageFromGenerated(resp.JSON200.Message)
 	return &message, nil
 }
 
@@ -142,17 +154,27 @@ func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64,
 		return nil, ErrUsage("update request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/messages/%d.json", bucketID, messageID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateMessageJSONRequestBody{
+		Subject: req.Subject,
+		Content: req.Content,
+		Status:  req.Status,
+	}
+	if req.CategoryID != 0 {
+		body.CategoryId = &req.CategoryID
+	}
+
+	resp, err := s.client.gen.UpdateMessageWithResponse(ctx, bucketID, messageID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var message Message
-	if err := resp.UnmarshalData(&message); err != nil {
-		return nil, fmt.Errorf("failed to parse message: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	message := messageFromGenerated(resp.JSON200.Message)
 	return &message, nil
 }
 
@@ -163,9 +185,11 @@ func (s *MessagesService) Pin(ctx context.Context, bucketID, messageID int64) er
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/pin.json", bucketID, messageID)
-	_, err := s.client.Post(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.PinMessageWithResponse(ctx, bucketID, messageID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Unpin unpins a message from the top of the message board.
@@ -175,9 +199,11 @@ func (s *MessagesService) Unpin(ctx context.Context, bucketID, messageID int64) 
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/pin.json", bucketID, messageID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.UnpinMessageWithResponse(ctx, bucketID, messageID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Trash moves a message to the trash.
@@ -188,9 +214,11 @@ func (s *MessagesService) Trash(ctx context.Context, bucketID, messageID int64) 
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, messageID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, messageID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Archive moves a message to the archive.
@@ -201,9 +229,11 @@ func (s *MessagesService) Archive(ctx context.Context, bucketID, messageID int64
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/archived.json", bucketID, messageID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.ArchiveRecordingWithResponse(ctx, bucketID, messageID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Unarchive restores an archived message to active status.
@@ -213,7 +243,69 @@ func (s *MessagesService) Unarchive(ctx context.Context, bucketID, messageID int
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/active.json", bucketID, messageID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.UnarchiveRecordingWithResponse(ctx, bucketID, messageID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
+}
+
+// messageFromGenerated converts a generated Message to our clean Message type.
+func messageFromGenerated(gm generated.Message) Message {
+	m := Message{
+		Status:    gm.Status,
+		Subject:   gm.Subject,
+		Content:   gm.Content,
+		Type:      gm.Type,
+		URL:       gm.Url,
+		AppURL:    gm.AppUrl,
+		CreatedAt: gm.CreatedAt,
+		UpdatedAt: gm.UpdatedAt,
+	}
+
+	if gm.Id != nil {
+		m.ID = *gm.Id
+	}
+
+	// Convert nested types
+	if gm.Parent.Id != nil || gm.Parent.Title != "" {
+		m.Parent = &Parent{
+			ID:     derefInt64(gm.Parent.Id),
+			Title:  gm.Parent.Title,
+			Type:   gm.Parent.Type,
+			URL:    gm.Parent.Url,
+			AppURL: gm.Parent.AppUrl,
+		}
+	}
+
+	if gm.Bucket.Id != nil || gm.Bucket.Name != "" {
+		m.Bucket = &Bucket{
+			ID:   derefInt64(gm.Bucket.Id),
+			Name: gm.Bucket.Name,
+			Type: gm.Bucket.Type,
+		}
+	}
+
+	if gm.Creator.Id != nil || gm.Creator.Name != "" {
+		m.Creator = &Person{
+			ID:           derefInt64(gm.Creator.Id),
+			Name:         gm.Creator.Name,
+			EmailAddress: gm.Creator.EmailAddress,
+			AvatarURL:    gm.Creator.AvatarUrl,
+			Admin:        gm.Creator.Admin,
+			Owner:        gm.Creator.Owner,
+		}
+	}
+
+	if gm.Category.Id != nil || gm.Category.Name != "" {
+		m.Category = &MessageType{
+			ID:        derefInt64(gm.Category.Id),
+			Name:      gm.Category.Name,
+			Icon:      gm.Category.Icon,
+			CreatedAt: gm.Category.CreatedAt,
+			UpdatedAt: gm.Category.UpdatedAt,
+		}
+	}
+
+	return m
 }

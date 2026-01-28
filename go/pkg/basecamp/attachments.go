@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
-	"net/url"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // AttachmentResponse represents the response from creating an attachment.
@@ -49,60 +49,22 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 		return nil, ErrUsage("file data is required")
 	}
 
-	// Build URL with query parameter for filename (URL-encoded)
-	path := fmt.Sprintf("/attachments.json?name=%s", url.QueryEscape(filename))
-	url := s.client.buildURL(path)
+	params := &generated.CreateAttachmentParams{
+		Name: filename,
+	}
 
-	// Get access token
-	token, err := s.client.tokenProvider.AccessToken(ctx)
+	resp, err := s.client.gen.CreateAttachmentWithBodyWithResponse(ctx, params, contentType, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-
-	// Create request with raw binary body
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
-	if err != nil {
+	if err := checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("User-Agent", s.client.userAgent)
-	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("Content-Length", fmt.Sprintf("%d", len(body)))
-
-	s.client.logger.Debug("http request", "method", "POST", "url", url)
-
-	// Execute request
-	resp, err := s.client.httpClient.Do(req)
-	if err != nil {
-		return nil, ErrNetwork(err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	s.client.logger.Debug("http response", "status", resp.StatusCode)
-
-	// Read response body
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	// Check for errors
-	if resp.StatusCode != http.StatusCreated {
-		return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("attachment upload failed: %s", string(respBody)))
-	}
-
-	// Parse response
-	apiResp := &Response{
-		Data:       respBody,
-		StatusCode: resp.StatusCode,
-		Headers:    resp.Header,
-	}
-
-	var attachment AttachmentResponse
-	if err := apiResp.UnmarshalData(&attachment); err != nil {
-		return nil, fmt.Errorf("failed to parse attachment response: %w", err)
-	}
-
-	return &attachment, nil
+	return &AttachmentResponse{
+		AttachableSGID: resp.JSON200.AttachableSgid,
+	}, nil
 }

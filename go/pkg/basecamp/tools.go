@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Tool represents a dock tool in a Basecamp project.
@@ -44,17 +46,18 @@ func (s *ToolsService) Get(ctx context.Context, bucketID, toolID int64) (*Tool, 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/dock/tools/%d.json", bucketID, toolID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetToolWithResponse(ctx, bucketID, toolID)
 	if err != nil {
 		return nil, err
 	}
-
-	var tool Tool
-	if err := resp.UnmarshalData(&tool); err != nil {
-		return nil, fmt.Errorf("failed to parse tool: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	tool := toolFromGenerated(resp.JSON200.Tool)
 	return &tool, nil
 }
 
@@ -66,17 +69,18 @@ func (s *ToolsService) Create(ctx context.Context, bucketID, sourceToolID int64)
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/dock/tools/%d/clone.json", bucketID, sourceToolID)
-	resp, err := s.client.Post(ctx, path, nil)
+	resp, err := s.client.gen.CloneToolWithResponse(ctx, bucketID, sourceToolID)
 	if err != nil {
 		return nil, err
 	}
-
-	var tool Tool
-	if err := resp.UnmarshalData(&tool); err != nil {
-		return nil, fmt.Errorf("failed to parse tool: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	tool := toolFromGenerated(resp.JSON200.Tool)
 	return &tool, nil
 }
 
@@ -92,18 +96,22 @@ func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, title
 		return nil, ErrUsage("tool title is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/dock/tools/%d.json", bucketID, toolID)
-	req := &UpdateToolRequest{Title: title}
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateToolJSONRequestBody{
+		Title: title,
+	}
+
+	resp, err := s.client.gen.UpdateToolWithResponse(ctx, bucketID, toolID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var tool Tool
-	if err := resp.UnmarshalData(&tool); err != nil {
-		return nil, fmt.Errorf("failed to parse tool: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	tool := toolFromGenerated(resp.JSON200.Tool)
 	return &tool, nil
 }
 
@@ -115,9 +123,11 @@ func (s *ToolsService) Delete(ctx context.Context, bucketID, toolID int64) error
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/dock/tools/%d.json", bucketID, toolID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.DeleteToolWithResponse(ctx, bucketID, toolID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Enable enables (shows) a tool on the project dock.
@@ -128,9 +138,11 @@ func (s *ToolsService) Enable(ctx context.Context, bucketID, toolID int64) error
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/dock/tools/%d/position.json", bucketID, toolID)
-	_, err := s.client.Post(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.EnableToolWithResponse(ctx, bucketID, toolID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Disable disables (hides) a tool from the project dock.
@@ -141,9 +153,11 @@ func (s *ToolsService) Disable(ctx context.Context, bucketID, toolID int64) erro
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/dock/tools/%d/position.json", bucketID, toolID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.DisableToolWithResponse(ctx, bucketID, toolID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Reposition changes the position of a tool on the project dock.
@@ -158,8 +172,46 @@ func (s *ToolsService) Reposition(ctx context.Context, bucketID, toolID int64, p
 		return ErrUsage("position must be at least 1")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/dock/tools/%d/position.json", bucketID, toolID)
-	body := map[string]int{"position": position}
-	_, err := s.client.Put(ctx, path, body)
-	return err
+	body := generated.RepositionToolJSONRequestBody{
+		Position: int32(position),
+	}
+
+	resp, err := s.client.gen.RepositionToolWithResponse(ctx, bucketID, toolID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
+}
+
+// toolFromGenerated converts a generated Tool to our clean type.
+func toolFromGenerated(gt generated.Tool) Tool {
+	t := Tool{
+		Status:    gt.Status,
+		CreatedAt: gt.CreatedAt,
+		UpdatedAt: gt.UpdatedAt,
+		Title:     gt.Title,
+		Name:      gt.Name,
+		Enabled:   gt.Enabled,
+		URL:       gt.Url,
+		AppURL:    gt.AppUrl,
+	}
+
+	if gt.Id != nil {
+		t.ID = *gt.Id
+	}
+
+	if gt.Position != 0 {
+		pos := int(gt.Position)
+		t.Position = &pos
+	}
+
+	if gt.Bucket.Id != nil || gt.Bucket.Name != "" {
+		t.Bucket = &Bucket{
+			ID:   derefInt64(gt.Bucket.Id),
+			Name: gt.Bucket.Name,
+			Type: gt.Bucket.Type,
+		}
+	}
+
+	return t
 }

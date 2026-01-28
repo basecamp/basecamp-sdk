@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Webhook represents a Basecamp webhook subscription.
@@ -57,19 +58,20 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64) ([]Webhook, 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/webhooks.json", bucketID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListWebhooksWithResponse(ctx, bucketID)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	webhooks := make([]Webhook, 0, len(results))
-	for _, raw := range results {
-		var wh Webhook
-		if err := json.Unmarshal(raw, &wh); err != nil {
-			return nil, fmt.Errorf("failed to parse webhook: %w", err)
-		}
-		webhooks = append(webhooks, wh)
+	webhooks := make([]Webhook, 0, len(resp.JSON200.Webhooks))
+	for _, gw := range resp.JSON200.Webhooks {
+		webhooks = append(webhooks, webhookFromGenerated(gw))
 	}
 
 	return webhooks, nil
@@ -82,17 +84,18 @@ func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (*
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/webhooks/%d.json", bucketID, webhookID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetWebhookWithResponse(ctx, bucketID, webhookID)
 	if err != nil {
 		return nil, err
 	}
-
-	var webhook Webhook
-	if err := resp.UnmarshalData(&webhook); err != nil {
-		return nil, fmt.Errorf("failed to parse webhook: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	webhook := webhookFromGenerated(resp.JSON200.Webhook)
 	return &webhook, nil
 }
 
@@ -115,17 +118,24 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 		return nil, ErrUsage("webhook types are required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/webhooks.json", bucketID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateWebhookJSONRequestBody{
+		PayloadUrl: req.PayloadURL,
+		Types:      req.Types,
+		Active:     req.Active != nil && *req.Active,
+	}
+
+	resp, err := s.client.gen.CreateWebhookWithResponse(ctx, bucketID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var webhook Webhook
-	if err := resp.UnmarshalData(&webhook); err != nil {
-		return nil, fmt.Errorf("failed to parse webhook: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	webhook := webhookFromGenerated(resp.JSON200.Webhook)
 	return &webhook, nil
 }
 
@@ -137,17 +147,24 @@ func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64,
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/webhooks/%d.json", bucketID, webhookID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateWebhookJSONRequestBody{
+		PayloadUrl: req.PayloadURL,
+		Types:      req.Types,
+		Active:     req.Active != nil && *req.Active,
+	}
+
+	resp, err := s.client.gen.UpdateWebhookWithResponse(ctx, bucketID, webhookID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var webhook Webhook
-	if err := resp.UnmarshalData(&webhook); err != nil {
-		return nil, fmt.Errorf("failed to parse webhook: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	webhook := webhookFromGenerated(resp.JSON200.Webhook)
 	return &webhook, nil
 }
 
@@ -158,7 +175,28 @@ func (s *WebhooksService) Delete(ctx context.Context, bucketID, webhookID int64)
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/webhooks/%d.json", bucketID, webhookID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.DeleteWebhookWithResponse(ctx, bucketID, webhookID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
+}
+
+// webhookFromGenerated converts a generated Webhook to our clean type.
+func webhookFromGenerated(gw generated.Webhook) Webhook {
+	w := Webhook{
+		Active:     gw.Active,
+		CreatedAt:  gw.CreatedAt,
+		UpdatedAt:  gw.UpdatedAt,
+		PayloadURL: gw.PayloadUrl,
+		Types:      gw.Types,
+		AppURL:     gw.AppUrl,
+		URL:        gw.Url,
+	}
+
+	if gw.Id != nil {
+		w.ID = *gw.Id
+	}
+
+	return w
 }

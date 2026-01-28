@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // LineupMarker represents a marker on the Basecamp Lineup.
@@ -80,17 +82,35 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 		return nil, ErrUsage("marker ends_on date is required")
 	}
 
-	path := "/lineup/markers.json"
-	resp, err := s.client.Post(ctx, path, req)
+	startsOn, err := time.Parse("2006-01-02", req.StartsOn)
+	if err != nil {
+		return nil, ErrUsage("marker starts_on date must be in YYYY-MM-DD format")
+	}
+	endsOn, err := time.Parse("2006-01-02", req.EndsOn)
+	if err != nil {
+		return nil, ErrUsage("marker ends_on date must be in YYYY-MM-DD format")
+	}
+
+	body := generated.CreateLineupMarkerJSONRequestBody{
+		Title:       req.Title,
+		StartsOn:    startsOn,
+		EndsOn:      endsOn,
+		Color:       req.Color,
+		Description: req.Description,
+	}
+
+	resp, err := s.client.gen.CreateLineupMarkerWithResponse(ctx, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var marker LineupMarker
-	if err := resp.UnmarshalData(&marker); err != nil {
-		return nil, fmt.Errorf("failed to parse marker: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	marker := lineupMarkerFromGenerated(resp.JSON200.Marker)
 	return &marker, nil
 }
 
@@ -106,17 +126,38 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 		return nil, ErrUsage("update request is required")
 	}
 
-	path := fmt.Sprintf("/lineup/markers/%d.json", markerID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateLineupMarkerJSONRequestBody{
+		Color:       req.Color,
+		Description: req.Description,
+		Title:       req.Title,
+	}
+	if req.StartsOn != "" {
+		startsOn, err := time.Parse("2006-01-02", req.StartsOn)
+		if err != nil {
+			return nil, ErrUsage("marker starts_on date must be in YYYY-MM-DD format")
+		}
+		body.StartsOn = startsOn
+	}
+	if req.EndsOn != "" {
+		endsOn, err := time.Parse("2006-01-02", req.EndsOn)
+		if err != nil {
+			return nil, ErrUsage("marker ends_on date must be in YYYY-MM-DD format")
+		}
+		body.EndsOn = endsOn
+	}
+
+	resp, err := s.client.gen.UpdateLineupMarkerWithResponse(ctx, markerID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var marker LineupMarker
-	if err := resp.UnmarshalData(&marker); err != nil {
-		return nil, fmt.Errorf("failed to parse marker: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	marker := lineupMarkerFromGenerated(resp.JSON200.Marker)
 	return &marker, nil
 }
 
@@ -127,7 +168,61 @@ func (s *LineupService) DeleteMarker(ctx context.Context, markerID int64) error 
 		return err
 	}
 
-	path := fmt.Sprintf("/lineup/markers/%d.json", markerID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.DeleteLineupMarkerWithResponse(ctx, markerID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
+}
+
+// lineupMarkerFromGenerated converts a generated LineupMarker to our clean type.
+func lineupMarkerFromGenerated(gm generated.LineupMarker) LineupMarker {
+	m := LineupMarker{
+		Status:      gm.Status,
+		Color:       gm.Color,
+		Title:       gm.Title,
+		StartsOn:    gm.StartsOn.Format("2006-01-02"),
+		EndsOn:      gm.EndsOn.Format("2006-01-02"),
+		Description: gm.Description,
+		CreatedAt:   gm.CreatedAt,
+		UpdatedAt:   gm.UpdatedAt,
+		Type:        gm.Type,
+		URL:         gm.Url,
+		AppURL:      gm.AppUrl,
+	}
+
+	if gm.Id != nil {
+		m.ID = *gm.Id
+	}
+
+	if gm.Creator.Id != nil || gm.Creator.Name != "" {
+		m.Creator = &Person{
+			ID:           derefInt64(gm.Creator.Id),
+			Name:         gm.Creator.Name,
+			EmailAddress: gm.Creator.EmailAddress,
+			AvatarURL:    gm.Creator.AvatarUrl,
+			Admin:        gm.Creator.Admin,
+			Owner:        gm.Creator.Owner,
+		}
+	}
+
+	if gm.Parent.Id != nil || gm.Parent.Title != "" {
+		m.Parent = &Parent{
+			ID:     derefInt64(gm.Parent.Id),
+			Title:  gm.Parent.Title,
+			Type:   gm.Parent.Type,
+			URL:    gm.Parent.Url,
+			AppURL: gm.Parent.AppUrl,
+		}
+	}
+
+	if gm.Bucket.Id != nil || gm.Bucket.Name != "" {
+		m.Bucket = &Bucket{
+			ID:   derefInt64(gm.Bucket.Id),
+			Name: gm.Bucket.Name,
+			Type: gm.Bucket.Type,
+		}
+	}
+
+	return m
 }

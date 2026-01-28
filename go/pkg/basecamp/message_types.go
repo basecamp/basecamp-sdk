@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // MessageType represents a Basecamp message type (category) in a project.
@@ -49,21 +50,21 @@ func (s *MessageTypesService) List(ctx context.Context, bucketID int64) ([]Messa
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/categories.json", bucketID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListMessageTypesWithResponse(ctx, bucketID)
 	if err != nil {
 		return nil, err
 	}
-
-	types := make([]MessageType, 0, len(results))
-	for _, raw := range results {
-		var t MessageType
-		if err := json.Unmarshal(raw, &t); err != nil {
-			return nil, fmt.Errorf("failed to parse message type: %w", err)
-		}
-		types = append(types, t)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
 	}
 
+	types := make([]MessageType, 0, len(resp.JSON200.MessageTypes))
+	for _, gt := range resp.JSON200.MessageTypes {
+		types = append(types, messageTypeFromGenerated(gt))
+	}
 	return types, nil
 }
 
@@ -74,17 +75,18 @@ func (s *MessageTypesService) Get(ctx context.Context, bucketID, typeID int64) (
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/categories/%d.json", bucketID, typeID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetMessageTypeWithResponse(ctx, bucketID, typeID)
 	if err != nil {
 		return nil, err
 	}
-
-	var msgType MessageType
-	if err := resp.UnmarshalData(&msgType); err != nil {
-		return nil, fmt.Errorf("failed to parse message type: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	msgType := messageTypeFromGenerated(resp.JSON200.MessageType)
 	return &msgType, nil
 }
 
@@ -103,17 +105,23 @@ func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *C
 		return nil, ErrUsage("message type icon is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/categories.json", bucketID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateMessageTypeJSONRequestBody{
+		Name: req.Name,
+		Icon: req.Icon,
+	}
+
+	resp, err := s.client.gen.CreateMessageTypeWithResponse(ctx, bucketID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var msgType MessageType
-	if err := resp.UnmarshalData(&msgType); err != nil {
-		return nil, fmt.Errorf("failed to parse message type: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	msgType := messageTypeFromGenerated(resp.JSON200.MessageType)
 	return &msgType, nil
 }
 
@@ -129,17 +137,23 @@ func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64
 		return nil, ErrUsage("update request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/categories/%d.json", bucketID, typeID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateMessageTypeJSONRequestBody{
+		Name: req.Name,
+		Icon: req.Icon,
+	}
+
+	resp, err := s.client.gen.UpdateMessageTypeWithResponse(ctx, bucketID, typeID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var msgType MessageType
-	if err := resp.UnmarshalData(&msgType); err != nil {
-		return nil, fmt.Errorf("failed to parse message type: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	msgType := messageTypeFromGenerated(resp.JSON200.MessageType)
 	return &msgType, nil
 }
 
@@ -150,7 +164,25 @@ func (s *MessageTypesService) Delete(ctx context.Context, bucketID, typeID int64
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/categories/%d.json", bucketID, typeID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.DeleteMessageTypeWithResponse(ctx, bucketID, typeID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
+}
+
+// messageTypeFromGenerated converts a generated MessageType to our clean MessageType type.
+func messageTypeFromGenerated(gt generated.MessageType) MessageType {
+	mt := MessageType{
+		Name:      gt.Name,
+		Icon:      gt.Icon,
+		CreatedAt: gt.CreatedAt,
+		UpdatedAt: gt.UpdatedAt,
+	}
+
+	if gt.Id != nil {
+		mt.ID = *gt.Id
+	}
+
+	return mt
 }

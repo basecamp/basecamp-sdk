@@ -19,3 +19,7 @@ output-options:
   skip-fmt: false
   # Skip pruning unused types
   skip-prune: false
+  # Generate value types instead of pointers for optional fields
+  # This makes the API more ergonomic (e.g., project.Id instead of *project.Id)
+  # Fields that need to distinguish nil from zero value can use x-go-type-skip-optional-pointer: false
+  prefer-skip-optional-pointer: true

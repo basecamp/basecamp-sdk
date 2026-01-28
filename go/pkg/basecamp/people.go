@@ -2,8 +2,9 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // UpdateProjectAccessRequest specifies the parameters for updating project access.
@@ -52,18 +53,20 @@ func (s *PeopleService) List(ctx context.Context) ([]Person, error) {
 		return nil, err
 	}
 
-	results, err := s.client.GetAll(ctx, "/people.json")
+	resp, err := s.client.gen.ListPeopleWithResponse(ctx)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	people := make([]Person, 0, len(results))
-	for _, raw := range results {
-		var p Person
-		if err := json.Unmarshal(raw, &p); err != nil {
-			return nil, fmt.Errorf("failed to parse person: %w", err)
-		}
-		people = append(people, p)
+	people := make([]Person, 0, len(resp.JSON200.People))
+	for _, gp := range resp.JSON200.People {
+		people = append(people, personFromGenerated(gp))
 	}
 
 	return people, nil
@@ -75,17 +78,18 @@ func (s *PeopleService) Get(ctx context.Context, personID int64) (*Person, error
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/people/%d.json", personID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetPersonWithResponse(ctx, personID)
 	if err != nil {
 		return nil, err
 	}
-
-	var person Person
-	if err := resp.UnmarshalData(&person); err != nil {
-		return nil, fmt.Errorf("failed to parse person: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	person := personFromGenerated(resp.JSON200.Person)
 	return &person, nil
 }
 
@@ -95,16 +99,18 @@ func (s *PeopleService) Me(ctx context.Context) (*Person, error) {
 		return nil, err
 	}
 
-	resp, err := s.client.Get(ctx, "/my/profile.json")
+	resp, err := s.client.gen.GetMyProfileWithResponse(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	var person Person
-	if err := resp.UnmarshalData(&person); err != nil {
-		return nil, fmt.Errorf("failed to parse person: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	person := personFromGenerated(resp.JSON200.Person)
 	return &person, nil
 }
 
@@ -115,19 +121,20 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/projects/%d/people.json", bucketID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListProjectPeopleWithResponse(ctx, bucketID)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	people := make([]Person, 0, len(results))
-	for _, raw := range results {
-		var p Person
-		if err := json.Unmarshal(raw, &p); err != nil {
-			return nil, fmt.Errorf("failed to parse person: %w", err)
-		}
-		people = append(people, p)
+	people := make([]Person, 0, len(resp.JSON200.People))
+	for _, gp := range resp.JSON200.People {
+		people = append(people, personFromGenerated(gp))
 	}
 
 	return people, nil
@@ -140,14 +147,20 @@ func (s *PeopleService) Pingable(ctx context.Context) ([]Person, error) {
 		return nil, err
 	}
 
-	resp, err := s.client.Get(ctx, "/circles/people.json")
+	resp, err := s.client.gen.ListPingablePeopleWithResponse(ctx)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	var people []Person
-	if err := resp.UnmarshalData(&people); err != nil {
-		return nil, fmt.Errorf("failed to parse people: %w", err)
+	people := make([]Person, 0, len(resp.JSON200.People))
+	for _, gp := range resp.JSON200.People {
+		people = append(people, personFromGenerated(gp))
 	}
 
 	return people, nil
@@ -165,16 +178,87 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, bucketID int64,
 		return nil, ErrUsage("at least one of grant, revoke, or create must be specified")
 	}
 
-	path := fmt.Sprintf("/projects/%d/people/users.json", bucketID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateProjectAccessJSONRequestBody{
+		Grant:  req.Grant,
+		Revoke: req.Revoke,
+	}
+	if len(req.Create) > 0 {
+		body.Create = make([]generated.CreatePersonRequest, 0, len(req.Create))
+		for _, cp := range req.Create {
+			body.Create = append(body.Create, generated.CreatePersonRequest{
+				Name:         cp.Name,
+				EmailAddress: cp.EmailAddress,
+				Title:        cp.Title,
+				CompanyName:  cp.CompanyName,
+			})
+		}
+	}
+
+	resp, err := s.client.gen.UpdateProjectAccessWithResponse(ctx, bucketID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var result UpdateProjectAccessResponse
-	if err := resp.UnmarshalData(&result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &result, nil
+	// Convert the response
+	result := &UpdateProjectAccessResponse{
+		Granted: make([]Person, 0, len(resp.JSON200.Result.Granted)),
+		Revoked: make([]Person, 0, len(resp.JSON200.Result.Revoked)),
+	}
+	for _, gp := range resp.JSON200.Result.Granted {
+		result.Granted = append(result.Granted, personFromGenerated(gp))
+	}
+	for _, gp := range resp.JSON200.Result.Revoked {
+		result.Revoked = append(result.Revoked, personFromGenerated(gp))
+	}
+
+	return result, nil
+}
+
+// personFromGenerated converts a generated Person to our clean Person type.
+func personFromGenerated(gp generated.Person) Person {
+	p := Person{
+		AttachableSGID:    gp.AttachableSgid,
+		Name:              gp.Name,
+		EmailAddress:      gp.EmailAddress,
+		PersonableType:    gp.PersonableType,
+		Title:             gp.Title,
+		Bio:               gp.Bio,
+		Location:          gp.Location,
+		Admin:             gp.Admin,
+		Owner:             gp.Owner,
+		Client:            gp.Client,
+		Employee:          gp.Employee,
+		TimeZone:          gp.TimeZone,
+		AvatarURL:         gp.AvatarUrl,
+		CanManageProjects: gp.CanManageProjects,
+		CanManagePeople:   gp.CanManagePeople,
+	}
+
+	if gp.Id != nil {
+		p.ID = *gp.Id
+	}
+
+	// Convert timestamps to strings (the SDK Person type uses strings for these)
+	if !gp.CreatedAt.IsZero() {
+		p.CreatedAt = gp.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
+	}
+	if !gp.UpdatedAt.IsZero() {
+		p.UpdatedAt = gp.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
+	}
+
+	// Convert company
+	if gp.Company.Id != nil || gp.Company.Name != "" {
+		p.Company = &PersonCompany{
+			ID:   derefInt64(gp.Company.Id),
+			Name: gp.Company.Name,
+		}
+	}
+
+	return p
 }

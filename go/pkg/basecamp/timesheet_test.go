@@ -179,69 +179,66 @@ func TestTimesheetEntry_UnmarshalRecordingReport(t *testing.T) {
 	}
 }
 
-func TestTimesheetReportOptions_BuildQueryParams(t *testing.T) {
+func TestTimesheetReportOptions_BuildTimesheetParams(t *testing.T) {
 	service := &TimesheetService{}
 
 	tests := []struct {
-		name     string
-		opts     *TimesheetReportOptions
-		expected string
+		name         string
+		opts         *TimesheetReportOptions
+		expectNil    bool
+		expectedFrom string
+		expectedTo   string
+		expectedPID  int64
 	}{
 		{
-			name:     "nil options",
-			opts:     nil,
-			expected: "",
+			name:      "nil options",
+			opts:      nil,
+			expectNil: true,
 		},
 		{
-			name:     "empty options",
-			opts:     &TimesheetReportOptions{},
-			expected: "",
+			name:         "from only",
+			opts:         &TimesheetReportOptions{From: "2024-01-01"},
+			expectedFrom: "2024-01-01",
 		},
 		{
-			name: "from only",
-			opts: &TimesheetReportOptions{
-				From: "2024-01-01",
-			},
-			expected: "?from=2024-01-01",
+			name:       "to only",
+			opts:       &TimesheetReportOptions{To: "2024-01-31"},
+			expectedTo: "2024-01-31",
 		},
 		{
-			name: "to only",
-			opts: &TimesheetReportOptions{
-				To: "2024-01-31",
-			},
-			expected: "?to=2024-01-31",
+			name:        "person_id only",
+			opts:        &TimesheetReportOptions{PersonID: 1049715914},
+			expectedPID: 1049715914,
 		},
 		{
-			name: "person_id only",
-			opts: &TimesheetReportOptions{
-				PersonID: 1049715914,
-			},
-			expected: "?person_id=1049715914",
-		},
-		{
-			name: "from and to",
-			opts: &TimesheetReportOptions{
-				From: "2024-01-01",
-				To:   "2024-01-31",
-			},
-			expected: "?from=2024-01-01&to=2024-01-31",
-		},
-		{
-			name: "all options",
-			opts: &TimesheetReportOptions{
-				From:     "2024-01-01",
-				To:       "2024-01-31",
-				PersonID: 1049715914,
-			},
-			expected: "?from=2024-01-01&person_id=1049715914&to=2024-01-31",
+			name:         "all options",
+			opts:         &TimesheetReportOptions{From: "2024-01-01", To: "2024-01-31", PersonID: 1049715914},
+			expectedFrom: "2024-01-01",
+			expectedTo:   "2024-01-31",
+			expectedPID:  1049715914,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := service.buildQueryParams(tt.opts)
-			if result != tt.expected {
-				t.Errorf("expected %q, got %q", tt.expected, result)
+			result := service.buildTimesheetParams(tt.opts)
+			if tt.expectNil {
+				if result != nil {
+					t.Errorf("expected nil, got %+v", result)
+				}
+				return
+			}
+			if result == nil {
+				t.Fatal("expected non-nil params")
+			}
+			if result.From != tt.expectedFrom {
+				t.Errorf("expected From %q, got %q", tt.expectedFrom, result.From)
+			}
+			if result.To != tt.expectedTo {
+				t.Errorf("expected To %q, got %q", tt.expectedTo, result.To)
+			}
+			if result.PersonId != tt.expectedPID {
+				t.Errorf("expected PersonId %d, got %d", tt.expectedPID, result.PersonId)
 			}
 		})
 	}

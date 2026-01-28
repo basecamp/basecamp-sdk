@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Project represents a Basecamp project.
@@ -110,23 +111,25 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) ([
 		return nil, err
 	}
 
-	path := "/projects.json"
+	params := &generated.ListProjectsParams{}
 	if opts != nil && opts.Status != "" {
-		path = fmt.Sprintf("/projects.json?status=%s", opts.Status)
+		params.Status = string(opts.Status)
 	}
 
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListProjectsWithResponse(ctx, params)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	projects := make([]Project, 0, len(results))
-	for _, raw := range results {
-		var p Project
-		if err := json.Unmarshal(raw, &p); err != nil {
-			return nil, fmt.Errorf("failed to parse project: %w", err)
-		}
-		projects = append(projects, p)
+	projects := make([]Project, 0, len(resp.JSON200.Projects))
+	for _, gp := range resp.JSON200.Projects {
+		projects = append(projects, projectFromGenerated(gp))
 	}
 
 	return projects, nil
@@ -138,17 +141,18 @@ func (s *ProjectsService) Get(ctx context.Context, id int64) (*Project, error) {
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/projects/%d.json", id)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetProjectWithResponse(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-
-	var project Project
-	if err := resp.UnmarshalData(&project); err != nil {
-		return nil, fmt.Errorf("failed to parse project: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	project := projectFromGenerated(resp.JSON200.Project)
 	return &project, nil
 }
 
@@ -163,16 +167,23 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 		return nil, ErrUsage("project name is required")
 	}
 
-	resp, err := s.client.Post(ctx, "/projects.json", req)
+	body := generated.CreateProjectJSONRequestBody{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	resp, err := s.client.gen.CreateProjectWithResponse(ctx, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var project Project
-	if err := resp.UnmarshalData(&project); err != nil {
-		return nil, fmt.Errorf("failed to parse project: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	project := projectFromGenerated(resp.JSON200.Project)
 	return &project, nil
 }
 
@@ -187,17 +198,30 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 		return nil, ErrUsage("project name is required")
 	}
 
-	path := fmt.Sprintf("/projects/%d.json", id)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateProjectJSONRequestBody{
+		Name:        req.Name,
+		Description: req.Description,
+		Admissions:  req.Admissions,
+	}
+	if req.ScheduleAttributes != nil {
+		body.ScheduleAttributes = generated.ScheduleAttributes{
+			StartDate: req.ScheduleAttributes.StartDate,
+			EndDate:   req.ScheduleAttributes.EndDate,
+		}
+	}
+
+	resp, err := s.client.gen.UpdateProjectWithResponse(ctx, id, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var project Project
-	if err := resp.UnmarshalData(&project); err != nil {
-		return nil, fmt.Errorf("failed to parse project: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	project := projectFromGenerated(resp.JSON200.Project)
 	return &project, nil
 }
 
@@ -208,7 +232,70 @@ func (s *ProjectsService) Trash(ctx context.Context, id int64) error {
 		return err
 	}
 
-	path := fmt.Sprintf("/projects/%d.json", id)
-	_, err := s.client.Delete(ctx, path)
-	return err
+	resp, err := s.client.gen.TrashProjectWithResponse(ctx, id)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
+}
+
+// projectFromGenerated converts a generated Project to our clean Project type.
+func projectFromGenerated(gp generated.Project) Project {
+	p := Project{
+		Status:         gp.Status,
+		Name:           gp.Name,
+		Description:    gp.Description,
+		Purpose:        gp.Purpose,
+		ClientsEnabled: gp.ClientsEnabled,
+		BookmarkURL:    gp.BookmarkUrl,
+		URL:            gp.Url,
+		AppURL:         gp.AppUrl,
+		Bookmarked:     gp.Bookmarked,
+		CreatedAt:      gp.CreatedAt,
+		UpdatedAt:      gp.UpdatedAt,
+	}
+
+	if gp.Id != nil {
+		p.ID = *gp.Id
+	}
+
+	// Convert dock items
+	if len(gp.Dock) > 0 {
+		p.Dock = make([]DockItem, 0, len(gp.Dock))
+		for _, gd := range gp.Dock {
+			di := DockItem{
+				Title:   gd.Title,
+				Name:    gd.Name,
+				Enabled: gd.Enabled,
+				URL:     gd.Url,
+				AppURL:  gd.AppUrl,
+			}
+			if gd.Id != nil {
+				di.ID = *gd.Id
+			}
+			if gd.Position != 0 {
+				pos := int(gd.Position)
+				di.Position = &pos
+			}
+			p.Dock = append(p.Dock, di)
+		}
+	}
+
+	// Convert client company
+	if gp.ClientCompany.Id != nil || gp.ClientCompany.Name != "" {
+		p.ClientCompany = &ClientCompany{
+			ID:   derefInt64(gp.ClientCompany.Id),
+			Name: gp.ClientCompany.Name,
+		}
+	}
+
+	// Convert clientside
+	if gp.Clientside.Url != "" || gp.Clientside.AppUrl != "" {
+		p.Clientside = &Clientside{
+			URL:    gp.Clientside.Url,
+			AppURL: gp.Clientside.AppUrl,
+		}
+	}
+
+	return p
 }

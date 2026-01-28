@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Schedule represents a Basecamp schedule (calendar) within a project.
@@ -114,17 +115,18 @@ func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/schedules/%d.json", bucketID, scheduleID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetScheduleWithResponse(ctx, bucketID, scheduleID)
 	if err != nil {
 		return nil, err
 	}
-
-	var schedule Schedule
-	if err := resp.UnmarshalData(&schedule); err != nil {
-		return nil, fmt.Errorf("failed to parse schedule: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	schedule := scheduleFromGenerated(resp.JSON200.Schedule)
 	return &schedule, nil
 }
 
@@ -135,19 +137,20 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/schedules/%d/entries.json", bucketID, scheduleID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListScheduleEntriesWithResponse(ctx, bucketID, scheduleID, nil)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	entries := make([]ScheduleEntry, 0, len(results))
-	for _, raw := range results {
-		var e ScheduleEntry
-		if err := json.Unmarshal(raw, &e); err != nil {
-			return nil, fmt.Errorf("failed to parse schedule entry: %w", err)
-		}
-		entries = append(entries, e)
+	entries := make([]ScheduleEntry, 0, len(resp.JSON200.Entries))
+	for _, ge := range resp.JSON200.Entries {
+		entries = append(entries, scheduleEntryFromGenerated(ge))
 	}
 
 	return entries, nil
@@ -160,17 +163,18 @@ func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/schedule_entries/%d.json", bucketID, entryID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetScheduleEntryWithResponse(ctx, bucketID, entryID)
 	if err != nil {
 		return nil, err
 	}
-
-	var entry ScheduleEntry
-	if err := resp.UnmarshalData(&entry); err != nil {
-		return nil, fmt.Errorf("failed to parse schedule entry: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
 	return &entry, nil
 }
 
@@ -192,17 +196,37 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 		return nil, ErrUsage("schedule entry ends_at is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/schedules/%d/entries.json", bucketID, scheduleID)
-	resp, err := s.client.Post(ctx, path, req)
+	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
+	if err != nil {
+		return nil, ErrUsage("schedule entry starts_at must be in RFC3339 format (e.g., 2024-01-15T09:00:00Z)")
+	}
+	endsAt, err := time.Parse(time.RFC3339, req.EndsAt)
+	if err != nil {
+		return nil, ErrUsage("schedule entry ends_at must be in RFC3339 format (e.g., 2024-01-15T17:00:00Z)")
+	}
+
+	body := generated.CreateScheduleEntryJSONRequestBody{
+		Summary:        req.Summary,
+		StartsAt:       startsAt,
+		EndsAt:         endsAt,
+		Description:    req.Description,
+		ParticipantIds: req.ParticipantIDs,
+		AllDay:         req.AllDay,
+		Notify:         req.Notify,
+	}
+
+	resp, err := s.client.gen.CreateScheduleEntryWithResponse(ctx, bucketID, scheduleID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var entry ScheduleEntry
-	if err := resp.UnmarshalData(&entry); err != nil {
-		return nil, fmt.Errorf("failed to parse schedule entry: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
 	return &entry, nil
 }
 
@@ -218,17 +242,40 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 		return nil, ErrUsage("update request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/schedule_entries/%d.json", bucketID, entryID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateScheduleEntryJSONRequestBody{
+		Description:    req.Description,
+		ParticipantIds: req.ParticipantIDs,
+		AllDay:         req.AllDay,
+		Notify:         req.Notify,
+		Summary:        req.Summary,
+	}
+	if req.StartsAt != "" {
+		startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
+		if err != nil {
+			return nil, ErrUsage("schedule entry starts_at must be in RFC3339 format (e.g., 2024-01-15T09:00:00Z)")
+		}
+		body.StartsAt = startsAt
+	}
+	if req.EndsAt != "" {
+		endsAt, err := time.Parse(time.RFC3339, req.EndsAt)
+		if err != nil {
+			return nil, ErrUsage("schedule entry ends_at must be in RFC3339 format (e.g., 2024-01-15T17:00:00Z)")
+		}
+		body.EndsAt = endsAt
+	}
+
+	resp, err := s.client.gen.UpdateScheduleEntryWithResponse(ctx, bucketID, entryID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var entry ScheduleEntry
-	if err := resp.UnmarshalData(&entry); err != nil {
-		return nil, fmt.Errorf("failed to parse schedule entry: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
 	return &entry, nil
 }
 
@@ -243,17 +290,18 @@ func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, ent
 		return nil, ErrUsage("occurrence date is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/schedule_entries/%d/occurrences/%s.json", bucketID, entryID, date)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetScheduleEntryOccurrenceWithResponse(ctx, bucketID, entryID, date)
 	if err != nil {
 		return nil, err
 	}
-
-	var entry ScheduleEntry
-	if err := resp.UnmarshalData(&entry); err != nil {
-		return nil, fmt.Errorf("failed to parse schedule entry occurrence: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
 	return &entry, nil
 }
 
@@ -269,17 +317,22 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, schedul
 		return nil, ErrUsage("update settings request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/schedules/%d.json", bucketID, scheduleID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateScheduleSettingsJSONRequestBody{
+		IncludeDueAssignments: req.IncludeDueAssignments,
+	}
+
+	resp, err := s.client.gen.UpdateScheduleSettingsWithResponse(ctx, bucketID, scheduleID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var schedule Schedule
-	if err := resp.UnmarshalData(&schedule); err != nil {
-		return nil, fmt.Errorf("failed to parse schedule: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	schedule := scheduleFromGenerated(resp.JSON200.Schedule)
 	return &schedule, nil
 }
 
@@ -291,20 +344,134 @@ func (s *SchedulesService) TrashEntry(ctx context.Context, bucketID, entryID int
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, entryID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
-}
-
-// DeleteEntry permanently removes a schedule entry.
-// bucketID is the project ID, entryID is the schedule entry ID.
-// Note: This permanently deletes the entry. Use TrashEntry for recoverable deletion.
-func (s *SchedulesService) DeleteEntry(ctx context.Context, bucketID, entryID int64) error {
-	if err := s.client.RequireAccount(); err != nil {
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, entryID)
+	if err != nil {
 		return err
 	}
+	return checkResponse(resp.HTTPResponse)
+}
 
-	path := fmt.Sprintf("/buckets/%d/schedule_entries/%d.json", bucketID, entryID)
-	_, err := s.client.Delete(ctx, path)
-	return err
+// Note: Permanent deletion of schedule entries is not supported by the Basecamp API.
+// Use TrashEntry() to move entries to trash (recoverable via the web UI).
+
+// scheduleFromGenerated converts a generated Schedule to our clean type.
+func scheduleFromGenerated(gs generated.Schedule) Schedule {
+	s := Schedule{
+		Status:                gs.Status,
+		VisibleToClients:      gs.VisibleToClients,
+		CreatedAt:             gs.CreatedAt,
+		UpdatedAt:             gs.UpdatedAt,
+		Title:                 gs.Title,
+		InheritsStatus:        gs.InheritsStatus,
+		Type:                  gs.Type,
+		URL:                   gs.Url,
+		AppURL:                gs.AppUrl,
+		BookmarkURL:           gs.BookmarkUrl,
+		Position:              int(gs.Position),
+		IncludeDueAssignments: gs.IncludeDueAssignments,
+		EntriesCount:          int(gs.EntriesCount),
+		EntriesURL:            gs.EntriesUrl,
+	}
+
+	if gs.Id != nil {
+		s.ID = *gs.Id
+	}
+
+	if gs.Bucket.Id != nil || gs.Bucket.Name != "" {
+		s.Bucket = &Bucket{
+			ID:   derefInt64(gs.Bucket.Id),
+			Name: gs.Bucket.Name,
+			Type: gs.Bucket.Type,
+		}
+	}
+
+	if gs.Creator.Id != nil || gs.Creator.Name != "" {
+		s.Creator = &Person{
+			ID:           derefInt64(gs.Creator.Id),
+			Name:         gs.Creator.Name,
+			EmailAddress: gs.Creator.EmailAddress,
+			AvatarURL:    gs.Creator.AvatarUrl,
+			Admin:        gs.Creator.Admin,
+			Owner:        gs.Creator.Owner,
+		}
+	}
+
+	return s
+}
+
+// scheduleEntryFromGenerated converts a generated ScheduleEntry to our clean type.
+func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
+	e := ScheduleEntry{
+		Status:           ge.Status,
+		VisibleToClients: ge.VisibleToClients,
+		CreatedAt:        ge.CreatedAt,
+		UpdatedAt:        ge.UpdatedAt,
+		Title:            ge.Title,
+		Summary:          ge.Summary,
+		InheritsStatus:   ge.InheritsStatus,
+		Type:             ge.Type,
+		URL:              ge.Url,
+		AppURL:           ge.AppUrl,
+		BookmarkURL:      ge.BookmarkUrl,
+		SubscriptionURL:  ge.SubscriptionUrl,
+		CommentsURL:      ge.CommentsUrl,
+		CommentsCount:    int(ge.CommentsCount),
+		StartsAt:         ge.StartsAt,
+		EndsAt:           ge.EndsAt,
+		AllDay:           ge.AllDay,
+		Description:      ge.Description,
+	}
+
+	if ge.Id != nil {
+		e.ID = *ge.Id
+	}
+
+	if ge.Parent.Id != nil || ge.Parent.Title != "" {
+		e.Parent = &Parent{
+			ID:     derefInt64(ge.Parent.Id),
+			Title:  ge.Parent.Title,
+			Type:   ge.Parent.Type,
+			URL:    ge.Parent.Url,
+			AppURL: ge.Parent.AppUrl,
+		}
+	}
+
+	if ge.Bucket.Id != nil || ge.Bucket.Name != "" {
+		e.Bucket = &Bucket{
+			ID:   derefInt64(ge.Bucket.Id),
+			Name: ge.Bucket.Name,
+			Type: ge.Bucket.Type,
+		}
+	}
+
+	if ge.Creator.Id != nil || ge.Creator.Name != "" {
+		e.Creator = &Person{
+			ID:           derefInt64(ge.Creator.Id),
+			Name:         ge.Creator.Name,
+			EmailAddress: ge.Creator.EmailAddress,
+			AvatarURL:    ge.Creator.AvatarUrl,
+			Admin:        ge.Creator.Admin,
+			Owner:        ge.Creator.Owner,
+		}
+	}
+
+	// Convert participants
+	if len(ge.Participants) > 0 {
+		e.Participants = make([]Person, 0, len(ge.Participants))
+		for _, gp := range ge.Participants {
+			p := Person{
+				Name:         gp.Name,
+				EmailAddress: gp.EmailAddress,
+				AvatarURL:    gp.AvatarUrl,
+				Admin:        gp.Admin,
+				Owner:        gp.Owner,
+			}
+			if gp.Id != nil {
+				p.ID = *gp.Id
+			}
+			e.Participants = append(e.Participants, p)
+		}
+	}
+
+	return e
 }

@@ -23,14 +23,20 @@ smithy-build: behavior-model
 	@echo "==> Building OpenAPI from Smithy..."
 	cd spec && smithy build
 	cp spec/build/smithy/openapi/openapi/Basecamp.openapi.json openapi.json
+	@echo "==> Post-processing OpenAPI for Go types..."
+	./scripts/enhance-openapi-go-types.sh
 	@echo "Updated openapi.json"
 
 # Check that openapi.json is up to date
 smithy-check: smithy-validate
 	@echo "==> Checking OpenAPI freshness..."
 	@cd spec && smithy build
-	@diff -q openapi.json spec/build/smithy/openapi/openapi/Basecamp.openapi.json > /dev/null 2>&1 || \
-		(echo "ERROR: openapi.json is out of date. Run 'make smithy-build'" && exit 1)
+	@TMPFILE=$$(mktemp) && \
+		cp spec/build/smithy/openapi/openapi/Basecamp.openapi.json "$$TMPFILE" && \
+		./scripts/enhance-openapi-go-types.sh "$$TMPFILE" "$$TMPFILE" > /dev/null 2>&1 && \
+		(diff -q openapi.json "$$TMPFILE" > /dev/null 2>&1 || \
+			(rm -f "$$TMPFILE" && echo "ERROR: openapi.json is out of date. Run 'make smithy-build'" && exit 1)) && \
+		rm -f "$$TMPFILE"
 	@echo "openapi.json is up to date"
 
 # Clean Smithy build artifacts
@@ -57,7 +63,7 @@ behavior-model-check:
 # Go SDK targets (delegates to go/Makefile)
 #------------------------------------------------------------------------------
 
-.PHONY: go-test go-lint go-check go-clean
+.PHONY: go-test go-lint go-check go-clean go-check-drift
 
 go-test:
 	@$(MAKE) -C go test
@@ -70,6 +76,11 @@ go-check:
 
 go-clean:
 	@$(MAKE) -C go clean
+
+# Check for drift between generated client and service layer
+go-check-drift:
+	@echo "==> Checking service layer drift..."
+	@./scripts/check-service-drift.sh
 
 #------------------------------------------------------------------------------
 # TypeScript SDK targets
@@ -155,6 +166,7 @@ help:
 	@echo "  go-test          Run Go tests"
 	@echo "  go-lint          Run Go linter"
 	@echo "  go-check         Run all Go checks"
+	@echo "  go-check-drift   Check service layer drift vs generated client"
 	@echo "  go-clean         Remove Go build artifacts"
 	@echo ""
 	@echo "TypeScript SDK:"

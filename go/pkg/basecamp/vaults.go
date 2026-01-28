@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Vault represents a Basecamp vault (folder) in the Files tool.
@@ -150,17 +151,18 @@ func (s *VaultsService) Get(ctx context.Context, bucketID, vaultID int64) (*Vaul
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/vaults/%d.json", bucketID, vaultID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetVaultWithResponse(ctx, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
-
-	var vault Vault
-	if err := resp.UnmarshalData(&vault); err != nil {
-		return nil, fmt.Errorf("failed to parse vault: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	vault := vaultFromGenerated(resp.JSON200.Vault)
 	return &vault, nil
 }
 
@@ -171,21 +173,21 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64) ([]Va
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/vaults/%d/vaults.json", bucketID, vaultID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListVaultsWithResponse(ctx, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
-
-	vaults := make([]Vault, 0, len(results))
-	for _, raw := range results {
-		var v Vault
-		if err := json.Unmarshal(raw, &v); err != nil {
-			return nil, fmt.Errorf("failed to parse vault: %w", err)
-		}
-		vaults = append(vaults, v)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
 	}
 
+	vaults := make([]Vault, 0, len(resp.JSON200.Vaults))
+	for _, gv := range resp.JSON200.Vaults {
+		vaults = append(vaults, vaultFromGenerated(gv))
+	}
 	return vaults, nil
 }
 
@@ -201,17 +203,22 @@ func (s *VaultsService) Create(ctx context.Context, bucketID, vaultID int64, req
 		return nil, ErrUsage("vault title is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/vaults/%d/vaults.json", bucketID, vaultID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateVaultJSONRequestBody{
+		Title: req.Title,
+	}
+
+	resp, err := s.client.gen.CreateVaultWithResponse(ctx, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var vault Vault
-	if err := resp.UnmarshalData(&vault); err != nil {
-		return nil, fmt.Errorf("failed to parse vault: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	vault := vaultFromGenerated(resp.JSON200.Vault)
 	return &vault, nil
 }
 
@@ -227,17 +234,22 @@ func (s *VaultsService) Update(ctx context.Context, bucketID, vaultID int64, req
 		return nil, ErrUsage("update request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/vaults/%d.json", bucketID, vaultID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateVaultJSONRequestBody{
+		Title: req.Title,
+	}
+
+	resp, err := s.client.gen.UpdateVaultWithResponse(ctx, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var vault Vault
-	if err := resp.UnmarshalData(&vault); err != nil {
-		return nil, fmt.Errorf("failed to parse vault: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	vault := vaultFromGenerated(resp.JSON200.Vault)
 	return &vault, nil
 }
 
@@ -258,17 +270,18 @@ func (s *DocumentsService) Get(ctx context.Context, bucketID, documentID int64) 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/documents/%d.json", bucketID, documentID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetDocumentWithResponse(ctx, bucketID, documentID)
 	if err != nil {
 		return nil, err
 	}
-
-	var document Document
-	if err := resp.UnmarshalData(&document); err != nil {
-		return nil, fmt.Errorf("failed to parse document: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	document := documentFromGenerated(resp.JSON200.Document)
 	return &document, nil
 }
 
@@ -279,21 +292,21 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64) ([
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/vaults/%d/documents.json", bucketID, vaultID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListDocumentsWithResponse(ctx, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
-
-	documents := make([]Document, 0, len(results))
-	for _, raw := range results {
-		var d Document
-		if err := json.Unmarshal(raw, &d); err != nil {
-			return nil, fmt.Errorf("failed to parse document: %w", err)
-		}
-		documents = append(documents, d)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
 	}
 
+	documents := make([]Document, 0, len(resp.JSON200.Documents))
+	for _, gd := range resp.JSON200.Documents {
+		documents = append(documents, documentFromGenerated(gd))
+	}
 	return documents, nil
 }
 
@@ -309,17 +322,24 @@ func (s *DocumentsService) Create(ctx context.Context, bucketID, vaultID int64, 
 		return nil, ErrUsage("document title is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/vaults/%d/documents.json", bucketID, vaultID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateDocumentJSONRequestBody{
+		Title:   req.Title,
+		Content: req.Content,
+		Status:  req.Status,
+	}
+
+	resp, err := s.client.gen.CreateDocumentWithResponse(ctx, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var document Document
-	if err := resp.UnmarshalData(&document); err != nil {
-		return nil, fmt.Errorf("failed to parse document: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	document := documentFromGenerated(resp.JSON200.Document)
 	return &document, nil
 }
 
@@ -335,17 +355,23 @@ func (s *DocumentsService) Update(ctx context.Context, bucketID, documentID int6
 		return nil, ErrUsage("update request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/documents/%d.json", bucketID, documentID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateDocumentJSONRequestBody{
+		Title:   req.Title,
+		Content: req.Content,
+	}
+
+	resp, err := s.client.gen.UpdateDocumentWithResponse(ctx, bucketID, documentID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var document Document
-	if err := resp.UnmarshalData(&document); err != nil {
-		return nil, fmt.Errorf("failed to parse document: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	document := documentFromGenerated(resp.JSON200.Document)
 	return &document, nil
 }
 
@@ -357,9 +383,11 @@ func (s *DocumentsService) Trash(ctx context.Context, bucketID, documentID int64
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, documentID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, documentID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // UploadsService handles upload (file) operations.
@@ -379,17 +407,18 @@ func (s *UploadsService) Get(ctx context.Context, bucketID, uploadID int64) (*Up
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/uploads/%d.json", bucketID, uploadID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetUploadWithResponse(ctx, bucketID, uploadID)
 	if err != nil {
 		return nil, err
 	}
-
-	var upload Upload
-	if err := resp.UnmarshalData(&upload); err != nil {
-		return nil, fmt.Errorf("failed to parse upload: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	upload := uploadFromGenerated(resp.JSON200.Upload)
 	return &upload, nil
 }
 
@@ -400,21 +429,21 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64) ([]U
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/vaults/%d/uploads.json", bucketID, vaultID)
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListUploadsWithResponse(ctx, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
-
-	uploads := make([]Upload, 0, len(results))
-	for _, raw := range results {
-		var u Upload
-		if err := json.Unmarshal(raw, &u); err != nil {
-			return nil, fmt.Errorf("failed to parse upload: %w", err)
-		}
-		uploads = append(uploads, u)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
 	}
 
+	uploads := make([]Upload, 0, len(resp.JSON200.Uploads))
+	for _, gu := range resp.JSON200.Uploads {
+		uploads = append(uploads, uploadFromGenerated(gu))
+	}
 	return uploads, nil
 }
 
@@ -430,17 +459,23 @@ func (s *UploadsService) Update(ctx context.Context, bucketID, uploadID int64, r
 		return nil, ErrUsage("update request is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/uploads/%d.json", bucketID, uploadID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateUploadJSONRequestBody{
+		Description: req.Description,
+		BaseName:    req.BaseName,
+	}
+
+	resp, err := s.client.gen.UpdateUploadWithResponse(ctx, bucketID, uploadID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var upload Upload
-	if err := resp.UnmarshalData(&upload); err != nil {
-		return nil, fmt.Errorf("failed to parse upload: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	upload := uploadFromGenerated(resp.JSON200.Upload)
 	return &upload, nil
 }
 
@@ -457,17 +492,24 @@ func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, re
 		return nil, ErrUsage("upload attachable_sgid is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/vaults/%d/uploads.json", bucketID, vaultID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateUploadJSONRequestBody{
+		AttachableSgid: req.AttachableSGID,
+		Description:    req.Description,
+		BaseName:       req.BaseName,
+	}
+
+	resp, err := s.client.gen.CreateUploadWithResponse(ctx, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var upload Upload
-	if err := resp.UnmarshalData(&upload); err != nil {
-		return nil, fmt.Errorf("failed to parse upload: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	upload := uploadFromGenerated(resp.JSON200.Upload)
 	return &upload, nil
 }
 
@@ -479,9 +521,11 @@ func (s *UploadsService) Trash(ctx context.Context, bucketID, uploadID int64) er
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, uploadID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, uploadID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // ListVersions returns all versions of an upload.
@@ -491,15 +535,196 @@ func (s *UploadsService) ListVersions(ctx context.Context, bucketID, uploadID in
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/uploads/%d/versions.json", bucketID, uploadID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.ListUploadVersionsWithResponse(ctx, bucketID, uploadID)
 	if err != nil {
 		return nil, err
 	}
-
-	var uploads []Upload
-	if err := resp.UnmarshalData(&uploads); err != nil {
+	if err := checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
+
+	uploads := make([]Upload, 0, len(resp.JSON200.Uploads))
+	for _, gu := range resp.JSON200.Uploads {
+		uploads = append(uploads, uploadFromGenerated(gu))
+	}
 	return uploads, nil
+}
+
+// vaultFromGenerated converts a generated Vault to our clean Vault type.
+func vaultFromGenerated(gv generated.Vault) Vault {
+	v := Vault{
+		Status:           gv.Status,
+		VisibleToClients: gv.VisibleToClients,
+		Title:            gv.Title,
+		InheritsStatus:   gv.InheritsStatus,
+		Type:             gv.Type,
+		URL:              gv.Url,
+		AppURL:           gv.AppUrl,
+		BookmarkURL:      gv.BookmarkUrl,
+		Position:         int(gv.Position),
+		DocumentsCount:   int(gv.DocumentsCount),
+		DocumentsURL:     gv.DocumentsUrl,
+		UploadsCount:     int(gv.UploadsCount),
+		UploadsURL:       gv.UploadsUrl,
+		VaultsCount:      int(gv.VaultsCount),
+		VaultsURL:        gv.VaultsUrl,
+		CreatedAt:        gv.CreatedAt,
+		UpdatedAt:        gv.UpdatedAt,
+	}
+
+	if gv.Id != nil {
+		v.ID = *gv.Id
+	}
+
+	if gv.Parent.Id != nil || gv.Parent.Title != "" {
+		v.Parent = &Parent{
+			ID:     derefInt64(gv.Parent.Id),
+			Title:  gv.Parent.Title,
+			Type:   gv.Parent.Type,
+			URL:    gv.Parent.Url,
+			AppURL: gv.Parent.AppUrl,
+		}
+	}
+
+	if gv.Bucket.Id != nil || gv.Bucket.Name != "" {
+		v.Bucket = &Bucket{
+			ID:   derefInt64(gv.Bucket.Id),
+			Name: gv.Bucket.Name,
+			Type: gv.Bucket.Type,
+		}
+	}
+
+	if gv.Creator.Id != nil || gv.Creator.Name != "" {
+		v.Creator = &Person{
+			ID:           derefInt64(gv.Creator.Id),
+			Name:         gv.Creator.Name,
+			EmailAddress: gv.Creator.EmailAddress,
+			AvatarURL:    gv.Creator.AvatarUrl,
+			Admin:        gv.Creator.Admin,
+			Owner:        gv.Creator.Owner,
+		}
+	}
+
+	return v
+}
+
+// documentFromGenerated converts a generated Document to our clean Document type.
+func documentFromGenerated(gd generated.Document) Document {
+	d := Document{
+		Status:           gd.Status,
+		VisibleToClients: gd.VisibleToClients,
+		Title:            gd.Title,
+		InheritsStatus:   gd.InheritsStatus,
+		Type:             gd.Type,
+		URL:              gd.Url,
+		AppURL:           gd.AppUrl,
+		BookmarkURL:      gd.BookmarkUrl,
+		SubscriptionURL:  gd.SubscriptionUrl,
+		CommentsCount:    int(gd.CommentsCount),
+		CommentsURL:      gd.CommentsUrl,
+		Position:         int(gd.Position),
+		Content:          gd.Content,
+		CreatedAt:        gd.CreatedAt,
+		UpdatedAt:        gd.UpdatedAt,
+	}
+
+	if gd.Id != nil {
+		d.ID = *gd.Id
+	}
+
+	if gd.Parent.Id != nil || gd.Parent.Title != "" {
+		d.Parent = &Parent{
+			ID:     derefInt64(gd.Parent.Id),
+			Title:  gd.Parent.Title,
+			Type:   gd.Parent.Type,
+			URL:    gd.Parent.Url,
+			AppURL: gd.Parent.AppUrl,
+		}
+	}
+
+	if gd.Bucket.Id != nil || gd.Bucket.Name != "" {
+		d.Bucket = &Bucket{
+			ID:   derefInt64(gd.Bucket.Id),
+			Name: gd.Bucket.Name,
+			Type: gd.Bucket.Type,
+		}
+	}
+
+	if gd.Creator.Id != nil || gd.Creator.Name != "" {
+		d.Creator = &Person{
+			ID:           derefInt64(gd.Creator.Id),
+			Name:         gd.Creator.Name,
+			EmailAddress: gd.Creator.EmailAddress,
+			AvatarURL:    gd.Creator.AvatarUrl,
+			Admin:        gd.Creator.Admin,
+			Owner:        gd.Creator.Owner,
+		}
+	}
+
+	return d
+}
+
+// uploadFromGenerated converts a generated Upload to our clean Upload type.
+func uploadFromGenerated(gu generated.Upload) Upload {
+	u := Upload{
+		Status:           gu.Status,
+		VisibleToClients: gu.VisibleToClients,
+		Title:            gu.Title,
+		InheritsStatus:   gu.InheritsStatus,
+		Type:             gu.Type,
+		URL:              gu.Url,
+		AppURL:           gu.AppUrl,
+		BookmarkURL:      gu.BookmarkUrl,
+		SubscriptionURL:  gu.SubscriptionUrl,
+		CommentsCount:    int(gu.CommentsCount),
+		CommentsURL:      gu.CommentsUrl,
+		Position:         int(gu.Position),
+		Description:      gu.Description,
+		ContentType:      gu.ContentType,
+		ByteSize:         gu.ByteSize,
+		Width:            int(gu.Width),
+		Height:           int(gu.Height),
+		DownloadURL:      gu.DownloadUrl,
+		Filename:         gu.Filename,
+		CreatedAt:        gu.CreatedAt,
+		UpdatedAt:        gu.UpdatedAt,
+	}
+
+	if gu.Id != nil {
+		u.ID = *gu.Id
+	}
+
+	if gu.Parent.Id != nil || gu.Parent.Title != "" {
+		u.Parent = &Parent{
+			ID:     derefInt64(gu.Parent.Id),
+			Title:  gu.Parent.Title,
+			Type:   gu.Parent.Type,
+			URL:    gu.Parent.Url,
+			AppURL: gu.Parent.AppUrl,
+		}
+	}
+
+	if gu.Bucket.Id != nil || gu.Bucket.Name != "" {
+		u.Bucket = &Bucket{
+			ID:   derefInt64(gu.Bucket.Id),
+			Name: gu.Bucket.Name,
+			Type: gu.Bucket.Type,
+		}
+	}
+
+	if gu.Creator.Id != nil || gu.Creator.Name != "" {
+		u.Creator = &Person{
+			ID:           derefInt64(gu.Creator.Id),
+			Name:         gu.Creator.Name,
+			EmailAddress: gu.Creator.EmailAddress,
+			AvatarURL:    gu.Creator.AvatarUrl,
+			Admin:        gu.Creator.Admin,
+			Owner:        gu.Creator.Owner,
+		}
+	}
+
+	return u
 }

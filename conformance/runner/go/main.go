@@ -211,7 +211,9 @@ func runTest(tc TestCase) TestResult {
 			Content: getStringParam(tc.RequestBody, "content"),
 		}
 		if dueOn, ok := tc.RequestBody["due_on"].(string); ok {
-			body.DueOn = &dueOn
+			if t, err := time.Parse("2006-01-02", dueOn); err == nil {
+				body.DueOn = t
+			}
 		}
 		sdkResp, sdkErr = client.CreateTodo(ctx, projectId, todolistId, body)
 

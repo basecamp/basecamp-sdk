@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,6 +16,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
+
 	"time"
 
 	"github.com/oapi-codegen/runtime"
@@ -22,290 +25,290 @@ import (
 
 // Campfire defines model for Campfire.
 type Campfire struct {
-	AppUrl           *string     `json:"app_url,omitempty"`
-	BookmarkUrl      *string     `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket `json:"bucket,omitempty"`
-	CreatedAt        *string     `json:"created_at,omitempty"`
-	Creator          *Person     `json:"creator,omitempty"`
-	Id               *int64      `json:"id,omitempty"`
-	InheritsStatus   *bool       `json:"inherits_status,omitempty"`
-	LinesUrl         *string     `json:"lines_url,omitempty"`
-	Position         *int32      `json:"position,omitempty"`
-	Status           *string     `json:"status,omitempty"`
-	SubscriptionUrl  *string     `json:"subscription_url,omitempty"`
-	Title            *string     `json:"title,omitempty"`
-	Topic            *string     `json:"topic,omitempty"`
-	Type             *string     `json:"type,omitempty"`
-	UpdatedAt        *string     `json:"updated_at,omitempty"`
-	Url              *string     `json:"url,omitempty"`
-	VisibleToClients *bool       `json:"visible_to_clients,omitempty"`
+	AppUrl           string     `json:"app_url,omitempty"`
+	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket `json:"bucket,omitempty"`
+	CreatedAt        time.Time  `json:"created_at,omitempty"`
+	Creator          Person     `json:"creator,omitempty"`
+	Id               *int64     `json:"id,omitempty"`
+	InheritsStatus   bool       `json:"inherits_status,omitempty"`
+	LinesUrl         string     `json:"lines_url,omitempty"`
+	Position         int32      `json:"position,omitempty"`
+	Status           string     `json:"status,omitempty"`
+	SubscriptionUrl  string     `json:"subscription_url,omitempty"`
+	Title            string     `json:"title,omitempty"`
+	Topic            string     `json:"topic,omitempty"`
+	Type             string     `json:"type,omitempty"`
+	UpdatedAt        time.Time  `json:"updated_at,omitempty"`
+	Url              string     `json:"url,omitempty"`
+	VisibleToClients bool       `json:"visible_to_clients,omitempty"`
 }
 
 // CampfireLine defines model for CampfireLine.
 type CampfireLine struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	Content          *string          `json:"content,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Content          string          `json:"content,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // Card defines model for Card.
 type Card struct {
-	AppUrl                *string          `json:"app_url,omitempty"`
-	Assignees             *[]Person        `json:"assignees,omitempty"`
-	BookmarkUrl           *string          `json:"bookmark_url,omitempty"`
-	Bucket                *TodoBucket      `json:"bucket,omitempty"`
-	CommentsCount         *int32           `json:"comments_count,omitempty"`
-	CommentsUrl           *string          `json:"comments_url,omitempty"`
-	Completed             *bool            `json:"completed,omitempty"`
-	CompletedAt           *string          `json:"completed_at,omitempty"`
-	Completer             *Person          `json:"completer,omitempty"`
-	CompletionSubscribers *[]Person        `json:"completion_subscribers,omitempty"`
-	CompletionUrl         *string          `json:"completion_url,omitempty"`
-	Content               *string          `json:"content,omitempty"`
-	CreatedAt             *string          `json:"created_at,omitempty"`
-	Creator               *Person          `json:"creator,omitempty"`
-	Description           *string          `json:"description,omitempty"`
-	DueOn                 *string          `json:"due_on,omitempty"`
-	Id                    *int64           `json:"id,omitempty"`
-	InheritsStatus        *bool            `json:"inherits_status,omitempty"`
-	Parent                *RecordingParent `json:"parent,omitempty"`
-	Position              *int32           `json:"position,omitempty"`
-	Status                *string          `json:"status,omitempty"`
-	Steps                 *[]CardStep      `json:"steps,omitempty"`
-	SubscriptionUrl       *string          `json:"subscription_url,omitempty"`
-	Title                 *string          `json:"title,omitempty"`
-	Type                  *string          `json:"type,omitempty"`
-	UpdatedAt             *string          `json:"updated_at,omitempty"`
-	Url                   *string          `json:"url,omitempty"`
-	VisibleToClients      *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl                string          `json:"app_url,omitempty"`
+	Assignees             []Person        `json:"assignees,omitempty"`
+	BookmarkUrl           string          `json:"bookmark_url,omitempty"`
+	Bucket                TodoBucket      `json:"bucket,omitempty"`
+	CommentsCount         int32           `json:"comments_count,omitempty"`
+	CommentsUrl           string          `json:"comments_url,omitempty"`
+	Completed             bool            `json:"completed,omitempty"`
+	CompletedAt           time.Time       `json:"completed_at,omitempty"`
+	Completer             Person          `json:"completer,omitempty"`
+	CompletionSubscribers []Person        `json:"completion_subscribers,omitempty"`
+	CompletionUrl         string          `json:"completion_url,omitempty"`
+	Content               string          `json:"content,omitempty"`
+	CreatedAt             time.Time       `json:"created_at,omitempty"`
+	Creator               Person          `json:"creator,omitempty"`
+	Description           string          `json:"description,omitempty"`
+	DueOn                 time.Time       `json:"due_on,omitempty"`
+	Id                    *int64          `json:"id,omitempty"`
+	InheritsStatus        bool            `json:"inherits_status,omitempty"`
+	Parent                RecordingParent `json:"parent,omitempty"`
+	Position              int32           `json:"position,omitempty"`
+	Status                string          `json:"status,omitempty"`
+	Steps                 []CardStep      `json:"steps,omitempty"`
+	SubscriptionUrl       string          `json:"subscription_url,omitempty"`
+	Title                 string          `json:"title,omitempty"`
+	Type                  string          `json:"type,omitempty"`
+	UpdatedAt             time.Time       `json:"updated_at,omitempty"`
+	Url                   string          `json:"url,omitempty"`
+	VisibleToClients      bool            `json:"visible_to_clients,omitempty"`
 }
 
 // CardColumn defines model for CardColumn.
 type CardColumn struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	CardsCount       *int32           `json:"cards_count,omitempty"`
-	CardsUrl         *string          `json:"cards_url,omitempty"`
-	Color            *string          `json:"color,omitempty"`
-	CommentsCount    *int32           `json:"comments_count,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Description      *string          `json:"description,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Position         *int32           `json:"position,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Subscribers      *[]Person        `json:"subscribers,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	CardsCount       int32           `json:"cards_count,omitempty"`
+	CardsUrl         string          `json:"cards_url,omitempty"`
+	Color            string          `json:"color,omitempty"`
+	CommentsCount    int32           `json:"comments_count,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Description      string          `json:"description,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Position         int32           `json:"position,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Subscribers      []Person        `json:"subscribers,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // CardStep defines model for CardStep.
 type CardStep struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	Assignees        *[]Person        `json:"assignees,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	Completed        *bool            `json:"completed,omitempty"`
-	CompletedAt      *string          `json:"completed_at,omitempty"`
-	Completer        *Person          `json:"completer,omitempty"`
-	CompletionUrl    *string          `json:"completion_url,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	DueOn            *string          `json:"due_on,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Position         *int32           `json:"position,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	Assignees        []Person        `json:"assignees,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Completed        bool            `json:"completed,omitempty"`
+	CompletedAt      time.Time       `json:"completed_at,omitempty"`
+	Completer        Person          `json:"completer,omitempty"`
+	CompletionUrl    string          `json:"completion_url,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	DueOn            time.Time       `json:"due_on,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Position         int32           `json:"position,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // CardTable defines model for CardTable.
 type CardTable struct {
-	AppUrl           *string       `json:"app_url,omitempty"`
-	BookmarkUrl      *string       `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket   `json:"bucket,omitempty"`
-	CreatedAt        *string       `json:"created_at,omitempty"`
-	Creator          *Person       `json:"creator,omitempty"`
-	Id               *int64        `json:"id,omitempty"`
-	InheritsStatus   *bool         `json:"inherits_status,omitempty"`
-	Lists            *[]CardColumn `json:"lists,omitempty"`
-	Status           *string       `json:"status,omitempty"`
-	Subscribers      *[]Person     `json:"subscribers,omitempty"`
-	SubscriptionUrl  *string       `json:"subscription_url,omitempty"`
-	Title            *string       `json:"title,omitempty"`
-	Type             *string       `json:"type,omitempty"`
-	UpdatedAt        *string       `json:"updated_at,omitempty"`
-	Url              *string       `json:"url,omitempty"`
-	VisibleToClients *bool         `json:"visible_to_clients,omitempty"`
+	AppUrl           string       `json:"app_url,omitempty"`
+	BookmarkUrl      string       `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket   `json:"bucket,omitempty"`
+	CreatedAt        time.Time    `json:"created_at,omitempty"`
+	Creator          Person       `json:"creator,omitempty"`
+	Id               *int64       `json:"id,omitempty"`
+	InheritsStatus   bool         `json:"inherits_status,omitempty"`
+	Lists            []CardColumn `json:"lists,omitempty"`
+	Status           string       `json:"status,omitempty"`
+	Subscribers      []Person     `json:"subscribers,omitempty"`
+	SubscriptionUrl  string       `json:"subscription_url,omitempty"`
+	Title            string       `json:"title,omitempty"`
+	Type             string       `json:"type,omitempty"`
+	UpdatedAt        time.Time    `json:"updated_at,omitempty"`
+	Url              string       `json:"url,omitempty"`
+	VisibleToClients bool         `json:"visible_to_clients,omitempty"`
 }
 
 // Chatbot defines model for Chatbot.
 type Chatbot struct {
-	AppUrl      *string `json:"app_url,omitempty"`
-	CommandUrl  *string `json:"command_url,omitempty"`
-	CreatedAt   *string `json:"created_at,omitempty"`
-	Id          *int64  `json:"id,omitempty"`
-	LinesUrl    *string `json:"lines_url,omitempty"`
-	ServiceName *string `json:"service_name,omitempty"`
-	UpdatedAt   *string `json:"updated_at,omitempty"`
-	Url         *string `json:"url,omitempty"`
+	AppUrl      string    `json:"app_url,omitempty"`
+	CommandUrl  string    `json:"command_url,omitempty"`
+	CreatedAt   time.Time `json:"created_at,omitempty"`
+	Id          *int64    `json:"id,omitempty"`
+	LinesUrl    string    `json:"lines_url,omitempty"`
+	ServiceName string    `json:"service_name,omitempty"`
+	UpdatedAt   time.Time `json:"updated_at,omitempty"`
+	Url         string    `json:"url,omitempty"`
 }
 
 // ClientApproval defines model for ClientApproval.
 type ClientApproval struct {
-	AppUrl           *string                   `json:"app_url,omitempty"`
-	ApprovalStatus   *string                   `json:"approval_status,omitempty"`
-	Approver         *Person                   `json:"approver,omitempty"`
-	BookmarkUrl      *string                   `json:"bookmark_url,omitempty"`
-	Bucket           *RecordingBucket          `json:"bucket,omitempty"`
-	Content          *string                   `json:"content,omitempty"`
-	CreatedAt        *string                   `json:"created_at,omitempty"`
-	Creator          *Person                   `json:"creator,omitempty"`
-	DueOn            *string                   `json:"due_on,omitempty"`
-	Id               *int64                    `json:"id,omitempty"`
-	InheritsStatus   *bool                     `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent          `json:"parent,omitempty"`
-	RepliesCount     *int32                    `json:"replies_count,omitempty"`
-	RepliesUrl       *string                   `json:"replies_url,omitempty"`
-	Responses        *[]ClientApprovalResponse `json:"responses,omitempty"`
-	Status           *string                   `json:"status,omitempty"`
-	Subject          *string                   `json:"subject,omitempty"`
-	SubscriptionUrl  *string                   `json:"subscription_url,omitempty"`
-	Title            *string                   `json:"title,omitempty"`
-	Type             *string                   `json:"type,omitempty"`
-	UpdatedAt        *string                   `json:"updated_at,omitempty"`
-	Url              *string                   `json:"url,omitempty"`
-	VisibleToClients *bool                     `json:"visible_to_clients,omitempty"`
+	AppUrl           string                   `json:"app_url,omitempty"`
+	ApprovalStatus   string                   `json:"approval_status,omitempty"`
+	Approver         Person                   `json:"approver,omitempty"`
+	BookmarkUrl      string                   `json:"bookmark_url,omitempty"`
+	Bucket           RecordingBucket          `json:"bucket,omitempty"`
+	Content          string                   `json:"content,omitempty"`
+	CreatedAt        time.Time                `json:"created_at,omitempty"`
+	Creator          Person                   `json:"creator,omitempty"`
+	DueOn            time.Time                `json:"due_on,omitempty"`
+	Id               *int64                   `json:"id,omitempty"`
+	InheritsStatus   bool                     `json:"inherits_status,omitempty"`
+	Parent           RecordingParent          `json:"parent,omitempty"`
+	RepliesCount     int32                    `json:"replies_count,omitempty"`
+	RepliesUrl       string                   `json:"replies_url,omitempty"`
+	Responses        []ClientApprovalResponse `json:"responses,omitempty"`
+	Status           string                   `json:"status,omitempty"`
+	Subject          string                   `json:"subject,omitempty"`
+	SubscriptionUrl  string                   `json:"subscription_url,omitempty"`
+	Title            string                   `json:"title,omitempty"`
+	Type             string                   `json:"type,omitempty"`
+	UpdatedAt        time.Time                `json:"updated_at,omitempty"`
+	Url              string                   `json:"url,omitempty"`
+	VisibleToClients bool                     `json:"visible_to_clients,omitempty"`
 }
 
 // ClientApprovalResponse defines model for ClientApprovalResponse.
 type ClientApprovalResponse struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	Approved         *bool            `json:"approved,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *RecordingBucket `json:"bucket,omitempty"`
-	Content          *string          `json:"content,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	Approved         bool            `json:"approved,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           RecordingBucket `json:"bucket,omitempty"`
+	Content          string          `json:"content,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // ClientCompany defines model for ClientCompany.
 type ClientCompany struct {
-	Id   *int64  `json:"id,omitempty"`
-	Name *string `json:"name,omitempty"`
+	Id   *int64 `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // ClientCorrespondence defines model for ClientCorrespondence.
 type ClientCorrespondence struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *RecordingBucket `json:"bucket,omitempty"`
-	Content          *string          `json:"content,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	RepliesCount     *int32           `json:"replies_count,omitempty"`
-	RepliesUrl       *string          `json:"replies_url,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Subject          *string          `json:"subject,omitempty"`
-	SubscriptionUrl  *string          `json:"subscription_url,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           RecordingBucket `json:"bucket,omitempty"`
+	Content          string          `json:"content,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	RepliesCount     int32           `json:"replies_count,omitempty"`
+	RepliesUrl       string          `json:"replies_url,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Subject          string          `json:"subject,omitempty"`
+	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // ClientReply defines model for ClientReply.
 type ClientReply struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *RecordingBucket `json:"bucket,omitempty"`
-	Content          *string          `json:"content,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           RecordingBucket `json:"bucket,omitempty"`
+	Content          string          `json:"content,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // ClientSide This shape is deprecated since 2024-01: Use Client Visibility feature instead
 type ClientSide struct {
-	AppUrl *string `json:"app_url,omitempty"`
-	Url    *string `json:"url,omitempty"`
+	AppUrl string `json:"app_url,omitempty"`
+	Url    string `json:"url,omitempty"`
 }
 
 // CloneToolResponseContent defines model for CloneToolResponseContent.
 type CloneToolResponseContent struct {
-	Tool *Tool `json:"tool,omitempty"`
+	Tool Tool `json:"tool,omitempty"`
 }
 
 // Comment defines model for Comment.
 type Comment struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	Content          *string          `json:"content,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Content          string          `json:"content,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // CompleteCardStepResponseContent defines model for CompleteCardStepResponseContent.
 type CompleteCardStepResponseContent struct {
-	Step *CardStep `json:"step,omitempty"`
+	Step CardStep `json:"step,omitempty"`
 }
 
 // CreateAnswerResponseContent defines model for CreateAnswerResponseContent.
 type CreateAnswerResponseContent struct {
-	Answer *QuestionAnswer `json:"answer,omitempty"`
+	Answer QuestionAnswer `json:"answer,omitempty"`
 }
 
 // CreateAttachmentInputPayload defines model for CreateAttachmentInputPayload.
@@ -313,7 +316,7 @@ type CreateAttachmentInputPayload = string
 
 // CreateAttachmentResponseContent defines model for CreateAttachmentResponseContent.
 type CreateAttachmentResponseContent struct {
-	AttachableSgid *string `json:"attachable_sgid,omitempty"`
+	AttachableSgid string `json:"attachable_sgid,omitempty"`
 }
 
 // CreateCampfireLineRequestContent defines model for CreateCampfireLineRequestContent.
@@ -323,54 +326,54 @@ type CreateCampfireLineRequestContent struct {
 
 // CreateCampfireLineResponseContent defines model for CreateCampfireLineResponseContent.
 type CreateCampfireLineResponseContent struct {
-	Line *CampfireLine `json:"line,omitempty"`
+	Line CampfireLine `json:"line,omitempty"`
 }
 
 // CreateCardColumnRequestContent defines model for CreateCardColumnRequestContent.
 type CreateCardColumnRequestContent struct {
-	Description *string `json:"description,omitempty"`
-	Title       string  `json:"title"`
+	Description string `json:"description,omitempty"`
+	Title       string `json:"title"`
 }
 
 // CreateCardColumnResponseContent defines model for CreateCardColumnResponseContent.
 type CreateCardColumnResponseContent struct {
-	Column *CardColumn `json:"column,omitempty"`
+	Column CardColumn `json:"column,omitempty"`
 }
 
 // CreateCardRequestContent defines model for CreateCardRequestContent.
 type CreateCardRequestContent struct {
-	Content *string `json:"content,omitempty"`
-	DueOn   *string `json:"due_on,omitempty"`
-	Notify  *bool   `json:"notify,omitempty"`
-	Title   string  `json:"title"`
+	Content string    `json:"content,omitempty"`
+	DueOn   time.Time `json:"due_on,omitempty"`
+	Notify  bool      `json:"notify,omitempty"`
+	Title   string    `json:"title"`
 }
 
 // CreateCardResponseContent defines model for CreateCardResponseContent.
 type CreateCardResponseContent struct {
-	Card *Card `json:"card,omitempty"`
+	Card Card `json:"card,omitempty"`
 }
 
 // CreateCardStepRequestContent defines model for CreateCardStepRequestContent.
 type CreateCardStepRequestContent struct {
-	Assignees *[]int64 `json:"assignees,omitempty"`
-	DueOn     *string  `json:"due_on,omitempty"`
-	Title     string   `json:"title"`
+	Assignees []int64   `json:"assignees,omitempty"`
+	DueOn     time.Time `json:"due_on,omitempty"`
+	Title     string    `json:"title"`
 }
 
 // CreateCardStepResponseContent defines model for CreateCardStepResponseContent.
 type CreateCardStepResponseContent struct {
-	Step *CardStep `json:"step,omitempty"`
+	Step CardStep `json:"step,omitempty"`
 }
 
 // CreateChatbotRequestContent defines model for CreateChatbotRequestContent.
 type CreateChatbotRequestContent struct {
-	CommandUrl  *string `json:"command_url,omitempty"`
-	ServiceName string  `json:"service_name"`
+	CommandUrl  string `json:"command_url,omitempty"`
+	ServiceName string `json:"service_name"`
 }
 
 // CreateChatbotResponseContent defines model for CreateChatbotResponseContent.
 type CreateChatbotResponseContent struct {
-	Chatbot *Chatbot `json:"chatbot,omitempty"`
+	Chatbot Chatbot `json:"chatbot,omitempty"`
 }
 
 // CreateCommentRequestContent defines model for CreateCommentRequestContent.
@@ -380,21 +383,21 @@ type CreateCommentRequestContent struct {
 
 // CreateCommentResponseContent defines model for CreateCommentResponseContent.
 type CreateCommentResponseContent struct {
-	Comment *Comment `json:"comment,omitempty"`
+	Comment Comment `json:"comment,omitempty"`
 }
 
 // CreateDocumentRequestContent defines model for CreateDocumentRequestContent.
 type CreateDocumentRequestContent struct {
-	Content *string `json:"content,omitempty"`
+	Content string `json:"content,omitempty"`
 
 	// Status active|drafted
-	Status *string `json:"status,omitempty"`
-	Title  string  `json:"title"`
+	Status string `json:"status,omitempty"`
+	Title  string `json:"title"`
 }
 
 // CreateDocumentResponseContent defines model for CreateDocumentResponseContent.
 type CreateDocumentResponseContent struct {
-	Document *Document `json:"document,omitempty"`
+	Document Document `json:"document,omitempty"`
 }
 
 // CreateForwardReplyRequestContent defines model for CreateForwardReplyRequestContent.
@@ -404,36 +407,36 @@ type CreateForwardReplyRequestContent struct {
 
 // CreateForwardReplyResponseContent defines model for CreateForwardReplyResponseContent.
 type CreateForwardReplyResponseContent struct {
-	Reply *ForwardReply `json:"reply,omitempty"`
+	Reply ForwardReply `json:"reply,omitempty"`
 }
 
 // CreateLineupMarkerRequestContent defines model for CreateLineupMarkerRequestContent.
 type CreateLineupMarkerRequestContent struct {
-	Color       *string `json:"color,omitempty"`
-	Description *string `json:"description,omitempty"`
-	EndsOn      string  `json:"ends_on"`
-	StartsOn    string  `json:"starts_on"`
-	Title       string  `json:"title"`
+	Color       string    `json:"color,omitempty"`
+	Description string    `json:"description,omitempty"`
+	EndsOn      time.Time `json:"ends_on"`
+	StartsOn    time.Time `json:"starts_on"`
+	Title       string    `json:"title"`
 }
 
 // CreateLineupMarkerResponseContent defines model for CreateLineupMarkerResponseContent.
 type CreateLineupMarkerResponseContent struct {
-	Marker *LineupMarker `json:"marker,omitempty"`
+	Marker LineupMarker `json:"marker,omitempty"`
 }
 
 // CreateMessageRequestContent defines model for CreateMessageRequestContent.
 type CreateMessageRequestContent struct {
-	CategoryId *int64  `json:"category_id,omitempty"`
-	Content    *string `json:"content,omitempty"`
+	CategoryId *int64 `json:"category_id,omitempty"`
+	Content    string `json:"content,omitempty"`
 
 	// Status active|drafted
-	Status  *string `json:"status,omitempty"`
-	Subject string  `json:"subject"`
+	Status  string `json:"status,omitempty"`
+	Subject string `json:"subject"`
 }
 
 // CreateMessageResponseContent defines model for CreateMessageResponseContent.
 type CreateMessageResponseContent struct {
-	Message *Message `json:"message,omitempty"`
+	Message Message `json:"message,omitempty"`
 }
 
 // CreateMessageTypeRequestContent defines model for CreateMessageTypeRequestContent.
@@ -444,37 +447,37 @@ type CreateMessageTypeRequestContent struct {
 
 // CreateMessageTypeResponseContent defines model for CreateMessageTypeResponseContent.
 type CreateMessageTypeResponseContent struct {
-	MessageType *MessageType `json:"message_type,omitempty"`
+	MessageType MessageType `json:"message_type,omitempty"`
 }
 
 // CreatePersonRequest defines model for CreatePersonRequest.
 type CreatePersonRequest struct {
-	CompanyName  *string `json:"company_name,omitempty"`
-	EmailAddress string  `json:"email_address"`
-	Name         string  `json:"name"`
-	Title        *string `json:"title,omitempty"`
+	CompanyName  string `json:"company_name,omitempty"`
+	EmailAddress string `json:"email_address"`
+	Name         string `json:"name"`
+	Title        string `json:"title,omitempty"`
 }
 
 // CreateProjectFromTemplateRequestContent defines model for CreateProjectFromTemplateRequestContent.
 type CreateProjectFromTemplateRequestContent struct {
-	Description *string `json:"description,omitempty"`
-	Name        string  `json:"name"`
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name"`
 }
 
 // CreateProjectFromTemplateResponseContent defines model for CreateProjectFromTemplateResponseContent.
 type CreateProjectFromTemplateResponseContent struct {
-	Construction *ProjectConstruction `json:"construction,omitempty"`
+	Construction ProjectConstruction `json:"construction,omitempty"`
 }
 
 // CreateProjectRequestContent defines model for CreateProjectRequestContent.
 type CreateProjectRequestContent struct {
-	Description *string `json:"description,omitempty"`
-	Name        string  `json:"name"`
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name"`
 }
 
 // CreateProjectResponseContent defines model for CreateProjectResponseContent.
 type CreateProjectResponseContent struct {
-	Project *Project `json:"project,omitempty"`
+	Project Project `json:"project,omitempty"`
 }
 
 // CreateQuestionRequestContent defines model for CreateQuestionRequestContent.
@@ -485,50 +488,50 @@ type CreateQuestionRequestContent struct {
 
 // CreateQuestionResponseContent defines model for CreateQuestionResponseContent.
 type CreateQuestionResponseContent struct {
-	Question *Question `json:"question,omitempty"`
+	Question Question `json:"question,omitempty"`
 }
 
 // CreateScheduleEntryRequestContent defines model for CreateScheduleEntryRequestContent.
 type CreateScheduleEntryRequestContent struct {
-	AllDay         *bool    `json:"all_day,omitempty"`
-	Description    *string  `json:"description,omitempty"`
-	EndsAt         string   `json:"ends_at"`
-	Notify         *bool    `json:"notify,omitempty"`
-	ParticipantIds *[]int64 `json:"participant_ids,omitempty"`
-	StartsAt       string   `json:"starts_at"`
-	Summary        string   `json:"summary"`
+	AllDay         bool      `json:"all_day,omitempty"`
+	Description    string    `json:"description,omitempty"`
+	EndsAt         time.Time `json:"ends_at"`
+	Notify         bool      `json:"notify,omitempty"`
+	ParticipantIds []int64   `json:"participant_ids,omitempty"`
+	StartsAt       time.Time `json:"starts_at"`
+	Summary        string    `json:"summary"`
 }
 
 // CreateScheduleEntryResponseContent defines model for CreateScheduleEntryResponseContent.
 type CreateScheduleEntryResponseContent struct {
-	Entry *ScheduleEntry `json:"entry,omitempty"`
+	Entry ScheduleEntry `json:"entry,omitempty"`
 }
 
 // CreateTemplateRequestContent defines model for CreateTemplateRequestContent.
 type CreateTemplateRequestContent struct {
-	Description *string `json:"description,omitempty"`
-	Name        string  `json:"name"`
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name"`
 }
 
 // CreateTemplateResponseContent defines model for CreateTemplateResponseContent.
 type CreateTemplateResponseContent struct {
-	Template *Template `json:"template,omitempty"`
+	Template Template `json:"template,omitempty"`
 }
 
 // CreateTodoRequestContent defines model for CreateTodoRequestContent.
 type CreateTodoRequestContent struct {
-	AssigneeIds             *[]int64 `json:"assignee_ids,omitempty"`
-	CompletionSubscriberIds *[]int64 `json:"completion_subscriber_ids,omitempty"`
-	Content                 string   `json:"content"`
-	Description             *string  `json:"description,omitempty"`
-	DueOn                   *string  `json:"due_on,omitempty"`
-	Notify                  *bool    `json:"notify,omitempty"`
-	StartsOn                *string  `json:"starts_on,omitempty"`
+	AssigneeIds             []int64   `json:"assignee_ids,omitempty"`
+	CompletionSubscriberIds []int64   `json:"completion_subscriber_ids,omitempty"`
+	Content                 string    `json:"content"`
+	Description             string    `json:"description,omitempty"`
+	DueOn                   time.Time `json:"due_on,omitempty"`
+	Notify                  bool      `json:"notify,omitempty"`
+	StartsOn                time.Time `json:"starts_on,omitempty"`
 }
 
 // CreateTodoResponseContent defines model for CreateTodoResponseContent.
 type CreateTodoResponseContent struct {
-	Todo *Todo `json:"todo,omitempty"`
+	Todo Todo `json:"todo,omitempty"`
 }
 
 // CreateTodolistGroupRequestContent defines model for CreateTodolistGroupRequestContent.
@@ -538,30 +541,30 @@ type CreateTodolistGroupRequestContent struct {
 
 // CreateTodolistGroupResponseContent defines model for CreateTodolistGroupResponseContent.
 type CreateTodolistGroupResponseContent struct {
-	Group *TodolistGroup `json:"group,omitempty"`
+	Group TodolistGroup `json:"group,omitempty"`
 }
 
 // CreateTodolistRequestContent defines model for CreateTodolistRequestContent.
 type CreateTodolistRequestContent struct {
-	Description *string `json:"description,omitempty"`
-	Name        string  `json:"name"`
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name"`
 }
 
 // CreateTodolistResponseContent defines model for CreateTodolistResponseContent.
 type CreateTodolistResponseContent struct {
-	Todolist *Todolist `json:"todolist,omitempty"`
+	Todolist Todolist `json:"todolist,omitempty"`
 }
 
 // CreateUploadRequestContent defines model for CreateUploadRequestContent.
 type CreateUploadRequestContent struct {
-	AttachableSgid string  `json:"attachable_sgid"`
-	BaseName       *string `json:"base_name,omitempty"`
-	Description    *string `json:"description,omitempty"`
+	AttachableSgid string `json:"attachable_sgid"`
+	BaseName       string `json:"base_name,omitempty"`
+	Description    string `json:"description,omitempty"`
 }
 
 // CreateUploadResponseContent defines model for CreateUploadResponseContent.
 type CreateUploadResponseContent struct {
-	Upload *Upload `json:"upload,omitempty"`
+	Upload Upload `json:"upload,omitempty"`
 }
 
 // CreateVaultRequestContent defines model for CreateVaultRequestContent.
@@ -571,591 +574,591 @@ type CreateVaultRequestContent struct {
 
 // CreateVaultResponseContent defines model for CreateVaultResponseContent.
 type CreateVaultResponseContent struct {
-	Vault *Vault `json:"vault,omitempty"`
+	Vault Vault `json:"vault,omitempty"`
 }
 
 // CreateWebhookRequestContent defines model for CreateWebhookRequestContent.
 type CreateWebhookRequestContent struct {
-	Active     *bool    `json:"active,omitempty"`
+	Active     bool     `json:"active,omitempty"`
 	PayloadUrl string   `json:"payload_url"`
 	Types      []string `json:"types"`
 }
 
 // CreateWebhookResponseContent defines model for CreateWebhookResponseContent.
 type CreateWebhookResponseContent struct {
-	Webhook *Webhook `json:"webhook,omitempty"`
+	Webhook Webhook `json:"webhook,omitempty"`
 }
 
 // DisableCardColumnOnHoldResponseContent defines model for DisableCardColumnOnHoldResponseContent.
 type DisableCardColumnOnHoldResponseContent struct {
-	Column *CardColumn `json:"column,omitempty"`
+	Column CardColumn `json:"column,omitempty"`
 }
 
 // DockItem defines model for DockItem.
 type DockItem struct {
-	AppUrl   *string `json:"app_url,omitempty"`
-	Enabled  *bool   `json:"enabled,omitempty"`
-	Id       *int64  `json:"id,omitempty"`
-	Name     *string `json:"name,omitempty"`
-	Position *int32  `json:"position,omitempty"`
-	Title    *string `json:"title,omitempty"`
-	Url      *string `json:"url,omitempty"`
+	AppUrl   string `json:"app_url,omitempty"`
+	Enabled  bool   `json:"enabled,omitempty"`
+	Id       *int64 `json:"id,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Position int32  `json:"position,omitempty"`
+	Title    string `json:"title,omitempty"`
+	Url      string `json:"url,omitempty"`
 }
 
 // Document defines model for Document.
 type Document struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	CommentsCount    *int32           `json:"comments_count,omitempty"`
-	CommentsUrl      *string          `json:"comments_url,omitempty"`
-	Content          *string          `json:"content,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Position         *int32           `json:"position,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	SubscriptionUrl  *string          `json:"subscription_url,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	CommentsCount    int32           `json:"comments_count,omitempty"`
+	CommentsUrl      string          `json:"comments_url,omitempty"`
+	Content          string          `json:"content,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Position         int32           `json:"position,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // EnableCardColumnOnHoldResponseContent defines model for EnableCardColumnOnHoldResponseContent.
 type EnableCardColumnOnHoldResponseContent struct {
-	Column *CardColumn `json:"column,omitempty"`
+	Column CardColumn `json:"column,omitempty"`
 }
 
 // Event defines model for Event.
 type Event struct {
-	Action      *string       `json:"action,omitempty"`
-	CreatedAt   *string       `json:"created_at,omitempty"`
-	Creator     *Person       `json:"creator,omitempty"`
-	Details     *EventDetails `json:"details,omitempty"`
-	Id          *int64        `json:"id,omitempty"`
-	RecordingId *int64        `json:"recording_id,omitempty"`
+	Action      string       `json:"action,omitempty"`
+	CreatedAt   time.Time    `json:"created_at,omitempty"`
+	Creator     Person       `json:"creator,omitempty"`
+	Details     EventDetails `json:"details,omitempty"`
+	Id          *int64       `json:"id,omitempty"`
+	RecordingId *int64       `json:"recording_id,omitempty"`
 }
 
 // EventDetails defines model for EventDetails.
 type EventDetails struct {
-	AddedPersonIds       *[]int64 `json:"added_person_ids,omitempty"`
-	NotifiedRecipientIds *[]int64 `json:"notified_recipient_ids,omitempty"`
-	RemovedPersonIds     *[]int64 `json:"removed_person_ids,omitempty"`
+	AddedPersonIds       []int64 `json:"added_person_ids,omitempty"`
+	NotifiedRecipientIds []int64 `json:"notified_recipient_ids,omitempty"`
+	RemovedPersonIds     []int64 `json:"removed_person_ids,omitempty"`
 }
 
 // ForbiddenErrorResponseContent defines model for ForbiddenErrorResponseContent.
 type ForbiddenErrorResponseContent struct {
-	Error   string  `json:"error"`
-	Message *string `json:"message,omitempty"`
+	Error   string `json:"error"`
+	Message string `json:"message,omitempty"`
 }
 
 // Forward defines model for Forward.
 type Forward struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	Content          *string          `json:"content,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	From             *string          `json:"from,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	RepliesCount     *int32           `json:"replies_count,omitempty"`
-	RepliesUrl       *string          `json:"replies_url,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Subject          *string          `json:"subject,omitempty"`
-	SubscriptionUrl  *string          `json:"subscription_url,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Content          string          `json:"content,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	From             string          `json:"from,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	RepliesCount     int32           `json:"replies_count,omitempty"`
+	RepliesUrl       string          `json:"replies_url,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Subject          string          `json:"subject,omitempty"`
+	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // ForwardReply defines model for ForwardReply.
 type ForwardReply struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	Content          *string          `json:"content,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Content          string          `json:"content,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // GetAnswerResponseContent defines model for GetAnswerResponseContent.
 type GetAnswerResponseContent struct {
-	Answer *QuestionAnswer `json:"answer,omitempty"`
+	Answer QuestionAnswer `json:"answer,omitempty"`
 }
 
 // GetCampfireLineResponseContent defines model for GetCampfireLineResponseContent.
 type GetCampfireLineResponseContent struct {
-	Line *CampfireLine `json:"line,omitempty"`
+	Line CampfireLine `json:"line,omitempty"`
 }
 
 // GetCampfireResponseContent defines model for GetCampfireResponseContent.
 type GetCampfireResponseContent struct {
-	Campfire *Campfire `json:"campfire,omitempty"`
+	Campfire Campfire `json:"campfire,omitempty"`
 }
 
 // GetCardColumnResponseContent defines model for GetCardColumnResponseContent.
 type GetCardColumnResponseContent struct {
-	Column *CardColumn `json:"column,omitempty"`
+	Column CardColumn `json:"column,omitempty"`
 }
 
 // GetCardResponseContent defines model for GetCardResponseContent.
 type GetCardResponseContent struct {
-	Card *Card `json:"card,omitempty"`
+	Card Card `json:"card,omitempty"`
 }
 
 // GetCardTableResponseContent defines model for GetCardTableResponseContent.
 type GetCardTableResponseContent struct {
-	CardTable *CardTable `json:"card_table,omitempty"`
+	CardTable CardTable `json:"card_table,omitempty"`
 }
 
 // GetChatbotResponseContent defines model for GetChatbotResponseContent.
 type GetChatbotResponseContent struct {
-	Chatbot *Chatbot `json:"chatbot,omitempty"`
+	Chatbot Chatbot `json:"chatbot,omitempty"`
 }
 
 // GetClientApprovalResponseContent defines model for GetClientApprovalResponseContent.
 type GetClientApprovalResponseContent struct {
-	Approval *ClientApproval `json:"approval,omitempty"`
+	Approval ClientApproval `json:"approval,omitempty"`
 }
 
 // GetClientCorrespondenceResponseContent defines model for GetClientCorrespondenceResponseContent.
 type GetClientCorrespondenceResponseContent struct {
-	Correspondence *ClientCorrespondence `json:"correspondence,omitempty"`
+	Correspondence ClientCorrespondence `json:"correspondence,omitempty"`
 }
 
 // GetClientReplyResponseContent defines model for GetClientReplyResponseContent.
 type GetClientReplyResponseContent struct {
-	Reply *ClientReply `json:"reply,omitempty"`
+	Reply ClientReply `json:"reply,omitempty"`
 }
 
 // GetCommentResponseContent defines model for GetCommentResponseContent.
 type GetCommentResponseContent struct {
-	Comment *Comment `json:"comment,omitempty"`
+	Comment Comment `json:"comment,omitempty"`
 }
 
 // GetDocumentResponseContent defines model for GetDocumentResponseContent.
 type GetDocumentResponseContent struct {
-	Document *Document `json:"document,omitempty"`
+	Document Document `json:"document,omitempty"`
 }
 
 // GetForwardReplyResponseContent defines model for GetForwardReplyResponseContent.
 type GetForwardReplyResponseContent struct {
-	Reply *ForwardReply `json:"reply,omitempty"`
+	Reply ForwardReply `json:"reply,omitempty"`
 }
 
 // GetForwardResponseContent defines model for GetForwardResponseContent.
 type GetForwardResponseContent struct {
-	Forward *Forward `json:"forward,omitempty"`
+	Forward Forward `json:"forward,omitempty"`
 }
 
 // GetInboxResponseContent defines model for GetInboxResponseContent.
 type GetInboxResponseContent struct {
-	Inbox *Inbox `json:"inbox,omitempty"`
+	Inbox Inbox `json:"inbox,omitempty"`
 }
 
 // GetMessageBoardResponseContent defines model for GetMessageBoardResponseContent.
 type GetMessageBoardResponseContent struct {
-	MessageBoard *MessageBoard `json:"message_board,omitempty"`
+	MessageBoard MessageBoard `json:"message_board,omitempty"`
 }
 
 // GetMessageResponseContent defines model for GetMessageResponseContent.
 type GetMessageResponseContent struct {
-	Message *Message `json:"message,omitempty"`
+	Message Message `json:"message,omitempty"`
 }
 
 // GetMessageTypeResponseContent defines model for GetMessageTypeResponseContent.
 type GetMessageTypeResponseContent struct {
-	MessageType *MessageType `json:"message_type,omitempty"`
+	MessageType MessageType `json:"message_type,omitempty"`
 }
 
 // GetMyProfileResponseContent defines model for GetMyProfileResponseContent.
 type GetMyProfileResponseContent struct {
-	Person *Person `json:"person,omitempty"`
+	Person Person `json:"person,omitempty"`
 }
 
 // GetPersonResponseContent defines model for GetPersonResponseContent.
 type GetPersonResponseContent struct {
-	Person *Person `json:"person,omitempty"`
+	Person Person `json:"person,omitempty"`
 }
 
 // GetProjectConstructionResponseContent defines model for GetProjectConstructionResponseContent.
 type GetProjectConstructionResponseContent struct {
-	Construction *ProjectConstruction `json:"construction,omitempty"`
+	Construction ProjectConstruction `json:"construction,omitempty"`
 }
 
 // GetProjectResponseContent defines model for GetProjectResponseContent.
 type GetProjectResponseContent struct {
-	Project *Project `json:"project,omitempty"`
+	Project Project `json:"project,omitempty"`
 }
 
 // GetProjectTimesheetResponseContent defines model for GetProjectTimesheetResponseContent.
 type GetProjectTimesheetResponseContent struct {
-	Entries *[]TimesheetEntry `json:"entries,omitempty"`
+	Entries []TimesheetEntry `json:"entries,omitempty"`
 }
 
 // GetQuestionResponseContent defines model for GetQuestionResponseContent.
 type GetQuestionResponseContent struct {
-	Question *Question `json:"question,omitempty"`
+	Question Question `json:"question,omitempty"`
 }
 
 // GetQuestionnaireResponseContent defines model for GetQuestionnaireResponseContent.
 type GetQuestionnaireResponseContent struct {
-	Questionnaire *Questionnaire `json:"questionnaire,omitempty"`
+	Questionnaire Questionnaire `json:"questionnaire,omitempty"`
 }
 
 // GetRecordingResponseContent defines model for GetRecordingResponseContent.
 type GetRecordingResponseContent struct {
-	Recording *Recording `json:"recording,omitempty"`
+	Recording Recording `json:"recording,omitempty"`
 }
 
 // GetRecordingTimesheetResponseContent defines model for GetRecordingTimesheetResponseContent.
 type GetRecordingTimesheetResponseContent struct {
-	Entries *[]TimesheetEntry `json:"entries,omitempty"`
+	Entries []TimesheetEntry `json:"entries,omitempty"`
 }
 
 // GetScheduleEntryOccurrenceResponseContent defines model for GetScheduleEntryOccurrenceResponseContent.
 type GetScheduleEntryOccurrenceResponseContent struct {
-	Entry *ScheduleEntry `json:"entry,omitempty"`
+	Entry ScheduleEntry `json:"entry,omitempty"`
 }
 
 // GetScheduleEntryResponseContent defines model for GetScheduleEntryResponseContent.
 type GetScheduleEntryResponseContent struct {
-	Entry *ScheduleEntry `json:"entry,omitempty"`
+	Entry ScheduleEntry `json:"entry,omitempty"`
 }
 
 // GetScheduleResponseContent defines model for GetScheduleResponseContent.
 type GetScheduleResponseContent struct {
-	Schedule *Schedule `json:"schedule,omitempty"`
+	Schedule Schedule `json:"schedule,omitempty"`
 }
 
 // GetSearchMetadataResponseContent defines model for GetSearchMetadataResponseContent.
 type GetSearchMetadataResponseContent struct {
-	Metadata *SearchMetadata `json:"metadata,omitempty"`
+	Metadata SearchMetadata `json:"metadata,omitempty"`
 }
 
 // GetSubscriptionResponseContent defines model for GetSubscriptionResponseContent.
 type GetSubscriptionResponseContent struct {
-	Subscription *Subscription `json:"subscription,omitempty"`
+	Subscription Subscription `json:"subscription,omitempty"`
 }
 
 // GetTemplateResponseContent defines model for GetTemplateResponseContent.
 type GetTemplateResponseContent struct {
-	Template *Template `json:"template,omitempty"`
+	Template Template `json:"template,omitempty"`
 }
 
 // GetTimesheetReportResponseContent defines model for GetTimesheetReportResponseContent.
 type GetTimesheetReportResponseContent struct {
-	Entries *[]TimesheetEntry `json:"entries,omitempty"`
+	Entries []TimesheetEntry `json:"entries,omitempty"`
 }
 
 // GetTodoResponseContent defines model for GetTodoResponseContent.
 type GetTodoResponseContent struct {
-	Todo *Todo `json:"todo,omitempty"`
+	Todo Todo `json:"todo,omitempty"`
 }
 
 // GetTodolistOrGroupResponseContent defines model for GetTodolistOrGroupResponseContent.
 type GetTodolistOrGroupResponseContent struct {
 	// Result Union type for polymorphic todolist endpoint
-	Result *TodolistOrGroup `json:"result,omitempty"`
+	Result TodolistOrGroup `json:"result,omitempty"`
 }
 
 // GetTodosetResponseContent defines model for GetTodosetResponseContent.
 type GetTodosetResponseContent struct {
-	Todoset *Todoset `json:"todoset,omitempty"`
+	Todoset Todoset `json:"todoset,omitempty"`
 }
 
 // GetToolResponseContent defines model for GetToolResponseContent.
 type GetToolResponseContent struct {
-	Tool *Tool `json:"tool,omitempty"`
+	Tool Tool `json:"tool,omitempty"`
 }
 
 // GetUploadResponseContent defines model for GetUploadResponseContent.
 type GetUploadResponseContent struct {
-	Upload *Upload `json:"upload,omitempty"`
+	Upload Upload `json:"upload,omitempty"`
 }
 
 // GetVaultResponseContent defines model for GetVaultResponseContent.
 type GetVaultResponseContent struct {
-	Vault *Vault `json:"vault,omitempty"`
+	Vault Vault `json:"vault,omitempty"`
 }
 
 // GetWebhookResponseContent defines model for GetWebhookResponseContent.
 type GetWebhookResponseContent struct {
-	Webhook *Webhook `json:"webhook,omitempty"`
+	Webhook Webhook `json:"webhook,omitempty"`
 }
 
 // Inbox defines model for Inbox.
 type Inbox struct {
-	AppUrl           *string     `json:"app_url,omitempty"`
-	BookmarkUrl      *string     `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket `json:"bucket,omitempty"`
-	CreatedAt        *string     `json:"created_at,omitempty"`
-	Creator          *Person     `json:"creator,omitempty"`
-	ForwardsCount    *int32      `json:"forwards_count,omitempty"`
-	ForwardsUrl      *string     `json:"forwards_url,omitempty"`
-	Id               *int64      `json:"id,omitempty"`
-	InheritsStatus   *bool       `json:"inherits_status,omitempty"`
-	Position         *int32      `json:"position,omitempty"`
-	Status           *string     `json:"status,omitempty"`
-	Title            *string     `json:"title,omitempty"`
-	Type             *string     `json:"type,omitempty"`
-	UpdatedAt        *string     `json:"updated_at,omitempty"`
-	Url              *string     `json:"url,omitempty"`
-	VisibleToClients *bool       `json:"visible_to_clients,omitempty"`
+	AppUrl           string     `json:"app_url,omitempty"`
+	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket `json:"bucket,omitempty"`
+	CreatedAt        time.Time  `json:"created_at,omitempty"`
+	Creator          Person     `json:"creator,omitempty"`
+	ForwardsCount    int32      `json:"forwards_count,omitempty"`
+	ForwardsUrl      string     `json:"forwards_url,omitempty"`
+	Id               *int64     `json:"id,omitempty"`
+	InheritsStatus   bool       `json:"inherits_status,omitempty"`
+	Position         int32      `json:"position,omitempty"`
+	Status           string     `json:"status,omitempty"`
+	Title            string     `json:"title,omitempty"`
+	Type             string     `json:"type,omitempty"`
+	UpdatedAt        time.Time  `json:"updated_at,omitempty"`
+	Url              string     `json:"url,omitempty"`
+	VisibleToClients bool       `json:"visible_to_clients,omitempty"`
 }
 
 // InternalServerErrorResponseContent defines model for InternalServerErrorResponseContent.
 type InternalServerErrorResponseContent struct {
-	Error   string  `json:"error"`
-	Message *string `json:"message,omitempty"`
+	Error   string `json:"error"`
+	Message string `json:"message,omitempty"`
 }
 
 // LineupMarker defines model for LineupMarker.
 type LineupMarker struct {
-	AppUrl      *string          `json:"app_url,omitempty"`
-	Bucket      *RecordingBucket `json:"bucket,omitempty"`
-	Color       *string          `json:"color,omitempty"`
-	CreatedAt   *string          `json:"created_at,omitempty"`
-	Creator     *Person          `json:"creator,omitempty"`
-	Description *string          `json:"description,omitempty"`
-	EndsOn      *string          `json:"ends_on,omitempty"`
-	Id          *int64           `json:"id,omitempty"`
-	Parent      *RecordingParent `json:"parent,omitempty"`
-	StartsOn    *string          `json:"starts_on,omitempty"`
-	Status      *string          `json:"status,omitempty"`
-	Title       *string          `json:"title,omitempty"`
-	Type        *string          `json:"type,omitempty"`
-	UpdatedAt   *string          `json:"updated_at,omitempty"`
-	Url         *string          `json:"url,omitempty"`
+	AppUrl      string          `json:"app_url,omitempty"`
+	Bucket      RecordingBucket `json:"bucket,omitempty"`
+	Color       string          `json:"color,omitempty"`
+	CreatedAt   time.Time       `json:"created_at,omitempty"`
+	Creator     Person          `json:"creator,omitempty"`
+	Description string          `json:"description,omitempty"`
+	EndsOn      time.Time       `json:"ends_on,omitempty"`
+	Id          *int64          `json:"id,omitempty"`
+	Parent      RecordingParent `json:"parent,omitempty"`
+	StartsOn    time.Time       `json:"starts_on,omitempty"`
+	Status      string          `json:"status,omitempty"`
+	Title       string          `json:"title,omitempty"`
+	Type        string          `json:"type,omitempty"`
+	UpdatedAt   time.Time       `json:"updated_at,omitempty"`
+	Url         string          `json:"url,omitempty"`
 }
 
 // ListAnswersResponseContent defines model for ListAnswersResponseContent.
 type ListAnswersResponseContent struct {
-	Answers *[]QuestionAnswer `json:"answers,omitempty"`
+	Answers []QuestionAnswer `json:"answers,omitempty"`
 }
 
 // ListCampfireLinesResponseContent defines model for ListCampfireLinesResponseContent.
 type ListCampfireLinesResponseContent struct {
-	Lines *[]CampfireLine `json:"lines,omitempty"`
+	Lines []CampfireLine `json:"lines,omitempty"`
 }
 
 // ListCampfiresResponseContent defines model for ListCampfiresResponseContent.
 type ListCampfiresResponseContent struct {
-	Campfires *[]Campfire `json:"campfires,omitempty"`
+	Campfires []Campfire `json:"campfires,omitempty"`
 }
 
 // ListCardsResponseContent defines model for ListCardsResponseContent.
 type ListCardsResponseContent struct {
-	Cards *[]Card `json:"cards,omitempty"`
+	Cards []Card `json:"cards,omitempty"`
 }
 
 // ListChatbotsResponseContent defines model for ListChatbotsResponseContent.
 type ListChatbotsResponseContent struct {
-	Chatbots *[]Chatbot `json:"chatbots,omitempty"`
+	Chatbots []Chatbot `json:"chatbots,omitempty"`
 }
 
 // ListClientApprovalsResponseContent defines model for ListClientApprovalsResponseContent.
 type ListClientApprovalsResponseContent struct {
-	Approvals *[]ClientApproval `json:"approvals,omitempty"`
+	Approvals []ClientApproval `json:"approvals,omitempty"`
 }
 
 // ListClientCorrespondencesResponseContent defines model for ListClientCorrespondencesResponseContent.
 type ListClientCorrespondencesResponseContent struct {
-	Correspondences *[]ClientCorrespondence `json:"correspondences,omitempty"`
+	Correspondences []ClientCorrespondence `json:"correspondences,omitempty"`
 }
 
 // ListClientRepliesResponseContent defines model for ListClientRepliesResponseContent.
 type ListClientRepliesResponseContent struct {
-	Replies *[]ClientReply `json:"replies,omitempty"`
+	Replies []ClientReply `json:"replies,omitempty"`
 }
 
 // ListCommentsResponseContent defines model for ListCommentsResponseContent.
 type ListCommentsResponseContent struct {
-	Comments *[]Comment `json:"comments,omitempty"`
+	Comments []Comment `json:"comments,omitempty"`
 }
 
 // ListDocumentsResponseContent defines model for ListDocumentsResponseContent.
 type ListDocumentsResponseContent struct {
-	Documents *[]Document `json:"documents,omitempty"`
+	Documents []Document `json:"documents,omitempty"`
 }
 
 // ListEventsResponseContent defines model for ListEventsResponseContent.
 type ListEventsResponseContent struct {
-	Events *[]Event `json:"events,omitempty"`
+	Events []Event `json:"events,omitempty"`
 }
 
 // ListForwardRepliesResponseContent defines model for ListForwardRepliesResponseContent.
 type ListForwardRepliesResponseContent struct {
-	Replies *[]ForwardReply `json:"replies,omitempty"`
+	Replies []ForwardReply `json:"replies,omitempty"`
 }
 
 // ListForwardsResponseContent defines model for ListForwardsResponseContent.
 type ListForwardsResponseContent struct {
-	Forwards *[]Forward `json:"forwards,omitempty"`
+	Forwards []Forward `json:"forwards,omitempty"`
 }
 
 // ListMessageTypesResponseContent defines model for ListMessageTypesResponseContent.
 type ListMessageTypesResponseContent struct {
-	MessageTypes *[]MessageType `json:"message_types,omitempty"`
+	MessageTypes []MessageType `json:"message_types,omitempty"`
 }
 
 // ListMessagesResponseContent defines model for ListMessagesResponseContent.
 type ListMessagesResponseContent struct {
-	Messages *[]Message `json:"messages,omitempty"`
+	Messages []Message `json:"messages,omitempty"`
 }
 
 // ListPeopleResponseContent defines model for ListPeopleResponseContent.
 type ListPeopleResponseContent struct {
-	People *[]Person `json:"people,omitempty"`
+	People []Person `json:"people,omitempty"`
 }
 
 // ListPingablePeopleResponseContent defines model for ListPingablePeopleResponseContent.
 type ListPingablePeopleResponseContent struct {
-	People *[]Person `json:"people,omitempty"`
+	People []Person `json:"people,omitempty"`
 }
 
 // ListProjectPeopleResponseContent defines model for ListProjectPeopleResponseContent.
 type ListProjectPeopleResponseContent struct {
-	People *[]Person `json:"people,omitempty"`
+	People []Person `json:"people,omitempty"`
 }
 
 // ListProjectsResponseContent defines model for ListProjectsResponseContent.
 type ListProjectsResponseContent struct {
-	Projects *[]Project `json:"projects,omitempty"`
+	Projects []Project `json:"projects,omitempty"`
 }
 
 // ListQuestionsResponseContent defines model for ListQuestionsResponseContent.
 type ListQuestionsResponseContent struct {
-	Questions *[]Question `json:"questions,omitempty"`
+	Questions []Question `json:"questions,omitempty"`
 }
 
 // ListRecordingsResponseContent defines model for ListRecordingsResponseContent.
 type ListRecordingsResponseContent struct {
-	Recordings *[]Recording `json:"recordings,omitempty"`
+	Recordings []Recording `json:"recordings,omitempty"`
 }
 
 // ListScheduleEntriesResponseContent defines model for ListScheduleEntriesResponseContent.
 type ListScheduleEntriesResponseContent struct {
-	Entries *[]ScheduleEntry `json:"entries,omitempty"`
+	Entries []ScheduleEntry `json:"entries,omitempty"`
 }
 
 // ListTemplatesResponseContent defines model for ListTemplatesResponseContent.
 type ListTemplatesResponseContent struct {
-	Templates *[]Template `json:"templates,omitempty"`
+	Templates []Template `json:"templates,omitempty"`
 }
 
 // ListTodolistGroupsResponseContent defines model for ListTodolistGroupsResponseContent.
 type ListTodolistGroupsResponseContent struct {
-	Groups *[]TodolistGroup `json:"groups,omitempty"`
+	Groups []TodolistGroup `json:"groups,omitempty"`
 }
 
 // ListTodolistsResponseContent defines model for ListTodolistsResponseContent.
 type ListTodolistsResponseContent struct {
-	Todolists *[]Todolist `json:"todolists,omitempty"`
+	Todolists []Todolist `json:"todolists,omitempty"`
 }
 
 // ListTodosResponseContent defines model for ListTodosResponseContent.
 type ListTodosResponseContent struct {
-	Todos *[]Todo `json:"todos,omitempty"`
+	Todos []Todo `json:"todos,omitempty"`
 }
 
 // ListUploadVersionsResponseContent defines model for ListUploadVersionsResponseContent.
 type ListUploadVersionsResponseContent struct {
-	Uploads *[]Upload `json:"uploads,omitempty"`
+	Uploads []Upload `json:"uploads,omitempty"`
 }
 
 // ListUploadsResponseContent defines model for ListUploadsResponseContent.
 type ListUploadsResponseContent struct {
-	Uploads *[]Upload `json:"uploads,omitempty"`
+	Uploads []Upload `json:"uploads,omitempty"`
 }
 
 // ListVaultsResponseContent defines model for ListVaultsResponseContent.
 type ListVaultsResponseContent struct {
-	Vaults *[]Vault `json:"vaults,omitempty"`
+	Vaults []Vault `json:"vaults,omitempty"`
 }
 
 // ListWebhooksResponseContent defines model for ListWebhooksResponseContent.
 type ListWebhooksResponseContent struct {
-	Webhooks *[]Webhook `json:"webhooks,omitempty"`
+	Webhooks []Webhook `json:"webhooks,omitempty"`
 }
 
 // Message defines model for Message.
 type Message struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	Category         *MessageType     `json:"category,omitempty"`
-	CommentsCount    *int32           `json:"comments_count,omitempty"`
-	CommentsUrl      *string          `json:"comments_url,omitempty"`
-	Content          *string          `json:"content,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Subject          *string          `json:"subject,omitempty"`
-	SubscriptionUrl  *string          `json:"subscription_url,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Category         MessageType     `json:"category,omitempty"`
+	CommentsCount    int32           `json:"comments_count,omitempty"`
+	CommentsUrl      string          `json:"comments_url,omitempty"`
+	Content          string          `json:"content,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Subject          string          `json:"subject,omitempty"`
+	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // MessageBoard defines model for MessageBoard.
 type MessageBoard struct {
-	AppMessagesUrl   *string     `json:"app_messages_url,omitempty"`
-	AppUrl           *string     `json:"app_url,omitempty"`
-	BookmarkUrl      *string     `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket `json:"bucket,omitempty"`
-	CreatedAt        *string     `json:"created_at,omitempty"`
-	Creator          *Person     `json:"creator,omitempty"`
-	Id               *int64      `json:"id,omitempty"`
-	InheritsStatus   *bool       `json:"inherits_status,omitempty"`
-	MessagesCount    *int32      `json:"messages_count,omitempty"`
-	MessagesUrl      *string     `json:"messages_url,omitempty"`
-	Position         *int32      `json:"position,omitempty"`
-	Status           *string     `json:"status,omitempty"`
-	Title            *string     `json:"title,omitempty"`
-	Type             *string     `json:"type,omitempty"`
-	UpdatedAt        *string     `json:"updated_at,omitempty"`
-	Url              *string     `json:"url,omitempty"`
-	VisibleToClients *bool       `json:"visible_to_clients,omitempty"`
+	AppMessagesUrl   string     `json:"app_messages_url,omitempty"`
+	AppUrl           string     `json:"app_url,omitempty"`
+	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket `json:"bucket,omitempty"`
+	CreatedAt        time.Time  `json:"created_at,omitempty"`
+	Creator          Person     `json:"creator,omitempty"`
+	Id               *int64     `json:"id,omitempty"`
+	InheritsStatus   bool       `json:"inherits_status,omitempty"`
+	MessagesCount    int32      `json:"messages_count,omitempty"`
+	MessagesUrl      string     `json:"messages_url,omitempty"`
+	Position         int32      `json:"position,omitempty"`
+	Status           string     `json:"status,omitempty"`
+	Title            string     `json:"title,omitempty"`
+	Type             string     `json:"type,omitempty"`
+	UpdatedAt        time.Time  `json:"updated_at,omitempty"`
+	Url              string     `json:"url,omitempty"`
+	VisibleToClients bool       `json:"visible_to_clients,omitempty"`
 }
 
 // MessageType defines model for MessageType.
 type MessageType struct {
-	CreatedAt *string `json:"created_at,omitempty"`
-	Icon      *string `json:"icon,omitempty"`
-	Id        *int64  `json:"id,omitempty"`
-	Name      *string `json:"name,omitempty"`
-	UpdatedAt *string `json:"updated_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	Icon      string    `json:"icon,omitempty"`
+	Id        *int64    `json:"id,omitempty"`
+	Name      string    `json:"name,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 }
 
 // MoveCardColumnRequestContent defines model for MoveCardColumnRequestContent.
 type MoveCardColumnRequestContent struct {
-	Position *int32 `json:"position,omitempty"`
-	SourceId int64  `json:"source_id"`
-	TargetId int64  `json:"target_id"`
+	Position int32 `json:"position,omitempty"`
+	SourceId int64 `json:"source_id"`
+	TargetId int64 `json:"target_id"`
 }
 
 // MoveCardRequestContent defines model for MoveCardRequestContent.
@@ -1165,127 +1168,127 @@ type MoveCardRequestContent struct {
 
 // NotFoundErrorResponseContent defines model for NotFoundErrorResponseContent.
 type NotFoundErrorResponseContent struct {
-	Error   string  `json:"error"`
-	Message *string `json:"message,omitempty"`
+	Error   string `json:"error"`
+	Message string `json:"message,omitempty"`
 }
 
 // Person defines model for Person.
 type Person struct {
-	Admin             *bool          `json:"admin,omitempty"`
-	AttachableSgid    *string        `json:"attachable_sgid,omitempty"`
-	AvatarUrl         *string        `json:"avatar_url,omitempty"`
-	Bio               *string        `json:"bio,omitempty"`
-	CanManagePeople   *bool          `json:"can_manage_people,omitempty"`
-	CanManageProjects *bool          `json:"can_manage_projects,omitempty"`
-	Client            *bool          `json:"client,omitempty"`
-	Company           *PersonCompany `json:"company,omitempty"`
-	CreatedAt         *string        `json:"created_at,omitempty"`
-	EmailAddress      *string        `json:"email_address,omitempty"`
-	Employee          *bool          `json:"employee,omitempty"`
-	Id                *int64         `json:"id,omitempty"`
-	Location          *string        `json:"location,omitempty"`
-	Name              *string        `json:"name,omitempty"`
-	Owner             *bool          `json:"owner,omitempty"`
-	PersonableType    *string        `json:"personable_type,omitempty"`
-	TimeZone          *string        `json:"time_zone,omitempty"`
-	Title             *string        `json:"title,omitempty"`
-	UpdatedAt         *string        `json:"updated_at,omitempty"`
+	Admin             bool          `json:"admin,omitempty"`
+	AttachableSgid    string        `json:"attachable_sgid,omitempty"`
+	AvatarUrl         string        `json:"avatar_url,omitempty"`
+	Bio               string        `json:"bio,omitempty"`
+	CanManagePeople   bool          `json:"can_manage_people,omitempty"`
+	CanManageProjects bool          `json:"can_manage_projects,omitempty"`
+	Client            bool          `json:"client,omitempty"`
+	Company           PersonCompany `json:"company,omitempty"`
+	CreatedAt         time.Time     `json:"created_at,omitempty"`
+	EmailAddress      string        `json:"email_address,omitempty"`
+	Employee          bool          `json:"employee,omitempty"`
+	Id                *int64        `json:"id,omitempty"`
+	Location          string        `json:"location,omitempty"`
+	Name              string        `json:"name,omitempty"`
+	Owner             bool          `json:"owner,omitempty"`
+	PersonableType    string        `json:"personable_type,omitempty"`
+	TimeZone          string        `json:"time_zone,omitempty"`
+	Title             string        `json:"title,omitempty"`
+	UpdatedAt         time.Time     `json:"updated_at,omitempty"`
 }
 
 // PersonCompany defines model for PersonCompany.
 type PersonCompany struct {
-	Id   *int64  `json:"id,omitempty"`
-	Name *string `json:"name,omitempty"`
+	Id   *int64 `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // Project defines model for Project.
 type Project struct {
-	AppUrl         *string        `json:"app_url,omitempty"`
-	BookmarkUrl    *string        `json:"bookmark_url,omitempty"`
-	Bookmarked     *bool          `json:"bookmarked,omitempty"`
-	ClientCompany  *ClientCompany `json:"client_company,omitempty"`
-	ClientsEnabled *bool          `json:"clients_enabled,omitempty"`
+	AppUrl         string        `json:"app_url,omitempty"`
+	BookmarkUrl    string        `json:"bookmark_url,omitempty"`
+	Bookmarked     bool          `json:"bookmarked,omitempty"`
+	ClientCompany  ClientCompany `json:"client_company,omitempty"`
+	ClientsEnabled bool          `json:"clients_enabled,omitempty"`
 
 	// Clientside This shape is deprecated since 2024-01: Use Client Visibility feature instead
 	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	Clientside  *ClientSide `json:"clientside,omitempty"`
-	CreatedAt   *string     `json:"created_at,omitempty"`
-	Description *string     `json:"description,omitempty"`
-	Dock        *[]DockItem `json:"dock,omitempty"`
-	Id          *int64      `json:"id,omitempty"`
-	Name        *string     `json:"name,omitempty"`
-	Purpose     *string     `json:"purpose,omitempty"`
+	Clientside  ClientSide `json:"clientside,omitempty"`
+	CreatedAt   time.Time  `json:"created_at,omitempty"`
+	Description string     `json:"description,omitempty"`
+	Dock        []DockItem `json:"dock,omitempty"`
+	Id          *int64     `json:"id,omitempty"`
+	Name        string     `json:"name,omitempty"`
+	Purpose     string     `json:"purpose,omitempty"`
 
 	// Status active|archived|trashed
-	Status    *string `json:"status,omitempty"`
-	UpdatedAt *string `json:"updated_at,omitempty"`
-	Url       *string `json:"url,omitempty"`
+	Status    string    `json:"status,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	Url       string    `json:"url,omitempty"`
 }
 
 // ProjectAccessResult defines model for ProjectAccessResult.
 type ProjectAccessResult struct {
-	Granted *[]Person `json:"granted,omitempty"`
-	Revoked *[]Person `json:"revoked,omitempty"`
+	Granted []Person `json:"granted,omitempty"`
+	Revoked []Person `json:"revoked,omitempty"`
 }
 
 // ProjectConstruction defines model for ProjectConstruction.
 type ProjectConstruction struct {
-	Id      *int64   `json:"id,omitempty"`
-	Project *Project `json:"project,omitempty"`
-	Status  *string  `json:"status,omitempty"`
-	Url     *string  `json:"url,omitempty"`
+	Id      *int64  `json:"id,omitempty"`
+	Project Project `json:"project,omitempty"`
+	Status  string  `json:"status,omitempty"`
+	Url     string  `json:"url,omitempty"`
 }
 
 // Question defines model for Question.
 type Question struct {
-	AnswersCount     *int32            `json:"answers_count,omitempty"`
-	AnswersUrl       *string           `json:"answers_url,omitempty"`
-	AppUrl           *string           `json:"app_url,omitempty"`
-	BookmarkUrl      *string           `json:"bookmark_url,omitempty"`
-	Bucket           *RecordingBucket  `json:"bucket,omitempty"`
-	CreatedAt        *string           `json:"created_at,omitempty"`
-	Creator          *Person           `json:"creator,omitempty"`
-	Id               *int64            `json:"id,omitempty"`
-	InheritsStatus   *bool             `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent  `json:"parent,omitempty"`
-	Paused           *bool             `json:"paused,omitempty"`
-	Schedule         *QuestionSchedule `json:"schedule,omitempty"`
-	Status           *string           `json:"status,omitempty"`
-	SubscriptionUrl  *string           `json:"subscription_url,omitempty"`
-	Title            *string           `json:"title,omitempty"`
-	Type             *string           `json:"type,omitempty"`
-	UpdatedAt        *string           `json:"updated_at,omitempty"`
-	Url              *string           `json:"url,omitempty"`
-	VisibleToClients *bool             `json:"visible_to_clients,omitempty"`
+	AnswersCount     int32            `json:"answers_count,omitempty"`
+	AnswersUrl       string           `json:"answers_url,omitempty"`
+	AppUrl           string           `json:"app_url,omitempty"`
+	BookmarkUrl      string           `json:"bookmark_url,omitempty"`
+	Bucket           RecordingBucket  `json:"bucket,omitempty"`
+	CreatedAt        time.Time        `json:"created_at,omitempty"`
+	Creator          Person           `json:"creator,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
+	InheritsStatus   bool             `json:"inherits_status,omitempty"`
+	Parent           RecordingParent  `json:"parent,omitempty"`
+	Paused           bool             `json:"paused,omitempty"`
+	Schedule         QuestionSchedule `json:"schedule,omitempty"`
+	Status           string           `json:"status,omitempty"`
+	SubscriptionUrl  string           `json:"subscription_url,omitempty"`
+	Title            string           `json:"title,omitempty"`
+	Type             string           `json:"type,omitempty"`
+	UpdatedAt        time.Time        `json:"updated_at,omitempty"`
+	Url              string           `json:"url,omitempty"`
+	VisibleToClients bool             `json:"visible_to_clients,omitempty"`
 }
 
 // QuestionAnswer defines model for QuestionAnswer.
 type QuestionAnswer struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *RecordingBucket `json:"bucket,omitempty"`
-	CommentsCount    *int32           `json:"comments_count,omitempty"`
-	CommentsUrl      *string          `json:"comments_url,omitempty"`
-	Content          *string          `json:"content,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	GroupOn          *string          `json:"group_on,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	SubscriptionUrl  *string          `json:"subscription_url,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           RecordingBucket `json:"bucket,omitempty"`
+	CommentsCount    int32           `json:"comments_count,omitempty"`
+	CommentsUrl      string          `json:"comments_url,omitempty"`
+	Content          string          `json:"content,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	GroupOn          time.Time       `json:"group_on,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // QuestionAnswerPayload defines model for QuestionAnswerPayload.
 type QuestionAnswerPayload struct {
-	Content string  `json:"content"`
-	GroupOn *string `json:"group_on,omitempty"`
+	Content string    `json:"content"`
+	GroupOn time.Time `json:"group_on,omitempty"`
 }
 
 // QuestionAnswerUpdatePayload defines model for QuestionAnswerUpdatePayload.
@@ -1295,76 +1298,76 @@ type QuestionAnswerUpdatePayload struct {
 
 // QuestionSchedule defines model for QuestionSchedule.
 type QuestionSchedule struct {
-	Days          *[]int32 `json:"days,omitempty"`
-	EndDate       *string  `json:"end_date,omitempty"`
-	Frequency     *string  `json:"frequency,omitempty"`
-	Hour          *int32   `json:"hour,omitempty"`
-	Minute        *int32   `json:"minute,omitempty"`
-	MonthInterval *int32   `json:"month_interval,omitempty"`
-	StartDate     *string  `json:"start_date,omitempty"`
-	WeekInstance  *int32   `json:"week_instance,omitempty"`
-	WeekInterval  *int32   `json:"week_interval,omitempty"`
+	Days          []int32 `json:"days,omitempty"`
+	EndDate       string  `json:"end_date,omitempty"`
+	Frequency     string  `json:"frequency,omitempty"`
+	Hour          int32   `json:"hour,omitempty"`
+	Minute        int32   `json:"minute,omitempty"`
+	MonthInterval int32   `json:"month_interval,omitempty"`
+	StartDate     string  `json:"start_date,omitempty"`
+	WeekInstance  int32   `json:"week_instance,omitempty"`
+	WeekInterval  int32   `json:"week_interval,omitempty"`
 }
 
 // Questionnaire defines model for Questionnaire.
 type Questionnaire struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *RecordingBucket `json:"bucket,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Name             *string          `json:"name,omitempty"`
-	QuestionsCount   *int32           `json:"questions_count,omitempty"`
-	QuestionsUrl     *string          `json:"questions_url,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           RecordingBucket `json:"bucket,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Name             string          `json:"name,omitempty"`
+	QuestionsCount   int32           `json:"questions_count,omitempty"`
+	QuestionsUrl     string          `json:"questions_url,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // RateLimitErrorResponseContent defines model for RateLimitErrorResponseContent.
 type RateLimitErrorResponseContent struct {
-	Error      string  `json:"error"`
-	Message    *string `json:"message,omitempty"`
-	RetryAfter *int32  `json:"retry_after,omitempty"`
+	Error      string `json:"error"`
+	Message    string `json:"message,omitempty"`
+	RetryAfter int32  `json:"retry_after,omitempty"`
 }
 
 // Recording defines model for Recording.
 type Recording struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *RecordingBucket `json:"bucket,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           RecordingBucket `json:"bucket,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // RecordingBucket defines model for RecordingBucket.
 type RecordingBucket struct {
-	Id   *int64  `json:"id,omitempty"`
-	Name *string `json:"name,omitempty"`
-	Type *string `json:"type,omitempty"`
+	Id   *int64 `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
+	Type string `json:"type,omitempty"`
 }
 
 // RecordingParent defines model for RecordingParent.
 type RecordingParent struct {
-	AppUrl *string `json:"app_url,omitempty"`
-	Id     *int64  `json:"id,omitempty"`
-	Title  *string `json:"title,omitempty"`
-	Type   *string `json:"type,omitempty"`
-	Url    *string `json:"url,omitempty"`
+	AppUrl string `json:"app_url,omitempty"`
+	Id     *int64 `json:"id,omitempty"`
+	Title  string `json:"title,omitempty"`
+	Type   string `json:"type,omitempty"`
+	Url    string `json:"url,omitempty"`
 }
 
 // RepositionCardStepRequestContent defines model for RepositionCardStepRequestContent.
@@ -1386,93 +1389,93 @@ type RepositionToolRequestContent struct {
 
 // Schedule defines model for Schedule.
 type Schedule struct {
-	AppUrl                *string     `json:"app_url,omitempty"`
-	BookmarkUrl           *string     `json:"bookmark_url,omitempty"`
-	Bucket                *TodoBucket `json:"bucket,omitempty"`
-	CreatedAt             *string     `json:"created_at,omitempty"`
-	Creator               *Person     `json:"creator,omitempty"`
-	EntriesCount          *int32      `json:"entries_count,omitempty"`
-	EntriesUrl            *string     `json:"entries_url,omitempty"`
-	Id                    *int64      `json:"id,omitempty"`
-	IncludeDueAssignments *bool       `json:"include_due_assignments,omitempty"`
-	InheritsStatus        *bool       `json:"inherits_status,omitempty"`
-	Position              *int32      `json:"position,omitempty"`
-	Status                *string     `json:"status,omitempty"`
-	Title                 *string     `json:"title,omitempty"`
-	Type                  *string     `json:"type,omitempty"`
-	UpdatedAt             *string     `json:"updated_at,omitempty"`
-	Url                   *string     `json:"url,omitempty"`
-	VisibleToClients      *bool       `json:"visible_to_clients,omitempty"`
+	AppUrl                string     `json:"app_url,omitempty"`
+	BookmarkUrl           string     `json:"bookmark_url,omitempty"`
+	Bucket                TodoBucket `json:"bucket,omitempty"`
+	CreatedAt             time.Time  `json:"created_at,omitempty"`
+	Creator               Person     `json:"creator,omitempty"`
+	EntriesCount          int32      `json:"entries_count,omitempty"`
+	EntriesUrl            string     `json:"entries_url,omitempty"`
+	Id                    *int64     `json:"id,omitempty"`
+	IncludeDueAssignments bool       `json:"include_due_assignments,omitempty"`
+	InheritsStatus        bool       `json:"inherits_status,omitempty"`
+	Position              int32      `json:"position,omitempty"`
+	Status                string     `json:"status,omitempty"`
+	Title                 string     `json:"title,omitempty"`
+	Type                  string     `json:"type,omitempty"`
+	UpdatedAt             time.Time  `json:"updated_at,omitempty"`
+	Url                   string     `json:"url,omitempty"`
+	VisibleToClients      bool       `json:"visible_to_clients,omitempty"`
 }
 
 // ScheduleAttributes defines model for ScheduleAttributes.
 type ScheduleAttributes struct {
-	EndDate   *string `json:"end_date,omitempty"`
-	StartDate *string `json:"start_date,omitempty"`
+	EndDate   string `json:"end_date,omitempty"`
+	StartDate string `json:"start_date,omitempty"`
 }
 
 // ScheduleEntry defines model for ScheduleEntry.
 type ScheduleEntry struct {
-	AllDay           *bool            `json:"all_day,omitempty"`
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	CommentsCount    *int32           `json:"comments_count,omitempty"`
-	CommentsUrl      *string          `json:"comments_url,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Description      *string          `json:"description,omitempty"`
-	EndsAt           *string          `json:"ends_at,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Participants     *[]Person        `json:"participants,omitempty"`
-	StartsAt         *string          `json:"starts_at,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	SubscriptionUrl  *string          `json:"subscription_url,omitempty"`
-	Summary          *string          `json:"summary,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AllDay           bool            `json:"all_day,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	CommentsCount    int32           `json:"comments_count,omitempty"`
+	CommentsUrl      string          `json:"comments_url,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Description      string          `json:"description,omitempty"`
+	EndsAt           time.Time       `json:"ends_at,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Participants     []Person        `json:"participants,omitempty"`
+	StartsAt         time.Time       `json:"starts_at,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
+	Summary          string          `json:"summary,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // SearchMetadata defines model for SearchMetadata.
 type SearchMetadata struct {
-	Projects *[]SearchProject `json:"projects,omitempty"`
+	Projects []SearchProject `json:"projects,omitempty"`
 }
 
 // SearchProject defines model for SearchProject.
 type SearchProject struct {
-	Id   *int64  `json:"id,omitempty"`
-	Name *string `json:"name,omitempty"`
+	Id   *int64 `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // SearchResponseContent defines model for SearchResponseContent.
 type SearchResponseContent struct {
-	Results *[]SearchResult `json:"results,omitempty"`
+	Results []SearchResult `json:"results,omitempty"`
 }
 
 // SearchResult defines model for SearchResult.
 type SearchResult struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *RecordingBucket `json:"bucket,omitempty"`
-	Content          *string          `json:"content,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Description      *string          `json:"description,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Subject          *string          `json:"subject,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           RecordingBucket `json:"bucket,omitempty"`
+	Content          string          `json:"content,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Description      string          `json:"description,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Subject          string          `json:"subject,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // SetCardColumnColorRequestContent defines model for SetCardColumnColorRequestContent.
@@ -1483,7 +1486,7 @@ type SetCardColumnColorRequestContent struct {
 
 // SetCardColumnColorResponseContent defines model for SetCardColumnColorResponseContent.
 type SetCardColumnColorResponseContent struct {
-	Column *CardColumn `json:"column,omitempty"`
+	Column CardColumn `json:"column,omitempty"`
 }
 
 // SetClientVisibilityRequestContent defines model for SetClientVisibilityRequestContent.
@@ -1493,160 +1496,160 @@ type SetClientVisibilityRequestContent struct {
 
 // SetClientVisibilityResponseContent defines model for SetClientVisibilityResponseContent.
 type SetClientVisibilityResponseContent struct {
-	Recording *Recording `json:"recording,omitempty"`
+	Recording Recording `json:"recording,omitempty"`
 }
 
 // SubscribeResponseContent defines model for SubscribeResponseContent.
 type SubscribeResponseContent struct {
-	Subscription *Subscription `json:"subscription,omitempty"`
+	Subscription Subscription `json:"subscription,omitempty"`
 }
 
 // Subscription defines model for Subscription.
 type Subscription struct {
-	Count       *int32    `json:"count,omitempty"`
-	Subscribed  *bool     `json:"subscribed,omitempty"`
-	Subscribers *[]Person `json:"subscribers,omitempty"`
-	Url         *string   `json:"url,omitempty"`
+	Count       int32    `json:"count,omitempty"`
+	Subscribed  bool     `json:"subscribed,omitempty"`
+	Subscribers []Person `json:"subscribers,omitempty"`
+	Url         string   `json:"url,omitempty"`
 }
 
 // Template defines model for Template.
 type Template struct {
-	AppUrl      *string     `json:"app_url,omitempty"`
-	CreatedAt   *string     `json:"created_at,omitempty"`
-	Description *string     `json:"description,omitempty"`
-	Dock        *[]DockItem `json:"dock,omitempty"`
-	Id          *int64      `json:"id,omitempty"`
-	Name        *string     `json:"name,omitempty"`
-	Status      *string     `json:"status,omitempty"`
-	UpdatedAt   *string     `json:"updated_at,omitempty"`
-	Url         *string     `json:"url,omitempty"`
+	AppUrl      string     `json:"app_url,omitempty"`
+	CreatedAt   time.Time  `json:"created_at,omitempty"`
+	Description string     `json:"description,omitempty"`
+	Dock        []DockItem `json:"dock,omitempty"`
+	Id          *int64     `json:"id,omitempty"`
+	Name        string     `json:"name,omitempty"`
+	Status      string     `json:"status,omitempty"`
+	UpdatedAt   time.Time  `json:"updated_at,omitempty"`
+	Url         string     `json:"url,omitempty"`
 }
 
 // TimesheetEntry defines model for TimesheetEntry.
 type TimesheetEntry struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Date             *string          `json:"date,omitempty"`
-	Description      *string          `json:"description,omitempty"`
-	Hours            *string          `json:"hours,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Date             string          `json:"date,omitempty"`
+	Description      string          `json:"description,omitempty"`
+	Hours            string          `json:"hours,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // Todo defines model for Todo.
 type Todo struct {
-	AppUrl                *string     `json:"app_url,omitempty"`
-	Assignees             *[]Person   `json:"assignees,omitempty"`
-	BookmarkUrl           *string     `json:"bookmark_url,omitempty"`
-	Bucket                *TodoBucket `json:"bucket,omitempty"`
-	CommentsCount         *int32      `json:"comments_count,omitempty"`
-	CommentsUrl           *string     `json:"comments_url,omitempty"`
-	Completed             *bool       `json:"completed,omitempty"`
-	CompletionSubscribers *[]Person   `json:"completion_subscribers,omitempty"`
-	CompletionUrl         *string     `json:"completion_url,omitempty"`
-	Content               *string     `json:"content,omitempty"`
-	CreatedAt             *string     `json:"created_at,omitempty"`
-	Creator               *Person     `json:"creator,omitempty"`
-	Description           *string     `json:"description,omitempty"`
-	DueOn                 *string     `json:"due_on,omitempty"`
-	Id                    *int64      `json:"id,omitempty"`
-	InheritsStatus        *bool       `json:"inherits_status,omitempty"`
-	Parent                *TodoParent `json:"parent,omitempty"`
-	Position              *int32      `json:"position,omitempty"`
-	StartsOn              *string     `json:"starts_on,omitempty"`
+	AppUrl                string     `json:"app_url,omitempty"`
+	Assignees             []Person   `json:"assignees,omitempty"`
+	BookmarkUrl           string     `json:"bookmark_url,omitempty"`
+	Bucket                TodoBucket `json:"bucket,omitempty"`
+	CommentsCount         int32      `json:"comments_count,omitempty"`
+	CommentsUrl           string     `json:"comments_url,omitempty"`
+	Completed             bool       `json:"completed,omitempty"`
+	CompletionSubscribers []Person   `json:"completion_subscribers,omitempty"`
+	CompletionUrl         string     `json:"completion_url,omitempty"`
+	Content               string     `json:"content,omitempty"`
+	CreatedAt             time.Time  `json:"created_at,omitempty"`
+	Creator               Person     `json:"creator,omitempty"`
+	Description           string     `json:"description,omitempty"`
+	DueOn                 time.Time  `json:"due_on,omitempty"`
+	Id                    *int64     `json:"id,omitempty"`
+	InheritsStatus        bool       `json:"inherits_status,omitempty"`
+	Parent                TodoParent `json:"parent,omitempty"`
+	Position              int32      `json:"position,omitempty"`
+	StartsOn              time.Time  `json:"starts_on,omitempty"`
 
 	// Status active|archived|trashed
-	Status           *string `json:"status,omitempty"`
-	SubscriptionUrl  *string `json:"subscription_url,omitempty"`
-	Title            *string `json:"title,omitempty"`
-	Type             *string `json:"type,omitempty"`
-	UpdatedAt        *string `json:"updated_at,omitempty"`
-	Url              *string `json:"url,omitempty"`
-	VisibleToClients *bool   `json:"visible_to_clients,omitempty"`
+	Status           string    `json:"status,omitempty"`
+	SubscriptionUrl  string    `json:"subscription_url,omitempty"`
+	Title            string    `json:"title,omitempty"`
+	Type             string    `json:"type,omitempty"`
+	UpdatedAt        time.Time `json:"updated_at,omitempty"`
+	Url              string    `json:"url,omitempty"`
+	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
 }
 
 // TodoBucket defines model for TodoBucket.
 type TodoBucket struct {
-	Id   *int64  `json:"id,omitempty"`
-	Name *string `json:"name,omitempty"`
-	Type *string `json:"type,omitempty"`
+	Id   *int64 `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
+	Type string `json:"type,omitempty"`
 }
 
 // TodoParent defines model for TodoParent.
 type TodoParent struct {
-	AppUrl *string `json:"app_url,omitempty"`
-	Id     *int64  `json:"id,omitempty"`
-	Title  *string `json:"title,omitempty"`
-	Type   *string `json:"type,omitempty"`
-	Url    *string `json:"url,omitempty"`
+	AppUrl string `json:"app_url,omitempty"`
+	Id     *int64 `json:"id,omitempty"`
+	Title  string `json:"title,omitempty"`
+	Type   string `json:"type,omitempty"`
+	Url    string `json:"url,omitempty"`
 }
 
 // Todolist defines model for Todolist.
 type Todolist struct {
-	AppTodosUrl    *string     `json:"app_todos_url,omitempty"`
-	AppUrl         *string     `json:"app_url,omitempty"`
-	BookmarkUrl    *string     `json:"bookmark_url,omitempty"`
-	Bucket         *TodoBucket `json:"bucket,omitempty"`
-	CommentsCount  *int32      `json:"comments_count,omitempty"`
-	CommentsUrl    *string     `json:"comments_url,omitempty"`
-	Completed      *bool       `json:"completed,omitempty"`
-	CompletedRatio *string     `json:"completed_ratio,omitempty"`
-	CreatedAt      *string     `json:"created_at,omitempty"`
-	Creator        *Person     `json:"creator,omitempty"`
-	Description    *string     `json:"description,omitempty"`
-	GroupsUrl      *string     `json:"groups_url,omitempty"`
-	Id             *int64      `json:"id,omitempty"`
-	InheritsStatus *bool       `json:"inherits_status,omitempty"`
-	Name           *string     `json:"name,omitempty"`
-	Parent         *TodoParent `json:"parent,omitempty"`
-	Position       *int32      `json:"position,omitempty"`
+	AppTodosUrl    string     `json:"app_todos_url,omitempty"`
+	AppUrl         string     `json:"app_url,omitempty"`
+	BookmarkUrl    string     `json:"bookmark_url,omitempty"`
+	Bucket         TodoBucket `json:"bucket,omitempty"`
+	CommentsCount  int32      `json:"comments_count,omitempty"`
+	CommentsUrl    string     `json:"comments_url,omitempty"`
+	Completed      bool       `json:"completed,omitempty"`
+	CompletedRatio string     `json:"completed_ratio,omitempty"`
+	CreatedAt      time.Time  `json:"created_at,omitempty"`
+	Creator        Person     `json:"creator,omitempty"`
+	Description    string     `json:"description,omitempty"`
+	GroupsUrl      string     `json:"groups_url,omitempty"`
+	Id             *int64     `json:"id,omitempty"`
+	InheritsStatus bool       `json:"inherits_status,omitempty"`
+	Name           string     `json:"name,omitempty"`
+	Parent         TodoParent `json:"parent,omitempty"`
+	Position       int32      `json:"position,omitempty"`
 
 	// Status active|archived|trashed
-	Status           *string `json:"status,omitempty"`
-	SubscriptionUrl  *string `json:"subscription_url,omitempty"`
-	Title            *string `json:"title,omitempty"`
-	TodosUrl         *string `json:"todos_url,omitempty"`
-	Type             *string `json:"type,omitempty"`
-	UpdatedAt        *string `json:"updated_at,omitempty"`
-	Url              *string `json:"url,omitempty"`
-	VisibleToClients *bool   `json:"visible_to_clients,omitempty"`
+	Status           string    `json:"status,omitempty"`
+	SubscriptionUrl  string    `json:"subscription_url,omitempty"`
+	Title            string    `json:"title,omitempty"`
+	TodosUrl         string    `json:"todos_url,omitempty"`
+	Type             string    `json:"type,omitempty"`
+	UpdatedAt        time.Time `json:"updated_at,omitempty"`
+	Url              string    `json:"url,omitempty"`
+	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
 }
 
 // TodolistGroup defines model for TodolistGroup.
 type TodolistGroup struct {
-	AppTodosUrl      *string     `json:"app_todos_url,omitempty"`
-	AppUrl           *string     `json:"app_url,omitempty"`
-	BookmarkUrl      *string     `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket `json:"bucket,omitempty"`
-	CommentsCount    *int32      `json:"comments_count,omitempty"`
-	CommentsUrl      *string     `json:"comments_url,omitempty"`
-	Completed        *bool       `json:"completed,omitempty"`
-	CompletedRatio   *string     `json:"completed_ratio,omitempty"`
-	CreatedAt        *string     `json:"created_at,omitempty"`
-	Creator          *Person     `json:"creator,omitempty"`
-	Id               *int64      `json:"id,omitempty"`
-	InheritsStatus   *bool       `json:"inherits_status,omitempty"`
-	Name             *string     `json:"name,omitempty"`
-	Parent           *TodoParent `json:"parent,omitempty"`
-	Position         *int32      `json:"position,omitempty"`
-	Status           *string     `json:"status,omitempty"`
-	SubscriptionUrl  *string     `json:"subscription_url,omitempty"`
-	Title            *string     `json:"title,omitempty"`
-	TodosUrl         *string     `json:"todos_url,omitempty"`
-	Type             *string     `json:"type,omitempty"`
-	UpdatedAt        *string     `json:"updated_at,omitempty"`
-	Url              *string     `json:"url,omitempty"`
-	VisibleToClients *bool       `json:"visible_to_clients,omitempty"`
+	AppTodosUrl      string     `json:"app_todos_url,omitempty"`
+	AppUrl           string     `json:"app_url,omitempty"`
+	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket `json:"bucket,omitempty"`
+	CommentsCount    int32      `json:"comments_count,omitempty"`
+	CommentsUrl      string     `json:"comments_url,omitempty"`
+	Completed        bool       `json:"completed,omitempty"`
+	CompletedRatio   string     `json:"completed_ratio,omitempty"`
+	CreatedAt        time.Time  `json:"created_at,omitempty"`
+	Creator          Person     `json:"creator,omitempty"`
+	Id               *int64     `json:"id,omitempty"`
+	InheritsStatus   bool       `json:"inherits_status,omitempty"`
+	Name             string     `json:"name,omitempty"`
+	Parent           TodoParent `json:"parent,omitempty"`
+	Position         int32      `json:"position,omitempty"`
+	Status           string     `json:"status,omitempty"`
+	SubscriptionUrl  string     `json:"subscription_url,omitempty"`
+	Title            string     `json:"title,omitempty"`
+	TodosUrl         string     `json:"todos_url,omitempty"`
+	Type             string     `json:"type,omitempty"`
+	UpdatedAt        time.Time  `json:"updated_at,omitempty"`
+	Url              string     `json:"url,omitempty"`
+	VisibleToClients bool       `json:"visible_to_clients,omitempty"`
 }
 
 // TodolistOrGroup Union type for polymorphic todolist endpoint
@@ -1666,107 +1669,107 @@ type TodolistOrGroup1 struct {
 
 // Todoset defines model for Todoset.
 type Todoset struct {
-	AppTodolistsUrl   *string     `json:"app_todolists_url,omitempty"`
-	AppUrl            *string     `json:"app_url,omitempty"`
-	BookmarkUrl       *string     `json:"bookmark_url,omitempty"`
-	Bucket            *TodoBucket `json:"bucket,omitempty"`
-	Completed         *bool       `json:"completed,omitempty"`
-	CompletedCount    *int32      `json:"completed_count,omitempty"`
-	CompletedRatio    *string     `json:"completed_ratio,omitempty"`
-	CreatedAt         *string     `json:"created_at,omitempty"`
-	Creator           *Person     `json:"creator,omitempty"`
-	Id                *int64      `json:"id,omitempty"`
-	InheritsStatus    *bool       `json:"inherits_status,omitempty"`
-	Name              *string     `json:"name,omitempty"`
-	OnScheduleCount   *int32      `json:"on_schedule_count,omitempty"`
-	OverScheduleCount *int32      `json:"over_schedule_count,omitempty"`
-	Position          *int32      `json:"position,omitempty"`
-	Status            *string     `json:"status,omitempty"`
-	Title             *string     `json:"title,omitempty"`
-	TodolistsCount    *int32      `json:"todolists_count,omitempty"`
-	TodolistsUrl      *string     `json:"todolists_url,omitempty"`
-	Type              *string     `json:"type,omitempty"`
-	UpdatedAt         *string     `json:"updated_at,omitempty"`
-	Url               *string     `json:"url,omitempty"`
-	VisibleToClients  *bool       `json:"visible_to_clients,omitempty"`
+	AppTodolistsUrl   string     `json:"app_todolists_url,omitempty"`
+	AppUrl            string     `json:"app_url,omitempty"`
+	BookmarkUrl       string     `json:"bookmark_url,omitempty"`
+	Bucket            TodoBucket `json:"bucket,omitempty"`
+	Completed         bool       `json:"completed,omitempty"`
+	CompletedCount    int32      `json:"completed_count,omitempty"`
+	CompletedRatio    string     `json:"completed_ratio,omitempty"`
+	CreatedAt         time.Time  `json:"created_at,omitempty"`
+	Creator           Person     `json:"creator,omitempty"`
+	Id                *int64     `json:"id,omitempty"`
+	InheritsStatus    bool       `json:"inherits_status,omitempty"`
+	Name              string     `json:"name,omitempty"`
+	OnScheduleCount   int32      `json:"on_schedule_count,omitempty"`
+	OverScheduleCount int32      `json:"over_schedule_count,omitempty"`
+	Position          int32      `json:"position,omitempty"`
+	Status            string     `json:"status,omitempty"`
+	Title             string     `json:"title,omitempty"`
+	TodolistsCount    int32      `json:"todolists_count,omitempty"`
+	TodolistsUrl      string     `json:"todolists_url,omitempty"`
+	Type              string     `json:"type,omitempty"`
+	UpdatedAt         time.Time  `json:"updated_at,omitempty"`
+	Url               string     `json:"url,omitempty"`
+	VisibleToClients  bool       `json:"visible_to_clients,omitempty"`
 }
 
 // Tool defines model for Tool.
 type Tool struct {
-	AppUrl    *string          `json:"app_url,omitempty"`
-	Bucket    *RecordingBucket `json:"bucket,omitempty"`
-	CreatedAt *string          `json:"created_at,omitempty"`
-	Enabled   *bool            `json:"enabled,omitempty"`
-	Id        *int64           `json:"id,omitempty"`
-	Name      *string          `json:"name,omitempty"`
-	Position  *int32           `json:"position,omitempty"`
-	Status    *string          `json:"status,omitempty"`
-	Title     *string          `json:"title,omitempty"`
-	UpdatedAt *string          `json:"updated_at,omitempty"`
-	Url       *string          `json:"url,omitempty"`
+	AppUrl    string          `json:"app_url,omitempty"`
+	Bucket    RecordingBucket `json:"bucket,omitempty"`
+	CreatedAt time.Time       `json:"created_at,omitempty"`
+	Enabled   bool            `json:"enabled,omitempty"`
+	Id        *int64          `json:"id,omitempty"`
+	Name      string          `json:"name,omitempty"`
+	Position  int32           `json:"position,omitempty"`
+	Status    string          `json:"status,omitempty"`
+	Title     string          `json:"title,omitempty"`
+	UpdatedAt time.Time       `json:"updated_at,omitempty"`
+	Url       string          `json:"url,omitempty"`
 }
 
 // UnauthorizedErrorResponseContent defines model for UnauthorizedErrorResponseContent.
 type UnauthorizedErrorResponseContent struct {
-	Error   string  `json:"error"`
-	Message *string `json:"message,omitempty"`
+	Error   string `json:"error"`
+	Message string `json:"message,omitempty"`
 }
 
 // UncompleteCardStepResponseContent defines model for UncompleteCardStepResponseContent.
 type UncompleteCardStepResponseContent struct {
-	Step *CardStep `json:"step,omitempty"`
+	Step CardStep `json:"step,omitempty"`
 }
 
 // UpdateAnswerResponseContent defines model for UpdateAnswerResponseContent.
 type UpdateAnswerResponseContent struct {
-	Answer *QuestionAnswer `json:"answer,omitempty"`
+	Answer QuestionAnswer `json:"answer,omitempty"`
 }
 
 // UpdateCardColumnRequestContent defines model for UpdateCardColumnRequestContent.
 type UpdateCardColumnRequestContent struct {
-	Description *string `json:"description,omitempty"`
-	Title       *string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	Title       string `json:"title,omitempty"`
 }
 
 // UpdateCardColumnResponseContent defines model for UpdateCardColumnResponseContent.
 type UpdateCardColumnResponseContent struct {
-	Column *CardColumn `json:"column,omitempty"`
+	Column CardColumn `json:"column,omitempty"`
 }
 
 // UpdateCardRequestContent defines model for UpdateCardRequestContent.
 type UpdateCardRequestContent struct {
-	AssigneeIds *[]int64 `json:"assignee_ids,omitempty"`
-	Content     *string  `json:"content,omitempty"`
-	DueOn       *string  `json:"due_on,omitempty"`
-	Title       *string  `json:"title,omitempty"`
+	AssigneeIds []int64   `json:"assignee_ids,omitempty"`
+	Content     string    `json:"content,omitempty"`
+	DueOn       time.Time `json:"due_on,omitempty"`
+	Title       string    `json:"title,omitempty"`
 }
 
 // UpdateCardResponseContent defines model for UpdateCardResponseContent.
 type UpdateCardResponseContent struct {
-	Card *Card `json:"card,omitempty"`
+	Card Card `json:"card,omitempty"`
 }
 
 // UpdateCardStepRequestContent defines model for UpdateCardStepRequestContent.
 type UpdateCardStepRequestContent struct {
-	Assignees *[]int64 `json:"assignees,omitempty"`
-	DueOn     *string  `json:"due_on,omitempty"`
-	Title     *string  `json:"title,omitempty"`
+	Assignees []int64   `json:"assignees,omitempty"`
+	DueOn     time.Time `json:"due_on,omitempty"`
+	Title     string    `json:"title,omitempty"`
 }
 
 // UpdateCardStepResponseContent defines model for UpdateCardStepResponseContent.
 type UpdateCardStepResponseContent struct {
-	Step *CardStep `json:"step,omitempty"`
+	Step CardStep `json:"step,omitempty"`
 }
 
 // UpdateChatbotRequestContent defines model for UpdateChatbotRequestContent.
 type UpdateChatbotRequestContent struct {
-	CommandUrl  *string `json:"command_url,omitempty"`
-	ServiceName string  `json:"service_name"`
+	CommandUrl  string `json:"command_url,omitempty"`
+	ServiceName string `json:"service_name"`
 }
 
 // UpdateChatbotResponseContent defines model for UpdateChatbotResponseContent.
 type UpdateChatbotResponseContent struct {
-	Chatbot *Chatbot `json:"chatbot,omitempty"`
+	Chatbot Chatbot `json:"chatbot,omitempty"`
 }
 
 // UpdateCommentRequestContent defines model for UpdateCommentRequestContent.
@@ -1776,112 +1779,112 @@ type UpdateCommentRequestContent struct {
 
 // UpdateCommentResponseContent defines model for UpdateCommentResponseContent.
 type UpdateCommentResponseContent struct {
-	Comment *Comment `json:"comment,omitempty"`
+	Comment Comment `json:"comment,omitempty"`
 }
 
 // UpdateDocumentRequestContent defines model for UpdateDocumentRequestContent.
 type UpdateDocumentRequestContent struct {
-	Content *string `json:"content,omitempty"`
-	Title   *string `json:"title,omitempty"`
+	Content string `json:"content,omitempty"`
+	Title   string `json:"title,omitempty"`
 }
 
 // UpdateDocumentResponseContent defines model for UpdateDocumentResponseContent.
 type UpdateDocumentResponseContent struct {
-	Document *Document `json:"document,omitempty"`
+	Document Document `json:"document,omitempty"`
 }
 
 // UpdateLineupMarkerRequestContent defines model for UpdateLineupMarkerRequestContent.
 type UpdateLineupMarkerRequestContent struct {
-	Color       *string `json:"color,omitempty"`
-	Description *string `json:"description,omitempty"`
-	EndsOn      *string `json:"ends_on,omitempty"`
-	StartsOn    *string `json:"starts_on,omitempty"`
-	Title       *string `json:"title,omitempty"`
+	Color       string    `json:"color,omitempty"`
+	Description string    `json:"description,omitempty"`
+	EndsOn      time.Time `json:"ends_on,omitempty"`
+	StartsOn    time.Time `json:"starts_on,omitempty"`
+	Title       string    `json:"title,omitempty"`
 }
 
 // UpdateLineupMarkerResponseContent defines model for UpdateLineupMarkerResponseContent.
 type UpdateLineupMarkerResponseContent struct {
-	Marker *LineupMarker `json:"marker,omitempty"`
+	Marker LineupMarker `json:"marker,omitempty"`
 }
 
 // UpdateMessageRequestContent defines model for UpdateMessageRequestContent.
 type UpdateMessageRequestContent struct {
-	CategoryId *int64  `json:"category_id,omitempty"`
-	Content    *string `json:"content,omitempty"`
+	CategoryId *int64 `json:"category_id,omitempty"`
+	Content    string `json:"content,omitempty"`
 
 	// Status active|drafted
-	Status  *string `json:"status,omitempty"`
-	Subject *string `json:"subject,omitempty"`
+	Status  string `json:"status,omitempty"`
+	Subject string `json:"subject,omitempty"`
 }
 
 // UpdateMessageResponseContent defines model for UpdateMessageResponseContent.
 type UpdateMessageResponseContent struct {
-	Message *Message `json:"message,omitempty"`
+	Message Message `json:"message,omitempty"`
 }
 
 // UpdateMessageTypeRequestContent defines model for UpdateMessageTypeRequestContent.
 type UpdateMessageTypeRequestContent struct {
-	Icon *string `json:"icon,omitempty"`
-	Name *string `json:"name,omitempty"`
+	Icon string `json:"icon,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // UpdateMessageTypeResponseContent defines model for UpdateMessageTypeResponseContent.
 type UpdateMessageTypeResponseContent struct {
-	MessageType *MessageType `json:"message_type,omitempty"`
+	MessageType MessageType `json:"message_type,omitempty"`
 }
 
 // UpdateProjectAccessRequestContent defines model for UpdateProjectAccessRequestContent.
 type UpdateProjectAccessRequestContent struct {
-	Create *[]CreatePersonRequest `json:"create,omitempty"`
-	Grant  *[]int64               `json:"grant,omitempty"`
-	Revoke *[]int64               `json:"revoke,omitempty"`
+	Create []CreatePersonRequest `json:"create,omitempty"`
+	Grant  []int64               `json:"grant,omitempty"`
+	Revoke []int64               `json:"revoke,omitempty"`
 }
 
 // UpdateProjectAccessResponseContent defines model for UpdateProjectAccessResponseContent.
 type UpdateProjectAccessResponseContent struct {
-	Result *ProjectAccessResult `json:"result,omitempty"`
+	Result ProjectAccessResult `json:"result,omitempty"`
 }
 
 // UpdateProjectRequestContent defines model for UpdateProjectRequestContent.
 type UpdateProjectRequestContent struct {
 	// Admissions invite|employee|team
-	Admissions         *string             `json:"admissions,omitempty"`
-	Description        *string             `json:"description,omitempty"`
-	Name               string              `json:"name"`
-	ScheduleAttributes *ScheduleAttributes `json:"schedule_attributes,omitempty"`
+	Admissions         string             `json:"admissions,omitempty"`
+	Description        string             `json:"description,omitempty"`
+	Name               string             `json:"name"`
+	ScheduleAttributes ScheduleAttributes `json:"schedule_attributes,omitempty"`
 }
 
 // UpdateProjectResponseContent defines model for UpdateProjectResponseContent.
 type UpdateProjectResponseContent struct {
-	Project *Project `json:"project,omitempty"`
+	Project Project `json:"project,omitempty"`
 }
 
 // UpdateQuestionRequestContent defines model for UpdateQuestionRequestContent.
 type UpdateQuestionRequestContent struct {
-	Paused   *bool             `json:"paused,omitempty"`
-	Schedule *QuestionSchedule `json:"schedule,omitempty"`
-	Title    *string           `json:"title,omitempty"`
+	Paused   bool             `json:"paused,omitempty"`
+	Schedule QuestionSchedule `json:"schedule,omitempty"`
+	Title    string           `json:"title,omitempty"`
 }
 
 // UpdateQuestionResponseContent defines model for UpdateQuestionResponseContent.
 type UpdateQuestionResponseContent struct {
-	Question *Question `json:"question,omitempty"`
+	Question Question `json:"question,omitempty"`
 }
 
 // UpdateScheduleEntryRequestContent defines model for UpdateScheduleEntryRequestContent.
 type UpdateScheduleEntryRequestContent struct {
-	AllDay         *bool    `json:"all_day,omitempty"`
-	Description    *string  `json:"description,omitempty"`
-	EndsAt         *string  `json:"ends_at,omitempty"`
-	Notify         *bool    `json:"notify,omitempty"`
-	ParticipantIds *[]int64 `json:"participant_ids,omitempty"`
-	StartsAt       *string  `json:"starts_at,omitempty"`
-	Summary        *string  `json:"summary,omitempty"`
+	AllDay         bool      `json:"all_day,omitempty"`
+	Description    string    `json:"description,omitempty"`
+	EndsAt         time.Time `json:"ends_at,omitempty"`
+	Notify         bool      `json:"notify,omitempty"`
+	ParticipantIds []int64   `json:"participant_ids,omitempty"`
+	StartsAt       time.Time `json:"starts_at,omitempty"`
+	Summary        string    `json:"summary,omitempty"`
 }
 
 // UpdateScheduleEntryResponseContent defines model for UpdateScheduleEntryResponseContent.
 type UpdateScheduleEntryResponseContent struct {
-	Entry *ScheduleEntry `json:"entry,omitempty"`
+	Entry ScheduleEntry `json:"entry,omitempty"`
 }
 
 // UpdateScheduleSettingsRequestContent defines model for UpdateScheduleSettingsRequestContent.
@@ -1891,60 +1894,60 @@ type UpdateScheduleSettingsRequestContent struct {
 
 // UpdateScheduleSettingsResponseContent defines model for UpdateScheduleSettingsResponseContent.
 type UpdateScheduleSettingsResponseContent struct {
-	Schedule *Schedule `json:"schedule,omitempty"`
+	Schedule Schedule `json:"schedule,omitempty"`
 }
 
 // UpdateSubscriptionRequestContent defines model for UpdateSubscriptionRequestContent.
 type UpdateSubscriptionRequestContent struct {
-	Subscriptions   *[]int64 `json:"subscriptions,omitempty"`
-	Unsubscriptions *[]int64 `json:"unsubscriptions,omitempty"`
+	Subscriptions   []int64 `json:"subscriptions,omitempty"`
+	Unsubscriptions []int64 `json:"unsubscriptions,omitempty"`
 }
 
 // UpdateSubscriptionResponseContent defines model for UpdateSubscriptionResponseContent.
 type UpdateSubscriptionResponseContent struct {
-	Subscription *Subscription `json:"subscription,omitempty"`
+	Subscription Subscription `json:"subscription,omitempty"`
 }
 
 // UpdateTemplateRequestContent defines model for UpdateTemplateRequestContent.
 type UpdateTemplateRequestContent struct {
-	Description *string `json:"description,omitempty"`
-	Name        *string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name,omitempty"`
 }
 
 // UpdateTemplateResponseContent defines model for UpdateTemplateResponseContent.
 type UpdateTemplateResponseContent struct {
-	Template *Template `json:"template,omitempty"`
+	Template Template `json:"template,omitempty"`
 }
 
 // UpdateTodoRequestContent defines model for UpdateTodoRequestContent.
 type UpdateTodoRequestContent struct {
-	AssigneeIds             *[]int64 `json:"assignee_ids,omitempty"`
-	CompletionSubscriberIds *[]int64 `json:"completion_subscriber_ids,omitempty"`
-	Content                 *string  `json:"content,omitempty"`
-	Description             *string  `json:"description,omitempty"`
-	DueOn                   *string  `json:"due_on,omitempty"`
-	Notify                  *bool    `json:"notify,omitempty"`
-	StartsOn                *string  `json:"starts_on,omitempty"`
+	AssigneeIds             []int64   `json:"assignee_ids,omitempty"`
+	CompletionSubscriberIds []int64   `json:"completion_subscriber_ids,omitempty"`
+	Content                 string    `json:"content,omitempty"`
+	Description             string    `json:"description,omitempty"`
+	DueOn                   time.Time `json:"due_on,omitempty"`
+	Notify                  bool      `json:"notify,omitempty"`
+	StartsOn                time.Time `json:"starts_on,omitempty"`
 }
 
 // UpdateTodoResponseContent defines model for UpdateTodoResponseContent.
 type UpdateTodoResponseContent struct {
-	Todo *Todo `json:"todo,omitempty"`
+	Todo Todo `json:"todo,omitempty"`
 }
 
 // UpdateTodolistOrGroupRequestContent defines model for UpdateTodolistOrGroupRequestContent.
 type UpdateTodolistOrGroupRequestContent struct {
 	// Description Description (Todolist only, ignored for groups)
-	Description *string `json:"description,omitempty"`
+	Description string `json:"description,omitempty"`
 
 	// Name Name (required for both Todolist and TodolistGroup)
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // UpdateTodolistOrGroupResponseContent defines model for UpdateTodolistOrGroupResponseContent.
 type UpdateTodolistOrGroupResponseContent struct {
 	// Result Union type for polymorphic todolist endpoint
-	Result *TodolistOrGroup `json:"result,omitempty"`
+	Result TodolistOrGroup `json:"result,omitempty"`
 }
 
 // UpdateToolRequestContent defines model for UpdateToolRequestContent.
@@ -1954,112 +1957,112 @@ type UpdateToolRequestContent struct {
 
 // UpdateToolResponseContent defines model for UpdateToolResponseContent.
 type UpdateToolResponseContent struct {
-	Tool *Tool `json:"tool,omitempty"`
+	Tool Tool `json:"tool,omitempty"`
 }
 
 // UpdateUploadRequestContent defines model for UpdateUploadRequestContent.
 type UpdateUploadRequestContent struct {
-	BaseName    *string `json:"base_name,omitempty"`
-	Description *string `json:"description,omitempty"`
+	BaseName    string `json:"base_name,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 // UpdateUploadResponseContent defines model for UpdateUploadResponseContent.
 type UpdateUploadResponseContent struct {
-	Upload *Upload `json:"upload,omitempty"`
+	Upload Upload `json:"upload,omitempty"`
 }
 
 // UpdateVaultRequestContent defines model for UpdateVaultRequestContent.
 type UpdateVaultRequestContent struct {
-	Title *string `json:"title,omitempty"`
+	Title string `json:"title,omitempty"`
 }
 
 // UpdateVaultResponseContent defines model for UpdateVaultResponseContent.
 type UpdateVaultResponseContent struct {
-	Vault *Vault `json:"vault,omitempty"`
+	Vault Vault `json:"vault,omitempty"`
 }
 
 // UpdateWebhookRequestContent defines model for UpdateWebhookRequestContent.
 type UpdateWebhookRequestContent struct {
-	Active     *bool     `json:"active,omitempty"`
-	PayloadUrl *string   `json:"payload_url,omitempty"`
-	Types      *[]string `json:"types,omitempty"`
+	Active     bool     `json:"active,omitempty"`
+	PayloadUrl string   `json:"payload_url,omitempty"`
+	Types      []string `json:"types,omitempty"`
 }
 
 // UpdateWebhookResponseContent defines model for UpdateWebhookResponseContent.
 type UpdateWebhookResponseContent struct {
-	Webhook *Webhook `json:"webhook,omitempty"`
+	Webhook Webhook `json:"webhook,omitempty"`
 }
 
 // Upload defines model for Upload.
 type Upload struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	ByteSize         *int64           `json:"byte_size,omitempty"`
-	CommentsCount    *int32           `json:"comments_count,omitempty"`
-	CommentsUrl      *string          `json:"comments_url,omitempty"`
-	ContentType      *string          `json:"content_type,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	Description      *string          `json:"description,omitempty"`
-	DownloadUrl      *string          `json:"download_url,omitempty"`
-	Filename         *string          `json:"filename,omitempty"`
-	Height           *int32           `json:"height,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Position         *int32           `json:"position,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	SubscriptionUrl  *string          `json:"subscription_url,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
-	Width            *int32           `json:"width,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	ByteSize         int64           `json:"byte_size,omitempty"`
+	CommentsCount    int32           `json:"comments_count,omitempty"`
+	CommentsUrl      string          `json:"comments_url,omitempty"`
+	ContentType      string          `json:"content_type,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	Description      string          `json:"description,omitempty"`
+	DownloadUrl      string          `json:"download_url,omitempty"`
+	Filename         string          `json:"filename,omitempty"`
+	Height           int32           `json:"height,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Position         int32           `json:"position,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Width            int32           `json:"width,omitempty"`
 }
 
 // ValidationErrorResponseContent defines model for ValidationErrorResponseContent.
 type ValidationErrorResponseContent struct {
-	Error   string  `json:"error"`
-	Message *string `json:"message,omitempty"`
+	Error   string `json:"error"`
+	Message string `json:"message,omitempty"`
 }
 
 // Vault defines model for Vault.
 type Vault struct {
-	AppUrl           *string          `json:"app_url,omitempty"`
-	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
-	Bucket           *TodoBucket      `json:"bucket,omitempty"`
-	CreatedAt        *string          `json:"created_at,omitempty"`
-	Creator          *Person          `json:"creator,omitempty"`
-	DocumentsCount   *int32           `json:"documents_count,omitempty"`
-	DocumentsUrl     *string          `json:"documents_url,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
-	Parent           *RecordingParent `json:"parent,omitempty"`
-	Position         *int32           `json:"position,omitempty"`
-	Status           *string          `json:"status,omitempty"`
-	Title            *string          `json:"title,omitempty"`
-	Type             *string          `json:"type,omitempty"`
-	UpdatedAt        *string          `json:"updated_at,omitempty"`
-	UploadsCount     *int32           `json:"uploads_count,omitempty"`
-	UploadsUrl       *string          `json:"uploads_url,omitempty"`
-	Url              *string          `json:"url,omitempty"`
-	VaultsCount      *int32           `json:"vaults_count,omitempty"`
-	VaultsUrl        *string          `json:"vaults_url,omitempty"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           string          `json:"app_url,omitempty"`
+	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	CreatedAt        time.Time       `json:"created_at,omitempty"`
+	Creator          Person          `json:"creator,omitempty"`
+	DocumentsCount   int32           `json:"documents_count,omitempty"`
+	DocumentsUrl     string          `json:"documents_url,omitempty"`
+	Id               *int64          `json:"id,omitempty"`
+	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Parent           RecordingParent `json:"parent,omitempty"`
+	Position         int32           `json:"position,omitempty"`
+	Status           string          `json:"status,omitempty"`
+	Title            string          `json:"title,omitempty"`
+	Type             string          `json:"type,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	UploadsCount     int32           `json:"uploads_count,omitempty"`
+	UploadsUrl       string          `json:"uploads_url,omitempty"`
+	Url              string          `json:"url,omitempty"`
+	VaultsCount      int32           `json:"vaults_count,omitempty"`
+	VaultsUrl        string          `json:"vaults_url,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
 // Webhook defines model for Webhook.
 type Webhook struct {
-	Active     *bool     `json:"active,omitempty"`
-	AppUrl     *string   `json:"app_url,omitempty"`
-	CreatedAt  *string   `json:"created_at,omitempty"`
+	Active     bool      `json:"active,omitempty"`
+	AppUrl     string    `json:"app_url,omitempty"`
+	CreatedAt  time.Time `json:"created_at,omitempty"`
 	Id         *int64    `json:"id,omitempty"`
-	PayloadUrl *string   `json:"payload_url,omitempty"`
-	Types      *[]string `json:"types,omitempty"`
-	UpdatedAt  *string   `json:"updated_at,omitempty"`
-	Url        *string   `json:"url,omitempty"`
+	PayloadUrl string    `json:"payload_url,omitempty"`
+	Types      []string  `json:"types,omitempty"`
+	UpdatedAt  time.Time `json:"updated_at,omitempty"`
+	Url        string    `json:"url,omitempty"`
 }
 
 // SensitiveString is a string type that redacts its value in logs.
@@ -2092,64 +2095,64 @@ type CreateAttachmentParams struct {
 
 // GetRecordingTimesheetParams defines parameters for GetRecordingTimesheet.
 type GetRecordingTimesheetParams struct {
-	From     *string `form:"from,omitempty" json:"from,omitempty"`
-	To       *string `form:"to,omitempty" json:"to,omitempty"`
-	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
+	From     string `form:"from,omitempty" json:"from,omitempty"`
+	To       string `form:"to,omitempty" json:"to,omitempty"`
+	PersonId int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
 }
 
 // ListScheduleEntriesParams defines parameters for ListScheduleEntries.
 type ListScheduleEntriesParams struct {
 	// Status active|archived|trashed
-	Status *string `form:"status,omitempty" json:"status,omitempty"`
+	Status string `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // GetProjectTimesheetParams defines parameters for GetProjectTimesheet.
 type GetProjectTimesheetParams struct {
-	From     *string `form:"from,omitempty" json:"from,omitempty"`
-	To       *string `form:"to,omitempty" json:"to,omitempty"`
-	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
+	From     string `form:"from,omitempty" json:"from,omitempty"`
+	To       string `form:"to,omitempty" json:"to,omitempty"`
+	PersonId int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
 }
 
 // ListTodosParams defines parameters for ListTodos.
 type ListTodosParams struct {
 	// Status active|archived|trashed
-	Status    *string `form:"status,omitempty" json:"status,omitempty"`
-	Completed *bool   `form:"completed,omitempty" json:"completed,omitempty"`
+	Status    string `form:"status,omitempty" json:"status,omitempty"`
+	Completed bool   `form:"completed,omitempty" json:"completed,omitempty"`
 }
 
 // ListTodolistsParams defines parameters for ListTodolists.
 type ListTodolistsParams struct {
 	// Status active|archived|trashed
-	Status *string `form:"status,omitempty" json:"status,omitempty"`
+	Status string `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // ListProjectsParams defines parameters for ListProjects.
 type ListProjectsParams struct {
 	// Status active|archived|trashed
-	Status *string `form:"status,omitempty" json:"status,omitempty"`
+	Status string `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // ListRecordingsParams defines parameters for ListRecordings.
 type ListRecordingsParams struct {
 	// Type Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
-	Type   string  `form:"type" json:"type"`
-	Bucket *string `form:"bucket,omitempty" json:"bucket,omitempty"`
+	Type   string `form:"type" json:"type"`
+	Bucket string `form:"bucket,omitempty" json:"bucket,omitempty"`
 
 	// Status active|archived|trashed
-	Status *string `form:"status,omitempty" json:"status,omitempty"`
+	Status string `form:"status,omitempty" json:"status,omitempty"`
 
 	// Sort created_at|updated_at
-	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
+	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
 
 	// Direction asc|desc
-	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
 // GetTimesheetReportParams defines parameters for GetTimesheetReport.
 type GetTimesheetReportParams struct {
-	From     *string `form:"from,omitempty" json:"from,omitempty"`
-	To       *string `form:"to,omitempty" json:"to,omitempty"`
-	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
+	From     string `form:"from,omitempty" json:"from,omitempty"`
+	To       string `form:"to,omitempty" json:"to,omitempty"`
+	PersonId int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
 }
 
 // SearchParams defines parameters for Search.
@@ -2157,13 +2160,13 @@ type SearchParams struct {
 	Query string `form:"query" json:"query"`
 
 	// Sort created_at|updated_at
-	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
+	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
 }
 
 // ListTemplatesParams defines parameters for ListTemplates.
 type ListTemplatesParams struct {
 	// Status active|archived|trashed
-	Status *string `form:"status,omitempty" json:"status,omitempty"`
+	Status string `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // UpdateCardJSONRequestBody defines body for UpdateCard for application/json ContentType.
@@ -9395,52 +9398,40 @@ func NewGetRecordingTimesheetRequest(server string, projectId int64, recordingId
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.From != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, *params.From); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, params.From); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.To != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, *params.To); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, params.To); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.PersonId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, *params.PersonId); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, params.PersonId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -9728,20 +9719,16 @@ func NewListScheduleEntriesRequest(server string, projectId int64, scheduleId in
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Status != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -9838,52 +9825,40 @@ func NewGetProjectTimesheetRequest(server string, projectId int64, params *GetPr
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.From != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, *params.From); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, params.From); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.To != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, *params.To); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, params.To); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.PersonId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, *params.PersonId); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, params.PersonId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -10177,36 +10152,28 @@ func NewListTodosRequest(server string, projectId int64, todolistId int64, param
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Status != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.Completed != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "completed", runtime.ParamLocationQuery, *params.Completed); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "completed", runtime.ParamLocationQuery, params.Completed); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -10569,20 +10536,16 @@ func NewListTodolistsRequest(server string, projectId int64, todosetId int64, pa
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Status != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -11668,20 +11631,16 @@ func NewListProjectsRequest(server string, params *ListProjectsParams) (*http.Re
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Status != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -11769,68 +11728,52 @@ func NewListRecordingsRequest(server string, params *ListRecordingsParams) (*htt
 			}
 		}
 
-		if params.Bucket != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "bucket", runtime.ParamLocationQuery, *params.Bucket); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "bucket", runtime.ParamLocationQuery, params.Bucket); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.Status != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.Sort != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.Direction != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, params.Direction); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -12062,52 +12005,40 @@ func NewGetTimesheetReportRequest(server string, params *GetTimesheetReportParam
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.From != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, *params.From); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, params.From); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.To != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, *params.To); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, params.To); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.PersonId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, *params.PersonId); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, params.PersonId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -12155,20 +12086,16 @@ func NewSearchRequest(server string, params *SearchParams) (*http.Request, error
 			}
 		}
 
-		if params.Sort != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -12231,20 +12158,16 @@ func NewListTemplatesRequest(server string, params *ListTemplatesParams) (*http.
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Status != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -12692,6 +12615,897 @@ func IsIdempotent(operationId string) bool {
 		return meta.Idempotent
 	}
 	return false
+}
+
+// =============================================================================
+// Auth Transport
+// =============================================================================
+
+// TokenProvider is the interface for obtaining access tokens.
+type TokenProvider interface {
+	// AccessToken returns a valid access token, refreshing if needed.
+	AccessToken(ctx context.Context) (string, error)
+}
+
+// StaticTokenProvider provides a fixed token (e.g., from environment variable).
+type StaticTokenProvider struct {
+	Token string
+}
+
+// AccessToken returns the static token.
+func (p *StaticTokenProvider) AccessToken(ctx context.Context) (string, error) {
+	if p.Token == "" {
+		return "", &APIError{Code: ErrCodeAuth, Message: "no token configured"}
+	}
+	return p.Token, nil
+}
+
+// AuthTransport is an http.RoundTripper that adds Bearer token authentication.
+type AuthTransport struct {
+	// TokenProvider supplies access tokens for requests.
+	TokenProvider TokenProvider
+	// Base is the underlying transport. If nil, http.DefaultTransport is used.
+	Base http.RoundTripper
+	// UserAgent is the User-Agent header value. If empty, a default is used.
+	UserAgent string
+}
+
+// RoundTrip implements http.RoundTripper, adding the Authorization header.
+func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Get access token
+	token, err := t.TokenProvider.AccessToken(req.Context())
+	if err != nil {
+		return nil, err
+	}
+
+	// Clone request to avoid mutating the original
+	req2 := req.Clone(req.Context())
+	req2.Header.Set("Authorization", "Bearer "+token)
+
+	if t.UserAgent != "" {
+		req2.Header.Set("User-Agent", t.UserAgent)
+	}
+
+	// Set default headers if not present
+	if req2.Header.Get("Content-Type") == "" && req2.Body != nil {
+		req2.Header.Set("Content-Type", "application/json")
+	}
+	if req2.Header.Get("Accept") == "" {
+		req2.Header.Set("Accept", "application/json")
+	}
+
+	base := t.Base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	return base.RoundTrip(req2)
+}
+
+// WithAuthTransport returns a ClientOption that configures authentication.
+func WithAuthTransport(tokenProvider TokenProvider, userAgent string) ClientOption {
+	return func(c *Client) error {
+		// Wrap the existing client's transport
+		existingTransport := http.DefaultTransport
+		if c.Client != nil {
+			if httpClient, ok := c.Client.(*http.Client); ok && httpClient.Transport != nil {
+				existingTransport = httpClient.Transport
+			}
+		}
+
+		authTransport := &AuthTransport{
+			TokenProvider: tokenProvider,
+			Base:          existingTransport,
+			UserAgent:     userAgent,
+		}
+
+		c.Client = &http.Client{Transport: authTransport}
+		return nil
+	}
+}
+
+// =============================================================================
+// Caching Transport
+// =============================================================================
+
+// ResponseCache is the interface for caching HTTP responses.
+type ResponseCache interface {
+	// Get returns the cached ETag and body for a URL, or empty values if not cached.
+	Get(url string) (etag string, body []byte, ok bool)
+	// Set stores the ETag and body for a URL.
+	Set(url string, etag string, body []byte)
+	// Invalidate removes a cached entry.
+	Invalidate(url string)
+	// Clear removes all cached entries.
+	Clear()
+}
+
+// InMemoryCache is a simple in-memory cache implementation.
+type InMemoryCache struct {
+	mu      sync.RWMutex
+	entries map[string]*cacheEntry
+}
+
+type cacheEntry struct {
+	etag string
+	body []byte
+}
+
+// NewInMemoryCache creates a new in-memory cache.
+func NewInMemoryCache() *InMemoryCache {
+	return &InMemoryCache{
+		entries: make(map[string]*cacheEntry),
+	}
+}
+
+// Get returns the cached ETag and body for a URL.
+func (c *InMemoryCache) Get(url string) (etag string, body []byte, ok bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if entry, exists := c.entries[url]; exists {
+		return entry.etag, entry.body, true
+	}
+	return "", nil, false
+}
+
+// Set stores the ETag and body for a URL.
+func (c *InMemoryCache) Set(url string, etag string, body []byte) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries[url] = &cacheEntry{etag: etag, body: body}
+}
+
+// Invalidate removes a cached entry.
+func (c *InMemoryCache) Invalidate(url string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.entries, url)
+}
+
+// Clear removes all cached entries.
+func (c *InMemoryCache) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries = make(map[string]*cacheEntry)
+}
+
+// CachingTransport is an http.RoundTripper that implements ETag-based caching.
+type CachingTransport struct {
+	// Cache stores responses by URL.
+	Cache ResponseCache
+	// Base is the underlying transport. If nil, http.DefaultTransport is used.
+	Base http.RoundTripper
+}
+
+// RoundTrip implements http.RoundTripper with ETag-based caching.
+func (t *CachingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	base := t.Base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+
+	// Only cache GET requests
+	if req.Method != http.MethodGet {
+		// Invalidate cache for mutating requests to the same URL
+		if req.Method == http.MethodPost || req.Method == http.MethodPut ||
+			req.Method == http.MethodPatch || req.Method == http.MethodDelete {
+			t.Cache.Invalidate(req.URL.String())
+		}
+		return base.RoundTrip(req)
+	}
+
+	url := req.URL.String()
+
+	// Check cache for ETag
+	etag, cachedBody, hasCached := t.Cache.Get(url)
+	if hasCached && etag != "" {
+		// Clone request and add If-None-Match header
+		req2 := req.Clone(req.Context())
+		req2.Header.Set("If-None-Match", etag)
+		req = req2
+	}
+
+	resp, err := base.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle 304 Not Modified - return cached response
+	if resp.StatusCode == http.StatusNotModified && hasCached {
+		_ = resp.Body.Close()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK (cached)",
+			Header:     resp.Header,
+			Body:       io.NopCloser(bytes.NewReader(cachedBody)),
+			Request:    req,
+		}, nil
+	}
+
+	// Cache successful GET responses with ETag
+	if resp.StatusCode == http.StatusOK {
+		if newETag := resp.Header.Get("ETag"); newETag != "" {
+			// Read and cache the body
+			body, err := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if err != nil {
+				return nil, err
+			}
+			t.Cache.Set(url, newETag, body)
+			// Return response with new body reader
+			resp.Body = io.NopCloser(bytes.NewReader(body))
+		}
+	}
+
+	return resp, nil
+}
+
+// WithCachingTransport returns a ClientOption that enables ETag-based caching.
+func WithCachingTransport(cache ResponseCache) ClientOption {
+	return func(c *Client) error {
+		// Wrap the existing client's transport
+		existingTransport := http.DefaultTransport
+		if c.Client != nil {
+			if httpClient, ok := c.Client.(*http.Client); ok && httpClient.Transport != nil {
+				existingTransport = httpClient.Transport
+			}
+		}
+
+		cachingTransport := &CachingTransport{
+			Cache: cache,
+			Base:  existingTransport,
+		}
+
+		c.Client = &http.Client{Transport: cachingTransport}
+		return nil
+	}
+}
+
+// =============================================================================
+// Structured Error Types
+// =============================================================================
+
+// Error codes for API responses.
+const (
+	ErrCodeUsage     = "usage"
+	ErrCodeNotFound  = "not_found"
+	ErrCodeAuth      = "auth_required"
+	ErrCodeForbidden = "forbidden"
+	ErrCodeRateLimit = "rate_limit"
+	ErrCodeNetwork   = "network"
+	ErrCodeAPI       = "api_error"
+	ErrCodeAmbiguous = "ambiguous"
+)
+
+// APIError is a structured error with code, message, and optional hint.
+type APIError struct {
+	// Code is a machine-readable error code.
+	Code string
+	// Message is a human-readable error message.
+	Message string
+	// Hint provides additional context or suggestions for resolution.
+	Hint string
+	// HTTPStatus is the HTTP status code that triggered this error.
+	HTTPStatus int
+	// Retryable indicates whether the operation can be retried.
+	Retryable bool
+	// Cause is the underlying error, if any.
+	Cause error
+}
+
+// Error implements the error interface.
+func (e *APIError) Error() string {
+	if e.Hint != "" {
+		return fmt.Sprintf("%s: %s", e.Message, e.Hint)
+	}
+	return e.Message
+}
+
+// Unwrap returns the underlying cause for errors.Is/As support.
+func (e *APIError) Unwrap() error {
+	return e.Cause
+}
+
+// IsRetryable returns whether this error indicates a retryable condition.
+func (e *APIError) IsRetryable() bool {
+	return e.Retryable
+}
+
+// NewUsageError creates a usage error.
+func NewUsageError(msg string) *APIError {
+	return &APIError{Code: ErrCodeUsage, Message: msg}
+}
+
+// NewUsageErrorWithHint creates a usage error with a hint.
+func NewUsageErrorWithHint(msg, hint string) *APIError {
+	return &APIError{Code: ErrCodeUsage, Message: msg, Hint: hint}
+}
+
+// NewNotFoundError creates a not-found error.
+func NewNotFoundError(resource, identifier string) *APIError {
+	return &APIError{
+		Code:       ErrCodeNotFound,
+		Message:    fmt.Sprintf("%s not found: %s", resource, identifier),
+		HTTPStatus: http.StatusNotFound,
+	}
+}
+
+// NewNotFoundErrorWithHint creates a not-found error with a hint.
+func NewNotFoundErrorWithHint(resource, identifier, hint string) *APIError {
+	return &APIError{
+		Code:       ErrCodeNotFound,
+		Message:    fmt.Sprintf("%s not found: %s", resource, identifier),
+		Hint:       hint,
+		HTTPStatus: http.StatusNotFound,
+	}
+}
+
+// NewAuthError creates an authentication error.
+func NewAuthError(msg string) *APIError {
+	return &APIError{
+		Code:       ErrCodeAuth,
+		Message:    msg,
+		HTTPStatus: http.StatusUnauthorized,
+	}
+}
+
+// NewForbiddenError creates a forbidden error.
+func NewForbiddenError(msg string) *APIError {
+	return &APIError{
+		Code:       ErrCodeForbidden,
+		Message:    msg,
+		HTTPStatus: http.StatusForbidden,
+	}
+}
+
+// NewForbiddenScopeError creates a forbidden error due to insufficient scope.
+func NewForbiddenScopeError() *APIError {
+	return &APIError{
+		Code:       ErrCodeForbidden,
+		Message:    "Access denied: insufficient scope",
+		Hint:       "Re-authenticate with full scope",
+		HTTPStatus: http.StatusForbidden,
+	}
+}
+
+// NewRateLimitError creates a rate-limit error.
+func NewRateLimitError(retryAfter int) *APIError {
+	hint := "Try again later"
+	if retryAfter > 0 {
+		hint = fmt.Sprintf("Try again in %d seconds", retryAfter)
+	}
+	return &APIError{
+		Code:       ErrCodeRateLimit,
+		Message:    "Rate limited",
+		Hint:       hint,
+		HTTPStatus: http.StatusTooManyRequests,
+		Retryable:  true,
+	}
+}
+
+// NewNetworkError creates a network error.
+func NewNetworkError(cause error) *APIError {
+	return &APIError{
+		Code:      ErrCodeNetwork,
+		Message:   "Network error",
+		Hint:      cause.Error(),
+		Retryable: true,
+		Cause:     cause,
+	}
+}
+
+// NewAPIError creates an API error with an HTTP status code.
+func NewAPIError(status int, msg string) *APIError {
+	return &APIError{
+		Code:       ErrCodeAPI,
+		Message:    msg,
+		HTTPStatus: status,
+	}
+}
+
+// NewAmbiguousError creates an ambiguous match error.
+func NewAmbiguousError(resource string, matches []string) *APIError {
+	hint := "Be more specific"
+	if len(matches) > 0 && len(matches) <= 5 {
+		hint = fmt.Sprintf("Did you mean: %v", matches)
+	}
+	return &APIError{
+		Code:    ErrCodeAmbiguous,
+		Message: fmt.Sprintf("Ambiguous %s", resource),
+		Hint:    hint,
+	}
+}
+
+// AsAPIError attempts to convert an error to an *APIError.
+// If the error is not an *APIError, it wraps it in one.
+func AsAPIError(err error) *APIError {
+	if err == nil {
+		return nil
+	}
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
+	}
+	return &APIError{
+		Code:    ErrCodeAPI,
+		Message: err.Error(),
+		Cause:   err,
+	}
+}
+
+// ParseHTTPError converts an HTTP response to an appropriate APIError.
+func ParseHTTPError(resp *http.Response) *APIError {
+	// Success cases - no error
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+	// Error cases
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return NewAuthError("Authentication required")
+	case http.StatusForbidden:
+		return NewForbiddenError("Access denied")
+	case http.StatusNotFound:
+		return NewNotFoundError("Resource", resp.Request.URL.Path)
+	case http.StatusTooManyRequests:
+		retryAfter := 0
+		if ra := resp.Header.Get("Retry-After"); ra != "" {
+			retryAfter, _ = strconv.Atoi(ra)
+		}
+		return NewRateLimitError(retryAfter)
+	case http.StatusInternalServerError, http.StatusBadGateway,
+		http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return &APIError{
+			Code:       ErrCodeAPI,
+			Message:    fmt.Sprintf("Server error (%d)", resp.StatusCode),
+			HTTPStatus: resp.StatusCode,
+			Retryable:  true,
+		}
+	default:
+		return NewAPIError(resp.StatusCode, fmt.Sprintf("Request failed (%d)", resp.StatusCode))
+	}
+}
+
+// =============================================================================
+// Service Accessor Pattern
+// =============================================================================
+//
+// Service types group related operations for better discoverability.
+// Example: client.Todos().List(...) instead of client.ListTodos(...)
+
+// TodosService provides todo-related operations.
+type TodosService struct{ client *Client }
+
+// Todos returns the TodosService.
+func (c *Client) Todos() *TodosService { return &TodosService{client: c} }
+
+// ProjectsService provides project-related operations.
+type ProjectsService struct{ client *Client }
+
+// Projects returns the ProjectsService.
+func (c *Client) Projects() *ProjectsService { return &ProjectsService{client: c} }
+
+// CommentsService provides comment-related operations.
+type CommentsService struct{ client *Client }
+
+// Comments returns the CommentsService.
+func (c *Client) Comments() *CommentsService { return &CommentsService{client: c} }
+
+// MessagesService provides message-related operations.
+type MessagesService struct{ client *Client }
+
+// Messages returns the MessagesService.
+func (c *Client) Messages() *MessagesService { return &MessagesService{client: c} }
+
+// PeopleService provides people-related operations.
+type PeopleService struct{ client *Client }
+
+// People returns the PeopleService.
+func (c *Client) People() *PeopleService { return &PeopleService{client: c} }
+
+// CardsService provides card-related operations.
+type CardsService struct{ client *Client }
+
+// Cards returns the CardsService.
+func (c *Client) Cards() *CardsService { return &CardsService{client: c} }
+
+// RecordingsService provides recording-related operations.
+type RecordingsService struct{ client *Client }
+
+// Recordings returns the RecordingsService.
+func (c *Client) Recordings() *RecordingsService { return &RecordingsService{client: c} }
+
+// WebhooksService provides webhook-related operations.
+type WebhooksService struct{ client *Client }
+
+// Webhooks returns the WebhooksService.
+func (c *Client) Webhooks() *WebhooksService { return &WebhooksService{client: c} }
+
+// DocumentsService provides document-related operations.
+type DocumentsService struct{ client *Client }
+
+// Documents returns the DocumentsService.
+func (c *Client) Documents() *DocumentsService { return &DocumentsService{client: c} }
+
+// UploadsService provides upload-related operations.
+type UploadsService struct{ client *Client }
+
+// Uploads returns the UploadsService.
+func (c *Client) Uploads() *UploadsService { return &UploadsService{client: c} }
+
+// SchedulesService provides schedule-related operations.
+type SchedulesService struct{ client *Client }
+
+// Schedules returns the SchedulesService.
+func (c *Client) Schedules() *SchedulesService { return &SchedulesService{client: c} }
+
+// VaultsService provides vault-related operations.
+type VaultsService struct{ client *Client }
+
+// Vaults returns the VaultsService.
+func (c *Client) Vaults() *VaultsService { return &VaultsService{client: c} }
+
+// TemplatesService provides template-related operations.
+type TemplatesService struct{ client *Client }
+
+// Templates returns the TemplatesService.
+func (c *Client) Templates() *TemplatesService { return &TemplatesService{client: c} }
+
+// EventsService provides event-related operations.
+type EventsService struct{ client *Client }
+
+// Events returns the EventsService.
+func (c *Client) Events() *EventsService { return &EventsService{client: c} }
+
+// CampfiresService provides campfire-related operations.
+type CampfiresService struct{ client *Client }
+
+// Campfires returns the CampfiresService.
+func (c *Client) Campfires() *CampfiresService { return &CampfiresService{client: c} }
+
+// Generate service methods by delegating to client methods
+
+func (s *CardsService) Get(ctx context.Context, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetCard(ctx, projectId, cardId, reqEditors...)
+}
+
+func (s *CardsService) UpdateWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateCardWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
+}
+
+func (s *CardsService) Update(ctx context.Context, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateCard(ctx, projectId, cardId, body, reqEditors...)
+}
+
+func (s *CardsService) MoveWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.MoveCardWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
+}
+
+func (s *CardsService) Move(ctx context.Context, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.MoveCard(ctx, projectId, cardId, body, reqEditors...)
+}
+
+func (s *CardsService) List(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListCards(ctx, projectId, columnId, reqEditors...)
+}
+
+func (s *CardsService) CreateWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateCardWithBody(ctx, projectId, columnId, contentType, body, reqEditors...)
+}
+
+func (s *CardsService) Create(ctx context.Context, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateCard(ctx, projectId, columnId, body, reqEditors...)
+}
+
+func (s *CampfiresService) Get(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetCampfire(ctx, projectId, campfireId, reqEditors...)
+}
+
+func (s *CommentsService) Get(ctx context.Context, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetComment(ctx, projectId, commentId, reqEditors...)
+}
+
+func (s *CommentsService) UpdateWithBody(ctx context.Context, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateCommentWithBody(ctx, projectId, commentId, contentType, body, reqEditors...)
+}
+
+func (s *CommentsService) Update(ctx context.Context, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateComment(ctx, projectId, commentId, body, reqEditors...)
+}
+
+func (s *DocumentsService) Get(ctx context.Context, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetDocument(ctx, projectId, documentId, reqEditors...)
+}
+
+func (s *DocumentsService) UpdateWithBody(ctx context.Context, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateDocumentWithBody(ctx, projectId, documentId, contentType, body, reqEditors...)
+}
+
+func (s *DocumentsService) Update(ctx context.Context, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateDocument(ctx, projectId, documentId, body, reqEditors...)
+}
+
+func (s *MessagesService) List(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListMessages(ctx, projectId, boardId, reqEditors...)
+}
+
+func (s *MessagesService) CreateWithBody(ctx context.Context, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateMessageWithBody(ctx, projectId, boardId, contentType, body, reqEditors...)
+}
+
+func (s *MessagesService) Create(ctx context.Context, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateMessage(ctx, projectId, boardId, body, reqEditors...)
+}
+
+func (s *MessagesService) Get(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetMessage(ctx, projectId, messageId, reqEditors...)
+}
+
+func (s *MessagesService) UpdateWithBody(ctx context.Context, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateMessageWithBody(ctx, projectId, messageId, contentType, body, reqEditors...)
+}
+
+func (s *MessagesService) Update(ctx context.Context, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateMessage(ctx, projectId, messageId, body, reqEditors...)
+}
+
+func (s *RecordingsService) Get(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetRecording(ctx, projectId, recordingId, reqEditors...)
+}
+
+func (s *CommentsService) List(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListComments(ctx, projectId, recordingId, reqEditors...)
+}
+
+func (s *CommentsService) CreateWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateCommentWithBody(ctx, projectId, recordingId, contentType, body, reqEditors...)
+}
+
+func (s *CommentsService) Create(ctx context.Context, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateComment(ctx, projectId, recordingId, body, reqEditors...)
+}
+
+func (s *EventsService) List(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListEvents(ctx, projectId, recordingId, reqEditors...)
+}
+
+func (s *RecordingsService) Unarchive(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UnarchiveRecording(ctx, projectId, recordingId, reqEditors...)
+}
+
+func (s *RecordingsService) Archive(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ArchiveRecording(ctx, projectId, recordingId, reqEditors...)
+}
+
+func (s *RecordingsService) Trash(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.TrashRecording(ctx, projectId, recordingId, reqEditors...)
+}
+
+func (s *SchedulesService) GetEntry(ctx context.Context, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetScheduleEntry(ctx, projectId, entryId, reqEditors...)
+}
+
+func (s *SchedulesService) UpdateEntryWithBody(ctx context.Context, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateScheduleEntryWithBody(ctx, projectId, entryId, contentType, body, reqEditors...)
+}
+
+func (s *SchedulesService) UpdateEntry(ctx context.Context, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateScheduleEntry(ctx, projectId, entryId, body, reqEditors...)
+}
+
+func (s *SchedulesService) Get(ctx context.Context, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetSchedule(ctx, projectId, scheduleId, reqEditors...)
+}
+
+func (s *SchedulesService) ListEntries(ctx context.Context, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListScheduleEntries(ctx, projectId, scheduleId, params, reqEditors...)
+}
+
+func (s *SchedulesService) CreateEntryWithBody(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateScheduleEntryWithBody(ctx, projectId, scheduleId, contentType, body, reqEditors...)
+}
+
+func (s *SchedulesService) CreateEntry(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateScheduleEntry(ctx, projectId, scheduleId, body, reqEditors...)
+}
+
+func (s *TodosService) List(ctx context.Context, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListTodos(ctx, projectId, todolistId, params, reqEditors...)
+}
+
+func (s *TodosService) CreateWithBody(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTodoWithBody(ctx, projectId, todolistId, contentType, body, reqEditors...)
+}
+
+func (s *TodosService) Create(ctx context.Context, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTodo(ctx, projectId, todolistId, body, reqEditors...)
+}
+
+func (s *TodosService) Trash(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.TrashTodo(ctx, projectId, todoId, reqEditors...)
+}
+
+func (s *TodosService) Get(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetTodo(ctx, projectId, todoId, reqEditors...)
+}
+
+func (s *TodosService) UpdateWithBody(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateTodoWithBody(ctx, projectId, todoId, contentType, body, reqEditors...)
+}
+
+func (s *TodosService) Update(ctx context.Context, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateTodo(ctx, projectId, todoId, body, reqEditors...)
+}
+
+func (s *TodosService) Uncomplete(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UncompleteTodo(ctx, projectId, todoId, reqEditors...)
+}
+
+func (s *TodosService) Complete(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CompleteTodo(ctx, projectId, todoId, reqEditors...)
+}
+
+func (s *UploadsService) Get(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetUpload(ctx, projectId, uploadId, reqEditors...)
+}
+
+func (s *UploadsService) UpdateWithBody(ctx context.Context, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateUploadWithBody(ctx, projectId, uploadId, contentType, body, reqEditors...)
+}
+
+func (s *UploadsService) Update(ctx context.Context, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateUpload(ctx, projectId, uploadId, body, reqEditors...)
+}
+
+func (s *VaultsService) Get(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetVault(ctx, projectId, vaultId, reqEditors...)
+}
+
+func (s *VaultsService) UpdateWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateVaultWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+}
+
+func (s *VaultsService) Update(ctx context.Context, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateVault(ctx, projectId, vaultId, body, reqEditors...)
+}
+
+func (s *DocumentsService) List(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListDocuments(ctx, projectId, vaultId, reqEditors...)
+}
+
+func (s *DocumentsService) CreateWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateDocumentWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+}
+
+func (s *DocumentsService) Create(ctx context.Context, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateDocument(ctx, projectId, vaultId, body, reqEditors...)
+}
+
+func (s *UploadsService) List(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListUploads(ctx, projectId, vaultId, reqEditors...)
+}
+
+func (s *UploadsService) CreateWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateUploadWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+}
+
+func (s *UploadsService) Create(ctx context.Context, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateUpload(ctx, projectId, vaultId, body, reqEditors...)
+}
+
+func (s *VaultsService) List(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListVaults(ctx, projectId, vaultId, reqEditors...)
+}
+
+func (s *VaultsService) CreateWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateVaultWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+}
+
+func (s *VaultsService) Create(ctx context.Context, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateVault(ctx, projectId, vaultId, body, reqEditors...)
+}
+
+func (s *WebhooksService) List(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListWebhooks(ctx, projectId, reqEditors...)
+}
+
+func (s *WebhooksService) CreateWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateWebhookWithBody(ctx, projectId, contentType, body, reqEditors...)
+}
+
+func (s *WebhooksService) Create(ctx context.Context, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateWebhook(ctx, projectId, body, reqEditors...)
+}
+
+func (s *WebhooksService) Delete(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.DeleteWebhook(ctx, projectId, webhookId, reqEditors...)
+}
+
+func (s *WebhooksService) Get(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetWebhook(ctx, projectId, webhookId, reqEditors...)
+}
+
+func (s *WebhooksService) UpdateWithBody(ctx context.Context, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateWebhookWithBody(ctx, projectId, webhookId, contentType, body, reqEditors...)
+}
+
+func (s *WebhooksService) Update(ctx context.Context, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateWebhook(ctx, projectId, webhookId, body, reqEditors...)
+}
+
+func (s *CampfiresService) List(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListCampfires(ctx, reqEditors...)
+}
+
+func (s *PeopleService) GetMyProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetMyProfile(ctx, reqEditors...)
+}
+
+func (s *PeopleService) List(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListPeople(ctx, reqEditors...)
+}
+
+func (s *PeopleService) Get(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetPerson(ctx, personId, reqEditors...)
+}
+
+func (s *ProjectsService) List(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListProjects(ctx, params, reqEditors...)
+}
+
+func (s *ProjectsService) CreateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateProjectWithBody(ctx, contentType, body, reqEditors...)
+}
+
+func (s *ProjectsService) Create(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateProject(ctx, body, reqEditors...)
+}
+
+func (s *RecordingsService) List(ctx context.Context, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListRecordings(ctx, params, reqEditors...)
+}
+
+func (s *ProjectsService) Trash(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.TrashProject(ctx, projectId, reqEditors...)
+}
+
+func (s *ProjectsService) Get(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetProject(ctx, projectId, reqEditors...)
+}
+
+func (s *ProjectsService) UpdateWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateProjectWithBody(ctx, projectId, contentType, body, reqEditors...)
+}
+
+func (s *ProjectsService) Update(ctx context.Context, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateProject(ctx, projectId, body, reqEditors...)
+}
+
+func (s *TemplatesService) List(ctx context.Context, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListTemplates(ctx, params, reqEditors...)
+}
+
+func (s *TemplatesService) CreateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplateWithBody(ctx, contentType, body, reqEditors...)
+}
+
+func (s *TemplatesService) Create(ctx context.Context, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplate(ctx, body, reqEditors...)
+}
+
+func (s *TemplatesService) Delete(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.DeleteTemplate(ctx, templateId, reqEditors...)
+}
+
+func (s *TemplatesService) Get(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetTemplate(ctx, templateId, reqEditors...)
+}
+
+func (s *TemplatesService) UpdateWithBody(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateTemplateWithBody(ctx, templateId, contentType, body, reqEditors...)
+}
+
+func (s *TemplatesService) Update(ctx context.Context, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateTemplate(ctx, templateId, body, reqEditors...)
 }
 
 // ClientWithResponses builds on ClientInterface to offer response payloads

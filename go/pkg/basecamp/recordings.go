@@ -2,11 +2,11 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // RecordingType represents a type of recording in Basecamp.
@@ -94,42 +94,45 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		return nil, ErrUsage("recording type is required")
 	}
 
-	// Build query parameters
-	params := url.Values{}
-	params.Set("type", string(recordingType))
+	typeStr := string(recordingType)
+	params := &generated.ListRecordingsParams{
+		Type: typeStr,
+	}
 
 	if opts != nil {
 		if len(opts.Bucket) > 0 {
+			// Convert []int64 to comma-separated string
 			bucketStrs := make([]string, len(opts.Bucket))
 			for i, b := range opts.Bucket {
 				bucketStrs[i] = fmt.Sprintf("%d", b)
 			}
-			params.Set("bucket", strings.Join(bucketStrs, ","))
+			params.Bucket = strings.Join(bucketStrs, ",")
 		}
 		if opts.Status != "" {
-			params.Set("status", opts.Status)
+			params.Status = opts.Status
 		}
 		if opts.Sort != "" {
-			params.Set("sort", opts.Sort)
+			params.Sort = opts.Sort
 		}
 		if opts.Direction != "" {
-			params.Set("direction", opts.Direction)
+			params.Direction = opts.Direction
 		}
 	}
 
-	path := "/projects/recordings.json?" + params.Encode()
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListRecordingsWithResponse(ctx, params)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	recordings := make([]Recording, 0, len(results))
-	for _, raw := range results {
-		var r Recording
-		if err := json.Unmarshal(raw, &r); err != nil {
-			return nil, fmt.Errorf("failed to parse recording: %w", err)
-		}
-		recordings = append(recordings, r)
+	recordings := make([]Recording, 0, len(resp.JSON200.Recordings))
+	for _, gr := range resp.JSON200.Recordings {
+		recordings = append(recordings, recordingFromGenerated(gr))
 	}
 
 	return recordings, nil
@@ -142,17 +145,18 @@ func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d.json", bucketID, recordingID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetRecordingWithResponse(ctx, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
-
-	var recording Recording
-	if err := resp.UnmarshalData(&recording); err != nil {
-		return nil, fmt.Errorf("failed to parse recording: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	recording := recordingFromGenerated(resp.JSON200.Recording)
 	return &recording, nil
 }
 
@@ -164,9 +168,11 @@ func (s *RecordingsService) Trash(ctx context.Context, bucketID, recordingID int
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, recordingID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, recordingID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Archive archives a recording.
@@ -177,9 +183,11 @@ func (s *RecordingsService) Archive(ctx context.Context, bucketID, recordingID i
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/archived.json", bucketID, recordingID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.ArchiveRecordingWithResponse(ctx, bucketID, recordingID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // Unarchive restores an archived recording to active status.
@@ -189,9 +197,11 @@ func (s *RecordingsService) Unarchive(ctx context.Context, bucketID, recordingID
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/active.json", bucketID, recordingID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.UnarchiveRecordingWithResponse(ctx, bucketID, recordingID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
 }
 
 // SetClientVisibility sets whether a recording is visible to clients.
@@ -204,20 +214,72 @@ func (s *RecordingsService) SetClientVisibility(ctx context.Context, bucketID, r
 		return nil, err
 	}
 
-	req := &SetClientVisibilityRequest{
+	body := generated.SetClientVisibilityJSONRequestBody{
 		VisibleToClients: visible,
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/client_visibility.json", bucketID, recordingID)
-	resp, err := s.client.Put(ctx, path, req)
+	resp, err := s.client.gen.SetClientVisibilityWithResponse(ctx, bucketID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var recording Recording
-	if err := resp.UnmarshalData(&recording); err != nil {
-		return nil, fmt.Errorf("failed to parse recording: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	recording := recordingFromGenerated(resp.JSON200.Recording)
 	return &recording, nil
+}
+
+// recordingFromGenerated converts a generated Recording to our clean type.
+func recordingFromGenerated(gr generated.Recording) Recording {
+	r := Recording{
+		Status:           gr.Status,
+		VisibleToClients: gr.VisibleToClients,
+		CreatedAt:        gr.CreatedAt,
+		UpdatedAt:        gr.UpdatedAt,
+		Title:            gr.Title,
+		InheritsStatus:   gr.InheritsStatus,
+		Type:             gr.Type,
+		URL:              gr.Url,
+		AppURL:           gr.AppUrl,
+		BookmarkURL:      gr.BookmarkUrl,
+	}
+
+	if gr.Id != nil {
+		r.ID = *gr.Id
+	}
+
+	if gr.Parent.Id != nil || gr.Parent.Title != "" {
+		r.Parent = &Parent{
+			ID:     derefInt64(gr.Parent.Id),
+			Title:  gr.Parent.Title,
+			Type:   gr.Parent.Type,
+			URL:    gr.Parent.Url,
+			AppURL: gr.Parent.AppUrl,
+		}
+	}
+
+	if gr.Bucket.Id != nil || gr.Bucket.Name != "" {
+		r.Bucket = &Bucket{
+			ID:   derefInt64(gr.Bucket.Id),
+			Name: gr.Bucket.Name,
+			Type: gr.Bucket.Type,
+		}
+	}
+
+	if gr.Creator.Id != nil || gr.Creator.Name != "" {
+		r.Creator = &Person{
+			ID:           derefInt64(gr.Creator.Id),
+			Name:         gr.Creator.Name,
+			EmailAddress: gr.Creator.EmailAddress,
+			AvatarURL:    gr.Creator.AvatarUrl,
+			Admin:        gr.Creator.Admin,
+			Owner:        gr.Creator.Owner,
+		}
+	}
+
+	return r
 }

@@ -7,14 +7,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/oapi-codegen/runtime"
 	{{- range .ExternalImports}}

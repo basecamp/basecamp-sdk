@@ -2,9 +2,10 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // Todolist represents a Basecamp todolist.
@@ -76,23 +77,25 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todosets/%d/todolists.json", bucketID, todosetID)
+	params := &generated.ListTodolistsParams{}
 	if opts != nil && opts.Status != "" {
-		path = fmt.Sprintf("/buckets/%d/todosets/%d/todolists.json?status=%s", bucketID, todosetID, opts.Status)
+		params.Status = opts.Status
 	}
 
-	results, err := s.client.GetAll(ctx, path)
+	resp, err := s.client.gen.ListTodolistsWithResponse(ctx, bucketID, todosetID, params)
 	if err != nil {
 		return nil, err
 	}
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
 
-	todolists := make([]Todolist, 0, len(results))
-	for _, raw := range results {
-		var tl Todolist
-		if err := json.Unmarshal(raw, &tl); err != nil {
-			return nil, fmt.Errorf("failed to parse todolist: %w", err)
-		}
-		todolists = append(todolists, tl)
+	todolists := make([]Todolist, 0, len(resp.JSON200.Todolists))
+	for _, gtl := range resp.JSON200.Todolists {
+		todolists = append(todolists, todolistFromGenerated(gtl))
 	}
 
 	return todolists, nil
@@ -105,17 +108,24 @@ func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) 
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todolists/%d.json", bucketID, todolistID)
-	resp, err := s.client.Get(ctx, path)
+	resp, err := s.client.gen.GetTodolistOrGroupWithResponse(ctx, bucketID, todolistID)
 	if err != nil {
 		return nil, err
 	}
-
-	var todolist Todolist
-	if err := resp.UnmarshalData(&todolist); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	// The response is a union type, try to extract as Todolist
+	tl, err := resp.JSON200.Result.AsTodolistOrGroup0()
+	if err != nil {
+		return nil, fmt.Errorf("response is not a todolist: %w", err)
+	}
+
+	todolist := todolistFromGenerated(tl.Todolist)
 	return &todolist, nil
 }
 
@@ -131,17 +141,23 @@ func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64
 		return nil, ErrUsage("todolist name is required")
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todosets/%d/todolists.json", bucketID, todosetID)
-	resp, err := s.client.Post(ctx, path, req)
+	body := generated.CreateTodolistJSONRequestBody{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	resp, err := s.client.gen.CreateTodolistWithResponse(ctx, bucketID, todosetID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var todolist Todolist
-	if err := resp.UnmarshalData(&todolist); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	todolist := todolistFromGenerated(resp.JSON200.Todolist)
 	return &todolist, nil
 }
 
@@ -153,17 +169,29 @@ func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int6
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/todolists/%d.json", bucketID, todolistID)
-	resp, err := s.client.Put(ctx, path, req)
+	body := generated.UpdateTodolistOrGroupJSONRequestBody{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	resp, err := s.client.gen.UpdateTodolistOrGroupWithResponse(ctx, bucketID, todolistID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	var todolist Todolist
-	if err := resp.UnmarshalData(&todolist); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist: %w", err)
+	if err := checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
 	}
 
+	// The response is a union type, try to extract as Todolist
+	tl, err := resp.JSON200.Result.AsTodolistOrGroup0()
+	if err != nil {
+		return nil, fmt.Errorf("response is not a todolist: %w", err)
+	}
+
+	todolist := todolistFromGenerated(tl.Todolist)
 	return &todolist, nil
 }
 
@@ -175,7 +203,72 @@ func (s *TodolistsService) Trash(ctx context.Context, bucketID, todolistID int64
 		return err
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/status/trashed.json", bucketID, todolistID)
-	_, err := s.client.Put(ctx, path, nil)
-	return err
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, todolistID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse)
+}
+
+// todolistFromGenerated converts a generated Todolist to our clean Todolist type.
+func todolistFromGenerated(gtl generated.Todolist) Todolist {
+	tl := Todolist{
+		Status:           gtl.Status,
+		VisibleToClients: gtl.VisibleToClients,
+		Title:            gtl.Title,
+		InheritsStatus:   gtl.InheritsStatus,
+		Type:             gtl.Type,
+		URL:              gtl.Url,
+		AppURL:           gtl.AppUrl,
+		BookmarkURL:      gtl.BookmarkUrl,
+		SubscriptionURL:  gtl.SubscriptionUrl,
+		CommentsCount:    int(gtl.CommentsCount),
+		CommentsURL:      gtl.CommentsUrl,
+		Position:         int(gtl.Position),
+		Description:      gtl.Description,
+		Completed:        gtl.Completed,
+		CompletedRatio:   gtl.CompletedRatio,
+		Name:             gtl.Name,
+		TodosURL:         gtl.TodosUrl,
+		GroupsURL:        gtl.GroupsUrl,
+		AppTodosURL:      gtl.AppTodosUrl,
+		CreatedAt:        gtl.CreatedAt,
+		UpdatedAt:        gtl.UpdatedAt,
+	}
+
+	if gtl.Id != nil {
+		tl.ID = *gtl.Id
+	}
+
+	// Convert nested types
+	if gtl.Parent.Id != nil || gtl.Parent.Title != "" {
+		tl.Parent = &Parent{
+			ID:     derefInt64(gtl.Parent.Id),
+			Title:  gtl.Parent.Title,
+			Type:   gtl.Parent.Type,
+			URL:    gtl.Parent.Url,
+			AppURL: gtl.Parent.AppUrl,
+		}
+	}
+
+	if gtl.Bucket.Id != nil || gtl.Bucket.Name != "" {
+		tl.Bucket = &Bucket{
+			ID:   derefInt64(gtl.Bucket.Id),
+			Name: gtl.Bucket.Name,
+			Type: gtl.Bucket.Type,
+		}
+	}
+
+	if gtl.Creator.Id != nil || gtl.Creator.Name != "" {
+		tl.Creator = &Person{
+			ID:           derefInt64(gtl.Creator.Id),
+			Name:         gtl.Creator.Name,
+			EmailAddress: gtl.Creator.EmailAddress,
+			AvatarURL:    gtl.Creator.AvatarUrl,
+			Admin:        gtl.Creator.Admin,
+			Owner:        gtl.Creator.Owner,
+		}
+	}
+
+	return tl
 }
