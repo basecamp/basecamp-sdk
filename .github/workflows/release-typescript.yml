@@ -135,7 +135,7 @@ jobs:
         run: |
           cd ..
           # Get the previous tag for this module
-          PREV_TAG=$(git tag -l 'ts/v*' --sort=-v:refname | sed -n '2p')
+          PREV_TAG=$(git describe --tags --match 'ts/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
             # First release, get all commits affecting typescript/
             COMMITS=$(git log --pretty=format:"- %s (%h)" -- typescript/)
