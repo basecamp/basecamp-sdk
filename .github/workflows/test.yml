@@ -34,6 +34,8 @@ jobs:
           cp build/smithy/openapi/openapi/Basecamp.openapi.json ../openapi.generated.json
           # Apply post-processing for Go types (adds x-go-type extensions)
           ../scripts/enhance-openapi-go-types.sh ../openapi.generated.json ../openapi.generated.json
+          # Fix List response schemas to match BC3 API (raw arrays instead of wrapped objects)
+          ../scripts/fix-list-response-schemas.sh ../openapi.generated.json ../openapi.generated.json
           if ! diff -q ../openapi.json ../openapi.generated.json > /dev/null 2>&1; then
             echo "::error::openapi.json is out of date. Run 'make smithy-build' and commit the updated openapi.json"
             diff ../openapi.json ../openapi.generated.json || true
