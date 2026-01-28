@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 	"go.opentelemetry.io/otel/codes"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
 func TestHooksImplementsInterface(t *testing.T) {
@@ -245,9 +246,10 @@ func TestNestedOperationAndRequest(t *testing.T) {
 	// Verify spans are properly nested (request span should have operation span as parent)
 	var opSpan, reqSpan tracetest.SpanStub
 	for _, s := range spans {
-		if s.Name == "Todos.List" {
+		switch s.Name {
+		case "Todos.List":
 			opSpan = s
-		} else if s.Name == "basecamp.request" {
+		case "basecamp.request":
 			reqSpan = s
 		}
 	}

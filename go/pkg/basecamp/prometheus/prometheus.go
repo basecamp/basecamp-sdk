@@ -19,8 +19,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
 const (
@@ -163,7 +164,7 @@ func (h *Hooks) OnRequestEnd(ctx context.Context, info basecamp.RequestInfo, res
 
 	// Record errors by type
 	if result.Error != nil {
-		errorType := classifyError(result.Error, result.StatusCode)
+		errorType := classifyError(result.StatusCode)
 		h.errorsTotal.WithLabelValues(httpMethod, errorType).Inc()
 	}
 }
@@ -221,8 +222,9 @@ func httpStatusToLabel(code int) string {
 	}
 }
 
-// classifyError categorizes an error for metrics labels.
-func classifyError(err error, statusCode int) string {
+// classifyError categorizes request failures for metrics labels based on HTTP status code,
+// using 0 to represent network errors where no HTTP response was received.
+func classifyError(statusCode int) string {
 	if statusCode == 0 {
 		return "network"
 	}
