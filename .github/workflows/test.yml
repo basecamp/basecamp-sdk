@@ -88,7 +88,7 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-      - name: Run tests
+      - name: Test
         run: npm run test
 
       - name: Build
@@ -131,6 +131,7 @@ jobs:
         with:
           working-directory: go
           version: latest
+          args: --config .golangci.yml
 
   security:
     name: Security
