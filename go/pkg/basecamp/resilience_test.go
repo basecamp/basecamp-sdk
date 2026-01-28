@@ -303,6 +303,29 @@ func TestResilienceHooks_OnOperationEnd_UpdatesCircuitBreaker(t *testing.T) {
 		}
 	})
 
+	t.Run("does not count 429 rate limit errors as failures", func(t *testing.T) {
+		cfg := &CircuitBreakerConfig{
+			FailureThreshold: 2,
+			OpenTimeout:      time.Hour,
+		}
+		rh := &resilienceHooks{
+			inner:           NoopHooks{},
+			circuitBreakers: newCircuitBreakerRegistry(cfg),
+		}
+
+		// 429 errors have Retryable=true but should NOT trip the circuit
+		// because they're client-side rate limiting, not server failures
+		rh.OnOperationEnd(ctx, op, ErrRateLimit(60), time.Second)
+		rh.OnOperationEnd(ctx, op, ErrRateLimit(30), time.Second)
+		rh.OnOperationEnd(ctx, op, ErrRateLimit(0), time.Second)
+
+		// Breaker should still be closed (429s don't trip despite Retryable=true)
+		cb := rh.circuitBreakers.get("Todos.Get")
+		if cb.State() != "closed" {
+			t.Errorf("circuit should be closed after 429 errors: got %s", cb.State())
+		}
+	})
+
 	t.Run("does not count gating errors as failures", func(t *testing.T) {
 		cfg := &CircuitBreakerConfig{
 			FailureThreshold: 2,

@@ -83,15 +83,12 @@ func shouldTripCircuit(err error) bool {
 		if e.Code == CodeNetwork {
 			return true
 		}
-		// Explicit retryable errors trip the circuit
-		if e.Retryable {
-			return true
-		}
-		// 5xx errors trip the circuit
+		// 5xx errors trip the circuit (including those marked Retryable)
 		if e.HTTPStatus >= 500 {
 			return true
 		}
 		// 4xx errors (auth, not-found, forbidden, rate-limit, usage) don't trip
+		// even if marked Retryable (e.g., 429 is retryable but shouldn't open circuit)
 		return false
 	}
 
@@ -114,9 +111,9 @@ func (h *resilienceHooks) OnOperationGate(ctx context.Context, op OperationInfo)
 	}
 
 	// Acquire bulkhead slot and store pending release ID in context.
-	// The release is moved to activeReleases in OnOperationStart, keyed by
-	// the final context pointer. This ensures proper cleanup even if inner
-	// hooks replace the context entirely.
+	// The release is moved to activeReleases in OnOperationStart, and the ID
+	// is stored in the final context. This ensures proper cleanup even if
+	// inner hooks replace the context entirely.
 	if h.bulkheads != nil {
 		bh := h.bulkheads.get(scope)
 		release, err := bh.Acquire(ctx)
