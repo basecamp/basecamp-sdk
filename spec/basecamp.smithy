@@ -5808,7 +5808,7 @@ list TimelineEventList {
 
 structure TimelineEvent {
   id: Long
-  created_at: Timestamp
+  created_at: ISO8601Timestamp
   kind: String
   parent_recording_id: Long
   url: String
