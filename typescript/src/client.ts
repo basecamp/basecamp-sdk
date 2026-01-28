@@ -619,6 +619,7 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/buckets/{projectId}/schedule_entries/{entryId}": "UpdateScheduleEntry",
   "GET:/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}": "GetScheduleEntryOccurrence",
   "GET:/buckets/{projectId}/schedules/{scheduleId}": "GetSchedule",
+  "PUT:/buckets/{projectId}/schedules/{scheduleId}": "UpdateSchedule",
   "GET:/buckets/{projectId}/schedules/{scheduleId}/entries.json": "ListScheduleEntries",
   "POST:/buckets/{projectId}/schedules/{scheduleId}/entries.json": "CreateScheduleEntry",
 
@@ -640,6 +641,7 @@ const PATH_TO_OPERATION: Record<string, string> = {
   // Todos
   "GET:/buckets/{projectId}/todos/{todoId}": "GetTodo",
   "PUT:/buckets/{projectId}/todos/{todoId}": "UpdateTodo",
+  "DELETE:/buckets/{projectId}/todos/{todoId}": "TrashTodo",
   "POST:/buckets/{projectId}/todos/{todoId}/completion.json": "CompleteTodo",
   "DELETE:/buckets/{projectId}/todos/{todoId}/completion.json": "UncompleteTodo",
   "PUT:/buckets/{projectId}/todos/{todoId}/position.json": "RepositionTodo",
