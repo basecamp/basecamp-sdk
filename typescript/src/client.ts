@@ -499,9 +499,13 @@ const MAX_JITTER_MS = 100;
 /**
  * Mapping from "METHOD:/path/pattern" to operation name.
  * Built from the OpenAPI paths definition.
+ * IMPORTANT: These paths MUST exactly match the OpenAPI spec paths for retry config to work.
  */
 const PATH_TO_OPERATION: Record<string, string> = {
+  // Attachments
   "POST:/attachments.json": "CreateAttachment",
+
+  // Card Tables
   "GET:/buckets/{projectId}/card_tables/cards/{cardId}": "GetCard",
   "PUT:/buckets/{projectId}/card_tables/cards/{cardId}": "UpdateCard",
   "POST:/buckets/{projectId}/card_tables/cards/{cardId}/moves.json": "MoveCard",
@@ -520,11 +524,15 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/buckets/{projectId}/card_tables/{cardTableId}": "GetCardTable",
   "POST:/buckets/{projectId}/card_tables/{cardTableId}/columns.json": "CreateCardColumn",
   "POST:/buckets/{projectId}/card_tables/{cardTableId}/moves.json": "MoveCardColumn",
+
+  // Message Categories/Types
   "GET:/buckets/{projectId}/categories.json": "ListMessageTypes",
   "POST:/buckets/{projectId}/categories.json": "CreateMessageType",
   "GET:/buckets/{projectId}/categories/{typeId}": "GetMessageType",
   "PUT:/buckets/{projectId}/categories/{typeId}": "UpdateMessageType",
   "DELETE:/buckets/{projectId}/categories/{typeId}": "DeleteMessageType",
+
+  // Campfires/Chats
   "GET:/buckets/{projectId}/chats/{campfireId}": "GetCampfire",
   "GET:/buckets/{projectId}/chats/{campfireId}/integrations.json": "ListChatbots",
   "POST:/buckets/{projectId}/chats/{campfireId}/integrations.json": "CreateChatbot",
@@ -535,34 +543,50 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/buckets/{projectId}/chats/{campfireId}/lines.json": "CreateCampfireLine",
   "GET:/buckets/{projectId}/chats/{campfireId}/lines/{lineId}": "GetCampfireLine",
   "DELETE:/buckets/{projectId}/chats/{campfireId}/lines/{lineId}": "DeleteCampfireLine",
+
+  // Client Portal
   "GET:/buckets/{projectId}/client/approvals.json": "ListClientApprovals",
   "GET:/buckets/{projectId}/client/approvals/{approvalId}": "GetClientApproval",
   "GET:/buckets/{projectId}/client/correspondences.json": "ListClientCorrespondences",
   "GET:/buckets/{projectId}/client/correspondences/{correspondenceId}": "GetClientCorrespondence",
   "GET:/buckets/{projectId}/client/recordings/{recordingId}/replies.json": "ListClientReplies",
-  "GET:/buckets/{projectId}/client/replies/{replyId}": "GetClientReply",
+  "GET:/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}": "GetClientReply",
+
+  // Comments
   "GET:/buckets/{projectId}/comments/{commentId}": "GetComment",
   "PUT:/buckets/{projectId}/comments/{commentId}": "UpdateComment",
-  "POST:/buckets/{projectId}/copy_tool/{toolId}": "CloneTool",
-  "GET:/buckets/{projectId}/dock/{toolId}": "GetTool",
-  "PUT:/buckets/{projectId}/dock/{toolId}": "UpdateTool",
-  "DELETE:/buckets/{projectId}/dock/{toolId}": "DeleteTool",
-  "PUT:/buckets/{projectId}/dock/{toolId}/position": "RepositionTool",
-  "POST:/buckets/{projectId}/dock/{toolId}/enable": "EnableTool",
-  "DELETE:/buckets/{projectId}/dock/{toolId}/enable": "DisableTool",
+
+  // Dock/Tools (paths include /dock/tools/)
+  "POST:/buckets/{projectId}/dock/tools/{toolId}/clone.json": "CloneTool",
+  "GET:/buckets/{projectId}/dock/tools/{toolId}": "GetTool",
+  "PUT:/buckets/{projectId}/dock/tools/{toolId}": "UpdateTool",
+  "DELETE:/buckets/{projectId}/dock/tools/{toolId}": "DeleteTool",
+  "PUT:/buckets/{projectId}/dock/tools/{toolId}/position.json": "RepositionTool",
+  "POST:/buckets/{projectId}/dock/tools/{toolId}/position.json": "EnableTool",
+  "DELETE:/buckets/{projectId}/dock/tools/{toolId}/position.json": "DisableTool",
+
+  // Documents
   "GET:/buckets/{projectId}/documents/{documentId}": "GetDocument",
   "PUT:/buckets/{projectId}/documents/{documentId}": "UpdateDocument",
+
+  // Forwards (Inbox)
   "GET:/buckets/{projectId}/inbox_forwards/{forwardId}": "GetForward",
   "GET:/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json": "ListForwardReplies",
   "POST:/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json": "CreateForwardReply",
-  "GET:/buckets/{projectId}/inbox_replies/{replyId}": "GetForwardReply",
+  "GET:/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}": "GetForwardReply",
   "GET:/buckets/{projectId}/inboxes/{inboxId}": "GetInbox",
   "GET:/buckets/{projectId}/inboxes/{inboxId}/forwards.json": "ListForwards",
+
+  // Message Boards
   "GET:/buckets/{projectId}/message_boards/{boardId}": "GetMessageBoard",
   "GET:/buckets/{projectId}/message_boards/{boardId}/messages.json": "ListMessages",
   "POST:/buckets/{projectId}/message_boards/{boardId}/messages.json": "CreateMessage",
+
+  // Messages
   "GET:/buckets/{projectId}/messages/{messageId}": "GetMessage",
   "PUT:/buckets/{projectId}/messages/{messageId}": "UpdateMessage",
+
+  // Question & Answers (Checkins)
   "GET:/buckets/{projectId}/question_answers/{answerId}": "GetAnswer",
   "PUT:/buckets/{projectId}/question_answers/{answerId}": "UpdateAnswer",
   "GET:/buckets/{projectId}/questionnaires/{questionnaireId}": "GetQuestionnaire",
@@ -572,47 +596,65 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/buckets/{projectId}/questions/{questionId}": "UpdateQuestion",
   "GET:/buckets/{projectId}/questions/{questionId}/answers.json": "ListAnswers",
   "POST:/buckets/{projectId}/questions/{questionId}/answers.json": "CreateAnswer",
+
+  // Recordings
   "POST:/buckets/{projectId}/recordings/{recordingId}/pin.json": "PinMessage",
   "DELETE:/buckets/{projectId}/recordings/{recordingId}/pin.json": "UnpinMessage",
   "GET:/buckets/{projectId}/recordings/{recordingId}": "GetRecording",
-  "PUT:/buckets/{projectId}/recordings/{recordingId}/client_visibility": "SetClientVisibility",
+  "PUT:/buckets/{projectId}/recordings/{recordingId}/client_visibility.json": "SetClientVisibility",
   "GET:/buckets/{projectId}/recordings/{recordingId}/comments.json": "ListComments",
   "POST:/buckets/{projectId}/recordings/{recordingId}/comments.json": "CreateComment",
   "GET:/buckets/{projectId}/recordings/{recordingId}/events.json": "ListEvents",
   "PUT:/buckets/{projectId}/recordings/{recordingId}/status/active.json": "UnarchiveRecording",
   "PUT:/buckets/{projectId}/recordings/{recordingId}/status/archived.json": "ArchiveRecording",
   "PUT:/buckets/{projectId}/recordings/{recordingId}/status/trashed.json": "TrashRecording",
-  "GET:/buckets/{projectId}/recordings/{recordingId}/subscription": "GetSubscription",
-  "POST:/buckets/{projectId}/recordings/{recordingId}/subscription": "Subscribe",
-  "PUT:/buckets/{projectId}/recordings/{recordingId}/subscription": "UpdateSubscription",
-  "DELETE:/buckets/{projectId}/recordings/{recordingId}/subscription": "Unsubscribe",
-  "GET:/buckets/{projectId}/recordings/{recordingId}/timesheet": "GetRecordingTimesheet",
+  "GET:/buckets/{projectId}/recordings/{recordingId}/subscription.json": "GetSubscription",
+  "POST:/buckets/{projectId}/recordings/{recordingId}/subscription.json": "Subscribe",
+  "PUT:/buckets/{projectId}/recordings/{recordingId}/subscription.json": "UpdateSubscription",
+  "DELETE:/buckets/{projectId}/recordings/{recordingId}/subscription.json": "Unsubscribe",
+  "GET:/buckets/{projectId}/recordings/{recordingId}/timesheet.json": "GetRecordingTimesheet",
+
+  // Schedules
   "GET:/buckets/{projectId}/schedule_entries/{entryId}": "GetScheduleEntry",
   "PUT:/buckets/{projectId}/schedule_entries/{entryId}": "UpdateScheduleEntry",
-  "GET:/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{occurrenceId}": "GetScheduleEntryOccurrence",
+  "GET:/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}": "GetScheduleEntryOccurrence",
   "GET:/buckets/{projectId}/schedules/{scheduleId}": "GetSchedule",
-  "PUT:/buckets/{projectId}/schedules/{scheduleId}/settings": "UpdateScheduleSettings",
   "GET:/buckets/{projectId}/schedules/{scheduleId}/entries.json": "ListScheduleEntries",
   "POST:/buckets/{projectId}/schedules/{scheduleId}/entries.json": "CreateScheduleEntry",
-  "GET:/buckets/{projectId}/timesheet": "GetProjectTimesheet",
-  "PUT:/buckets/{projectId}/todolist_groups/{groupId}/position": "RepositionTodolistGroup",
+
+  // Timeline & Timesheet
+  "GET:/buckets/{projectId}/timeline.json": "GetProjectTimeline",
+  "GET:/buckets/{projectId}/timesheet.json": "GetProjectTimesheet",
+
+  // Todolist Groups (all use {todolistId} for consistent normalization)
+  "PUT:/buckets/{projectId}/todolists/{todolistId}/position.json": "RepositionTodolistGroup",
   "GET:/buckets/{projectId}/todolists/{todolistId}": "GetTodolistOrGroup",
   "PUT:/buckets/{projectId}/todolists/{todolistId}": "UpdateTodolistOrGroup",
   "GET:/buckets/{projectId}/todolists/{todolistId}/groups.json": "ListTodolistGroups",
   "POST:/buckets/{projectId}/todolists/{todolistId}/groups.json": "CreateTodolistGroup",
+
+  // Todolists
   "GET:/buckets/{projectId}/todolists/{todolistId}/todos.json": "ListTodos",
   "POST:/buckets/{projectId}/todolists/{todolistId}/todos.json": "CreateTodo",
+
+  // Todos
   "GET:/buckets/{projectId}/todos/{todoId}": "GetTodo",
   "PUT:/buckets/{projectId}/todos/{todoId}": "UpdateTodo",
-  "PUT:/buckets/{projectId}/todos/{todoId}/status/trashed.json": "TrashTodo",
   "POST:/buckets/{projectId}/todos/{todoId}/completion.json": "CompleteTodo",
   "DELETE:/buckets/{projectId}/todos/{todoId}/completion.json": "UncompleteTodo",
+  "PUT:/buckets/{projectId}/todos/{todoId}/position.json": "RepositionTodo",
+
+  // Todosets
   "GET:/buckets/{projectId}/todosets/{todosetId}": "GetTodoset",
   "GET:/buckets/{projectId}/todosets/{todosetId}/todolists.json": "ListTodolists",
   "POST:/buckets/{projectId}/todosets/{todosetId}/todolists.json": "CreateTodolist",
+
+  // Uploads
   "GET:/buckets/{projectId}/uploads/{uploadId}": "GetUpload",
   "PUT:/buckets/{projectId}/uploads/{uploadId}": "UpdateUpload",
   "GET:/buckets/{projectId}/uploads/{uploadId}/versions.json": "ListUploadVersions",
+
+  // Vaults
   "GET:/buckets/{projectId}/vaults/{vaultId}": "GetVault",
   "PUT:/buckets/{projectId}/vaults/{vaultId}": "UpdateVault",
   "GET:/buckets/{projectId}/vaults/{vaultId}/documents.json": "ListDocuments",
@@ -621,19 +663,29 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/buckets/{projectId}/vaults/{vaultId}/uploads.json": "CreateUpload",
   "GET:/buckets/{projectId}/vaults/{vaultId}/vaults.json": "ListVaults",
   "POST:/buckets/{projectId}/vaults/{vaultId}/vaults.json": "CreateVault",
+
+  // Webhooks
   "GET:/buckets/{projectId}/webhooks.json": "ListWebhooks",
   "POST:/buckets/{projectId}/webhooks.json": "CreateWebhook",
   "GET:/buckets/{projectId}/webhooks/{webhookId}": "GetWebhook",
   "PUT:/buckets/{projectId}/webhooks/{webhookId}": "UpdateWebhook",
   "DELETE:/buckets/{projectId}/webhooks/{webhookId}": "DeleteWebhook",
+
+  // Campfires (global)
   "GET:/chats.json": "ListCampfires",
+
+  // People
   "GET:/circles/people.json": "ListPingablePeople",
-  "POST:/my/lineup_markers.json": "CreateLineupMarker",
-  "PUT:/my/lineup_markers/{markerId}": "UpdateLineupMarker",
-  "DELETE:/my/lineup_markers/{markerId}": "DeleteLineupMarker",
   "GET:/my/profile.json": "GetMyProfile",
   "GET:/people.json": "ListPeople",
   "GET:/people/{personId}": "GetPerson",
+
+  // Lineup Markers
+  "POST:/lineup/markers.json": "CreateLineupMarker",
+  "PUT:/lineup/markers/{markerId}": "UpdateLineupMarker",
+  "DELETE:/lineup/markers/{markerId}": "DeleteLineupMarker",
+
+  // Projects
   "GET:/projects.json": "ListProjects",
   "POST:/projects.json": "CreateProject",
   "GET:/projects/recordings.json": "ListRecordings",
@@ -641,10 +693,22 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/projects/{projectId}": "UpdateProject",
   "DELETE:/projects/{projectId}": "TrashProject",
   "GET:/projects/{projectId}/people.json": "ListProjectPeople",
-  "PUT:/projects/{projectId}/people/users": "UpdateProjectAccess",
-  "GET:/reports/timesheets": "GetTimesheetReport",
+  "PUT:/projects/{projectId}/people/users.json": "UpdateProjectAccess",
+
+  // Reports
+  "GET:/reports/progress.json": "GetProgress",
+  "GET:/reports/schedules/upcoming.json": "GetUpcomingSchedule",
+  "GET:/reports/timesheet.json": "GetTimesheetReport",
+  "GET:/reports/todos/assigned.json": "GetAssignedTodos",
+  "GET:/reports/todos/assigned/{personId}": "GetAssignedTodosForPerson",
+  "GET:/reports/todos/overdue.json": "GetOverdueTodos",
+  "GET:/reports/users/progress/{personId}": "GetPersonProgress",
+
+  // Search
   "GET:/search.json": "Search",
-  "GET:/search/metadata.json": "GetSearchMetadata",
+  "GET:/searches/metadata.json": "GetSearchMetadata",
+
+  // Templates
   "GET:/templates.json": "ListTemplates",
   "POST:/templates.json": "CreateTemplate",
   "GET:/templates/{templateId}": "GetTemplate",
@@ -673,6 +737,8 @@ function normalizeUrlPath(url: string): string {
   const segments = path.split("/").filter(Boolean);
 
   // Map of resource names to their ID placeholder tokens
+  // Note: Some paths have context-dependent placeholders, but we use consistent
+  // placeholders that match our PATH_TO_OPERATION entries
   const idMapping: Record<string, string> = {
     buckets: "{projectId}",
     projects: "{projectId}",
@@ -691,11 +757,9 @@ function normalizeUrlPath(url: string): string {
     replies: "{replyId}",
     recordings: "{recordingId}",
     comments: "{commentId}",
-    copy_tool: "{toolId}",
-    dock: "{toolId}",
+    tools: "{toolId}",  // dock/tools/{toolId}
     documents: "{documentId}",
     inbox_forwards: "{forwardId}",
-    inbox_replies: "{replyId}",
     inboxes: "{inboxId}",
     message_boards: "{boardId}",
     messages: "{messageId}",
@@ -703,18 +767,21 @@ function normalizeUrlPath(url: string): string {
     questionnaires: "{questionnaireId}",
     questions: "{questionId}",
     schedule_entries: "{entryId}",
-    occurrences: "{occurrenceId}",
+    occurrences: "{date}",  // schedule_entries/{entryId}/occurrences/{date}
     schedules: "{scheduleId}",
-    todolist_groups: "{groupId}",
-    todolists: "{todolistId}",
+    todolists: "{todolistId}",  // Also handles {id} and {groupId} via context
+    groups: "{groupId}",  // todolists/{todolistId}/groups
     todos: "{todoId}",
     todosets: "{todosetId}",
     uploads: "{uploadId}",
     vaults: "{vaultId}",
     webhooks: "{webhookId}",
     people: "{personId}",
-    lineup_markers: "{markerId}",
+    markers: "{markerId}",  // lineup/markers/{markerId}
     project_constructions: "{constructionId}",
+    assigned: "{personId}",  // reports/todos/assigned/{personId}
+    progress: "{personId}",  // reports/users/progress/{personId}
+    users: "{personId}",  // Alternative for users/progress
   };
 
   // Build normalized path by replacing numeric IDs based on context
