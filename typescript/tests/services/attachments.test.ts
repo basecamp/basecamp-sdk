@@ -60,6 +60,25 @@ describe("AttachmentsService", () => {
       expect(capturedUrl).toContain("name=report.xlsx");
     });
 
+    it("should set Content-Type header to the file's MIME type", async () => {
+      let capturedContentType: string | null = null;
+
+      server.use(
+        http.post(`${BASE_URL}/attachments.json`, ({ request }) => {
+          capturedContentType = request.headers.get("Content-Type");
+          return HttpResponse.json({ attachable_sgid: "test-sgid" });
+        })
+      );
+
+      await service.create({
+        filename: "image.png",
+        contentType: "image/png",
+        data: new Uint8Array([1, 2, 3, 4]),
+      });
+
+      expect(capturedContentType).toBe("image/png");
+    });
+
     it("should throw validation error when filename is missing", async () => {
       await expect(
         service.create({
