@@ -12,15 +12,34 @@
  * - 1: validation errors found
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Paths relative to script location
-const OPENAPI_PATH = resolve(__dirname, "../../spec/build/smithy/openapi/openapi/Basecamp.openapi.json");
+// Paths relative to script location (try spec/build first, fall back to repo root)
+const OPENAPI_SPEC_BUILD = resolve(__dirname, "../../spec/build/smithy/openapi/openapi/Basecamp.openapi.json");
+const OPENAPI_REPO_ROOT = resolve(__dirname, "../../openapi.json");
 const CLIENT_PATH = resolve(__dirname, "../src/client.ts");
+
+/**
+ * Resolves the OpenAPI spec path, preferring spec/build but falling back to repo root.
+ */
+function resolveOpenAPIPath(): string {
+  if (existsSync(OPENAPI_SPEC_BUILD)) {
+    return OPENAPI_SPEC_BUILD;
+  }
+  if (existsSync(OPENAPI_REPO_ROOT)) {
+    console.log("Note: Using openapi.json from repo root (spec/build not found)\n");
+    return OPENAPI_REPO_ROOT;
+  }
+  console.error("Error: OpenAPI spec not found.");
+  console.error("  Tried: spec/build/smithy/openapi/openapi/Basecamp.openapi.json");
+  console.error("  Tried: openapi.json (repo root)");
+  console.error("\nRun 'make smithy-build' to generate the spec, or ensure openapi.json exists.");
+  process.exit(1);
+}
 
 interface OpenAPISpec {
   paths: Record<string, Record<string, { operationId?: string }>>;
@@ -102,7 +121,8 @@ function parsePathMapping(clientPath: string): Map<string, PathEntry> {
 function validate(): boolean {
   console.log("Validating PATH_TO_OPERATION against OpenAPI spec...\n");
 
-  const openapi = parseOpenAPI(OPENAPI_PATH);
+  const openapiPath = resolveOpenAPIPath();
+  const openapi = parseOpenAPI(openapiPath);
   const mapping = parsePathMapping(CLIENT_PATH);
 
   const missing: PathEntry[] = [];

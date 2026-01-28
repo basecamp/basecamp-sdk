@@ -794,9 +794,12 @@ function normalizeUrlPath(url: string): string {
     users: "{personId}",  // Alternative for users/progress
   };
 
-  // Build normalized path by replacing numeric IDs based on context
+  // Build normalized path by replacing IDs and dates based on context
   const normalized: string[] = [];
   let prevSegment: string | null = null;
+
+  // Pattern for ISO-8601 date (YYYY-MM-DD)
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
   for (const segment of segments) {
     // Check if this segment is a numeric ID
@@ -804,6 +807,10 @@ function normalizeUrlPath(url: string): string {
       // Map based on preceding segment
       const placeholder = prevSegment ? idMapping[prevSegment] : undefined;
       normalized.push(placeholder ?? "{id}");
+    } else if (datePattern.test(segment)) {
+      // ISO-8601 date - map based on preceding segment (e.g., occurrences → {date})
+      const placeholder = prevSegment ? idMapping[prevSegment] : undefined;
+      normalized.push(placeholder ?? "{date}");
     } else {
       normalized.push(segment);
     }
