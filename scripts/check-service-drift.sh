@@ -22,19 +22,23 @@ GEN_OPS=$(mktemp)
 SVC_OPS=$(mktemp)
 trap "rm -f $GEN_OPS $SVC_OPS" EXIT
 
-# Extract generated operations (without WithBody variants to avoid duplicates)
+# Extract generated operations, normalizing WithBodyWithResponse to base operation name
+# e.g., CreateAttachmentWithBodyWithResponse -> CreateAttachment
+#       ListProjectsWithResponse -> ListProjects
 grep "^func (c \*ClientWithResponses)" "$GENERATED_FILE" 2>/dev/null \
-  | grep -v "WithBody" \
   | sed 's/.*) \([A-Za-z]*\)WithResponse.*/\1/' \
+  | sed 's/WithBody$//' \
   | sort -u > "$GEN_OPS"
 
 # Extract service layer calls to gen.*WithResponse (excluding test files)
+# Normalize WithBodyWithResponse calls to base operation name
 for f in "$SERVICE_DIR"/*.go; do
   case "$f" in
     *_test.go) continue ;;
   esac
   grep "\.gen\.[A-Za-z]*WithResponse" "$f" 2>/dev/null || true
 done | sed 's/.*\.gen\.\([A-Za-z]*\)WithResponse.*/\1/' \
+  | sed 's/WithBody$//' \
   | sort -u > "$SVC_OPS"
 
 # Count operations
