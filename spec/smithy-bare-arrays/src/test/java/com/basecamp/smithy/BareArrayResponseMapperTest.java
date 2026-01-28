@@ -1,0 +1,154 @@
+/*
+ * Copyright Basecamp, LLC
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package com.basecamp.smithy;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import software.amazon.smithy.model.node.Node;
+import software.amazon.smithy.model.node.ObjectNode;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class BareArrayResponseMapperTest {
+
+    private BareArrayResponseMapper mapper;
+
+    @BeforeEach
+    void setUp() {
+        mapper = new BareArrayResponseMapper();
+    }
+
+    @Test
+    void shouldTransform_matchesListResponseContent() {
+        ObjectNode schema = ObjectNode.builder()
+                .withMember("type", "object")
+                .withMember("properties", ObjectNode.builder()
+                        .withMember("projects", ObjectNode.builder()
+                                .withMember("type", "array")
+                                .withMember("items", ObjectNode.builder()
+                                        .withMember("$ref", "#/components/schemas/Project")
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        assertTrue(mapper.shouldTransform("ListProjectsResponseContent", schema));
+    }
+
+    @Test
+    void shouldTransform_rejectsNonListPrefix() {
+        ObjectNode schema = ObjectNode.builder()
+                .withMember("type", "object")
+                .withMember("properties", ObjectNode.builder()
+                        .withMember("projects", ObjectNode.builder()
+                                .withMember("type", "array")
+                                .build())
+                        .build())
+                .build();
+
+        assertFalse(mapper.shouldTransform("GetProjectsResponseContent", schema));
+    }
+
+    @Test
+    void shouldTransform_rejectsNonResponseContentSuffix() {
+        ObjectNode schema = ObjectNode.builder()
+                .withMember("type", "object")
+                .withMember("properties", ObjectNode.builder()
+                        .withMember("projects", ObjectNode.builder()
+                                .withMember("type", "array")
+                                .build())
+                        .build())
+                .build();
+
+        assertFalse(mapper.shouldTransform("ListProjectsOutput", schema));
+    }
+
+    @Test
+    void shouldTransform_rejectsMultipleProperties() {
+        ObjectNode schema = ObjectNode.builder()
+                .withMember("type", "object")
+                .withMember("properties", ObjectNode.builder()
+                        .withMember("projects", ObjectNode.builder()
+                                .withMember("type", "array")
+                                .build())
+                        .withMember("total", ObjectNode.builder()
+                                .withMember("type", "integer")
+                                .build())
+                        .build())
+                .build();
+
+        assertFalse(mapper.shouldTransform("ListProjectsResponseContent", schema));
+    }
+
+    @Test
+    void shouldTransform_rejectsNonArrayProperty() {
+        ObjectNode schema = ObjectNode.builder()
+                .withMember("type", "object")
+                .withMember("properties", ObjectNode.builder()
+                        .withMember("project", ObjectNode.builder()
+                                .withMember("type", "object")
+                                .build())
+                        .build())
+                .build();
+
+        assertFalse(mapper.shouldTransform("ListProjectResponseContent", schema));
+    }
+
+    @Test
+    void shouldTransform_rejectsNonObjectType() {
+        ObjectNode schema = ObjectNode.builder()
+                .withMember("type", "array")
+                .build();
+
+        assertFalse(mapper.shouldTransform("ListProjectsResponseContent", schema));
+    }
+
+    @Test
+    void transformToArray_extractsArraySchema() {
+        ObjectNode wrapped = ObjectNode.builder()
+                .withMember("type", "object")
+                .withMember("properties", ObjectNode.builder()
+                        .withMember("projects", ObjectNode.builder()
+                                .withMember("type", "array")
+                                .withMember("items", ObjectNode.builder()
+                                        .withMember("$ref", "#/components/schemas/Project")
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        ObjectNode result = mapper.transformToArray(wrapped);
+
+        assertEquals("array", result.expectStringMember("type").getValue());
+        assertTrue(result.getObjectMember("items").isPresent());
+        assertEquals(
+                "#/components/schemas/Project",
+                result.getObjectMember("items").get().expectStringMember("$ref").getValue()
+        );
+    }
+
+    @Test
+    void transformToArray_handlesArrayWithoutItems() {
+        ObjectNode wrapped = ObjectNode.builder()
+                .withMember("type", "object")
+                .withMember("properties", ObjectNode.builder()
+                        .withMember("things", ObjectNode.builder()
+                                .withMember("type", "array")
+                                .build())
+                        .build())
+                .build();
+
+        ObjectNode result = mapper.transformToArray(wrapped);
+
+        assertEquals("array", result.expectStringMember("type").getValue());
+        assertFalse(result.getObjectMember("items").isPresent());
+    }
+
+    @Test
+    void getOrder_returnsHighValue() {
+        // Should run after core transformations (default order is 0)
+        assertTrue(mapper.getOrder() > 0);
+    }
+}
