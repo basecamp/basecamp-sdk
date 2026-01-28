@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
+	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
 
 // LineupMarker represents a marker on the Basecamp Lineup.
@@ -82,11 +83,11 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 		return nil, ErrUsage("marker ends_on date is required")
 	}
 
-	startsOn, err := time.Parse("2006-01-02", req.StartsOn)
+	startsOn, err := types.ParseDate(req.StartsOn)
 	if err != nil {
 		return nil, ErrUsage("marker starts_on date must be in YYYY-MM-DD format")
 	}
-	endsOn, err := time.Parse("2006-01-02", req.EndsOn)
+	endsOn, err := types.ParseDate(req.EndsOn)
 	if err != nil {
 		return nil, ErrUsage("marker ends_on date must be in YYYY-MM-DD format")
 	}
@@ -132,14 +133,14 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 		Title:       req.Title,
 	}
 	if req.StartsOn != "" {
-		startsOn, err := time.Parse("2006-01-02", req.StartsOn)
+		startsOn, err := types.ParseDate(req.StartsOn)
 		if err != nil {
 			return nil, ErrUsage("marker starts_on date must be in YYYY-MM-DD format")
 		}
 		body.StartsOn = startsOn
 	}
 	if req.EndsOn != "" {
-		endsOn, err := time.Parse("2006-01-02", req.EndsOn)
+		endsOn, err := types.ParseDate(req.EndsOn)
 		if err != nil {
 			return nil, ErrUsage("marker ends_on date must be in YYYY-MM-DD format")
 		}
@@ -181,8 +182,8 @@ func lineupMarkerFromGenerated(gm generated.LineupMarker) LineupMarker {
 		Status:      gm.Status,
 		Color:       gm.Color,
 		Title:       gm.Title,
-		StartsOn:    gm.StartsOn.Format("2006-01-02"),
-		EndsOn:      gm.EndsOn.Format("2006-01-02"),
+		StartsOn:    gm.StartsOn.String(),
+		EndsOn:      gm.EndsOn.String(),
 		Description: gm.Description,
 		CreatedAt:   gm.CreatedAt,
 		UpdatedAt:   gm.UpdatedAt,

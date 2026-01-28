@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
+	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
 
 // Questionnaire represents a Basecamp automatic check-in questionnaire.
@@ -348,8 +349,8 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 		Content: req.Content,
 	}
 	if req.GroupOn != "" {
-		if t, err := time.Parse("2006-01-02", req.GroupOn); err == nil {
-			body.GroupOn = t
+		if d, err := types.ParseDate(req.GroupOn); err == nil {
+			body.GroupOn = d
 		}
 	}
 
@@ -534,7 +535,7 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 		CommentsCount:    int(ga.CommentsCount),
 		CommentsURL:      ga.CommentsUrl,
 		Content:          ga.Content,
-		GroupOn:          ga.GroupOn.Format("2006-01-02"),
+		GroupOn:          ga.GroupOn.String(),
 	}
 
 	if ga.Id != nil {
