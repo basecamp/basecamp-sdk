@@ -40,6 +40,7 @@ service Basecamp {
     TrashTodo,
     CompleteTodo,
     UncompleteTodo,
+    RepositionTodo,
     GetTodoset,
     ListTodolists,
     GetTodolistOrGroup,
@@ -658,6 +659,32 @@ structure UncompleteTodoInput {
 }
 
 structure UncompleteTodoOutput {}
+
+/// Reposition a todo within its todolist
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/buckets/{projectId}/todos/{todoId}/position.json")
+operation RepositionTodo {
+  input: RepositionTodoInput
+  output: RepositionTodoOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure RepositionTodoInput {
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  todoId: TodoId
+
+  @required
+  position: Integer
+}
+
+structure RepositionTodoOutput {}
 
 // ===== Todoset Operations =====
 
