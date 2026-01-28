@@ -191,6 +191,8 @@ cfg, err := basecamp.LoadConfig("/path/to/config.json")
 
 | Service | Methods |
 |---------|---------|
+| `Timeline()` | Progress, ProjectTimeline, PersonProgress |
+| `Reports()` | AssignablePeople, AssignedTodos, OverdueTodos, UpcomingSchedule |
 | `Timesheet()` | MyEntries, ProjectEntries |
 | `Search()` | Search |
 | `Events()` | List, ListForRecording |
@@ -356,9 +358,137 @@ httpClient := &http.Client{
 client := basecamp.NewClient(cfg, token, basecamp.WithHTTPClient(httpClient))
 ```
 
+## Observability
+
+The SDK provides a hooks interface for observability at two levels:
+
+- **Operation-level**: Semantic SDK operations like `Todos.Complete`, `Projects.List`
+- **Request-level**: HTTP requests including retries, caching, and timing
+
+### Debug Logging with SlogHooks
+
+For debugging or verbose CLI modes, use `SlogHooks` to log all SDK activity:
+
+```go
+import (
+    "log/slog"
+    "os"
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+)
+
+// Create a debug logger
+logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+    Level: slog.LevelDebug,
+}))
+
+// Enable observability hooks
+hooks := basecamp.NewSlogHooks(logger)
+client := basecamp.NewClient(cfg, token, basecamp.WithHooks(hooks))
+```
+
+Output:
+```
+level=DEBUG msg="basecamp operation start" service=Todos operation=Complete resource_type=todo is_mutation=true
+level=DEBUG msg="basecamp request start" method=POST url=https://3.basecampapi.com/123/buckets/456/todos/789/completion.json attempt=1
+level=DEBUG msg="basecamp request complete" method=POST url=... duration=145ms status=204 from_cache=false
+level=DEBUG msg="basecamp operation complete" service=Todos operation=Complete duration=147ms
+```
+
+### OpenTelemetry Integration
+
+For distributed tracing and metrics with OTel:
+
+```go
+import (
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+    basecampotel "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/otel"
+)
+
+// Uses global TracerProvider/MeterProvider by default
+hooks := basecampotel.NewHooks()
+client := basecamp.NewClient(cfg, token, basecamp.WithHooks(hooks))
+
+// Or with custom providers
+hooks := basecampotel.NewHooks(
+    basecampotel.WithTracerProvider(tp),
+    basecampotel.WithMeterProvider(mp),
+)
+```
+
+Creates spans like:
+- `Todos.Complete` (operation span)
+  - `basecamp.request` (HTTP span, child of operation)
+
+### Prometheus Metrics
+
+For Prometheus-style metrics:
+
+```go
+import (
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+    basecampprom "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/prometheus"
+    "github.com/prometheus/client_golang/prometheus"
+)
+
+hooks := basecampprom.NewHooks(prometheus.DefaultRegisterer)
+client := basecamp.NewClient(cfg, token, basecamp.WithHooks(hooks))
+```
+
+Exposes metrics:
+| Metric | Type | Labels |
+|--------|------|--------|
+| `basecamp_operation_duration_seconds` | Histogram | `operation` |
+| `basecamp_operations_total` | Counter | `operation`, `status` |
+| `basecamp_http_requests_total` | Counter | `http_method`, `status_code` |
+| `basecamp_retries_total` | Counter | `http_method` |
+| `basecamp_cache_operations_total` | Counter | `result` |
+| `basecamp_errors_total` | Counter | `http_method`, `type` |
+
+### Combining Multiple Backends
+
+Use `NewChainHooks` to send telemetry to multiple backends:
+
+```go
+import (
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+    basecampotel "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/otel"
+    basecampprom "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/prometheus"
+)
+
+otelHooks := basecampotel.NewHooks()
+promHooks := basecampprom.NewHooks(prometheus.DefaultRegisterer)
+
+client := basecamp.NewClient(cfg, token,
+    basecamp.WithHooks(basecamp.NewChainHooks(otelHooks, promHooks)),
+)
+```
+
+### Custom Hooks
+
+Implement the `Hooks` interface for custom behavior. Embed `NoopHooks` to only override what you need:
+
+```go
+type AlertingHooks struct {
+    basecamp.NoopHooks
+}
+
+func (h *AlertingHooks) OnRetry(ctx context.Context, info basecamp.RequestInfo, attempt int, err error) {
+    if attempt >= 3 {
+        alertOncall(fmt.Sprintf("Basecamp API struggling: %s %s attempt %d", info.Method, info.URL, attempt))
+    }
+}
+
+hooks := &AlertingHooks{}
+client := basecamp.NewClient(cfg, token, basecamp.WithHooks(hooks))
+```
+
+### Zero Overhead When Disabled
+
+By default, the SDK uses `NoopHooks` which compiles to nothing—no overhead when observability isn't needed.
+
 ## Logging
 
-Enable debug logging with a custom `slog` logger:
+Enable HTTP-level debug logging with a custom `slog` logger:
 
 ```go
 logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
@@ -367,6 +497,8 @@ logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 
 client := basecamp.NewClient(cfg, token, basecamp.WithLogger(logger))
 ```
+
+For semantic operation logging (recommended), use `SlogHooks` instead—see [Observability](#observability) above.
 
 ## License
 
