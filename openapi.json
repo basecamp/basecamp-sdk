@@ -28,14 +28,6 @@
               "type": "string"
             },
             "required": true
-          },
-          {
-            "name": "Content-Type",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            },
-            "required": true
           }
         ],
         "responses": {
