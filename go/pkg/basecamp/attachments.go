@@ -17,11 +17,11 @@ type AttachmentResponse struct {
 
 // AttachmentsService handles attachment upload operations.
 type AttachmentsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewAttachmentsService creates a new AttachmentsService.
-func NewAttachmentsService(client *Client) *AttachmentsService {
+func NewAttachmentsService(client *AccountClient) *AttachmentsService {
 	return &AttachmentsService{client: client}
 }
 
@@ -33,18 +33,14 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 		Service: "Attachments", Operation: "Create",
 		ResourceType: "attachment", IsMutation: true,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if filename == "" {
 		err = ErrUsage("filename is required")
@@ -71,7 +67,7 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 		Name: filename,
 	}
 
-	resp, err := s.client.gen.CreateAttachmentWithBodyWithResponse(ctx, params, contentType, bytes.NewReader(body))
+	resp, err := s.client.parent.gen.CreateAttachmentWithBodyWithResponse(ctx, s.client.accountID, params, contentType, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}

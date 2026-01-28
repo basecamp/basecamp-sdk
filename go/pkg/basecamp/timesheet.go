@@ -33,11 +33,11 @@ type TimesheetReportOptions struct {
 
 // TimesheetService handles timesheet report operations.
 type TimesheetService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewTimesheetService creates a new TimesheetService.
-func NewTimesheetService(client *Client) *TimesheetService {
+func NewTimesheetService(client *AccountClient) *TimesheetService {
 	return &TimesheetService{client: client}
 }
 
@@ -67,22 +67,18 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 		Service: "Timesheet", Operation: "Report",
 		ResourceType: "timesheet_entry", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	params := s.buildTimesheetParams(opts)
 
-	resp, err := s.client.gen.GetTimesheetReportWithResponse(ctx, params)
+	resp, err := s.client.parent.gen.GetTimesheetReportWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -109,18 +105,14 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 		ResourceType: "timesheet_entry", IsMutation: false,
 		BucketID: projectID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var params *generated.GetProjectTimesheetParams
 	if opts != nil {
@@ -131,7 +123,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 		}
 	}
 
-	resp, err := s.client.gen.GetProjectTimesheetWithResponse(ctx, projectID, params)
+	resp, err := s.client.parent.gen.GetProjectTimesheetWithResponse(ctx, s.client.accountID, projectID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -158,18 +150,14 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recor
 		ResourceType: "timesheet_entry", IsMutation: false,
 		BucketID: projectID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var params *generated.GetRecordingTimesheetParams
 	if opts != nil {
@@ -180,7 +168,7 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recor
 		}
 	}
 
-	resp, err := s.client.gen.GetRecordingTimesheetWithResponse(ctx, projectID, recordingID, params)
+	resp, err := s.client.parent.gen.GetRecordingTimesheetWithResponse(ctx, s.client.accountID, projectID, recordingID, params)
 	if err != nil {
 		return nil, err
 	}

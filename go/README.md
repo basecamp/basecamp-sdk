@@ -44,7 +44,6 @@ import (
 func main() {
     // Configure the client
     cfg := basecamp.DefaultConfig()
-    cfg.AccountID = os.Getenv("BASECAMP_ACCOUNT_ID")
 
     // Use a static token
     token := &basecamp.StaticTokenProvider{
@@ -53,8 +52,15 @@ func main() {
 
     client := basecamp.NewClient(cfg, token)
 
+    // Get account ID from environment (ForAccount validates it's numeric)
+    accountID := os.Getenv("BASECAMP_ACCOUNT_ID")
+    if accountID == "" {
+        log.Fatal("BASECAMP_ACCOUNT_ID environment variable is required")
+    }
+    account := client.ForAccount(accountID)
+
     // List all projects
-    projects, err := client.Projects().List(context.Background(), nil)
+    projects, err := account.Projects().List(context.Background(), nil)
     if err != nil {
         log.Fatal(err)
     }
@@ -81,14 +87,22 @@ import (
 
 func main() {
     cfg := basecamp.DefaultConfig()
-    cfg.AccountID = "your-account-id"
 
     // AuthManager handles token storage and refresh
     authMgr := basecamp.NewAuthManager(cfg, http.DefaultClient)
     client := basecamp.NewClient(cfg, authMgr)
 
+    // Discover available accounts (account-agnostic operation)
+    info, err := client.Authorization().GetInfo(context.Background(), nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Create an account-scoped client
+    account := client.ForAccount(fmt.Sprint(info.Accounts[0].ID))
+
     // List active projects
-    projects, err := client.Projects().List(context.Background(), &basecamp.ProjectListOptions{
+    projects, err := account.Projects().List(context.Background(), &basecamp.ProjectListOptions{
         Status: basecamp.ProjectStatusActive,
     })
     if err != nil {
@@ -107,7 +121,6 @@ func main() {
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `BASECAMP_ACCOUNT_ID` | Your Basecamp account ID | Yes |
 | `BASECAMP_TOKEN` | Static API token or OAuth access token | Yes (unless using OAuth flow) |
 | `BASECAMP_PROJECT_ID` | Default project ID | No |
 | `BASECAMP_TODOLIST_ID` | Default todolist ID | No |
@@ -116,11 +129,12 @@ func main() {
 | `BASECAMP_CACHE_ENABLED` | Enable HTTP caching | No (default: `true`) |
 | `BASECAMP_NO_KEYRING` | Disable system keyring | No |
 
+Note: Account ID is specified via `client.ForAccount(accountID)` rather than configuration.
+
 ### Programmatic Configuration
 
 ```go
 cfg := basecamp.DefaultConfig()
-cfg.AccountID = "12345"
 cfg.ProjectID = "67890"           // Optional default project
 cfg.CacheEnabled = true           // Enable ETag caching
 cfg.CacheDir = "/custom/cache"    // Custom cache location
@@ -218,10 +232,10 @@ cfg, err := basecamp.LoadConfig("/path/to/config.json")
 ctx := context.Background()
 
 // List todos in a todolist
-todos, err := client.Todos().List(ctx, projectID, todolistID, nil)
+todos, err := account.Todos().List(ctx, projectID, todolistID, nil)
 
 // Create a todo
-todo, err := client.Todos().Create(ctx, projectID, todolistID, &basecamp.CreateTodoRequest{
+todo, err := account.Todos().Create(ctx, projectID, todolistID, &basecamp.CreateTodoRequest{
     Content:     "Review pull request",
     Description: "Check the new authentication flow",
     DueOn:       "2026-02-01",
@@ -229,10 +243,10 @@ todo, err := client.Todos().Create(ctx, projectID, todolistID, &basecamp.CreateT
 })
 
 // Complete a todo
-err = client.Todos().Complete(ctx, projectID, todoID)
+err = account.Todos().Complete(ctx, projectID, todoID)
 
 // Reposition a todo
-err = client.Todos().Reposition(ctx, projectID, todoID, 1) // Move to first position
+err = account.Todos().Reposition(ctx, projectID, todoID, 1) // Move to first position
 ```
 
 ## Working with Messages
@@ -241,13 +255,13 @@ err = client.Todos().Reposition(ctx, projectID, todoID, 1) // Move to first posi
 ctx := context.Background()
 
 // Get the message board for a project
-board, err := client.MessageBoards().Get(ctx, projectID)
+board, err := account.MessageBoards().Get(ctx, projectID)
 
 // List messages
-messages, err := client.Messages().List(ctx, projectID, board.ID, nil)
+messages, err := account.Messages().List(ctx, projectID, board.ID, nil)
 
 // Create a message
-msg, err := client.Messages().Create(ctx, projectID, board.ID, &basecamp.CreateMessageRequest{
+msg, err := account.Messages().Create(ctx, projectID, board.ID, &basecamp.CreateMessageRequest{
     Subject: "Weekly Update",
     Content: "<p>Here's what we accomplished this week...</p>",
 })
@@ -259,13 +273,13 @@ msg, err := client.Messages().Create(ctx, projectID, board.ID, &basecamp.CreateM
 ctx := context.Background()
 
 // List all campfires
-campfires, err := client.Campfires().List(ctx)
+campfires, err := account.Campfires().List(ctx)
 
 // Send a message
-line, err := client.Campfires().CreateLine(ctx, projectID, campfireID, "Hello, team!")
+line, err := account.Campfires().CreateLine(ctx, projectID, campfireID, "Hello, team!")
 
 // List recent messages
-lines, err := client.Campfires().ListLines(ctx, projectID, campfireID)
+lines, err := account.Campfires().ListLines(ctx, projectID, campfireID)
 ```
 
 ## Working with Webhooks
@@ -274,16 +288,16 @@ lines, err := client.Campfires().ListLines(ctx, projectID, campfireID)
 ctx := context.Background()
 
 // Create a webhook
-webhook, err := client.Webhooks().Create(ctx, projectID, &basecamp.CreateWebhookRequest{
+webhook, err := account.Webhooks().Create(ctx, projectID, &basecamp.CreateWebhookRequest{
     PayloadURL: "https://example.com/webhook",
     Types:      []string{"Todo", "Comment"},
 })
 
 // List webhooks
-webhooks, err := client.Webhooks().List(ctx, projectID)
+webhooks, err := account.Webhooks().List(ctx, projectID)
 
 // Delete a webhook
-err = client.Webhooks().Delete(ctx, projectID, webhookID)
+err = account.Webhooks().Delete(ctx, projectID, webhookID)
 ```
 
 ## Error Handling
@@ -291,7 +305,7 @@ err = client.Webhooks().Delete(ctx, projectID, webhookID)
 The SDK provides structured errors with codes for programmatic handling:
 
 ```go
-projects, err := client.Projects().List(ctx, nil)
+projects, err := account.Projects().List(ctx, nil)
 if err != nil {
     if apiErr, ok := err.(*basecamp.Error); ok {
         switch apiErr.Code {
@@ -335,10 +349,10 @@ The SDK automatically caches GET responses using ETags:
 
 ```go
 // First request fetches from API
-projects, _ := client.Projects().List(ctx, nil)
+projects, _ := account.Projects().List(ctx, nil)
 
 // Second request uses cached data if unchanged (304 Not Modified)
-projects, _ = client.Projects().List(ctx, nil)
+projects, _ = account.Projects().List(ctx, nil)
 
 // Disable caching
 cfg := basecamp.DefaultConfig()

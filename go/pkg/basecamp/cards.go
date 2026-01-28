@@ -196,11 +196,11 @@ type UpdateStepRequest struct {
 
 // CardTablesService handles card table operations.
 type CardTablesService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewCardTablesService creates a new CardTablesService.
-func NewCardTablesService(client *Client) *CardTablesService {
+func NewCardTablesService(client *AccountClient) *CardTablesService {
 	return &CardTablesService{client: client}
 }
 
@@ -212,20 +212,16 @@ func (s *CardTablesService) Get(ctx context.Context, bucketID, cardTableID int64
 		ResourceType: "card_table", IsMutation: false,
 		BucketID: bucketID, ResourceID: cardTableID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetCardTableWithResponse(ctx, bucketID, cardTableID)
+	resp, err := s.client.parent.gen.GetCardTableWithResponse(ctx, s.client.accountID, bucketID, cardTableID)
 	if err != nil {
 		return nil, err
 	}
@@ -243,11 +239,11 @@ func (s *CardTablesService) Get(ctx context.Context, bucketID, cardTableID int64
 
 // CardsService handles card operations.
 type CardsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewCardsService creates a new CardsService.
-func NewCardsService(client *Client) *CardsService {
+func NewCardsService(client *AccountClient) *CardsService {
 	return &CardsService{client: client}
 }
 
@@ -259,20 +255,16 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64) (resu
 		ResourceType: "card", IsMutation: false,
 		BucketID: bucketID, ResourceID: columnID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListCardsWithResponse(ctx, bucketID, columnID)
+	resp, err := s.client.parent.gen.ListCardsWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -298,20 +290,16 @@ func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (result 
 		ResourceType: "card", IsMutation: false,
 		BucketID: bucketID, ResourceID: cardID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetCardWithResponse(ctx, bucketID, cardID)
+	resp, err := s.client.parent.gen.GetCardWithResponse(ctx, s.client.accountID, bucketID, cardID)
 	if err != nil {
 		return nil, err
 	}
@@ -336,18 +324,14 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 		ResourceType: "card", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Title == "" {
 		err = ErrUsage("card title is required")
@@ -372,7 +356,7 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 		body.Notify = req.Notify
 	}
 
-	resp, err := s.client.gen.CreateCardWithResponse(ctx, bucketID, columnID, body)
+	resp, err := s.client.parent.gen.CreateCardWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -397,18 +381,14 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 		ResourceType: "card", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update request is required")
@@ -434,7 +414,7 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 		body.AssigneeIds = req.AssigneeIDs
 	}
 
-	resp, err := s.client.gen.UpdateCardWithResponse(ctx, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.UpdateCardWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -458,24 +438,20 @@ func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int6
 		ResourceType: "card", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	body := generated.MoveCardJSONRequestBody{
 		ColumnId: columnID,
 	}
 
-	resp, err := s.client.gen.MoveCardWithResponse(ctx, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.MoveCardWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
 	if err != nil {
 		return err
 	}
@@ -491,20 +467,16 @@ func (s *CardsService) Trash(ctx context.Context, bucketID, cardID int64) (err e
 		ResourceType: "card", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, cardID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, cardID)
 	if err != nil {
 		return err
 	}
@@ -513,11 +485,11 @@ func (s *CardsService) Trash(ctx context.Context, bucketID, cardID int64) (err e
 
 // CardColumnsService handles card column operations.
 type CardColumnsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewCardColumnsService creates a new CardColumnsService.
-func NewCardColumnsService(client *Client) *CardColumnsService {
+func NewCardColumnsService(client *AccountClient) *CardColumnsService {
 	return &CardColumnsService{client: client}
 }
 
@@ -529,20 +501,16 @@ func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) 
 		ResourceType: "card_column", IsMutation: false,
 		BucketID: bucketID, ResourceID: columnID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetCardColumnWithResponse(ctx, bucketID, columnID)
+	resp, err := s.client.parent.gen.GetCardColumnWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -567,18 +535,14 @@ func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID i
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardTableID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Title == "" {
 		err = ErrUsage("column title is required")
@@ -590,7 +554,7 @@ func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID i
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.CreateCardColumnWithResponse(ctx, bucketID, cardTableID, body)
+	resp, err := s.client.parent.gen.CreateCardColumnWithResponse(ctx, s.client.accountID, bucketID, cardTableID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -615,18 +579,14 @@ func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int6
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update request is required")
@@ -638,7 +598,7 @@ func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int6
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.UpdateCardColumnWithResponse(ctx, bucketID, columnID, body)
+	resp, err := s.client.parent.gen.UpdateCardColumnWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -662,18 +622,14 @@ func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardTableID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("move request is required")
@@ -686,7 +642,7 @@ func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int
 		Position: int32(req.Position),
 	}
 
-	resp, err := s.client.gen.MoveCardColumnWithResponse(ctx, bucketID, cardTableID, body)
+	resp, err := s.client.parent.gen.MoveCardColumnWithResponse(ctx, s.client.accountID, bucketID, cardTableID, body)
 	if err != nil {
 		return err
 	}
@@ -703,18 +659,14 @@ func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID in
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if color == "" {
 		err = ErrUsage("color is required")
@@ -725,7 +677,7 @@ func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID in
 		Color: color,
 	}
 
-	resp, err := s.client.gen.SetCardColumnColorWithResponse(ctx, bucketID, columnID, body)
+	resp, err := s.client.parent.gen.SetCardColumnColorWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -750,20 +702,16 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnI
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.EnableCardColumnOnHoldWithResponse(ctx, bucketID, columnID)
+	resp, err := s.client.parent.gen.EnableCardColumnOnHoldWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -788,20 +736,16 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, column
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.DisableCardColumnOnHoldWithResponse(ctx, bucketID, columnID)
+	resp, err := s.client.parent.gen.DisableCardColumnOnHoldWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -826,20 +770,16 @@ func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.SubscribeWithResponse(ctx, bucketID, columnID)
+	resp, err := s.client.parent.gen.SubscribeWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -864,20 +804,16 @@ func (s *CardColumnsService) Unwatch(ctx context.Context, bucketID, columnID int
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.UnsubscribeWithResponse(ctx, bucketID, columnID)
+	resp, err := s.client.parent.gen.UnsubscribeWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return err
 	}
@@ -886,11 +822,11 @@ func (s *CardColumnsService) Unwatch(ctx context.Context, bucketID, columnID int
 
 // CardStepsService handles card step operations.
 type CardStepsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewCardStepsService creates a new CardStepsService.
-func NewCardStepsService(client *Client) *CardStepsService {
+func NewCardStepsService(client *AccountClient) *CardStepsService {
 	return &CardStepsService{client: client}
 }
 
@@ -903,18 +839,14 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Title == "" {
 		err = ErrUsage("step title is required")
@@ -934,7 +866,7 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 		body.DueOn = d
 	}
 
-	resp, err := s.client.gen.CreateCardStepWithResponse(ctx, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.CreateCardStepWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -959,18 +891,14 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: stepID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update request is required")
@@ -990,7 +918,7 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 		body.DueOn = d
 	}
 
-	resp, err := s.client.gen.UpdateCardStepWithResponse(ctx, bucketID, stepID, body)
+	resp, err := s.client.parent.gen.UpdateCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1015,20 +943,16 @@ func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64)
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: stepID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.CompleteCardStepWithResponse(ctx, bucketID, stepID)
+	resp, err := s.client.parent.gen.CompleteCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID)
 	if err != nil {
 		return nil, err
 	}
@@ -1053,20 +977,16 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int6
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: stepID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.UncompleteCardStepWithResponse(ctx, bucketID, stepID)
+	resp, err := s.client.parent.gen.UncompleteCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID)
 	if err != nil {
 		return nil, err
 	}
@@ -1091,18 +1011,14 @@ func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, ste
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: stepID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if position < 0 {
 		err = ErrUsage("position must be at least 0")
@@ -1114,7 +1030,7 @@ func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, ste
 		Position: int32(position),
 	}
 
-	resp, err := s.client.gen.RepositionCardStepWithResponse(ctx, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.RepositionCardStepWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
 	if err != nil {
 		return err
 	}
@@ -1129,20 +1045,16 @@ func (s *CardStepsService) Delete(ctx context.Context, bucketID, stepID int64) (
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: stepID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, stepID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, stepID)
 	if err != nil {
 		return err
 	}

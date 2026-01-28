@@ -75,9 +75,10 @@ Initial release of the Basecamp Go SDK.
 - `ClientCorrespondencesService` - Client correspondence management
 
 #### Configuration
-- Environment variable configuration (`BASECAMP_ACCOUNT_ID`, `BASECAMP_PROJECT_ID`, etc.)
+- Environment variable configuration (`BASECAMP_PROJECT_ID`, etc.)
 - JSON file configuration support
 - XDG-compliant cache and config directories
+- Multi-account support via `client.ForAccount(accountID)`
 
 [Unreleased]: https://github.com/basecamp/basecamp-sdk/compare/go/v0.1.0...HEAD
 [0.1.0]: https://github.com/basecamp/basecamp-sdk/releases/tag/go/v0.1.0

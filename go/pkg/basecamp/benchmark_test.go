@@ -27,7 +27,6 @@ func (m *mockTokenProvider) Refresh(ctx context.Context) error {
 func BenchmarkClientCreation(b *testing.B) {
 	cfg := &Config{
 		BaseURL:      "https://3.basecampapi.com",
-		AccountID:    "12345",
 		CacheEnabled: false,
 	}
 	tp := &mockTokenProvider{}
@@ -42,7 +41,6 @@ func BenchmarkClientCreation(b *testing.B) {
 func BenchmarkClientCreationWithOptions(b *testing.B) {
 	cfg := &Config{
 		BaseURL:      "https://3.basecampapi.com",
-		AccountID:    "12345",
 		CacheEnabled: false,
 	}
 	tp := &mockTokenProvider{}
@@ -211,7 +209,6 @@ func BenchmarkJSONUnmarshalProjectList(b *testing.B) {
 func BenchmarkBuildURL(b *testing.B) {
 	cfg := &Config{
 		BaseURL:      "https://3.basecampapi.com",
-		AccountID:    "12345",
 		CacheEnabled: false,
 	}
 	client := NewClient(cfg, &mockTokenProvider{})
@@ -275,7 +272,6 @@ func BenchmarkHTTPRoundTrip(b *testing.B) {
 
 	cfg := &Config{
 		BaseURL:      server.URL,
-		AccountID:    "12345",
 		CacheEnabled: false,
 	}
 	client := NewClient(cfg, &mockTokenProvider{})
@@ -299,7 +295,6 @@ func BenchmarkHTTPRoundTripParallel(b *testing.B) {
 
 	cfg := &Config{
 		BaseURL:      server.URL,
-		AccountID:    "12345",
 		CacheEnabled: false,
 	}
 	client := NewClient(cfg, &mockTokenProvider{})
@@ -361,7 +356,6 @@ func BenchmarkErrorCreation(b *testing.B) {
 func BenchmarkBackoffDelay(b *testing.B) {
 	cfg := &Config{
 		BaseURL:      "https://3.basecampapi.com",
-		AccountID:    "12345",
 		CacheEnabled: false,
 	}
 	client := NewClient(cfg, &mockTokenProvider{})

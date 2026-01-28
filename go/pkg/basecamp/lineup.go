@@ -58,11 +58,11 @@ type UpdateMarkerRequest struct {
 
 // LineupService handles lineup marker operations.
 type LineupService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewLineupService creates a new LineupService.
-func NewLineupService(client *Client) *LineupService {
+func NewLineupService(client *AccountClient) *LineupService {
 	return &LineupService{client: client}
 }
 
@@ -73,18 +73,14 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 		Service: "Lineup", Operation: "CreateMarker",
 		ResourceType: "lineup_marker", IsMutation: true,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Title == "" {
 		err = ErrUsage("marker title is required")
@@ -118,7 +114,7 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.CreateLineupMarkerWithResponse(ctx, body)
+	resp, err := s.client.parent.gen.CreateLineupMarkerWithResponse(ctx, s.client.accountID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -143,18 +139,14 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 		ResourceType: "lineup_marker", IsMutation: true,
 		ResourceID: markerID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update request is required")
@@ -183,7 +175,7 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 		body.EndsOn = endsOn
 	}
 
-	resp, err := s.client.gen.UpdateLineupMarkerWithResponse(ctx, markerID, body)
+	resp, err := s.client.parent.gen.UpdateLineupMarkerWithResponse(ctx, s.client.accountID, markerID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -207,20 +199,16 @@ func (s *LineupService) DeleteMarker(ctx context.Context, markerID int64) (err e
 		ResourceType: "lineup_marker", IsMutation: true,
 		ResourceID: markerID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.DeleteLineupMarkerWithResponse(ctx, markerID)
+	resp, err := s.client.parent.gen.DeleteLineupMarkerWithResponse(ctx, s.client.accountID, markerID)
 	if err != nil {
 		return err
 	}

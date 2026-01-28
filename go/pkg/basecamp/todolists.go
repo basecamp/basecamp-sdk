@@ -62,11 +62,11 @@ type UpdateTodolistRequest struct {
 
 // TodolistsService handles todolist operations.
 type TodolistsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewTodolistsService creates a new TodolistsService.
-func NewTodolistsService(client *Client) *TodolistsService {
+func NewTodolistsService(client *AccountClient) *TodolistsService {
 	return &TodolistsService{client: client}
 }
 
@@ -78,25 +78,21 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 		ResourceType: "todolist", IsMutation: false,
 		BucketID: bucketID, ResourceID: todosetID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	params := &generated.ListTodolistsParams{}
 	if opts != nil && opts.Status != "" {
 		params.Status = opts.Status
 	}
 
-	resp, err := s.client.gen.ListTodolistsWithResponse(ctx, bucketID, todosetID, params)
+	resp, err := s.client.parent.gen.ListTodolistsWithResponse(ctx, s.client.accountID, bucketID, todosetID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -123,20 +119,16 @@ func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) 
 		ResourceType: "todolist", IsMutation: false,
 		BucketID: bucketID, ResourceID: todolistID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetTodolistOrGroupWithResponse(ctx, bucketID, todolistID)
+	resp, err := s.client.parent.gen.GetTodolistOrGroupWithResponse(ctx, s.client.accountID, bucketID, todolistID)
 	if err != nil {
 		return nil, err
 	}
@@ -168,18 +160,14 @@ func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64
 		ResourceType: "todolist", IsMutation: true,
 		BucketID: bucketID, ResourceID: todosetID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req.Name == "" {
 		err = ErrUsage("todolist name is required")
@@ -191,7 +179,7 @@ func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.CreateTodolistWithResponse(ctx, bucketID, todosetID, body)
+	resp, err := s.client.parent.gen.CreateTodolistWithResponse(ctx, s.client.accountID, bucketID, todosetID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -216,25 +204,21 @@ func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int6
 		ResourceType: "todolist", IsMutation: true,
 		BucketID: bucketID, ResourceID: todolistID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	body := generated.UpdateTodolistOrGroupJSONRequestBody{
 		Name:        req.Name,
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.UpdateTodolistOrGroupWithResponse(ctx, bucketID, todolistID, body)
+	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, bucketID, todolistID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -266,20 +250,16 @@ func (s *TodolistsService) Trash(ctx context.Context, bucketID, todolistID int64
 		ResourceType: "todolist", IsMutation: true,
 		BucketID: bucketID, ResourceID: todolistID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, todolistID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, todolistID)
 	if err != nil {
 		return err
 	}

@@ -13,9 +13,6 @@ type Config struct {
 	// BaseURL is the API base URL (e.g., "https://3.basecampapi.com").
 	BaseURL string `json:"base_url"`
 
-	// AccountID is the Basecamp account ID.
-	AccountID string `json:"account_id"`
-
 	// ProjectID is the default project/bucket ID.
 	ProjectID string `json:"project_id"`
 
@@ -68,9 +65,6 @@ func LoadConfig(path string) (*Config, error) {
 func (c *Config) LoadConfigFromEnv() {
 	if v := os.Getenv("BASECAMP_BASE_URL"); v != "" {
 		c.BaseURL = v
-	}
-	if v := os.Getenv("BASECAMP_ACCOUNT_ID"); v != "" {
-		c.AccountID = v
 	}
 	if v := os.Getenv("BASECAMP_PROJECT_ID"); v != "" {
 		c.ProjectID = v

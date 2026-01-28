@@ -30,11 +30,11 @@ type EventDetails struct {
 
 // EventsService handles event operations.
 type EventsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewEventsService creates a new EventsService.
-func NewEventsService(client *Client) *EventsService {
+func NewEventsService(client *AccountClient) *EventsService {
 	return &EventsService{client: client}
 }
 
@@ -46,20 +46,16 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64) (
 		ResourceType: "event", IsMutation: false,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListEventsWithResponse(ctx, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ListEventsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}

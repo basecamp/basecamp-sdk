@@ -62,11 +62,11 @@ type CreateForwardReplyRequest struct {
 
 // ForwardsService handles email forward operations.
 type ForwardsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewForwardsService creates a new ForwardsService.
-func NewForwardsService(client *Client) *ForwardsService {
+func NewForwardsService(client *AccountClient) *ForwardsService {
 	return &ForwardsService{client: client}
 }
 
@@ -78,20 +78,16 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 		ResourceType: "inbox", IsMutation: false,
 		BucketID: bucketID, ResourceID: inboxID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetInboxWithResponse(ctx, bucketID, inboxID)
+	resp, err := s.client.parent.gen.GetInboxWithResponse(ctx, s.client.accountID, bucketID, inboxID)
 	if err != nil {
 		return nil, err
 	}
@@ -115,20 +111,16 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) (re
 		ResourceType: "forward", IsMutation: false,
 		BucketID: bucketID, ResourceID: inboxID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListForwardsWithResponse(ctx, bucketID, inboxID)
+	resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, bucketID, inboxID)
 	if err != nil {
 		return nil, err
 	}
@@ -155,20 +147,16 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (r
 		ResourceType: "forward", IsMutation: false,
 		BucketID: bucketID, ResourceID: forwardID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetForwardWithResponse(ctx, bucketID, forwardID)
+	resp, err := s.client.parent.gen.GetForwardWithResponse(ctx, s.client.accountID, bucketID, forwardID)
 	if err != nil {
 		return nil, err
 	}
@@ -192,20 +180,16 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 		ResourceType: "forward_reply", IsMutation: false,
 		BucketID: bucketID, ResourceID: forwardID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListForwardRepliesWithResponse(ctx, bucketID, forwardID)
+	resp, err := s.client.parent.gen.ListForwardRepliesWithResponse(ctx, s.client.accountID, bucketID, forwardID)
 	if err != nil {
 		return nil, err
 	}
@@ -232,20 +216,16 @@ func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, rep
 		ResourceType: "forward_reply", IsMutation: false,
 		BucketID: bucketID, ResourceID: replyID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetForwardReplyWithResponse(ctx, bucketID, forwardID, replyID)
+	resp, err := s.client.parent.gen.GetForwardReplyWithResponse(ctx, s.client.accountID, bucketID, forwardID, replyID)
 	if err != nil {
 		return nil, err
 	}
@@ -270,18 +250,14 @@ func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID i
 		ResourceType: "forward_reply", IsMutation: true,
 		BucketID: bucketID, ResourceID: forwardID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Content == "" {
 		err = ErrUsage("reply content is required")
@@ -292,7 +268,7 @@ func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID i
 		Content: req.Content,
 	}
 
-	resp, err := s.client.gen.CreateForwardReplyWithResponse(ctx, bucketID, forwardID, body)
+	resp, err := s.client.parent.gen.CreateForwardReplyWithResponse(ctx, s.client.accountID, bucketID, forwardID, body)
 	if err != nil {
 		return nil, err
 	}

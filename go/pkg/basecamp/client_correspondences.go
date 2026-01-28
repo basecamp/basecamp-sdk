@@ -33,11 +33,11 @@ type ClientCorrespondence struct {
 
 // ClientCorrespondencesService handles client correspondence operations.
 type ClientCorrespondencesService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewClientCorrespondencesService creates a new ClientCorrespondencesService.
-func NewClientCorrespondencesService(client *Client) *ClientCorrespondencesService {
+func NewClientCorrespondencesService(client *AccountClient) *ClientCorrespondencesService {
 	return &ClientCorrespondencesService{client: client}
 }
 
@@ -49,20 +49,16 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64)
 		ResourceType: "client_correspondence", IsMutation: false,
 		BucketID: bucketID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListClientCorrespondencesWithResponse(ctx, bucketID)
+	resp, err := s.client.parent.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID, bucketID)
 	if err != nil {
 		return nil, err
 	}
@@ -89,20 +85,16 @@ func (s *ClientCorrespondencesService) Get(ctx context.Context, bucketID, corres
 		ResourceType: "client_correspondence", IsMutation: false,
 		BucketID: bucketID, ResourceID: correspondenceID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetClientCorrespondenceWithResponse(ctx, bucketID, correspondenceID)
+	resp, err := s.client.parent.gen.GetClientCorrespondenceWithResponse(ctx, s.client.accountID, bucketID, correspondenceID)
 	if err != nil {
 		return nil, err
 	}

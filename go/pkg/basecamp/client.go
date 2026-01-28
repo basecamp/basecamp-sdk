@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -21,6 +22,11 @@ import (
 const DefaultUserAgent = "basecamp-sdk-go/" + Version
 
 // Client is an HTTP client for the Basecamp API.
+// Client holds shared resources and is used to create AccountClient instances
+// for specific Basecamp accounts via the ForAccount method.
+//
+// Client is safe for concurrent use after construction. Do not modify
+// the Config after the client is in use by multiple goroutines.
 type Client struct {
 	httpClient    *http.Client
 	tokenProvider TokenProvider
@@ -30,9 +36,33 @@ type Client struct {
 	logger        *slog.Logger
 	httpOpts      HTTPOptions
 	hooks         Hooks
-	gen           *generated.ClientWithResponses
 
-	// Services
+	// Generated client (single shared instance, account passed per operation)
+	genOnce sync.Once
+	gen     *generated.ClientWithResponses
+
+	// Authorization service (account-independent)
+	authMu        sync.Mutex
+	authorization *AuthorizationService
+}
+
+// AccountClient is an HTTP client bound to a specific Basecamp account.
+// Create an AccountClient using Client.ForAccount(accountID).
+// AccountClient is safe for concurrent use.
+//
+// The Basecamp API requires an account ID in the URL path
+// (e.g., https://3.basecampapi.com/12345/projects.json). This SDK passes the
+// account ID as a path parameter to each generated client operation, matching
+// the OpenAPI spec's /{accountId}/... path structure.
+//
+// AccountClient shares the parent Client's generated API client and HTTP
+// resources. Creating multiple AccountClients via ForAccount is lightweight.
+type AccountClient struct {
+	parent    *Client
+	accountID string
+	mu        sync.Mutex // protects lazy service initialization
+
+	// Services (lazy-initialized, protected by mu)
 	projects              *ProjectsService
 	todos                 *TodosService
 	todosets              *TodosetsService
@@ -69,7 +99,6 @@ type Client struct {
 	clientReplies         *ClientRepliesService
 	timeline              *TimelineService
 	reports               *ReportsService
-	authorization         *AuthorizationService
 }
 
 // Response wraps an API response.
@@ -169,37 +198,124 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 		c.cache = NewCache(cfg.CacheDir)
 	}
 
-	// Initialize generated client with auth
-	c.initGeneratedClient()
-
 	return c
 }
 
-// initGeneratedClient initializes or reinitializes the generated OpenAPI client.
-// This is called during NewClient and whenever the account ID changes.
+// ForAccount returns an AccountClient bound to the specified Basecamp account.
+// The AccountClient shares the parent Client's HTTP transport, token provider,
+// and other resources, but is configured to make API calls for the given account.
+//
+// The accountID must be a numeric string (e.g., "12345"). ForAccount panics if
+// the accountID is empty or contains non-digit characters.
+//
+// Example:
+//
+//	client := basecamp.NewClient(cfg, tokenProvider)
+//	account := client.ForAccount("12345")
+//	projects, err := account.Projects().List(ctx, nil)
+func (c *Client) ForAccount(accountID string) *AccountClient {
+	if accountID == "" {
+		panic("basecamp: ForAccount requires non-empty account ID")
+	}
+	for _, r := range accountID {
+		if r < '0' || r > '9' {
+			panic("basecamp: ForAccount requires numeric account ID, got: " + accountID)
+		}
+	}
+
+	// Initialize shared generated client on first use (thread-safe)
+	c.initGeneratedClient()
+
+	return &AccountClient{
+		parent:    c,
+		accountID: accountID,
+	}
+}
+
+// AccountID returns the account ID this client is bound to.
+func (ac *AccountClient) AccountID() string {
+	return ac.accountID
+}
+
+// Get performs an account-scoped GET request.
+func (ac *AccountClient) Get(ctx context.Context, path string) (*Response, error) {
+	return ac.parent.doRequest(ctx, "GET", ac.accountPath(path), nil)
+}
+
+// Post performs an account-scoped POST request with a JSON body.
+func (ac *AccountClient) Post(ctx context.Context, path string, body any) (*Response, error) {
+	return ac.parent.doRequest(ctx, "POST", ac.accountPath(path), body)
+}
+
+// Put performs an account-scoped PUT request with a JSON body.
+func (ac *AccountClient) Put(ctx context.Context, path string, body any) (*Response, error) {
+	return ac.parent.doRequest(ctx, "PUT", ac.accountPath(path), body)
+}
+
+// Delete performs an account-scoped DELETE request.
+func (ac *AccountClient) Delete(ctx context.Context, path string) (*Response, error) {
+	return ac.parent.doRequest(ctx, "DELETE", ac.accountPath(path), nil)
+}
+
+// GetAll fetches all pages for an account-scoped paginated resource.
+func (ac *AccountClient) GetAll(ctx context.Context, path string) ([]json.RawMessage, error) {
+	return ac.parent.GetAll(ctx, ac.accountPath(path))
+}
+
+// accountPath prepends the account ID to the path.
+// Absolute URLs are returned unchanged (e.g., pagination Link headers).
+// Paths already prefixed with the account ID are returned unchanged.
+//
+// Callers should pass account-less paths (e.g., "/projects.json").
+// If a path is already prefixed (e.g., "/12345/projects.json"), it is
+// returned as-is to avoid double-prefixing.
+func (ac *AccountClient) accountPath(path string) string {
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		return path
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	// Guard against double-prefixing if caller already included account ID.
+	// Check for /{accountId}/, /{accountId}?, or /{accountId} (exact).
+	prefix := "/" + ac.accountID
+	if strings.HasPrefix(path, prefix) {
+		rest := path[len(prefix):]
+		if rest == "" || rest[0] == '/' || rest[0] == '?' {
+			return path
+		}
+	}
+	return "/" + ac.accountID + path
+}
+
+// initGeneratedClient initializes the shared generated OpenAPI client.
+// Uses sync.Once to ensure the client is only created once.
+// The account ID is passed as a parameter to each operation, not baked into the URL.
 func (c *Client) initGeneratedClient() {
-	serverURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(c.cfg.BaseURL, "/"), c.cfg.AccountID)
-	authEditor := func(ctx context.Context, req *http.Request) error {
-		token, err := c.tokenProvider.AccessToken(ctx)
+	c.genOnce.Do(func() {
+		serverURL := strings.TrimSuffix(c.cfg.BaseURL, "/")
+		authEditor := func(ctx context.Context, req *http.Request) error {
+			token, err := c.tokenProvider.AccessToken(ctx)
+			if err != nil {
+				return err
+			}
+			req.Header.Set("Authorization", "Bearer "+token)
+			req.Header.Set("User-Agent", c.userAgent)
+			// Only set Content-Type if not already set (preserves binary upload content types)
+			if req.Header.Get("Content-Type") == "" {
+				req.Header.Set("Content-Type", "application/json")
+			}
+			req.Header.Set("Accept", "application/json")
+			return nil
+		}
+		gen, err := generated.NewClientWithResponses(serverURL,
+			generated.WithHTTPClient(c.httpClient),
+			generated.WithRequestEditorFn(authEditor))
 		if err != nil {
-			return err
+			panic(fmt.Sprintf("basecamp: failed to create generated client: %v", err))
 		}
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("User-Agent", c.userAgent)
-		// Only set Content-Type if not already set (preserves binary upload content types)
-		if req.Header.Get("Content-Type") == "" {
-			req.Header.Set("Content-Type", "application/json")
-		}
-		req.Header.Set("Accept", "application/json")
-		return nil
-	}
-	gen, err := generated.NewClientWithResponses(serverURL,
-		generated.WithHTTPClient(c.httpClient),
-		generated.WithRequestEditorFn(authEditor))
-	if err != nil {
-		panic(fmt.Sprintf("basecamp: failed to create generated client: %v", err))
-	}
-	c.gen = gen
+		c.gen = gen
+	})
 }
 
 // discardHandler is a slog.Handler that discards all log records.
@@ -209,13 +325,6 @@ func (discardHandler) Enabled(context.Context, slog.Level) bool  { return false 
 func (discardHandler) Handle(context.Context, slog.Record) error { return nil }
 func (h discardHandler) WithAttrs([]slog.Attr) slog.Handler      { return h }
 func (h discardHandler) WithGroup(string) slog.Handler           { return h }
-
-// SetLogger sets the logger for debug output.
-func (c *Client) SetLogger(l *slog.Logger) {
-	if l != nil {
-		c.logger = l
-	}
-}
 
 // Get performs a GET request.
 func (c *Client) Get(ctx context.Context, path string) (*Response, error) {
@@ -375,7 +484,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 	// Add ETag for cached GET requests
 	var cacheKey string
 	if method == "GET" && c.cache != nil {
-		cacheKey = c.cache.Key(url, c.cfg.AccountID, token)
+		cacheKey = c.cache.Key(url, "", token) // URL already includes account when needed
 		if etag := c.cache.GetETag(cacheKey); etag != "" {
 			req.Header.Set("If-None-Match", etag)
 			c.logger.Debug("cache conditional request", "etag", etag)
@@ -491,28 +600,17 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 }
 
 func (c *Client) buildURL(path string) string {
+	// Absolute URLs are returned as-is (e.g., pagination Link headers)
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		return path
+	}
 	// Ensure path starts with /
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-
-	// If path already has account ID prefix, use it directly
-	if strings.HasPrefix(path, "/"+c.cfg.AccountID+"/") {
-		return c.cfg.BaseURL + path
-	}
-
-	// Check if this is an account-relative path (most API calls)
-	// Skip account ID for authorization endpoints
-	if strings.HasPrefix(path, "/.well-known/") || strings.HasPrefix(path, "/authorization/") {
-		return c.cfg.BaseURL + path
-	}
-
-	// Add account ID for regular API paths
-	if c.cfg.AccountID != "" {
-		return c.cfg.BaseURL + "/" + c.cfg.AccountID + path
-	}
-
-	return c.cfg.BaseURL + path
+	// Normalize BaseURL to avoid double slashes when concatenating
+	base := strings.TrimSuffix(c.cfg.BaseURL, "/")
+	return base + path
 }
 
 func (c *Client) backoffDelay(attempt int) time.Duration {
@@ -586,322 +684,382 @@ func (c *Client) RequireProject() error {
 	return nil
 }
 
-// RequireAccount returns an error if no account is configured.
-func (c *Client) RequireAccount() error {
-	if c.cfg.AccountID == "" {
-		return ErrUsageHint(
-			"No account configured",
-			"Set BASECAMP_ACCOUNT_ID environment variable",
-		)
-	}
-	return nil
-}
-
 // Config returns the client configuration.
+//
+// The returned pointer is the client's internal config. Do not modify it
+// after the client is in use by multiple goroutines.
 func (c *Client) Config() *Config {
 	return c.cfg
 }
 
-// SetAccountID updates the account ID and reinitializes the generated client.
-// This is useful when the account ID is determined after client creation,
-// such as through interactive prompts or multi-account selection.
-func (c *Client) SetAccountID(accountID string) {
-	c.cfg.AccountID = accountID
-	c.initGeneratedClient()
-}
-
-// Projects returns the ProjectsService for project operations.
-func (c *Client) Projects() *ProjectsService {
-	if c.projects == nil {
-		c.projects = NewProjectsService(c)
-	}
-	return c.projects
-}
-
-// Todos returns the TodosService for todo operations.
-func (c *Client) Todos() *TodosService {
-	if c.todos == nil {
-		c.todos = NewTodosService(c)
-	}
-	return c.todos
-}
-
-// Todosets returns the TodosetsService for todoset operations.
-func (c *Client) Todosets() *TodosetsService {
-	if c.todosets == nil {
-		c.todosets = NewTodosetsService(c)
-	}
-	return c.todosets
-}
-
-// Todolists returns the TodolistsService for todolist operations.
-func (c *Client) Todolists() *TodolistsService {
-	if c.todolists == nil {
-		c.todolists = NewTodolistsService(c)
-	}
-	return c.todolists
-}
-
-// TodolistGroups returns the TodolistGroupsService for todolist group operations.
-func (c *Client) TodolistGroups() *TodolistGroupsService {
-	if c.todolistGroups == nil {
-		c.todolistGroups = NewTodolistGroupsService(c)
-	}
-	return c.todolistGroups
-}
-
-// People returns the PeopleService for people operations.
-func (c *Client) People() *PeopleService {
-	if c.people == nil {
-		c.people = NewPeopleService(c)
-	}
-	return c.people
-}
-
-// Comments returns the CommentsService for comment operations.
-func (c *Client) Comments() *CommentsService {
-	if c.comments == nil {
-		c.comments = NewCommentsService(c)
-	}
-	return c.comments
-}
-
-// Messages returns the MessagesService for message operations.
-func (c *Client) Messages() *MessagesService {
-	if c.messages == nil {
-		c.messages = NewMessagesService(c)
-	}
-	return c.messages
-}
-
-// MessageBoards returns the MessageBoardsService for message board operations.
-func (c *Client) MessageBoards() *MessageBoardsService {
-	if c.messageBoards == nil {
-		c.messageBoards = NewMessageBoardsService(c)
-	}
-	return c.messageBoards
-}
-
-// MessageTypes returns the MessageTypesService for message type operations.
-func (c *Client) MessageTypes() *MessageTypesService {
-	if c.messageTypes == nil {
-		c.messageTypes = NewMessageTypesService(c)
-	}
-	return c.messageTypes
-}
-
-// Webhooks returns the WebhooksService for webhook operations.
-func (c *Client) Webhooks() *WebhooksService {
-	if c.webhooks == nil {
-		c.webhooks = NewWebhooksService(c)
-	}
-	return c.webhooks
-}
-
-// Events returns the EventsService for event operations.
-func (c *Client) Events() *EventsService {
-	if c.events == nil {
-		c.events = NewEventsService(c)
-	}
-	return c.events
-}
-
-// Search returns the SearchService for search operations.
-func (c *Client) Search() *SearchService {
-	if c.search == nil {
-		c.search = NewSearchService(c)
-	}
-	return c.search
-}
-
-// Templates returns the TemplatesService for template operations.
-func (c *Client) Templates() *TemplatesService {
-	if c.templates == nil {
-		c.templates = NewTemplatesService(c)
-	}
-	return c.templates
-}
-
-// Tools returns the ToolsService for dock tool operations.
-func (c *Client) Tools() *ToolsService {
-	if c.tools == nil {
-		c.tools = NewToolsService(c)
-	}
-	return c.tools
-}
-
-// Lineup returns the LineupService for lineup marker operations.
-func (c *Client) Lineup() *LineupService {
-	if c.lineup == nil {
-		c.lineup = NewLineupService(c)
-	}
-	return c.lineup
-}
-
-// Subscriptions returns the SubscriptionsService for subscription operations.
-func (c *Client) Subscriptions() *SubscriptionsService {
-	if c.subscriptions == nil {
-		c.subscriptions = NewSubscriptionsService(c)
-	}
-	return c.subscriptions
-}
-
-// Campfires returns the CampfiresService for campfire chat operations.
-func (c *Client) Campfires() *CampfiresService {
-	if c.campfires == nil {
-		c.campfires = NewCampfiresService(c)
-	}
-	return c.campfires
-}
-
-// Timesheet returns the TimesheetService for timesheet report operations.
-func (c *Client) Timesheet() *TimesheetService {
-	if c.timesheet == nil {
-		c.timesheet = NewTimesheetService(c)
-	}
-	return c.timesheet
-}
-
-// Schedules returns the SchedulesService for schedule operations.
-func (c *Client) Schedules() *SchedulesService {
-	if c.schedules == nil {
-		c.schedules = NewSchedulesService(c)
-	}
-	return c.schedules
-}
-
-// Forwards returns the ForwardsService for email forward operations.
-func (c *Client) Forwards() *ForwardsService {
-	if c.forwards == nil {
-		c.forwards = NewForwardsService(c)
-	}
-	return c.forwards
-}
-
-// Recordings returns the RecordingsService for recording operations.
-func (c *Client) Recordings() *RecordingsService {
-	if c.recordings == nil {
-		c.recordings = NewRecordingsService(c)
-	}
-	return c.recordings
-}
-
-// Checkins returns the CheckinsService for automatic check-in operations.
-func (c *Client) Checkins() *CheckinsService {
-	if c.checkins == nil {
-		c.checkins = NewCheckinsService(c)
-	}
-	return c.checkins
-}
-
-// Vaults returns the VaultsService for vault (folder) operations.
-func (c *Client) Vaults() *VaultsService {
-	if c.vaults == nil {
-		c.vaults = NewVaultsService(c)
-	}
-	return c.vaults
-}
-
-// Documents returns the DocumentsService for document operations.
-func (c *Client) Documents() *DocumentsService {
-	if c.documents == nil {
-		c.documents = NewDocumentsService(c)
-	}
-	return c.documents
-}
-
-// Uploads returns the UploadsService for upload (file) operations.
-func (c *Client) Uploads() *UploadsService {
-	if c.uploads == nil {
-		c.uploads = NewUploadsService(c)
-	}
-	return c.uploads
-}
-
-// CardTables returns the CardTablesService for card table operations.
-func (c *Client) CardTables() *CardTablesService {
-	if c.cardTables == nil {
-		c.cardTables = NewCardTablesService(c)
-	}
-	return c.cardTables
-}
-
-// Cards returns the CardsService for card operations.
-func (c *Client) Cards() *CardsService {
-	if c.cards == nil {
-		c.cards = NewCardsService(c)
-	}
-	return c.cards
-}
-
-// CardColumns returns the CardColumnsService for card column operations.
-func (c *Client) CardColumns() *CardColumnsService {
-	if c.cardColumns == nil {
-		c.cardColumns = NewCardColumnsService(c)
-	}
-	return c.cardColumns
-}
-
-// CardSteps returns the CardStepsService for card step operations.
-func (c *Client) CardSteps() *CardStepsService {
-	if c.cardSteps == nil {
-		c.cardSteps = NewCardStepsService(c)
-	}
-	return c.cardSteps
-}
-
-// Attachments returns the AttachmentsService for file upload operations.
-func (c *Client) Attachments() *AttachmentsService {
-	if c.attachments == nil {
-		c.attachments = NewAttachmentsService(c)
-	}
-	return c.attachments
-}
-
-// ClientApprovals returns the ClientApprovalsService for client approval operations.
-func (c *Client) ClientApprovals() *ClientApprovalsService {
-	if c.clientApprovals == nil {
-		c.clientApprovals = NewClientApprovalsService(c)
-	}
-	return c.clientApprovals
-}
-
-// ClientCorrespondences returns the ClientCorrespondencesService for client correspondence operations.
-func (c *Client) ClientCorrespondences() *ClientCorrespondencesService {
-	if c.clientCorrespondences == nil {
-		c.clientCorrespondences = NewClientCorrespondencesService(c)
-	}
-	return c.clientCorrespondences
-}
-
-// ClientReplies returns the ClientRepliesService for client reply operations.
-func (c *Client) ClientReplies() *ClientRepliesService {
-	if c.clientReplies == nil {
-		c.clientReplies = NewClientRepliesService(c)
-	}
-	return c.clientReplies
-}
-
-// Timeline returns the TimelineService for timeline and progress operations.
-func (c *Client) Timeline() *TimelineService {
-	if c.timeline == nil {
-		c.timeline = NewTimelineService(c)
-	}
-	return c.timeline
-}
-
-// Reports returns the ReportsService for reports operations.
-func (c *Client) Reports() *ReportsService {
-	if c.reports == nil {
-		c.reports = NewReportsService(c)
-	}
-	return c.reports
-}
-
 // Authorization returns the AuthorizationService for authorization operations.
+// This is the only service available directly on Client, as it doesn't require
+// an account context. All other services require an AccountClient via ForAccount.
 func (c *Client) Authorization() *AuthorizationService {
+	c.authMu.Lock()
+	defer c.authMu.Unlock()
 	if c.authorization == nil {
 		c.authorization = NewAuthorizationService(c)
 	}
 	return c.authorization
+}
+
+// Projects returns the ProjectsService for project operations.
+func (ac *AccountClient) Projects() *ProjectsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.projects == nil {
+		ac.projects = NewProjectsService(ac)
+	}
+	return ac.projects
+}
+
+// Todos returns the TodosService for todo operations.
+func (ac *AccountClient) Todos() *TodosService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.todos == nil {
+		ac.todos = NewTodosService(ac)
+	}
+	return ac.todos
+}
+
+// Todosets returns the TodosetsService for todoset operations.
+func (ac *AccountClient) Todosets() *TodosetsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.todosets == nil {
+		ac.todosets = NewTodosetsService(ac)
+	}
+	return ac.todosets
+}
+
+// Todolists returns the TodolistsService for todolist operations.
+func (ac *AccountClient) Todolists() *TodolistsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.todolists == nil {
+		ac.todolists = NewTodolistsService(ac)
+	}
+	return ac.todolists
+}
+
+// TodolistGroups returns the TodolistGroupsService for todolist group operations.
+func (ac *AccountClient) TodolistGroups() *TodolistGroupsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.todolistGroups == nil {
+		ac.todolistGroups = NewTodolistGroupsService(ac)
+	}
+	return ac.todolistGroups
+}
+
+// People returns the PeopleService for people operations.
+func (ac *AccountClient) People() *PeopleService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.people == nil {
+		ac.people = NewPeopleService(ac)
+	}
+	return ac.people
+}
+
+// Comments returns the CommentsService for comment operations.
+func (ac *AccountClient) Comments() *CommentsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.comments == nil {
+		ac.comments = NewCommentsService(ac)
+	}
+	return ac.comments
+}
+
+// Messages returns the MessagesService for message operations.
+func (ac *AccountClient) Messages() *MessagesService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.messages == nil {
+		ac.messages = NewMessagesService(ac)
+	}
+	return ac.messages
+}
+
+// MessageBoards returns the MessageBoardsService for message board operations.
+func (ac *AccountClient) MessageBoards() *MessageBoardsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.messageBoards == nil {
+		ac.messageBoards = NewMessageBoardsService(ac)
+	}
+	return ac.messageBoards
+}
+
+// MessageTypes returns the MessageTypesService for message type operations.
+func (ac *AccountClient) MessageTypes() *MessageTypesService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.messageTypes == nil {
+		ac.messageTypes = NewMessageTypesService(ac)
+	}
+	return ac.messageTypes
+}
+
+// Webhooks returns the WebhooksService for webhook operations.
+func (ac *AccountClient) Webhooks() *WebhooksService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.webhooks == nil {
+		ac.webhooks = NewWebhooksService(ac)
+	}
+	return ac.webhooks
+}
+
+// Events returns the EventsService for event operations.
+func (ac *AccountClient) Events() *EventsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.events == nil {
+		ac.events = NewEventsService(ac)
+	}
+	return ac.events
+}
+
+// Search returns the SearchService for search operations.
+func (ac *AccountClient) Search() *SearchService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.search == nil {
+		ac.search = NewSearchService(ac)
+	}
+	return ac.search
+}
+
+// Templates returns the TemplatesService for template operations.
+func (ac *AccountClient) Templates() *TemplatesService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.templates == nil {
+		ac.templates = NewTemplatesService(ac)
+	}
+	return ac.templates
+}
+
+// Tools returns the ToolsService for dock tool operations.
+func (ac *AccountClient) Tools() *ToolsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.tools == nil {
+		ac.tools = NewToolsService(ac)
+	}
+	return ac.tools
+}
+
+// Lineup returns the LineupService for lineup marker operations.
+func (ac *AccountClient) Lineup() *LineupService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.lineup == nil {
+		ac.lineup = NewLineupService(ac)
+	}
+	return ac.lineup
+}
+
+// Subscriptions returns the SubscriptionsService for subscription operations.
+func (ac *AccountClient) Subscriptions() *SubscriptionsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.subscriptions == nil {
+		ac.subscriptions = NewSubscriptionsService(ac)
+	}
+	return ac.subscriptions
+}
+
+// Campfires returns the CampfiresService for campfire chat operations.
+func (ac *AccountClient) Campfires() *CampfiresService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.campfires == nil {
+		ac.campfires = NewCampfiresService(ac)
+	}
+	return ac.campfires
+}
+
+// Timesheet returns the TimesheetService for timesheet report operations.
+func (ac *AccountClient) Timesheet() *TimesheetService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.timesheet == nil {
+		ac.timesheet = NewTimesheetService(ac)
+	}
+	return ac.timesheet
+}
+
+// Schedules returns the SchedulesService for schedule operations.
+func (ac *AccountClient) Schedules() *SchedulesService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.schedules == nil {
+		ac.schedules = NewSchedulesService(ac)
+	}
+	return ac.schedules
+}
+
+// Forwards returns the ForwardsService for email forward operations.
+func (ac *AccountClient) Forwards() *ForwardsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.forwards == nil {
+		ac.forwards = NewForwardsService(ac)
+	}
+	return ac.forwards
+}
+
+// Recordings returns the RecordingsService for recording operations.
+func (ac *AccountClient) Recordings() *RecordingsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.recordings == nil {
+		ac.recordings = NewRecordingsService(ac)
+	}
+	return ac.recordings
+}
+
+// Checkins returns the CheckinsService for automatic check-in operations.
+func (ac *AccountClient) Checkins() *CheckinsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.checkins == nil {
+		ac.checkins = NewCheckinsService(ac)
+	}
+	return ac.checkins
+}
+
+// Vaults returns the VaultsService for vault (folder) operations.
+func (ac *AccountClient) Vaults() *VaultsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.vaults == nil {
+		ac.vaults = NewVaultsService(ac)
+	}
+	return ac.vaults
+}
+
+// Documents returns the DocumentsService for document operations.
+func (ac *AccountClient) Documents() *DocumentsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.documents == nil {
+		ac.documents = NewDocumentsService(ac)
+	}
+	return ac.documents
+}
+
+// Uploads returns the UploadsService for upload (file) operations.
+func (ac *AccountClient) Uploads() *UploadsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.uploads == nil {
+		ac.uploads = NewUploadsService(ac)
+	}
+	return ac.uploads
+}
+
+// CardTables returns the CardTablesService for card table operations.
+func (ac *AccountClient) CardTables() *CardTablesService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.cardTables == nil {
+		ac.cardTables = NewCardTablesService(ac)
+	}
+	return ac.cardTables
+}
+
+// Cards returns the CardsService for card operations.
+func (ac *AccountClient) Cards() *CardsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.cards == nil {
+		ac.cards = NewCardsService(ac)
+	}
+	return ac.cards
+}
+
+// CardColumns returns the CardColumnsService for card column operations.
+func (ac *AccountClient) CardColumns() *CardColumnsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.cardColumns == nil {
+		ac.cardColumns = NewCardColumnsService(ac)
+	}
+	return ac.cardColumns
+}
+
+// CardSteps returns the CardStepsService for card step operations.
+func (ac *AccountClient) CardSteps() *CardStepsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.cardSteps == nil {
+		ac.cardSteps = NewCardStepsService(ac)
+	}
+	return ac.cardSteps
+}
+
+// Attachments returns the AttachmentsService for file upload operations.
+func (ac *AccountClient) Attachments() *AttachmentsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.attachments == nil {
+		ac.attachments = NewAttachmentsService(ac)
+	}
+	return ac.attachments
+}
+
+// ClientApprovals returns the ClientApprovalsService for client approval operations.
+func (ac *AccountClient) ClientApprovals() *ClientApprovalsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.clientApprovals == nil {
+		ac.clientApprovals = NewClientApprovalsService(ac)
+	}
+	return ac.clientApprovals
+}
+
+// ClientCorrespondences returns the ClientCorrespondencesService for client correspondence operations.
+func (ac *AccountClient) ClientCorrespondences() *ClientCorrespondencesService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.clientCorrespondences == nil {
+		ac.clientCorrespondences = NewClientCorrespondencesService(ac)
+	}
+	return ac.clientCorrespondences
+}
+
+// ClientReplies returns the ClientRepliesService for client reply operations.
+func (ac *AccountClient) ClientReplies() *ClientRepliesService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.clientReplies == nil {
+		ac.clientReplies = NewClientRepliesService(ac)
+	}
+	return ac.clientReplies
+}
+
+// Timeline returns the TimelineService for timeline and progress operations.
+func (ac *AccountClient) Timeline() *TimelineService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.timeline == nil {
+		ac.timeline = NewTimelineService(ac)
+	}
+	return ac.timeline
+}
+
+// Reports returns the ReportsService for reports operations.
+func (ac *AccountClient) Reports() *ReportsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.reports == nil {
+		ac.reports = NewReportsService(ac)
+	}
+	return ac.reports
 }

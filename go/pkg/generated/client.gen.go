@@ -2650,596 +2650,596 @@ func (c *Client) doWithRetry(ctx context.Context, buildRequest func() (*http.Req
 // The interface specification for the client above.
 type ClientInterface interface {
 	// CreateAttachmentWithBody request with any body
-	CreateAttachmentWithBody(ctx context.Context, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateAttachmentWithBody(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCard request
-	GetCard(ctx context.Context, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetCard(ctx context.Context, accountId string, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateCardWithBody request with any body
-	UpdateCardWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCardWithBody(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateCard(ctx context.Context, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCard(ctx context.Context, accountId string, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MoveCardWithBody request with any body
-	MoveCardWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MoveCardWithBody(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	MoveCard(ctx context.Context, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MoveCard(ctx context.Context, accountId string, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RepositionCardStepWithBody request with any body
-	RepositionCardStepWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionCardStepWithBody(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	RepositionCardStep(ctx context.Context, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionCardStep(ctx context.Context, accountId string, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCardStepWithBody request with any body
-	CreateCardStepWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCardStepWithBody(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateCardStep(ctx context.Context, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCardStep(ctx context.Context, accountId string, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCardColumn request
-	GetCardColumn(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateCardColumnWithBody request with any body
-	UpdateCardColumnWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCardColumnWithBody(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateCardColumn(ctx context.Context, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetCardColumnColorWithBody request with any body
-	SetCardColumnColorWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetCardColumnColorWithBody(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SetCardColumnColor(ctx context.Context, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetCardColumnColor(ctx context.Context, accountId string, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DisableCardColumnOnHold request
-	DisableCardColumnOnHold(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DisableCardColumnOnHold(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// EnableCardColumnOnHold request
-	EnableCardColumnOnHold(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	EnableCardColumnOnHold(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCards request
-	ListCards(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListCards(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCardWithBody request with any body
-	CreateCardWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCardWithBody(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateCard(ctx context.Context, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCard(ctx context.Context, accountId string, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateCardStepWithBody request with any body
-	UpdateCardStepWithBody(ctx context.Context, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCardStepWithBody(ctx context.Context, accountId string, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateCardStep(ctx context.Context, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCardStep(ctx context.Context, accountId string, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UncompleteCardStep request
-	UncompleteCardStep(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UncompleteCardStep(ctx context.Context, accountId string, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CompleteCardStep request
-	CompleteCardStep(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteCardStep(ctx context.Context, accountId string, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCardTable request
-	GetCardTable(ctx context.Context, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetCardTable(ctx context.Context, accountId string, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCardColumnWithBody request with any body
-	CreateCardColumnWithBody(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCardColumnWithBody(ctx context.Context, accountId string, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateCardColumn(ctx context.Context, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCardColumn(ctx context.Context, accountId string, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MoveCardColumnWithBody request with any body
-	MoveCardColumnWithBody(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MoveCardColumnWithBody(ctx context.Context, accountId string, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	MoveCardColumn(ctx context.Context, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MoveCardColumn(ctx context.Context, accountId string, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListMessageTypes request
-	ListMessageTypes(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListMessageTypes(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateMessageTypeWithBody request with any body
-	CreateMessageTypeWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateMessageTypeWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateMessageType(ctx context.Context, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateMessageType(ctx context.Context, accountId string, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteMessageType request
-	DeleteMessageType(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteMessageType(ctx context.Context, accountId string, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMessageType request
-	GetMessageType(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetMessageType(ctx context.Context, accountId string, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateMessageTypeWithBody request with any body
-	UpdateMessageTypeWithBody(ctx context.Context, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateMessageTypeWithBody(ctx context.Context, accountId string, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateMessageType(ctx context.Context, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateMessageType(ctx context.Context, accountId string, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCampfire request
-	GetCampfire(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetCampfire(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListChatbots request
-	ListChatbots(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListChatbots(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateChatbotWithBody request with any body
-	CreateChatbotWithBody(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateChatbotWithBody(ctx context.Context, accountId string, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateChatbot(ctx context.Context, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateChatbot(ctx context.Context, accountId string, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteChatbot request
-	DeleteChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteChatbot(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetChatbot request
-	GetChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetChatbot(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateChatbotWithBody request with any body
-	UpdateChatbotWithBody(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateChatbotWithBody(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateChatbot(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCampfireLines request
-	ListCampfireLines(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListCampfireLines(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCampfireLineWithBody request with any body
-	CreateCampfireLineWithBody(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCampfireLineWithBody(ctx context.Context, accountId string, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateCampfireLine(ctx context.Context, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCampfireLine(ctx context.Context, accountId string, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteCampfireLine request
-	DeleteCampfireLine(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteCampfireLine(ctx context.Context, accountId string, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCampfireLine request
-	GetCampfireLine(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetCampfireLine(ctx context.Context, accountId string, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListClientApprovals request
-	ListClientApprovals(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListClientApprovals(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetClientApproval request
-	GetClientApproval(ctx context.Context, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetClientApproval(ctx context.Context, accountId string, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListClientCorrespondences request
-	ListClientCorrespondences(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListClientCorrespondences(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetClientCorrespondence request
-	GetClientCorrespondence(ctx context.Context, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetClientCorrespondence(ctx context.Context, accountId string, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListClientReplies request
-	ListClientReplies(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListClientReplies(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetClientReply request
-	GetClientReply(ctx context.Context, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetClientReply(ctx context.Context, accountId string, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetComment request
-	GetComment(ctx context.Context, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetComment(ctx context.Context, accountId string, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateCommentWithBody request with any body
-	UpdateCommentWithBody(ctx context.Context, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateCommentWithBody(ctx context.Context, accountId string, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateComment(ctx context.Context, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateComment(ctx context.Context, accountId string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CloneTool request
-	CloneTool(ctx context.Context, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CloneTool(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTool request
-	DeleteTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTool request
-	GetTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateToolWithBody request with any body
-	UpdateToolWithBody(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTool(ctx context.Context, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTool(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DisableTool request
-	DisableTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DisableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// EnableTool request
-	EnableTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	EnableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RepositionToolWithBody request with any body
-	RepositionToolWithBody(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	RepositionTool(ctx context.Context, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionTool(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDocument request
-	GetDocument(ctx context.Context, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDocument(ctx context.Context, accountId string, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateDocumentWithBody request with any body
-	UpdateDocumentWithBody(ctx context.Context, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateDocumentWithBody(ctx context.Context, accountId string, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateDocument(ctx context.Context, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateDocument(ctx context.Context, accountId string, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetForward request
-	GetForward(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetForward(ctx context.Context, accountId string, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListForwardReplies request
-	ListForwardReplies(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListForwardReplies(ctx context.Context, accountId string, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateForwardReplyWithBody request with any body
-	CreateForwardReplyWithBody(ctx context.Context, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateForwardReplyWithBody(ctx context.Context, accountId string, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateForwardReply(ctx context.Context, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateForwardReply(ctx context.Context, accountId string, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetForwardReply request
-	GetForwardReply(ctx context.Context, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetForwardReply(ctx context.Context, accountId string, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetInbox request
-	GetInbox(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetInbox(ctx context.Context, accountId string, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListForwards request
-	ListForwards(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListForwards(ctx context.Context, accountId string, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMessageBoard request
-	GetMessageBoard(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetMessageBoard(ctx context.Context, accountId string, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListMessages request
-	ListMessages(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListMessages(ctx context.Context, accountId string, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateMessageWithBody request with any body
-	CreateMessageWithBody(ctx context.Context, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateMessageWithBody(ctx context.Context, accountId string, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateMessage(ctx context.Context, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateMessage(ctx context.Context, accountId string, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMessage request
-	GetMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetMessage(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateMessageWithBody request with any body
-	UpdateMessageWithBody(ctx context.Context, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateMessageWithBody(ctx context.Context, accountId string, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateMessage(ctx context.Context, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateMessage(ctx context.Context, accountId string, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAnswer request
-	GetAnswer(ctx context.Context, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetAnswer(ctx context.Context, accountId string, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateAnswerWithBody request with any body
-	UpdateAnswerWithBody(ctx context.Context, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateAnswerWithBody(ctx context.Context, accountId string, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateAnswer(ctx context.Context, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateAnswer(ctx context.Context, accountId string, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetQuestionnaire request
-	GetQuestionnaire(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetQuestionnaire(ctx context.Context, accountId string, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListQuestions request
-	ListQuestions(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListQuestions(ctx context.Context, accountId string, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateQuestionWithBody request with any body
-	CreateQuestionWithBody(ctx context.Context, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateQuestionWithBody(ctx context.Context, accountId string, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateQuestion(ctx context.Context, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateQuestion(ctx context.Context, accountId string, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetQuestion request
-	GetQuestion(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateQuestionWithBody request with any body
-	UpdateQuestionWithBody(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateQuestionWithBody(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateQuestion(ctx context.Context, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListAnswers request
-	ListAnswers(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListAnswers(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateAnswerWithBody request with any body
-	CreateAnswerWithBody(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateAnswerWithBody(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateAnswer(ctx context.Context, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateAnswer(ctx context.Context, accountId string, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnpinMessage request
-	UnpinMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UnpinMessage(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PinMessage request
-	PinMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PinMessage(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRecording request
-	GetRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetRecording(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetClientVisibilityWithBody request with any body
-	SetClientVisibilityWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetClientVisibilityWithBody(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SetClientVisibility(ctx context.Context, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetClientVisibility(ctx context.Context, accountId string, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListComments request
-	ListComments(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListComments(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCommentWithBody request with any body
-	CreateCommentWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateCommentWithBody(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateComment(ctx context.Context, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateComment(ctx context.Context, accountId string, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListEvents request
-	ListEvents(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListEvents(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnarchiveRecording request
-	UnarchiveRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UnarchiveRecording(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ArchiveRecording request
-	ArchiveRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ArchiveRecording(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// TrashRecording request
-	TrashRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	TrashRecording(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Unsubscribe request
-	Unsubscribe(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	Unsubscribe(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetSubscription request
-	GetSubscription(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetSubscription(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Subscribe request
-	Subscribe(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	Subscribe(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateSubscriptionWithBody request with any body
-	UpdateSubscriptionWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateSubscriptionWithBody(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateSubscription(ctx context.Context, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateSubscription(ctx context.Context, accountId string, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRecordingTimesheet request
-	GetRecordingTimesheet(ctx context.Context, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetRecordingTimesheet(ctx context.Context, accountId string, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetScheduleEntry request
-	GetScheduleEntry(ctx context.Context, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetScheduleEntry(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateScheduleEntryWithBody request with any body
-	UpdateScheduleEntryWithBody(ctx context.Context, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateScheduleEntryWithBody(ctx context.Context, accountId string, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateScheduleEntry(ctx context.Context, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateScheduleEntry(ctx context.Context, accountId string, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetScheduleEntryOccurrence request
-	GetScheduleEntryOccurrence(ctx context.Context, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetScheduleEntryOccurrence(ctx context.Context, accountId string, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetSchedule request
-	GetSchedule(ctx context.Context, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetSchedule(ctx context.Context, accountId string, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateScheduleSettingsWithBody request with any body
-	UpdateScheduleSettingsWithBody(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateScheduleSettingsWithBody(ctx context.Context, accountId string, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateScheduleSettings(ctx context.Context, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateScheduleSettings(ctx context.Context, accountId string, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListScheduleEntries request
-	ListScheduleEntries(ctx context.Context, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListScheduleEntries(ctx context.Context, accountId string, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateScheduleEntryWithBody request with any body
-	CreateScheduleEntryWithBody(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateScheduleEntryWithBody(ctx context.Context, accountId string, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateScheduleEntry(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateScheduleEntry(ctx context.Context, accountId string, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectTimeline request
-	GetProjectTimeline(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectTimesheet request
-	GetProjectTimesheet(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RepositionTodolistGroupWithBody request with any body
-	RepositionTodolistGroupWithBody(ctx context.Context, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionTodolistGroupWithBody(ctx context.Context, accountId string, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	RepositionTodolistGroup(ctx context.Context, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionTodolistGroup(ctx context.Context, accountId string, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTodolistOrGroup request
-	GetTodolistOrGroup(ctx context.Context, projectId int64, id int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTodolistOrGroup(ctx context.Context, accountId string, projectId int64, id int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTodolistOrGroupWithBody request with any body
-	UpdateTodolistOrGroupWithBody(ctx context.Context, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTodolistOrGroupWithBody(ctx context.Context, accountId string, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTodolistOrGroup(ctx context.Context, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTodolistOrGroup(ctx context.Context, accountId string, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTodolistGroups request
-	ListTodolistGroups(ctx context.Context, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTodolistGroups(ctx context.Context, accountId string, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTodolistGroupWithBody request with any body
-	CreateTodolistGroupWithBody(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodolistGroupWithBody(ctx context.Context, accountId string, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateTodolistGroup(ctx context.Context, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodolistGroup(ctx context.Context, accountId string, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTodos request
-	ListTodos(ctx context.Context, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTodos(ctx context.Context, accountId string, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTodoWithBody request with any body
-	CreateTodoWithBody(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodoWithBody(ctx context.Context, accountId string, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateTodo(ctx context.Context, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodo(ctx context.Context, accountId string, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// TrashTodo request
-	TrashTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	TrashTodo(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTodo request
-	GetTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTodo(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTodoWithBody request with any body
-	UpdateTodoWithBody(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTodoWithBody(ctx context.Context, accountId string, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTodo(ctx context.Context, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTodo(ctx context.Context, accountId string, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UncompleteTodo request
-	UncompleteTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UncompleteTodo(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CompleteTodo request
-	CompleteTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteTodo(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RepositionTodoWithBody request with any body
-	RepositionTodoWithBody(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionTodoWithBody(ctx context.Context, accountId string, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	RepositionTodo(ctx context.Context, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RepositionTodo(ctx context.Context, accountId string, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTodoset request
-	GetTodoset(ctx context.Context, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTodoset(ctx context.Context, accountId string, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTodolists request
-	ListTodolists(ctx context.Context, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTodolists(ctx context.Context, accountId string, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTodolistWithBody request with any body
-	CreateTodolistWithBody(ctx context.Context, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodolistWithBody(ctx context.Context, accountId string, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateTodolist(ctx context.Context, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodolist(ctx context.Context, accountId string, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUpload request
-	GetUpload(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetUpload(ctx context.Context, accountId string, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateUploadWithBody request with any body
-	UpdateUploadWithBody(ctx context.Context, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUploadWithBody(ctx context.Context, accountId string, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateUpload(ctx context.Context, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUpload(ctx context.Context, accountId string, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListUploadVersions request
-	ListUploadVersions(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListUploadVersions(ctx context.Context, accountId string, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetVault request
-	GetVault(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetVault(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateVaultWithBody request with any body
-	UpdateVaultWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateVaultWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateVault(ctx context.Context, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateVault(ctx context.Context, accountId string, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDocuments request
-	ListDocuments(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListDocuments(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateDocumentWithBody request with any body
-	CreateDocumentWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateDocumentWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateDocument(ctx context.Context, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateDocument(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListUploads request
-	ListUploads(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListUploads(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateUploadWithBody request with any body
-	CreateUploadWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateUploadWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateUpload(ctx context.Context, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateUpload(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListVaults request
-	ListVaults(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListVaults(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateVaultWithBody request with any body
-	CreateVaultWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateVaultWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateVault(ctx context.Context, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateVault(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListWebhooks request
-	ListWebhooks(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListWebhooks(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateWebhookWithBody request with any body
-	CreateWebhookWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateWebhookWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateWebhook(ctx context.Context, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateWebhook(ctx context.Context, accountId string, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteWebhook request
-	DeleteWebhook(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteWebhook(ctx context.Context, accountId string, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetWebhook request
-	GetWebhook(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetWebhook(ctx context.Context, accountId string, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateWebhookWithBody request with any body
-	UpdateWebhookWithBody(ctx context.Context, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateWebhookWithBody(ctx context.Context, accountId string, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateWebhook(ctx context.Context, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateWebhook(ctx context.Context, accountId string, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCampfires request
-	ListCampfires(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListCampfires(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPingablePeople request
-	ListPingablePeople(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListPingablePeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateLineupMarkerWithBody request with any body
-	CreateLineupMarkerWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateLineupMarkerWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateLineupMarker(ctx context.Context, body CreateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateLineupMarker(ctx context.Context, accountId string, body CreateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteLineupMarker request
-	DeleteLineupMarker(ctx context.Context, markerId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteLineupMarker(ctx context.Context, accountId string, markerId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateLineupMarkerWithBody request with any body
-	UpdateLineupMarkerWithBody(ctx context.Context, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateLineupMarkerWithBody(ctx context.Context, accountId string, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateLineupMarker(ctx context.Context, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateLineupMarker(ctx context.Context, accountId string, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMyProfile request
-	GetMyProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetMyProfile(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPeople request
-	ListPeople(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListPeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPerson request
-	GetPerson(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetPerson(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjects request
-	ListProjects(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjects(ctx context.Context, accountId string, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProjectWithBody request with any body
-	CreateProjectWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateProjectWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateProject(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateProject(ctx context.Context, accountId string, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListRecordings request
-	ListRecordings(ctx context.Context, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListRecordings(ctx context.Context, accountId string, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// TrashProject request
-	TrashProject(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	TrashProject(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProject request
-	GetProject(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProject(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateProjectWithBody request with any body
-	UpdateProjectWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProjectWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateProject(ctx context.Context, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProject(ctx context.Context, accountId string, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjectPeople request
-	ListProjectPeople(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjectPeople(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateProjectAccessWithBody request with any body
-	UpdateProjectAccessWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProjectAccessWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateProjectAccess(ctx context.Context, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateProjectAccess(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProgressReport request
-	GetProgressReport(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProgressReport(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUpcomingSchedule request
-	GetUpcomingSchedule(ctx context.Context, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetUpcomingSchedule(ctx context.Context, accountId string, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTimesheetReport request
-	GetTimesheetReport(ctx context.Context, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTimesheetReport(ctx context.Context, accountId string, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListAssignablePeople request
-	ListAssignablePeople(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListAssignablePeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAssignedTodos request
-	GetAssignedTodos(ctx context.Context, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetAssignedTodos(ctx context.Context, accountId string, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetOverdueTodos request
-	GetOverdueTodos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetOverdueTodos(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPersonProgress request
-	GetPersonProgress(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetPersonProgress(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Search request
-	Search(ctx context.Context, params *SearchParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	Search(ctx context.Context, accountId string, params *SearchParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetSearchMetadata request
-	GetSearchMetadata(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetSearchMetadata(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTemplates request
-	ListTemplates(ctx context.Context, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTemplates(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTemplateWithBody request with any body
-	CreateTemplateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTemplateWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateTemplate(ctx context.Context, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTemplate(ctx context.Context, accountId string, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTemplate request
-	DeleteTemplate(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteTemplate(ctx context.Context, accountId string, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTemplate request
-	GetTemplate(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTemplate(ctx context.Context, accountId string, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateTemplateWithBody request with any body
-	UpdateTemplateWithBody(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTemplateWithBody(ctx context.Context, accountId string, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTemplate(ctx context.Context, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateTemplate(ctx context.Context, accountId string, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProjectFromTemplateWithBody request with any body
-	CreateProjectFromTemplateWithBody(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateProjectFromTemplateWithBody(ctx context.Context, accountId string, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateProjectFromTemplate(ctx context.Context, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateProjectFromTemplate(ctx context.Context, accountId string, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectConstruction request
-	GetProjectConstruction(ctx context.Context, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProjectConstruction(ctx context.Context, accountId string, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // CreateAttachmentWithBody executes the CreateAttachment operation.
 
-func (c *Client) CreateAttachmentWithBody(ctx context.Context, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateAttachmentWithBody(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateAttachmentRequestWithBody(c.Server, params, contentType, body)
+	req, err := NewCreateAttachmentRequestWithBody(c.Server, accountId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3253,37 +3253,37 @@ func (c *Client) CreateAttachmentWithBody(ctx context.Context, params *CreateAtt
 
 // GetCard is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetCard(ctx context.Context, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetCard(ctx context.Context, accountId string, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetCardRequest(c.Server, projectId, cardId)
+		return NewGetCardRequest(c.Server, accountId, projectId, cardId)
 	}, true, "GetCard", reqEditors...)
 
 }
 
 // UpdateCardWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateCardWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCardWithBody(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateCardRequestWithBody(c.Server, projectId, cardId, contentType, body)
+		return NewUpdateCardRequestWithBody(c.Server, accountId, projectId, cardId, contentType, body)
 	}, true, "UpdateCard", reqEditors...)
 
 }
 
-func (c *Client) UpdateCard(ctx context.Context, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCard(ctx context.Context, accountId string, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateCardRequest(c.Server, projectId, cardId, body)
+		return NewUpdateCardRequest(c.Server, accountId, projectId, cardId, body)
 	}, true, "UpdateCard", reqEditors...)
 
 }
 
 // MoveCardWithBody executes the MoveCard operation.
 
-func (c *Client) MoveCardWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MoveCardWithBody(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewMoveCardRequestWithBody(c.Server, projectId, cardId, contentType, body)
+	req, err := NewMoveCardRequestWithBody(c.Server, accountId, projectId, cardId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3295,9 +3295,9 @@ func (c *Client) MoveCardWithBody(ctx context.Context, projectId int64, cardId i
 
 }
 
-func (c *Client) MoveCard(ctx context.Context, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MoveCard(ctx context.Context, accountId string, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewMoveCardRequest(c.Server, projectId, cardId, body)
+	req, err := NewMoveCardRequest(c.Server, accountId, projectId, cardId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3311,9 +3311,9 @@ func (c *Client) MoveCard(ctx context.Context, projectId int64, cardId int64, bo
 
 // RepositionCardStepWithBody executes the RepositionCardStep operation.
 
-func (c *Client) RepositionCardStepWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionCardStepWithBody(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewRepositionCardStepRequestWithBody(c.Server, projectId, cardId, contentType, body)
+	req, err := NewRepositionCardStepRequestWithBody(c.Server, accountId, projectId, cardId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3325,9 +3325,9 @@ func (c *Client) RepositionCardStepWithBody(ctx context.Context, projectId int64
 
 }
 
-func (c *Client) RepositionCardStep(ctx context.Context, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionCardStep(ctx context.Context, accountId string, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewRepositionCardStepRequest(c.Server, projectId, cardId, body)
+	req, err := NewRepositionCardStepRequest(c.Server, accountId, projectId, cardId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3341,9 +3341,9 @@ func (c *Client) RepositionCardStep(ctx context.Context, projectId int64, cardId
 
 // CreateCardStepWithBody executes the CreateCardStep operation.
 
-func (c *Client) CreateCardStepWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCardStepWithBody(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateCardStepRequestWithBody(c.Server, projectId, cardId, contentType, body)
+	req, err := NewCreateCardStepRequestWithBody(c.Server, accountId, projectId, cardId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3355,9 +3355,9 @@ func (c *Client) CreateCardStepWithBody(ctx context.Context, projectId int64, ca
 
 }
 
-func (c *Client) CreateCardStep(ctx context.Context, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCardStep(ctx context.Context, accountId string, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateCardStepRequest(c.Server, projectId, cardId, body)
+	req, err := NewCreateCardStepRequest(c.Server, accountId, projectId, cardId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3371,65 +3371,65 @@ func (c *Client) CreateCardStep(ctx context.Context, projectId int64, cardId int
 
 // GetCardColumn is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetCardColumn(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetCardColumnRequest(c.Server, projectId, columnId)
+		return NewGetCardColumnRequest(c.Server, accountId, projectId, columnId)
 	}, true, "GetCardColumn", reqEditors...)
 
 }
 
 // UpdateCardColumnWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateCardColumnWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCardColumnWithBody(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateCardColumnRequestWithBody(c.Server, projectId, columnId, contentType, body)
+		return NewUpdateCardColumnRequestWithBody(c.Server, accountId, projectId, columnId, contentType, body)
 	}, true, "UpdateCardColumn", reqEditors...)
 
 }
 
-func (c *Client) UpdateCardColumn(ctx context.Context, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateCardColumnRequest(c.Server, projectId, columnId, body)
+		return NewUpdateCardColumnRequest(c.Server, accountId, projectId, columnId, body)
 	}, true, "UpdateCardColumn", reqEditors...)
 
 }
 
 // SetCardColumnColorWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) SetCardColumnColorWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SetCardColumnColorWithBody(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewSetCardColumnColorRequestWithBody(c.Server, projectId, columnId, contentType, body)
+		return NewSetCardColumnColorRequestWithBody(c.Server, accountId, projectId, columnId, contentType, body)
 	}, true, "SetCardColumnColor", reqEditors...)
 
 }
 
-func (c *Client) SetCardColumnColor(ctx context.Context, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SetCardColumnColor(ctx context.Context, accountId string, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewSetCardColumnColorRequest(c.Server, projectId, columnId, body)
+		return NewSetCardColumnColorRequest(c.Server, accountId, projectId, columnId, body)
 	}, true, "SetCardColumnColor", reqEditors...)
 
 }
 
 // DisableCardColumnOnHold is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DisableCardColumnOnHold(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DisableCardColumnOnHold(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDisableCardColumnOnHoldRequest(c.Server, projectId, columnId)
+		return NewDisableCardColumnOnHoldRequest(c.Server, accountId, projectId, columnId)
 	}, true, "DisableCardColumnOnHold", reqEditors...)
 
 }
 
 // EnableCardColumnOnHold executes the EnableCardColumnOnHold operation.
 
-func (c *Client) EnableCardColumnOnHold(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) EnableCardColumnOnHold(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewEnableCardColumnOnHoldRequest(c.Server, projectId, columnId)
+	req, err := NewEnableCardColumnOnHoldRequest(c.Server, accountId, projectId, columnId)
 	if err != nil {
 		return nil, err
 	}
@@ -3443,19 +3443,19 @@ func (c *Client) EnableCardColumnOnHold(ctx context.Context, projectId int64, co
 
 // ListCards is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListCards(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListCards(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListCardsRequest(c.Server, projectId, columnId)
+		return NewListCardsRequest(c.Server, accountId, projectId, columnId)
 	}, true, "ListCards", reqEditors...)
 
 }
 
 // CreateCardWithBody executes the CreateCard operation.
 
-func (c *Client) CreateCardWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCardWithBody(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateCardRequestWithBody(c.Server, projectId, columnId, contentType, body)
+	req, err := NewCreateCardRequestWithBody(c.Server, accountId, projectId, columnId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3467,9 +3467,9 @@ func (c *Client) CreateCardWithBody(ctx context.Context, projectId int64, column
 
 }
 
-func (c *Client) CreateCard(ctx context.Context, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCard(ctx context.Context, accountId string, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateCardRequest(c.Server, projectId, columnId, body)
+	req, err := NewCreateCardRequest(c.Server, accountId, projectId, columnId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3483,57 +3483,57 @@ func (c *Client) CreateCard(ctx context.Context, projectId int64, columnId int64
 
 // UpdateCardStepWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateCardStepWithBody(ctx context.Context, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCardStepWithBody(ctx context.Context, accountId string, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateCardStepRequestWithBody(c.Server, projectId, stepId, contentType, body)
+		return NewUpdateCardStepRequestWithBody(c.Server, accountId, projectId, stepId, contentType, body)
 	}, true, "UpdateCardStep", reqEditors...)
 
 }
 
-func (c *Client) UpdateCardStep(ctx context.Context, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCardStep(ctx context.Context, accountId string, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateCardStepRequest(c.Server, projectId, stepId, body)
+		return NewUpdateCardStepRequest(c.Server, accountId, projectId, stepId, body)
 	}, true, "UpdateCardStep", reqEditors...)
 
 }
 
 // UncompleteCardStep is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UncompleteCardStep(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UncompleteCardStep(ctx context.Context, accountId string, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUncompleteCardStepRequest(c.Server, projectId, stepId)
+		return NewUncompleteCardStepRequest(c.Server, accountId, projectId, stepId)
 	}, true, "UncompleteCardStep", reqEditors...)
 
 }
 
 // CompleteCardStep is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) CompleteCardStep(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteCardStep(ctx context.Context, accountId string, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewCompleteCardStepRequest(c.Server, projectId, stepId)
+		return NewCompleteCardStepRequest(c.Server, accountId, projectId, stepId)
 	}, true, "CompleteCardStep", reqEditors...)
 
 }
 
 // GetCardTable is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetCardTable(ctx context.Context, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetCardTable(ctx context.Context, accountId string, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetCardTableRequest(c.Server, projectId, cardTableId)
+		return NewGetCardTableRequest(c.Server, accountId, projectId, cardTableId)
 	}, true, "GetCardTable", reqEditors...)
 
 }
 
 // CreateCardColumnWithBody executes the CreateCardColumn operation.
 
-func (c *Client) CreateCardColumnWithBody(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCardColumnWithBody(ctx context.Context, accountId string, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateCardColumnRequestWithBody(c.Server, projectId, cardTableId, contentType, body)
+	req, err := NewCreateCardColumnRequestWithBody(c.Server, accountId, projectId, cardTableId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3545,9 +3545,9 @@ func (c *Client) CreateCardColumnWithBody(ctx context.Context, projectId int64, 
 
 }
 
-func (c *Client) CreateCardColumn(ctx context.Context, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCardColumn(ctx context.Context, accountId string, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateCardColumnRequest(c.Server, projectId, cardTableId, body)
+	req, err := NewCreateCardColumnRequest(c.Server, accountId, projectId, cardTableId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3561,9 +3561,9 @@ func (c *Client) CreateCardColumn(ctx context.Context, projectId int64, cardTabl
 
 // MoveCardColumnWithBody executes the MoveCardColumn operation.
 
-func (c *Client) MoveCardColumnWithBody(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MoveCardColumnWithBody(ctx context.Context, accountId string, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewMoveCardColumnRequestWithBody(c.Server, projectId, cardTableId, contentType, body)
+	req, err := NewMoveCardColumnRequestWithBody(c.Server, accountId, projectId, cardTableId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3575,9 +3575,9 @@ func (c *Client) MoveCardColumnWithBody(ctx context.Context, projectId int64, ca
 
 }
 
-func (c *Client) MoveCardColumn(ctx context.Context, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MoveCardColumn(ctx context.Context, accountId string, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewMoveCardColumnRequest(c.Server, projectId, cardTableId, body)
+	req, err := NewMoveCardColumnRequest(c.Server, accountId, projectId, cardTableId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3591,19 +3591,19 @@ func (c *Client) MoveCardColumn(ctx context.Context, projectId int64, cardTableI
 
 // ListMessageTypes is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListMessageTypes(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListMessageTypes(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListMessageTypesRequest(c.Server, projectId)
+		return NewListMessageTypesRequest(c.Server, accountId, projectId)
 	}, true, "ListMessageTypes", reqEditors...)
 
 }
 
 // CreateMessageTypeWithBody executes the CreateMessageType operation.
 
-func (c *Client) CreateMessageTypeWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateMessageTypeWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateMessageTypeRequestWithBody(c.Server, projectId, contentType, body)
+	req, err := NewCreateMessageTypeRequestWithBody(c.Server, accountId, projectId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3615,9 +3615,9 @@ func (c *Client) CreateMessageTypeWithBody(ctx context.Context, projectId int64,
 
 }
 
-func (c *Client) CreateMessageType(ctx context.Context, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateMessageType(ctx context.Context, accountId string, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateMessageTypeRequest(c.Server, projectId, body)
+	req, err := NewCreateMessageTypeRequest(c.Server, accountId, projectId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3631,67 +3631,67 @@ func (c *Client) CreateMessageType(ctx context.Context, projectId int64, body Cr
 
 // DeleteMessageType is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteMessageType(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteMessageType(ctx context.Context, accountId string, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDeleteMessageTypeRequest(c.Server, projectId, typeId)
+		return NewDeleteMessageTypeRequest(c.Server, accountId, projectId, typeId)
 	}, true, "DeleteMessageType", reqEditors...)
 
 }
 
 // GetMessageType is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetMessageType(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetMessageType(ctx context.Context, accountId string, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetMessageTypeRequest(c.Server, projectId, typeId)
+		return NewGetMessageTypeRequest(c.Server, accountId, projectId, typeId)
 	}, true, "GetMessageType", reqEditors...)
 
 }
 
 // UpdateMessageTypeWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateMessageTypeWithBody(ctx context.Context, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateMessageTypeWithBody(ctx context.Context, accountId string, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateMessageTypeRequestWithBody(c.Server, projectId, typeId, contentType, body)
+		return NewUpdateMessageTypeRequestWithBody(c.Server, accountId, projectId, typeId, contentType, body)
 	}, true, "UpdateMessageType", reqEditors...)
 
 }
 
-func (c *Client) UpdateMessageType(ctx context.Context, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateMessageType(ctx context.Context, accountId string, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateMessageTypeRequest(c.Server, projectId, typeId, body)
+		return NewUpdateMessageTypeRequest(c.Server, accountId, projectId, typeId, body)
 	}, true, "UpdateMessageType", reqEditors...)
 
 }
 
 // GetCampfire is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetCampfire(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetCampfire(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetCampfireRequest(c.Server, projectId, campfireId)
+		return NewGetCampfireRequest(c.Server, accountId, projectId, campfireId)
 	}, true, "GetCampfire", reqEditors...)
 
 }
 
 // ListChatbots is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListChatbots(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListChatbots(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListChatbotsRequest(c.Server, projectId, campfireId)
+		return NewListChatbotsRequest(c.Server, accountId, projectId, campfireId)
 	}, true, "ListChatbots", reqEditors...)
 
 }
 
 // CreateChatbotWithBody executes the CreateChatbot operation.
 
-func (c *Client) CreateChatbotWithBody(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateChatbotWithBody(ctx context.Context, accountId string, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateChatbotRequestWithBody(c.Server, projectId, campfireId, contentType, body)
+	req, err := NewCreateChatbotRequestWithBody(c.Server, accountId, projectId, campfireId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3703,9 +3703,9 @@ func (c *Client) CreateChatbotWithBody(ctx context.Context, projectId int64, cam
 
 }
 
-func (c *Client) CreateChatbot(ctx context.Context, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateChatbot(ctx context.Context, accountId string, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateChatbotRequest(c.Server, projectId, campfireId, body)
+	req, err := NewCreateChatbotRequest(c.Server, accountId, projectId, campfireId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3719,57 +3719,57 @@ func (c *Client) CreateChatbot(ctx context.Context, projectId int64, campfireId 
 
 // DeleteChatbot is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteChatbot(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDeleteChatbotRequest(c.Server, projectId, campfireId, chatbotId)
+		return NewDeleteChatbotRequest(c.Server, accountId, projectId, campfireId, chatbotId)
 	}, true, "DeleteChatbot", reqEditors...)
 
 }
 
 // GetChatbot is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetChatbot(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetChatbotRequest(c.Server, projectId, campfireId, chatbotId)
+		return NewGetChatbotRequest(c.Server, accountId, projectId, campfireId, chatbotId)
 	}, true, "GetChatbot", reqEditors...)
 
 }
 
 // UpdateChatbotWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateChatbotWithBody(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateChatbotWithBody(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateChatbotRequestWithBody(c.Server, projectId, campfireId, chatbotId, contentType, body)
+		return NewUpdateChatbotRequestWithBody(c.Server, accountId, projectId, campfireId, chatbotId, contentType, body)
 	}, true, "UpdateChatbot", reqEditors...)
 
 }
 
-func (c *Client) UpdateChatbot(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateChatbot(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateChatbotRequest(c.Server, projectId, campfireId, chatbotId, body)
+		return NewUpdateChatbotRequest(c.Server, accountId, projectId, campfireId, chatbotId, body)
 	}, true, "UpdateChatbot", reqEditors...)
 
 }
 
 // ListCampfireLines is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListCampfireLines(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListCampfireLines(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListCampfireLinesRequest(c.Server, projectId, campfireId)
+		return NewListCampfireLinesRequest(c.Server, accountId, projectId, campfireId)
 	}, true, "ListCampfireLines", reqEditors...)
 
 }
 
 // CreateCampfireLineWithBody executes the CreateCampfireLine operation.
 
-func (c *Client) CreateCampfireLineWithBody(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCampfireLineWithBody(ctx context.Context, accountId string, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateCampfireLineRequestWithBody(c.Server, projectId, campfireId, contentType, body)
+	req, err := NewCreateCampfireLineRequestWithBody(c.Server, accountId, projectId, campfireId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3781,9 +3781,9 @@ func (c *Client) CreateCampfireLineWithBody(ctx context.Context, projectId int64
 
 }
 
-func (c *Client) CreateCampfireLine(ctx context.Context, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCampfireLine(ctx context.Context, accountId string, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateCampfireLineRequest(c.Server, projectId, campfireId, body)
+	req, err := NewCreateCampfireLineRequest(c.Server, accountId, projectId, campfireId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3797,117 +3797,117 @@ func (c *Client) CreateCampfireLine(ctx context.Context, projectId int64, campfi
 
 // DeleteCampfireLine is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteCampfireLine(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteCampfireLine(ctx context.Context, accountId string, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDeleteCampfireLineRequest(c.Server, projectId, campfireId, lineId)
+		return NewDeleteCampfireLineRequest(c.Server, accountId, projectId, campfireId, lineId)
 	}, true, "DeleteCampfireLine", reqEditors...)
 
 }
 
 // GetCampfireLine is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetCampfireLine(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetCampfireLine(ctx context.Context, accountId string, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetCampfireLineRequest(c.Server, projectId, campfireId, lineId)
+		return NewGetCampfireLineRequest(c.Server, accountId, projectId, campfireId, lineId)
 	}, true, "GetCampfireLine", reqEditors...)
 
 }
 
 // ListClientApprovals is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListClientApprovals(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListClientApprovals(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListClientApprovalsRequest(c.Server, projectId)
+		return NewListClientApprovalsRequest(c.Server, accountId, projectId)
 	}, true, "ListClientApprovals", reqEditors...)
 
 }
 
 // GetClientApproval is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetClientApproval(ctx context.Context, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetClientApproval(ctx context.Context, accountId string, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetClientApprovalRequest(c.Server, projectId, approvalId)
+		return NewGetClientApprovalRequest(c.Server, accountId, projectId, approvalId)
 	}, true, "GetClientApproval", reqEditors...)
 
 }
 
 // ListClientCorrespondences is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListClientCorrespondences(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListClientCorrespondences(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListClientCorrespondencesRequest(c.Server, projectId)
+		return NewListClientCorrespondencesRequest(c.Server, accountId, projectId)
 	}, true, "ListClientCorrespondences", reqEditors...)
 
 }
 
 // GetClientCorrespondence is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetClientCorrespondence(ctx context.Context, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetClientCorrespondence(ctx context.Context, accountId string, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetClientCorrespondenceRequest(c.Server, projectId, correspondenceId)
+		return NewGetClientCorrespondenceRequest(c.Server, accountId, projectId, correspondenceId)
 	}, true, "GetClientCorrespondence", reqEditors...)
 
 }
 
 // ListClientReplies is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListClientReplies(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListClientReplies(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListClientRepliesRequest(c.Server, projectId, recordingId)
+		return NewListClientRepliesRequest(c.Server, accountId, projectId, recordingId)
 	}, true, "ListClientReplies", reqEditors...)
 
 }
 
 // GetClientReply is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetClientReply(ctx context.Context, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetClientReply(ctx context.Context, accountId string, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetClientReplyRequest(c.Server, projectId, recordingId, replyId)
+		return NewGetClientReplyRequest(c.Server, accountId, projectId, recordingId, replyId)
 	}, true, "GetClientReply", reqEditors...)
 
 }
 
 // GetComment is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetComment(ctx context.Context, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetComment(ctx context.Context, accountId string, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetCommentRequest(c.Server, projectId, commentId)
+		return NewGetCommentRequest(c.Server, accountId, projectId, commentId)
 	}, true, "GetComment", reqEditors...)
 
 }
 
 // UpdateCommentWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateCommentWithBody(ctx context.Context, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateCommentWithBody(ctx context.Context, accountId string, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateCommentRequestWithBody(c.Server, projectId, commentId, contentType, body)
+		return NewUpdateCommentRequestWithBody(c.Server, accountId, projectId, commentId, contentType, body)
 	}, true, "UpdateComment", reqEditors...)
 
 }
 
-func (c *Client) UpdateComment(ctx context.Context, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateComment(ctx context.Context, accountId string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateCommentRequest(c.Server, projectId, commentId, body)
+		return NewUpdateCommentRequest(c.Server, accountId, projectId, commentId, body)
 	}, true, "UpdateComment", reqEditors...)
 
 }
 
 // CloneTool executes the CloneTool operation.
 
-func (c *Client) CloneTool(ctx context.Context, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CloneTool(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCloneToolRequest(c.Server, projectId, sourceToolId)
+	req, err := NewCloneToolRequest(c.Server, accountId, projectId, sourceToolId)
 	if err != nil {
 		return nil, err
 	}
@@ -3921,57 +3921,57 @@ func (c *Client) CloneTool(ctx context.Context, projectId int64, sourceToolId in
 
 // DeleteTool is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDeleteToolRequest(c.Server, projectId, toolId)
+		return NewDeleteToolRequest(c.Server, accountId, projectId, toolId)
 	}, true, "DeleteTool", reqEditors...)
 
 }
 
 // GetTool is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetToolRequest(c.Server, projectId, toolId)
+		return NewGetToolRequest(c.Server, accountId, projectId, toolId)
 	}, true, "GetTool", reqEditors...)
 
 }
 
 // UpdateToolWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateToolWithBody(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateToolRequestWithBody(c.Server, projectId, toolId, contentType, body)
+		return NewUpdateToolRequestWithBody(c.Server, accountId, projectId, toolId, contentType, body)
 	}, true, "UpdateTool", reqEditors...)
 
 }
 
-func (c *Client) UpdateTool(ctx context.Context, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTool(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateToolRequest(c.Server, projectId, toolId, body)
+		return NewUpdateToolRequest(c.Server, accountId, projectId, toolId, body)
 	}, true, "UpdateTool", reqEditors...)
 
 }
 
 // DisableTool is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DisableTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DisableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDisableToolRequest(c.Server, projectId, toolId)
+		return NewDisableToolRequest(c.Server, accountId, projectId, toolId)
 	}, true, "DisableTool", reqEditors...)
 
 }
 
 // EnableTool executes the EnableTool operation.
 
-func (c *Client) EnableTool(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) EnableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewEnableToolRequest(c.Server, projectId, toolId)
+	req, err := NewEnableToolRequest(c.Server, accountId, projectId, toolId)
 	if err != nil {
 		return nil, err
 	}
@@ -3985,75 +3985,75 @@ func (c *Client) EnableTool(ctx context.Context, projectId int64, toolId int64, 
 
 // RepositionToolWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) RepositionToolWithBody(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewRepositionToolRequestWithBody(c.Server, projectId, toolId, contentType, body)
+		return NewRepositionToolRequestWithBody(c.Server, accountId, projectId, toolId, contentType, body)
 	}, true, "RepositionTool", reqEditors...)
 
 }
 
-func (c *Client) RepositionTool(ctx context.Context, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionTool(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewRepositionToolRequest(c.Server, projectId, toolId, body)
+		return NewRepositionToolRequest(c.Server, accountId, projectId, toolId, body)
 	}, true, "RepositionTool", reqEditors...)
 
 }
 
 // GetDocument is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetDocument(ctx context.Context, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDocument(ctx context.Context, accountId string, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetDocumentRequest(c.Server, projectId, documentId)
+		return NewGetDocumentRequest(c.Server, accountId, projectId, documentId)
 	}, true, "GetDocument", reqEditors...)
 
 }
 
 // UpdateDocumentWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateDocumentWithBody(ctx context.Context, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateDocumentWithBody(ctx context.Context, accountId string, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateDocumentRequestWithBody(c.Server, projectId, documentId, contentType, body)
+		return NewUpdateDocumentRequestWithBody(c.Server, accountId, projectId, documentId, contentType, body)
 	}, true, "UpdateDocument", reqEditors...)
 
 }
 
-func (c *Client) UpdateDocument(ctx context.Context, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateDocument(ctx context.Context, accountId string, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateDocumentRequest(c.Server, projectId, documentId, body)
+		return NewUpdateDocumentRequest(c.Server, accountId, projectId, documentId, body)
 	}, true, "UpdateDocument", reqEditors...)
 
 }
 
 // GetForward is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetForward(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetForward(ctx context.Context, accountId string, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetForwardRequest(c.Server, projectId, forwardId)
+		return NewGetForwardRequest(c.Server, accountId, projectId, forwardId)
 	}, true, "GetForward", reqEditors...)
 
 }
 
 // ListForwardReplies is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListForwardReplies(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListForwardReplies(ctx context.Context, accountId string, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListForwardRepliesRequest(c.Server, projectId, forwardId)
+		return NewListForwardRepliesRequest(c.Server, accountId, projectId, forwardId)
 	}, true, "ListForwardReplies", reqEditors...)
 
 }
 
 // CreateForwardReplyWithBody executes the CreateForwardReply operation.
 
-func (c *Client) CreateForwardReplyWithBody(ctx context.Context, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateForwardReplyWithBody(ctx context.Context, accountId string, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateForwardReplyRequestWithBody(c.Server, projectId, forwardId, contentType, body)
+	req, err := NewCreateForwardReplyRequestWithBody(c.Server, accountId, projectId, forwardId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4065,9 +4065,9 @@ func (c *Client) CreateForwardReplyWithBody(ctx context.Context, projectId int64
 
 }
 
-func (c *Client) CreateForwardReply(ctx context.Context, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateForwardReply(ctx context.Context, accountId string, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateForwardReplyRequest(c.Server, projectId, forwardId, body)
+	req, err := NewCreateForwardReplyRequest(c.Server, accountId, projectId, forwardId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4081,59 +4081,59 @@ func (c *Client) CreateForwardReply(ctx context.Context, projectId int64, forwar
 
 // GetForwardReply is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetForwardReply(ctx context.Context, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetForwardReply(ctx context.Context, accountId string, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetForwardReplyRequest(c.Server, projectId, forwardId, replyId)
+		return NewGetForwardReplyRequest(c.Server, accountId, projectId, forwardId, replyId)
 	}, true, "GetForwardReply", reqEditors...)
 
 }
 
 // GetInbox is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetInbox(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetInbox(ctx context.Context, accountId string, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetInboxRequest(c.Server, projectId, inboxId)
+		return NewGetInboxRequest(c.Server, accountId, projectId, inboxId)
 	}, true, "GetInbox", reqEditors...)
 
 }
 
 // ListForwards is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListForwards(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListForwards(ctx context.Context, accountId string, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListForwardsRequest(c.Server, projectId, inboxId)
+		return NewListForwardsRequest(c.Server, accountId, projectId, inboxId)
 	}, true, "ListForwards", reqEditors...)
 
 }
 
 // GetMessageBoard is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetMessageBoard(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetMessageBoard(ctx context.Context, accountId string, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetMessageBoardRequest(c.Server, projectId, boardId)
+		return NewGetMessageBoardRequest(c.Server, accountId, projectId, boardId)
 	}, true, "GetMessageBoard", reqEditors...)
 
 }
 
 // ListMessages is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListMessages(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListMessages(ctx context.Context, accountId string, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListMessagesRequest(c.Server, projectId, boardId)
+		return NewListMessagesRequest(c.Server, accountId, projectId, boardId)
 	}, true, "ListMessages", reqEditors...)
 
 }
 
 // CreateMessageWithBody executes the CreateMessage operation.
 
-func (c *Client) CreateMessageWithBody(ctx context.Context, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateMessageWithBody(ctx context.Context, accountId string, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateMessageRequestWithBody(c.Server, projectId, boardId, contentType, body)
+	req, err := NewCreateMessageRequestWithBody(c.Server, accountId, projectId, boardId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4145,9 +4145,9 @@ func (c *Client) CreateMessageWithBody(ctx context.Context, projectId int64, boa
 
 }
 
-func (c *Client) CreateMessage(ctx context.Context, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateMessage(ctx context.Context, accountId string, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateMessageRequest(c.Server, projectId, boardId, body)
+	req, err := NewCreateMessageRequest(c.Server, accountId, projectId, boardId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4161,85 +4161,85 @@ func (c *Client) CreateMessage(ctx context.Context, projectId int64, boardId int
 
 // GetMessage is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetMessage(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetMessageRequest(c.Server, projectId, messageId)
+		return NewGetMessageRequest(c.Server, accountId, projectId, messageId)
 	}, true, "GetMessage", reqEditors...)
 
 }
 
 // UpdateMessageWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateMessageWithBody(ctx context.Context, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateMessageWithBody(ctx context.Context, accountId string, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateMessageRequestWithBody(c.Server, projectId, messageId, contentType, body)
+		return NewUpdateMessageRequestWithBody(c.Server, accountId, projectId, messageId, contentType, body)
 	}, true, "UpdateMessage", reqEditors...)
 
 }
 
-func (c *Client) UpdateMessage(ctx context.Context, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateMessage(ctx context.Context, accountId string, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateMessageRequest(c.Server, projectId, messageId, body)
+		return NewUpdateMessageRequest(c.Server, accountId, projectId, messageId, body)
 	}, true, "UpdateMessage", reqEditors...)
 
 }
 
 // GetAnswer is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetAnswer(ctx context.Context, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetAnswer(ctx context.Context, accountId string, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetAnswerRequest(c.Server, projectId, answerId)
+		return NewGetAnswerRequest(c.Server, accountId, projectId, answerId)
 	}, true, "GetAnswer", reqEditors...)
 
 }
 
 // UpdateAnswerWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateAnswerWithBody(ctx context.Context, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateAnswerWithBody(ctx context.Context, accountId string, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateAnswerRequestWithBody(c.Server, projectId, answerId, contentType, body)
+		return NewUpdateAnswerRequestWithBody(c.Server, accountId, projectId, answerId, contentType, body)
 	}, true, "UpdateAnswer", reqEditors...)
 
 }
 
-func (c *Client) UpdateAnswer(ctx context.Context, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateAnswer(ctx context.Context, accountId string, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateAnswerRequest(c.Server, projectId, answerId, body)
+		return NewUpdateAnswerRequest(c.Server, accountId, projectId, answerId, body)
 	}, true, "UpdateAnswer", reqEditors...)
 
 }
 
 // GetQuestionnaire is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetQuestionnaire(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetQuestionnaire(ctx context.Context, accountId string, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetQuestionnaireRequest(c.Server, projectId, questionnaireId)
+		return NewGetQuestionnaireRequest(c.Server, accountId, projectId, questionnaireId)
 	}, true, "GetQuestionnaire", reqEditors...)
 
 }
 
 // ListQuestions is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListQuestions(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListQuestions(ctx context.Context, accountId string, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListQuestionsRequest(c.Server, projectId, questionnaireId)
+		return NewListQuestionsRequest(c.Server, accountId, projectId, questionnaireId)
 	}, true, "ListQuestions", reqEditors...)
 
 }
 
 // CreateQuestionWithBody executes the CreateQuestion operation.
 
-func (c *Client) CreateQuestionWithBody(ctx context.Context, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateQuestionWithBody(ctx context.Context, accountId string, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateQuestionRequestWithBody(c.Server, projectId, questionnaireId, contentType, body)
+	req, err := NewCreateQuestionRequestWithBody(c.Server, accountId, projectId, questionnaireId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4251,9 +4251,9 @@ func (c *Client) CreateQuestionWithBody(ctx context.Context, projectId int64, qu
 
 }
 
-func (c *Client) CreateQuestion(ctx context.Context, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateQuestion(ctx context.Context, accountId string, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateQuestionRequest(c.Server, projectId, questionnaireId, body)
+	req, err := NewCreateQuestionRequest(c.Server, accountId, projectId, questionnaireId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4267,47 +4267,47 @@ func (c *Client) CreateQuestion(ctx context.Context, projectId int64, questionna
 
 // GetQuestion is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetQuestion(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetQuestionRequest(c.Server, projectId, questionId)
+		return NewGetQuestionRequest(c.Server, accountId, projectId, questionId)
 	}, true, "GetQuestion", reqEditors...)
 
 }
 
 // UpdateQuestionWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateQuestionWithBody(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateQuestionWithBody(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateQuestionRequestWithBody(c.Server, projectId, questionId, contentType, body)
+		return NewUpdateQuestionRequestWithBody(c.Server, accountId, projectId, questionId, contentType, body)
 	}, true, "UpdateQuestion", reqEditors...)
 
 }
 
-func (c *Client) UpdateQuestion(ctx context.Context, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateQuestionRequest(c.Server, projectId, questionId, body)
+		return NewUpdateQuestionRequest(c.Server, accountId, projectId, questionId, body)
 	}, true, "UpdateQuestion", reqEditors...)
 
 }
 
 // ListAnswers is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListAnswers(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListAnswers(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListAnswersRequest(c.Server, projectId, questionId)
+		return NewListAnswersRequest(c.Server, accountId, projectId, questionId)
 	}, true, "ListAnswers", reqEditors...)
 
 }
 
 // CreateAnswerWithBody executes the CreateAnswer operation.
 
-func (c *Client) CreateAnswerWithBody(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateAnswerWithBody(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateAnswerRequestWithBody(c.Server, projectId, questionId, contentType, body)
+	req, err := NewCreateAnswerRequestWithBody(c.Server, accountId, projectId, questionId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4319,9 +4319,9 @@ func (c *Client) CreateAnswerWithBody(ctx context.Context, projectId int64, ques
 
 }
 
-func (c *Client) CreateAnswer(ctx context.Context, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateAnswer(ctx context.Context, accountId string, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateAnswerRequest(c.Server, projectId, questionId, body)
+	req, err := NewCreateAnswerRequest(c.Server, accountId, projectId, questionId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4335,19 +4335,19 @@ func (c *Client) CreateAnswer(ctx context.Context, projectId int64, questionId i
 
 // UnpinMessage is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UnpinMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UnpinMessage(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUnpinMessageRequest(c.Server, projectId, messageId)
+		return NewUnpinMessageRequest(c.Server, accountId, projectId, messageId)
 	}, true, "UnpinMessage", reqEditors...)
 
 }
 
 // PinMessage executes the PinMessage operation.
 
-func (c *Client) PinMessage(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) PinMessage(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewPinMessageRequest(c.Server, projectId, messageId)
+	req, err := NewPinMessageRequest(c.Server, accountId, projectId, messageId)
 	if err != nil {
 		return nil, err
 	}
@@ -4361,47 +4361,47 @@ func (c *Client) PinMessage(ctx context.Context, projectId int64, messageId int6
 
 // GetRecording is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetRecording(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetRecordingRequest(c.Server, projectId, recordingId)
+		return NewGetRecordingRequest(c.Server, accountId, projectId, recordingId)
 	}, true, "GetRecording", reqEditors...)
 
 }
 
 // SetClientVisibilityWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) SetClientVisibilityWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SetClientVisibilityWithBody(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewSetClientVisibilityRequestWithBody(c.Server, projectId, recordingId, contentType, body)
+		return NewSetClientVisibilityRequestWithBody(c.Server, accountId, projectId, recordingId, contentType, body)
 	}, true, "SetClientVisibility", reqEditors...)
 
 }
 
-func (c *Client) SetClientVisibility(ctx context.Context, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SetClientVisibility(ctx context.Context, accountId string, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewSetClientVisibilityRequest(c.Server, projectId, recordingId, body)
+		return NewSetClientVisibilityRequest(c.Server, accountId, projectId, recordingId, body)
 	}, true, "SetClientVisibility", reqEditors...)
 
 }
 
 // ListComments is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListComments(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListComments(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListCommentsRequest(c.Server, projectId, recordingId)
+		return NewListCommentsRequest(c.Server, accountId, projectId, recordingId)
 	}, true, "ListComments", reqEditors...)
 
 }
 
 // CreateCommentWithBody executes the CreateComment operation.
 
-func (c *Client) CreateCommentWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateCommentWithBody(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateCommentRequestWithBody(c.Server, projectId, recordingId, contentType, body)
+	req, err := NewCreateCommentRequestWithBody(c.Server, accountId, projectId, recordingId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4413,9 +4413,9 @@ func (c *Client) CreateCommentWithBody(ctx context.Context, projectId int64, rec
 
 }
 
-func (c *Client) CreateComment(ctx context.Context, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateComment(ctx context.Context, accountId string, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateCommentRequest(c.Server, projectId, recordingId, body)
+	req, err := NewCreateCommentRequest(c.Server, accountId, projectId, recordingId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4429,69 +4429,69 @@ func (c *Client) CreateComment(ctx context.Context, projectId int64, recordingId
 
 // ListEvents is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListEvents(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListEvents(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListEventsRequest(c.Server, projectId, recordingId)
+		return NewListEventsRequest(c.Server, accountId, projectId, recordingId)
 	}, true, "ListEvents", reqEditors...)
 
 }
 
 // UnarchiveRecording is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UnarchiveRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UnarchiveRecording(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUnarchiveRecordingRequest(c.Server, projectId, recordingId)
+		return NewUnarchiveRecordingRequest(c.Server, accountId, projectId, recordingId)
 	}, true, "UnarchiveRecording", reqEditors...)
 
 }
 
 // ArchiveRecording is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ArchiveRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ArchiveRecording(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewArchiveRecordingRequest(c.Server, projectId, recordingId)
+		return NewArchiveRecordingRequest(c.Server, accountId, projectId, recordingId)
 	}, true, "ArchiveRecording", reqEditors...)
 
 }
 
 // TrashRecording is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) TrashRecording(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) TrashRecording(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewTrashRecordingRequest(c.Server, projectId, recordingId)
+		return NewTrashRecordingRequest(c.Server, accountId, projectId, recordingId)
 	}, true, "TrashRecording", reqEditors...)
 
 }
 
 // Unsubscribe is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) Unsubscribe(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) Unsubscribe(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUnsubscribeRequest(c.Server, projectId, recordingId)
+		return NewUnsubscribeRequest(c.Server, accountId, projectId, recordingId)
 	}, true, "Unsubscribe", reqEditors...)
 
 }
 
 // GetSubscription is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetSubscription(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetSubscription(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetSubscriptionRequest(c.Server, projectId, recordingId)
+		return NewGetSubscriptionRequest(c.Server, accountId, projectId, recordingId)
 	}, true, "GetSubscription", reqEditors...)
 
 }
 
 // Subscribe executes the Subscribe operation.
 
-func (c *Client) Subscribe(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) Subscribe(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewSubscribeRequest(c.Server, projectId, recordingId)
+	req, err := NewSubscribeRequest(c.Server, accountId, projectId, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -4505,113 +4505,113 @@ func (c *Client) Subscribe(ctx context.Context, projectId int64, recordingId int
 
 // UpdateSubscriptionWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateSubscriptionWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateSubscriptionWithBody(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateSubscriptionRequestWithBody(c.Server, projectId, recordingId, contentType, body)
+		return NewUpdateSubscriptionRequestWithBody(c.Server, accountId, projectId, recordingId, contentType, body)
 	}, true, "UpdateSubscription", reqEditors...)
 
 }
 
-func (c *Client) UpdateSubscription(ctx context.Context, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateSubscription(ctx context.Context, accountId string, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateSubscriptionRequest(c.Server, projectId, recordingId, body)
+		return NewUpdateSubscriptionRequest(c.Server, accountId, projectId, recordingId, body)
 	}, true, "UpdateSubscription", reqEditors...)
 
 }
 
 // GetRecordingTimesheet is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetRecordingTimesheet(ctx context.Context, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetRecordingTimesheet(ctx context.Context, accountId string, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetRecordingTimesheetRequest(c.Server, projectId, recordingId, params)
+		return NewGetRecordingTimesheetRequest(c.Server, accountId, projectId, recordingId, params)
 	}, true, "GetRecordingTimesheet", reqEditors...)
 
 }
 
 // GetScheduleEntry is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetScheduleEntry(ctx context.Context, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetScheduleEntry(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetScheduleEntryRequest(c.Server, projectId, entryId)
+		return NewGetScheduleEntryRequest(c.Server, accountId, projectId, entryId)
 	}, true, "GetScheduleEntry", reqEditors...)
 
 }
 
 // UpdateScheduleEntryWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateScheduleEntryWithBody(ctx context.Context, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateScheduleEntryWithBody(ctx context.Context, accountId string, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateScheduleEntryRequestWithBody(c.Server, projectId, entryId, contentType, body)
+		return NewUpdateScheduleEntryRequestWithBody(c.Server, accountId, projectId, entryId, contentType, body)
 	}, true, "UpdateScheduleEntry", reqEditors...)
 
 }
 
-func (c *Client) UpdateScheduleEntry(ctx context.Context, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateScheduleEntry(ctx context.Context, accountId string, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateScheduleEntryRequest(c.Server, projectId, entryId, body)
+		return NewUpdateScheduleEntryRequest(c.Server, accountId, projectId, entryId, body)
 	}, true, "UpdateScheduleEntry", reqEditors...)
 
 }
 
 // GetScheduleEntryOccurrence is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetScheduleEntryOccurrence(ctx context.Context, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetScheduleEntryOccurrence(ctx context.Context, accountId string, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetScheduleEntryOccurrenceRequest(c.Server, projectId, entryId, date)
+		return NewGetScheduleEntryOccurrenceRequest(c.Server, accountId, projectId, entryId, date)
 	}, true, "GetScheduleEntryOccurrence", reqEditors...)
 
 }
 
 // GetSchedule is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetSchedule(ctx context.Context, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetSchedule(ctx context.Context, accountId string, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetScheduleRequest(c.Server, projectId, scheduleId)
+		return NewGetScheduleRequest(c.Server, accountId, projectId, scheduleId)
 	}, true, "GetSchedule", reqEditors...)
 
 }
 
 // UpdateScheduleSettingsWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateScheduleSettingsWithBody(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateScheduleSettingsWithBody(ctx context.Context, accountId string, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateScheduleSettingsRequestWithBody(c.Server, projectId, scheduleId, contentType, body)
+		return NewUpdateScheduleSettingsRequestWithBody(c.Server, accountId, projectId, scheduleId, contentType, body)
 	}, true, "UpdateScheduleSettings", reqEditors...)
 
 }
 
-func (c *Client) UpdateScheduleSettings(ctx context.Context, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateScheduleSettings(ctx context.Context, accountId string, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateScheduleSettingsRequest(c.Server, projectId, scheduleId, body)
+		return NewUpdateScheduleSettingsRequest(c.Server, accountId, projectId, scheduleId, body)
 	}, true, "UpdateScheduleSettings", reqEditors...)
 
 }
 
 // ListScheduleEntries is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListScheduleEntries(ctx context.Context, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListScheduleEntries(ctx context.Context, accountId string, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListScheduleEntriesRequest(c.Server, projectId, scheduleId, params)
+		return NewListScheduleEntriesRequest(c.Server, accountId, projectId, scheduleId, params)
 	}, true, "ListScheduleEntries", reqEditors...)
 
 }
 
 // CreateScheduleEntryWithBody executes the CreateScheduleEntry operation.
 
-func (c *Client) CreateScheduleEntryWithBody(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateScheduleEntryWithBody(ctx context.Context, accountId string, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateScheduleEntryRequestWithBody(c.Server, projectId, scheduleId, contentType, body)
+	req, err := NewCreateScheduleEntryRequestWithBody(c.Server, accountId, projectId, scheduleId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4623,9 +4623,9 @@ func (c *Client) CreateScheduleEntryWithBody(ctx context.Context, projectId int6
 
 }
 
-func (c *Client) CreateScheduleEntry(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateScheduleEntry(ctx context.Context, accountId string, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateScheduleEntryRequest(c.Server, projectId, scheduleId, body)
+	req, err := NewCreateScheduleEntryRequest(c.Server, accountId, projectId, scheduleId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4639,85 +4639,85 @@ func (c *Client) CreateScheduleEntry(ctx context.Context, projectId int64, sched
 
 // GetProjectTimeline is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProjectTimeline(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProjectTimelineRequest(c.Server, projectId)
+		return NewGetProjectTimelineRequest(c.Server, accountId, projectId)
 	}, true, "GetProjectTimeline", reqEditors...)
 
 }
 
 // GetProjectTimesheet is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProjectTimesheet(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProjectTimesheetRequest(c.Server, projectId, params)
+		return NewGetProjectTimesheetRequest(c.Server, accountId, projectId, params)
 	}, true, "GetProjectTimesheet", reqEditors...)
 
 }
 
 // RepositionTodolistGroupWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) RepositionTodolistGroupWithBody(ctx context.Context, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionTodolistGroupWithBody(ctx context.Context, accountId string, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewRepositionTodolistGroupRequestWithBody(c.Server, projectId, groupId, contentType, body)
+		return NewRepositionTodolistGroupRequestWithBody(c.Server, accountId, projectId, groupId, contentType, body)
 	}, true, "RepositionTodolistGroup", reqEditors...)
 
 }
 
-func (c *Client) RepositionTodolistGroup(ctx context.Context, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionTodolistGroup(ctx context.Context, accountId string, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewRepositionTodolistGroupRequest(c.Server, projectId, groupId, body)
+		return NewRepositionTodolistGroupRequest(c.Server, accountId, projectId, groupId, body)
 	}, true, "RepositionTodolistGroup", reqEditors...)
 
 }
 
 // GetTodolistOrGroup is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTodolistOrGroup(ctx context.Context, projectId int64, id int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTodolistOrGroup(ctx context.Context, accountId string, projectId int64, id int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetTodolistOrGroupRequest(c.Server, projectId, id)
+		return NewGetTodolistOrGroupRequest(c.Server, accountId, projectId, id)
 	}, true, "GetTodolistOrGroup", reqEditors...)
 
 }
 
 // UpdateTodolistOrGroupWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateTodolistOrGroupWithBody(ctx context.Context, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTodolistOrGroupWithBody(ctx context.Context, accountId string, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateTodolistOrGroupRequestWithBody(c.Server, projectId, id, contentType, body)
+		return NewUpdateTodolistOrGroupRequestWithBody(c.Server, accountId, projectId, id, contentType, body)
 	}, true, "UpdateTodolistOrGroup", reqEditors...)
 
 }
 
-func (c *Client) UpdateTodolistOrGroup(ctx context.Context, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTodolistOrGroup(ctx context.Context, accountId string, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateTodolistOrGroupRequest(c.Server, projectId, id, body)
+		return NewUpdateTodolistOrGroupRequest(c.Server, accountId, projectId, id, body)
 	}, true, "UpdateTodolistOrGroup", reqEditors...)
 
 }
 
 // ListTodolistGroups is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListTodolistGroups(ctx context.Context, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListTodolistGroups(ctx context.Context, accountId string, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListTodolistGroupsRequest(c.Server, projectId, todolistId)
+		return NewListTodolistGroupsRequest(c.Server, accountId, projectId, todolistId)
 	}, true, "ListTodolistGroups", reqEditors...)
 
 }
 
 // CreateTodolistGroupWithBody executes the CreateTodolistGroup operation.
 
-func (c *Client) CreateTodolistGroupWithBody(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodolistGroupWithBody(ctx context.Context, accountId string, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateTodolistGroupRequestWithBody(c.Server, projectId, todolistId, contentType, body)
+	req, err := NewCreateTodolistGroupRequestWithBody(c.Server, accountId, projectId, todolistId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4729,9 +4729,9 @@ func (c *Client) CreateTodolistGroupWithBody(ctx context.Context, projectId int6
 
 }
 
-func (c *Client) CreateTodolistGroup(ctx context.Context, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodolistGroup(ctx context.Context, accountId string, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateTodolistGroupRequest(c.Server, projectId, todolistId, body)
+	req, err := NewCreateTodolistGroupRequest(c.Server, accountId, projectId, todolistId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4745,19 +4745,19 @@ func (c *Client) CreateTodolistGroup(ctx context.Context, projectId int64, todol
 
 // ListTodos is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListTodos(ctx context.Context, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListTodos(ctx context.Context, accountId string, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListTodosRequest(c.Server, projectId, todolistId, params)
+		return NewListTodosRequest(c.Server, accountId, projectId, todolistId, params)
 	}, true, "ListTodos", reqEditors...)
 
 }
 
 // CreateTodoWithBody executes the CreateTodo operation.
 
-func (c *Client) CreateTodoWithBody(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodoWithBody(ctx context.Context, accountId string, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateTodoRequestWithBody(c.Server, projectId, todolistId, contentType, body)
+	req, err := NewCreateTodoRequestWithBody(c.Server, accountId, projectId, todolistId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4769,9 +4769,9 @@ func (c *Client) CreateTodoWithBody(ctx context.Context, projectId int64, todoli
 
 }
 
-func (c *Client) CreateTodo(ctx context.Context, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodo(ctx context.Context, accountId string, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateTodoRequest(c.Server, projectId, todolistId, body)
+	req, err := NewCreateTodoRequest(c.Server, accountId, projectId, todolistId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4785,105 +4785,105 @@ func (c *Client) CreateTodo(ctx context.Context, projectId int64, todolistId int
 
 // TrashTodo is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) TrashTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) TrashTodo(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewTrashTodoRequest(c.Server, projectId, todoId)
+		return NewTrashTodoRequest(c.Server, accountId, projectId, todoId)
 	}, true, "TrashTodo", reqEditors...)
 
 }
 
 // GetTodo is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTodo(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetTodoRequest(c.Server, projectId, todoId)
+		return NewGetTodoRequest(c.Server, accountId, projectId, todoId)
 	}, true, "GetTodo", reqEditors...)
 
 }
 
 // UpdateTodoWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateTodoWithBody(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTodoWithBody(ctx context.Context, accountId string, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateTodoRequestWithBody(c.Server, projectId, todoId, contentType, body)
+		return NewUpdateTodoRequestWithBody(c.Server, accountId, projectId, todoId, contentType, body)
 	}, true, "UpdateTodo", reqEditors...)
 
 }
 
-func (c *Client) UpdateTodo(ctx context.Context, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTodo(ctx context.Context, accountId string, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateTodoRequest(c.Server, projectId, todoId, body)
+		return NewUpdateTodoRequest(c.Server, accountId, projectId, todoId, body)
 	}, true, "UpdateTodo", reqEditors...)
 
 }
 
 // UncompleteTodo is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UncompleteTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UncompleteTodo(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUncompleteTodoRequest(c.Server, projectId, todoId)
+		return NewUncompleteTodoRequest(c.Server, accountId, projectId, todoId)
 	}, true, "UncompleteTodo", reqEditors...)
 
 }
 
 // CompleteTodo is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) CompleteTodo(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteTodo(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewCompleteTodoRequest(c.Server, projectId, todoId)
+		return NewCompleteTodoRequest(c.Server, accountId, projectId, todoId)
 	}, true, "CompleteTodo", reqEditors...)
 
 }
 
 // RepositionTodoWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) RepositionTodoWithBody(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionTodoWithBody(ctx context.Context, accountId string, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewRepositionTodoRequestWithBody(c.Server, projectId, todoId, contentType, body)
+		return NewRepositionTodoRequestWithBody(c.Server, accountId, projectId, todoId, contentType, body)
 	}, true, "RepositionTodo", reqEditors...)
 
 }
 
-func (c *Client) RepositionTodo(ctx context.Context, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RepositionTodo(ctx context.Context, accountId string, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewRepositionTodoRequest(c.Server, projectId, todoId, body)
+		return NewRepositionTodoRequest(c.Server, accountId, projectId, todoId, body)
 	}, true, "RepositionTodo", reqEditors...)
 
 }
 
 // GetTodoset is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTodoset(ctx context.Context, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTodoset(ctx context.Context, accountId string, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetTodosetRequest(c.Server, projectId, todosetId)
+		return NewGetTodosetRequest(c.Server, accountId, projectId, todosetId)
 	}, true, "GetTodoset", reqEditors...)
 
 }
 
 // ListTodolists is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListTodolists(ctx context.Context, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListTodolists(ctx context.Context, accountId string, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListTodolistsRequest(c.Server, projectId, todosetId, params)
+		return NewListTodolistsRequest(c.Server, accountId, projectId, todosetId, params)
 	}, true, "ListTodolists", reqEditors...)
 
 }
 
 // CreateTodolistWithBody executes the CreateTodolist operation.
 
-func (c *Client) CreateTodolistWithBody(ctx context.Context, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodolistWithBody(ctx context.Context, accountId string, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateTodolistRequestWithBody(c.Server, projectId, todosetId, contentType, body)
+	req, err := NewCreateTodolistRequestWithBody(c.Server, accountId, projectId, todosetId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4895,9 +4895,9 @@ func (c *Client) CreateTodolistWithBody(ctx context.Context, projectId int64, to
 
 }
 
-func (c *Client) CreateTodolist(ctx context.Context, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTodolist(ctx context.Context, accountId string, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateTodolistRequest(c.Server, projectId, todosetId, body)
+	req, err := NewCreateTodolistRequest(c.Server, accountId, projectId, todosetId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4911,85 +4911,85 @@ func (c *Client) CreateTodolist(ctx context.Context, projectId int64, todosetId 
 
 // GetUpload is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetUpload(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetUpload(ctx context.Context, accountId string, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetUploadRequest(c.Server, projectId, uploadId)
+		return NewGetUploadRequest(c.Server, accountId, projectId, uploadId)
 	}, true, "GetUpload", reqEditors...)
 
 }
 
 // UpdateUploadWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateUploadWithBody(ctx context.Context, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUploadWithBody(ctx context.Context, accountId string, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateUploadRequestWithBody(c.Server, projectId, uploadId, contentType, body)
+		return NewUpdateUploadRequestWithBody(c.Server, accountId, projectId, uploadId, contentType, body)
 	}, true, "UpdateUpload", reqEditors...)
 
 }
 
-func (c *Client) UpdateUpload(ctx context.Context, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUpload(ctx context.Context, accountId string, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateUploadRequest(c.Server, projectId, uploadId, body)
+		return NewUpdateUploadRequest(c.Server, accountId, projectId, uploadId, body)
 	}, true, "UpdateUpload", reqEditors...)
 
 }
 
 // ListUploadVersions is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListUploadVersions(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListUploadVersions(ctx context.Context, accountId string, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListUploadVersionsRequest(c.Server, projectId, uploadId)
+		return NewListUploadVersionsRequest(c.Server, accountId, projectId, uploadId)
 	}, true, "ListUploadVersions", reqEditors...)
 
 }
 
 // GetVault is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetVault(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetVault(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetVaultRequest(c.Server, projectId, vaultId)
+		return NewGetVaultRequest(c.Server, accountId, projectId, vaultId)
 	}, true, "GetVault", reqEditors...)
 
 }
 
 // UpdateVaultWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateVaultWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateVaultWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateVaultRequestWithBody(c.Server, projectId, vaultId, contentType, body)
+		return NewUpdateVaultRequestWithBody(c.Server, accountId, projectId, vaultId, contentType, body)
 	}, true, "UpdateVault", reqEditors...)
 
 }
 
-func (c *Client) UpdateVault(ctx context.Context, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateVault(ctx context.Context, accountId string, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateVaultRequest(c.Server, projectId, vaultId, body)
+		return NewUpdateVaultRequest(c.Server, accountId, projectId, vaultId, body)
 	}, true, "UpdateVault", reqEditors...)
 
 }
 
 // ListDocuments is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListDocuments(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListDocuments(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListDocumentsRequest(c.Server, projectId, vaultId)
+		return NewListDocumentsRequest(c.Server, accountId, projectId, vaultId)
 	}, true, "ListDocuments", reqEditors...)
 
 }
 
 // CreateDocumentWithBody executes the CreateDocument operation.
 
-func (c *Client) CreateDocumentWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateDocumentWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateDocumentRequestWithBody(c.Server, projectId, vaultId, contentType, body)
+	req, err := NewCreateDocumentRequestWithBody(c.Server, accountId, projectId, vaultId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5001,9 +5001,9 @@ func (c *Client) CreateDocumentWithBody(ctx context.Context, projectId int64, va
 
 }
 
-func (c *Client) CreateDocument(ctx context.Context, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateDocument(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateDocumentRequest(c.Server, projectId, vaultId, body)
+	req, err := NewCreateDocumentRequest(c.Server, accountId, projectId, vaultId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5017,19 +5017,19 @@ func (c *Client) CreateDocument(ctx context.Context, projectId int64, vaultId in
 
 // ListUploads is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListUploads(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListUploads(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListUploadsRequest(c.Server, projectId, vaultId)
+		return NewListUploadsRequest(c.Server, accountId, projectId, vaultId)
 	}, true, "ListUploads", reqEditors...)
 
 }
 
 // CreateUploadWithBody executes the CreateUpload operation.
 
-func (c *Client) CreateUploadWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateUploadWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateUploadRequestWithBody(c.Server, projectId, vaultId, contentType, body)
+	req, err := NewCreateUploadRequestWithBody(c.Server, accountId, projectId, vaultId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5041,9 +5041,9 @@ func (c *Client) CreateUploadWithBody(ctx context.Context, projectId int64, vaul
 
 }
 
-func (c *Client) CreateUpload(ctx context.Context, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateUpload(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateUploadRequest(c.Server, projectId, vaultId, body)
+	req, err := NewCreateUploadRequest(c.Server, accountId, projectId, vaultId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5057,19 +5057,19 @@ func (c *Client) CreateUpload(ctx context.Context, projectId int64, vaultId int6
 
 // ListVaults is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListVaults(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListVaults(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListVaultsRequest(c.Server, projectId, vaultId)
+		return NewListVaultsRequest(c.Server, accountId, projectId, vaultId)
 	}, true, "ListVaults", reqEditors...)
 
 }
 
 // CreateVaultWithBody executes the CreateVault operation.
 
-func (c *Client) CreateVaultWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateVaultWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateVaultRequestWithBody(c.Server, projectId, vaultId, contentType, body)
+	req, err := NewCreateVaultRequestWithBody(c.Server, accountId, projectId, vaultId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5081,9 +5081,9 @@ func (c *Client) CreateVaultWithBody(ctx context.Context, projectId int64, vault
 
 }
 
-func (c *Client) CreateVault(ctx context.Context, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateVault(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateVaultRequest(c.Server, projectId, vaultId, body)
+	req, err := NewCreateVaultRequest(c.Server, accountId, projectId, vaultId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5097,19 +5097,19 @@ func (c *Client) CreateVault(ctx context.Context, projectId int64, vaultId int64
 
 // ListWebhooks is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListWebhooks(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListWebhooks(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListWebhooksRequest(c.Server, projectId)
+		return NewListWebhooksRequest(c.Server, accountId, projectId)
 	}, true, "ListWebhooks", reqEditors...)
 
 }
 
 // CreateWebhookWithBody executes the CreateWebhook operation.
 
-func (c *Client) CreateWebhookWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateWebhookWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateWebhookRequestWithBody(c.Server, projectId, contentType, body)
+	req, err := NewCreateWebhookRequestWithBody(c.Server, accountId, projectId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5121,9 +5121,9 @@ func (c *Client) CreateWebhookWithBody(ctx context.Context, projectId int64, con
 
 }
 
-func (c *Client) CreateWebhook(ctx context.Context, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateWebhook(ctx context.Context, accountId string, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateWebhookRequest(c.Server, projectId, body)
+	req, err := NewCreateWebhookRequest(c.Server, accountId, projectId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5137,67 +5137,67 @@ func (c *Client) CreateWebhook(ctx context.Context, projectId int64, body Create
 
 // DeleteWebhook is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteWebhook(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteWebhook(ctx context.Context, accountId string, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDeleteWebhookRequest(c.Server, projectId, webhookId)
+		return NewDeleteWebhookRequest(c.Server, accountId, projectId, webhookId)
 	}, true, "DeleteWebhook", reqEditors...)
 
 }
 
 // GetWebhook is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetWebhook(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetWebhook(ctx context.Context, accountId string, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetWebhookRequest(c.Server, projectId, webhookId)
+		return NewGetWebhookRequest(c.Server, accountId, projectId, webhookId)
 	}, true, "GetWebhook", reqEditors...)
 
 }
 
 // UpdateWebhookWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateWebhookWithBody(ctx context.Context, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateWebhookWithBody(ctx context.Context, accountId string, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateWebhookRequestWithBody(c.Server, projectId, webhookId, contentType, body)
+		return NewUpdateWebhookRequestWithBody(c.Server, accountId, projectId, webhookId, contentType, body)
 	}, true, "UpdateWebhook", reqEditors...)
 
 }
 
-func (c *Client) UpdateWebhook(ctx context.Context, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateWebhook(ctx context.Context, accountId string, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateWebhookRequest(c.Server, projectId, webhookId, body)
+		return NewUpdateWebhookRequest(c.Server, accountId, projectId, webhookId, body)
 	}, true, "UpdateWebhook", reqEditors...)
 
 }
 
 // ListCampfires is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListCampfires(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListCampfires(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListCampfiresRequest(c.Server)
+		return NewListCampfiresRequest(c.Server, accountId)
 	}, true, "ListCampfires", reqEditors...)
 
 }
 
 // ListPingablePeople is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListPingablePeople(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListPingablePeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListPingablePeopleRequest(c.Server)
+		return NewListPingablePeopleRequest(c.Server, accountId)
 	}, true, "ListPingablePeople", reqEditors...)
 
 }
 
 // CreateLineupMarkerWithBody executes the CreateLineupMarker operation.
 
-func (c *Client) CreateLineupMarkerWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateLineupMarkerWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateLineupMarkerRequestWithBody(c.Server, contentType, body)
+	req, err := NewCreateLineupMarkerRequestWithBody(c.Server, accountId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5209,9 +5209,9 @@ func (c *Client) CreateLineupMarkerWithBody(ctx context.Context, contentType str
 
 }
 
-func (c *Client) CreateLineupMarker(ctx context.Context, body CreateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateLineupMarker(ctx context.Context, accountId string, body CreateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateLineupMarkerRequest(c.Server, body)
+	req, err := NewCreateLineupMarkerRequest(c.Server, accountId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5225,77 +5225,77 @@ func (c *Client) CreateLineupMarker(ctx context.Context, body CreateLineupMarker
 
 // DeleteLineupMarker is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteLineupMarker(ctx context.Context, markerId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteLineupMarker(ctx context.Context, accountId string, markerId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDeleteLineupMarkerRequest(c.Server, markerId)
+		return NewDeleteLineupMarkerRequest(c.Server, accountId, markerId)
 	}, true, "DeleteLineupMarker", reqEditors...)
 
 }
 
 // UpdateLineupMarkerWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateLineupMarkerWithBody(ctx context.Context, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateLineupMarkerWithBody(ctx context.Context, accountId string, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateLineupMarkerRequestWithBody(c.Server, markerId, contentType, body)
+		return NewUpdateLineupMarkerRequestWithBody(c.Server, accountId, markerId, contentType, body)
 	}, true, "UpdateLineupMarker", reqEditors...)
 
 }
 
-func (c *Client) UpdateLineupMarker(ctx context.Context, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateLineupMarker(ctx context.Context, accountId string, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateLineupMarkerRequest(c.Server, markerId, body)
+		return NewUpdateLineupMarkerRequest(c.Server, accountId, markerId, body)
 	}, true, "UpdateLineupMarker", reqEditors...)
 
 }
 
 // GetMyProfile is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetMyProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetMyProfile(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetMyProfileRequest(c.Server)
+		return NewGetMyProfileRequest(c.Server, accountId)
 	}, true, "GetMyProfile", reqEditors...)
 
 }
 
 // ListPeople is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListPeople(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListPeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListPeopleRequest(c.Server)
+		return NewListPeopleRequest(c.Server, accountId)
 	}, true, "ListPeople", reqEditors...)
 
 }
 
 // GetPerson is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetPerson(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetPerson(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetPersonRequest(c.Server, personId)
+		return NewGetPersonRequest(c.Server, accountId, personId)
 	}, true, "GetPerson", reqEditors...)
 
 }
 
 // ListProjects is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListProjects(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListProjects(ctx context.Context, accountId string, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListProjectsRequest(c.Server, params)
+		return NewListProjectsRequest(c.Server, accountId, params)
 	}, true, "ListProjects", reqEditors...)
 
 }
 
 // CreateProjectWithBody executes the CreateProject operation.
 
-func (c *Client) CreateProjectWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateProjectWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateProjectRequestWithBody(c.Server, contentType, body)
+	req, err := NewCreateProjectRequestWithBody(c.Server, accountId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5307,9 +5307,9 @@ func (c *Client) CreateProjectWithBody(ctx context.Context, contentType string, 
 
 }
 
-func (c *Client) CreateProject(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateProject(ctx context.Context, accountId string, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateProjectRequest(c.Server, body)
+	req, err := NewCreateProjectRequest(c.Server, accountId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5323,185 +5323,185 @@ func (c *Client) CreateProject(ctx context.Context, body CreateProjectJSONReques
 
 // ListRecordings is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListRecordings(ctx context.Context, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListRecordings(ctx context.Context, accountId string, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListRecordingsRequest(c.Server, params)
+		return NewListRecordingsRequest(c.Server, accountId, params)
 	}, true, "ListRecordings", reqEditors...)
 
 }
 
 // TrashProject is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) TrashProject(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) TrashProject(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewTrashProjectRequest(c.Server, projectId)
+		return NewTrashProjectRequest(c.Server, accountId, projectId)
 	}, true, "TrashProject", reqEditors...)
 
 }
 
 // GetProject is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProject(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProject(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProjectRequest(c.Server, projectId)
+		return NewGetProjectRequest(c.Server, accountId, projectId)
 	}, true, "GetProject", reqEditors...)
 
 }
 
 // UpdateProjectWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateProjectWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateProjectWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateProjectRequestWithBody(c.Server, projectId, contentType, body)
+		return NewUpdateProjectRequestWithBody(c.Server, accountId, projectId, contentType, body)
 	}, true, "UpdateProject", reqEditors...)
 
 }
 
-func (c *Client) UpdateProject(ctx context.Context, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateProject(ctx context.Context, accountId string, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateProjectRequest(c.Server, projectId, body)
+		return NewUpdateProjectRequest(c.Server, accountId, projectId, body)
 	}, true, "UpdateProject", reqEditors...)
 
 }
 
 // ListProjectPeople is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListProjectPeople(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListProjectPeople(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListProjectPeopleRequest(c.Server, projectId)
+		return NewListProjectPeopleRequest(c.Server, accountId, projectId)
 	}, true, "ListProjectPeople", reqEditors...)
 
 }
 
 // UpdateProjectAccessWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateProjectAccessWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateProjectAccessWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateProjectAccessRequestWithBody(c.Server, projectId, contentType, body)
+		return NewUpdateProjectAccessRequestWithBody(c.Server, accountId, projectId, contentType, body)
 	}, true, "UpdateProjectAccess", reqEditors...)
 
 }
 
-func (c *Client) UpdateProjectAccess(ctx context.Context, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateProjectAccess(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateProjectAccessRequest(c.Server, projectId, body)
+		return NewUpdateProjectAccessRequest(c.Server, accountId, projectId, body)
 	}, true, "UpdateProjectAccess", reqEditors...)
 
 }
 
 // GetProgressReport is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProgressReport(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProgressReport(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProgressReportRequest(c.Server)
+		return NewGetProgressReportRequest(c.Server, accountId)
 	}, true, "GetProgressReport", reqEditors...)
 
 }
 
 // GetUpcomingSchedule is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetUpcomingSchedule(ctx context.Context, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetUpcomingSchedule(ctx context.Context, accountId string, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetUpcomingScheduleRequest(c.Server, params)
+		return NewGetUpcomingScheduleRequest(c.Server, accountId, params)
 	}, true, "GetUpcomingSchedule", reqEditors...)
 
 }
 
 // GetTimesheetReport is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTimesheetReport(ctx context.Context, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTimesheetReport(ctx context.Context, accountId string, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetTimesheetReportRequest(c.Server, params)
+		return NewGetTimesheetReportRequest(c.Server, accountId, params)
 	}, true, "GetTimesheetReport", reqEditors...)
 
 }
 
 // ListAssignablePeople is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListAssignablePeople(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListAssignablePeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListAssignablePeopleRequest(c.Server)
+		return NewListAssignablePeopleRequest(c.Server, accountId)
 	}, true, "ListAssignablePeople", reqEditors...)
 
 }
 
 // GetAssignedTodos is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetAssignedTodos(ctx context.Context, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetAssignedTodos(ctx context.Context, accountId string, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetAssignedTodosRequest(c.Server, personId, params)
+		return NewGetAssignedTodosRequest(c.Server, accountId, personId, params)
 	}, true, "GetAssignedTodos", reqEditors...)
 
 }
 
 // GetOverdueTodos is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetOverdueTodos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetOverdueTodos(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetOverdueTodosRequest(c.Server)
+		return NewGetOverdueTodosRequest(c.Server, accountId)
 	}, true, "GetOverdueTodos", reqEditors...)
 
 }
 
 // GetPersonProgress is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetPersonProgress(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetPersonProgress(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetPersonProgressRequest(c.Server, personId)
+		return NewGetPersonProgressRequest(c.Server, accountId, personId)
 	}, true, "GetPersonProgress", reqEditors...)
 
 }
 
 // Search is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) Search(ctx context.Context, params *SearchParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) Search(ctx context.Context, accountId string, params *SearchParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewSearchRequest(c.Server, params)
+		return NewSearchRequest(c.Server, accountId, params)
 	}, true, "Search", reqEditors...)
 
 }
 
 // GetSearchMetadata is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetSearchMetadata(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetSearchMetadata(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetSearchMetadataRequest(c.Server)
+		return NewGetSearchMetadataRequest(c.Server, accountId)
 	}, true, "GetSearchMetadata", reqEditors...)
 
 }
 
 // ListTemplates is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListTemplates(ctx context.Context, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListTemplates(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListTemplatesRequest(c.Server, params)
+		return NewListTemplatesRequest(c.Server, accountId, params)
 	}, true, "ListTemplates", reqEditors...)
 
 }
 
 // CreateTemplateWithBody executes the CreateTemplate operation.
 
-func (c *Client) CreateTemplateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTemplateWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateTemplateRequestWithBody(c.Server, contentType, body)
+	req, err := NewCreateTemplateRequestWithBody(c.Server, accountId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5513,9 +5513,9 @@ func (c *Client) CreateTemplateWithBody(ctx context.Context, contentType string,
 
 }
 
-func (c *Client) CreateTemplate(ctx context.Context, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTemplate(ctx context.Context, accountId string, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateTemplateRequest(c.Server, body)
+	req, err := NewCreateTemplateRequest(c.Server, accountId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5529,47 +5529,47 @@ func (c *Client) CreateTemplate(ctx context.Context, body CreateTemplateJSONRequ
 
 // DeleteTemplate is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) DeleteTemplate(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteTemplate(ctx context.Context, accountId string, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDeleteTemplateRequest(c.Server, templateId)
+		return NewDeleteTemplateRequest(c.Server, accountId, templateId)
 	}, true, "DeleteTemplate", reqEditors...)
 
 }
 
 // GetTemplate is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTemplate(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTemplate(ctx context.Context, accountId string, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetTemplateRequest(c.Server, templateId)
+		return NewGetTemplateRequest(c.Server, accountId, templateId)
 	}, true, "GetTemplate", reqEditors...)
 
 }
 
 // UpdateTemplateWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateTemplateWithBody(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTemplateWithBody(ctx context.Context, accountId string, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateTemplateRequestWithBody(c.Server, templateId, contentType, body)
+		return NewUpdateTemplateRequestWithBody(c.Server, accountId, templateId, contentType, body)
 	}, true, "UpdateTemplate", reqEditors...)
 
 }
 
-func (c *Client) UpdateTemplate(ctx context.Context, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateTemplate(ctx context.Context, accountId string, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateTemplateRequest(c.Server, templateId, body)
+		return NewUpdateTemplateRequest(c.Server, accountId, templateId, body)
 	}, true, "UpdateTemplate", reqEditors...)
 
 }
 
 // CreateProjectFromTemplateWithBody executes the CreateProjectFromTemplate operation.
 
-func (c *Client) CreateProjectFromTemplateWithBody(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateProjectFromTemplateWithBody(ctx context.Context, accountId string, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateProjectFromTemplateRequestWithBody(c.Server, templateId, contentType, body)
+	req, err := NewCreateProjectFromTemplateRequestWithBody(c.Server, accountId, templateId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5581,9 +5581,9 @@ func (c *Client) CreateProjectFromTemplateWithBody(ctx context.Context, template
 
 }
 
-func (c *Client) CreateProjectFromTemplate(ctx context.Context, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateProjectFromTemplate(ctx context.Context, accountId string, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateProjectFromTemplateRequest(c.Server, templateId, body)
+	req, err := NewCreateProjectFromTemplateRequest(c.Server, accountId, templateId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5597,24 +5597,31 @@ func (c *Client) CreateProjectFromTemplate(ctx context.Context, templateId int64
 
 // GetProjectConstruction is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProjectConstruction(ctx context.Context, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProjectConstruction(ctx context.Context, accountId string, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProjectConstructionRequest(c.Server, templateId, constructionId)
+		return NewGetProjectConstructionRequest(c.Server, accountId, templateId, constructionId)
 	}, true, "GetProjectConstruction", reqEditors...)
 
 }
 
 // NewCreateAttachmentRequestWithBody generates requests for CreateAttachment with any type of body
-func NewCreateAttachmentRequestWithBody(server string, params *CreateAttachmentParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateAttachmentRequestWithBody(server string, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/attachments.json")
+	operationPath := fmt.Sprintf("/%s/attachments.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5653,19 +5660,26 @@ func NewCreateAttachmentRequestWithBody(server string, params *CreateAttachmentP
 }
 
 // NewGetCardRequest generates requests for GetCard
-func NewGetCardRequest(server string, projectId int64, cardId int64) (*http.Request, error) {
+func NewGetCardRequest(server string, accountId string, projectId int64, cardId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "cardId", runtime.ParamLocationPath, cardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "cardId", runtime.ParamLocationPath, cardId)
 	if err != nil {
 		return nil, err
 	}
@@ -5675,7 +5689,7 @@ func NewGetCardRequest(server string, projectId int64, cardId int64) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/cards/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/cards/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5694,30 +5708,37 @@ func NewGetCardRequest(server string, projectId int64, cardId int64) (*http.Requ
 }
 
 // NewUpdateCardRequest calls the generic UpdateCard builder with application/json body
-func NewUpdateCardRequest(server string, projectId int64, cardId int64, body UpdateCardJSONRequestBody) (*http.Request, error) {
+func NewUpdateCardRequest(server string, accountId string, projectId int64, cardId int64, body UpdateCardJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateCardRequestWithBody(server, projectId, cardId, "application/json", bodyReader)
+	return NewUpdateCardRequestWithBody(server, accountId, projectId, cardId, "application/json", bodyReader)
 }
 
 // NewUpdateCardRequestWithBody generates requests for UpdateCard with any type of body
-func NewUpdateCardRequestWithBody(server string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateCardRequestWithBody(server string, accountId string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "cardId", runtime.ParamLocationPath, cardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "cardId", runtime.ParamLocationPath, cardId)
 	if err != nil {
 		return nil, err
 	}
@@ -5727,7 +5748,7 @@ func NewUpdateCardRequestWithBody(server string, projectId int64, cardId int64, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/cards/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/cards/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5748,30 +5769,37 @@ func NewUpdateCardRequestWithBody(server string, projectId int64, cardId int64, 
 }
 
 // NewMoveCardRequest calls the generic MoveCard builder with application/json body
-func NewMoveCardRequest(server string, projectId int64, cardId int64, body MoveCardJSONRequestBody) (*http.Request, error) {
+func NewMoveCardRequest(server string, accountId string, projectId int64, cardId int64, body MoveCardJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewMoveCardRequestWithBody(server, projectId, cardId, "application/json", bodyReader)
+	return NewMoveCardRequestWithBody(server, accountId, projectId, cardId, "application/json", bodyReader)
 }
 
 // NewMoveCardRequestWithBody generates requests for MoveCard with any type of body
-func NewMoveCardRequestWithBody(server string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewMoveCardRequestWithBody(server string, accountId string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "cardId", runtime.ParamLocationPath, cardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "cardId", runtime.ParamLocationPath, cardId)
 	if err != nil {
 		return nil, err
 	}
@@ -5781,7 +5809,7 @@ func NewMoveCardRequestWithBody(server string, projectId int64, cardId int64, co
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/cards/%s/moves.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/cards/%s/moves.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5802,30 +5830,37 @@ func NewMoveCardRequestWithBody(server string, projectId int64, cardId int64, co
 }
 
 // NewRepositionCardStepRequest calls the generic RepositionCardStep builder with application/json body
-func NewRepositionCardStepRequest(server string, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody) (*http.Request, error) {
+func NewRepositionCardStepRequest(server string, accountId string, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewRepositionCardStepRequestWithBody(server, projectId, cardId, "application/json", bodyReader)
+	return NewRepositionCardStepRequestWithBody(server, accountId, projectId, cardId, "application/json", bodyReader)
 }
 
 // NewRepositionCardStepRequestWithBody generates requests for RepositionCardStep with any type of body
-func NewRepositionCardStepRequestWithBody(server string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewRepositionCardStepRequestWithBody(server string, accountId string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "cardId", runtime.ParamLocationPath, cardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "cardId", runtime.ParamLocationPath, cardId)
 	if err != nil {
 		return nil, err
 	}
@@ -5835,7 +5870,7 @@ func NewRepositionCardStepRequestWithBody(server string, projectId int64, cardId
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/cards/%s/positions.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/cards/%s/positions.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5856,30 +5891,37 @@ func NewRepositionCardStepRequestWithBody(server string, projectId int64, cardId
 }
 
 // NewCreateCardStepRequest calls the generic CreateCardStep builder with application/json body
-func NewCreateCardStepRequest(server string, projectId int64, cardId int64, body CreateCardStepJSONRequestBody) (*http.Request, error) {
+func NewCreateCardStepRequest(server string, accountId string, projectId int64, cardId int64, body CreateCardStepJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateCardStepRequestWithBody(server, projectId, cardId, "application/json", bodyReader)
+	return NewCreateCardStepRequestWithBody(server, accountId, projectId, cardId, "application/json", bodyReader)
 }
 
 // NewCreateCardStepRequestWithBody generates requests for CreateCardStep with any type of body
-func NewCreateCardStepRequestWithBody(server string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateCardStepRequestWithBody(server string, accountId string, projectId int64, cardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "cardId", runtime.ParamLocationPath, cardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "cardId", runtime.ParamLocationPath, cardId)
 	if err != nil {
 		return nil, err
 	}
@@ -5889,7 +5931,7 @@ func NewCreateCardStepRequestWithBody(server string, projectId int64, cardId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/cards/%s/steps.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/cards/%s/steps.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5910,19 +5952,26 @@ func NewCreateCardStepRequestWithBody(server string, projectId int64, cardId int
 }
 
 // NewGetCardColumnRequest generates requests for GetCardColumn
-func NewGetCardColumnRequest(server string, projectId int64, columnId int64) (*http.Request, error) {
+func NewGetCardColumnRequest(server string, accountId string, projectId int64, columnId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
 	if err != nil {
 		return nil, err
 	}
@@ -5932,7 +5981,7 @@ func NewGetCardColumnRequest(server string, projectId int64, columnId int64) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/columns/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/columns/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5951,30 +6000,37 @@ func NewGetCardColumnRequest(server string, projectId int64, columnId int64) (*h
 }
 
 // NewUpdateCardColumnRequest calls the generic UpdateCardColumn builder with application/json body
-func NewUpdateCardColumnRequest(server string, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody) (*http.Request, error) {
+func NewUpdateCardColumnRequest(server string, accountId string, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateCardColumnRequestWithBody(server, projectId, columnId, "application/json", bodyReader)
+	return NewUpdateCardColumnRequestWithBody(server, accountId, projectId, columnId, "application/json", bodyReader)
 }
 
 // NewUpdateCardColumnRequestWithBody generates requests for UpdateCardColumn with any type of body
-func NewUpdateCardColumnRequestWithBody(server string, projectId int64, columnId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateCardColumnRequestWithBody(server string, accountId string, projectId int64, columnId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
 	if err != nil {
 		return nil, err
 	}
@@ -5984,7 +6040,7 @@ func NewUpdateCardColumnRequestWithBody(server string, projectId int64, columnId
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/columns/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/columns/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6005,30 +6061,37 @@ func NewUpdateCardColumnRequestWithBody(server string, projectId int64, columnId
 }
 
 // NewSetCardColumnColorRequest calls the generic SetCardColumnColor builder with application/json body
-func NewSetCardColumnColorRequest(server string, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody) (*http.Request, error) {
+func NewSetCardColumnColorRequest(server string, accountId string, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSetCardColumnColorRequestWithBody(server, projectId, columnId, "application/json", bodyReader)
+	return NewSetCardColumnColorRequestWithBody(server, accountId, projectId, columnId, "application/json", bodyReader)
 }
 
 // NewSetCardColumnColorRequestWithBody generates requests for SetCardColumnColor with any type of body
-func NewSetCardColumnColorRequestWithBody(server string, projectId int64, columnId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewSetCardColumnColorRequestWithBody(server string, accountId string, projectId int64, columnId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
 	if err != nil {
 		return nil, err
 	}
@@ -6038,7 +6101,7 @@ func NewSetCardColumnColorRequestWithBody(server string, projectId int64, column
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/columns/%s/color.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/columns/%s/color.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6059,19 +6122,26 @@ func NewSetCardColumnColorRequestWithBody(server string, projectId int64, column
 }
 
 // NewDisableCardColumnOnHoldRequest generates requests for DisableCardColumnOnHold
-func NewDisableCardColumnOnHoldRequest(server string, projectId int64, columnId int64) (*http.Request, error) {
+func NewDisableCardColumnOnHoldRequest(server string, accountId string, projectId int64, columnId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
 	if err != nil {
 		return nil, err
 	}
@@ -6081,7 +6151,7 @@ func NewDisableCardColumnOnHoldRequest(server string, projectId int64, columnId 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/columns/%s/on_hold.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/columns/%s/on_hold.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6100,19 +6170,26 @@ func NewDisableCardColumnOnHoldRequest(server string, projectId int64, columnId 
 }
 
 // NewEnableCardColumnOnHoldRequest generates requests for EnableCardColumnOnHold
-func NewEnableCardColumnOnHoldRequest(server string, projectId int64, columnId int64) (*http.Request, error) {
+func NewEnableCardColumnOnHoldRequest(server string, accountId string, projectId int64, columnId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
 	if err != nil {
 		return nil, err
 	}
@@ -6122,7 +6199,7 @@ func NewEnableCardColumnOnHoldRequest(server string, projectId int64, columnId i
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/columns/%s/on_hold.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/columns/%s/on_hold.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6141,19 +6218,26 @@ func NewEnableCardColumnOnHoldRequest(server string, projectId int64, columnId i
 }
 
 // NewListCardsRequest generates requests for ListCards
-func NewListCardsRequest(server string, projectId int64, columnId int64) (*http.Request, error) {
+func NewListCardsRequest(server string, accountId string, projectId int64, columnId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
 	if err != nil {
 		return nil, err
 	}
@@ -6163,7 +6247,7 @@ func NewListCardsRequest(server string, projectId int64, columnId int64) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/lists/%s/cards.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/lists/%s/cards.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6182,30 +6266,37 @@ func NewListCardsRequest(server string, projectId int64, columnId int64) (*http.
 }
 
 // NewCreateCardRequest calls the generic CreateCard builder with application/json body
-func NewCreateCardRequest(server string, projectId int64, columnId int64, body CreateCardJSONRequestBody) (*http.Request, error) {
+func NewCreateCardRequest(server string, accountId string, projectId int64, columnId int64, body CreateCardJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateCardRequestWithBody(server, projectId, columnId, "application/json", bodyReader)
+	return NewCreateCardRequestWithBody(server, accountId, projectId, columnId, "application/json", bodyReader)
 }
 
 // NewCreateCardRequestWithBody generates requests for CreateCard with any type of body
-func NewCreateCardRequestWithBody(server string, projectId int64, columnId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateCardRequestWithBody(server string, accountId string, projectId int64, columnId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
 	if err != nil {
 		return nil, err
 	}
@@ -6215,7 +6306,7 @@ func NewCreateCardRequestWithBody(server string, projectId int64, columnId int64
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/lists/%s/cards.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/lists/%s/cards.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6236,30 +6327,37 @@ func NewCreateCardRequestWithBody(server string, projectId int64, columnId int64
 }
 
 // NewUpdateCardStepRequest calls the generic UpdateCardStep builder with application/json body
-func NewUpdateCardStepRequest(server string, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody) (*http.Request, error) {
+func NewUpdateCardStepRequest(server string, accountId string, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateCardStepRequestWithBody(server, projectId, stepId, "application/json", bodyReader)
+	return NewUpdateCardStepRequestWithBody(server, accountId, projectId, stepId, "application/json", bodyReader)
 }
 
 // NewUpdateCardStepRequestWithBody generates requests for UpdateCardStep with any type of body
-func NewUpdateCardStepRequestWithBody(server string, projectId int64, stepId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateCardStepRequestWithBody(server string, accountId string, projectId int64, stepId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "stepId", runtime.ParamLocationPath, stepId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "stepId", runtime.ParamLocationPath, stepId)
 	if err != nil {
 		return nil, err
 	}
@@ -6269,7 +6367,7 @@ func NewUpdateCardStepRequestWithBody(server string, projectId int64, stepId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/steps/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/steps/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6290,19 +6388,26 @@ func NewUpdateCardStepRequestWithBody(server string, projectId int64, stepId int
 }
 
 // NewUncompleteCardStepRequest generates requests for UncompleteCardStep
-func NewUncompleteCardStepRequest(server string, projectId int64, stepId int64) (*http.Request, error) {
+func NewUncompleteCardStepRequest(server string, accountId string, projectId int64, stepId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "stepId", runtime.ParamLocationPath, stepId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "stepId", runtime.ParamLocationPath, stepId)
 	if err != nil {
 		return nil, err
 	}
@@ -6312,7 +6417,7 @@ func NewUncompleteCardStepRequest(server string, projectId int64, stepId int64) 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/steps/%s/completions.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/steps/%s/completions.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6331,19 +6436,26 @@ func NewUncompleteCardStepRequest(server string, projectId int64, stepId int64) 
 }
 
 // NewCompleteCardStepRequest generates requests for CompleteCardStep
-func NewCompleteCardStepRequest(server string, projectId int64, stepId int64) (*http.Request, error) {
+func NewCompleteCardStepRequest(server string, accountId string, projectId int64, stepId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "stepId", runtime.ParamLocationPath, stepId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "stepId", runtime.ParamLocationPath, stepId)
 	if err != nil {
 		return nil, err
 	}
@@ -6353,7 +6465,7 @@ func NewCompleteCardStepRequest(server string, projectId int64, stepId int64) (*
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/steps/%s/completions.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/steps/%s/completions.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6372,19 +6484,26 @@ func NewCompleteCardStepRequest(server string, projectId int64, stepId int64) (*
 }
 
 // NewGetCardTableRequest generates requests for GetCardTable
-func NewGetCardTableRequest(server string, projectId int64, cardTableId int64) (*http.Request, error) {
+func NewGetCardTableRequest(server string, accountId string, projectId int64, cardTableId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "cardTableId", runtime.ParamLocationPath, cardTableId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "cardTableId", runtime.ParamLocationPath, cardTableId)
 	if err != nil {
 		return nil, err
 	}
@@ -6394,7 +6513,7 @@ func NewGetCardTableRequest(server string, projectId int64, cardTableId int64) (
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6413,30 +6532,37 @@ func NewGetCardTableRequest(server string, projectId int64, cardTableId int64) (
 }
 
 // NewCreateCardColumnRequest calls the generic CreateCardColumn builder with application/json body
-func NewCreateCardColumnRequest(server string, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody) (*http.Request, error) {
+func NewCreateCardColumnRequest(server string, accountId string, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateCardColumnRequestWithBody(server, projectId, cardTableId, "application/json", bodyReader)
+	return NewCreateCardColumnRequestWithBody(server, accountId, projectId, cardTableId, "application/json", bodyReader)
 }
 
 // NewCreateCardColumnRequestWithBody generates requests for CreateCardColumn with any type of body
-func NewCreateCardColumnRequestWithBody(server string, projectId int64, cardTableId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateCardColumnRequestWithBody(server string, accountId string, projectId int64, cardTableId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "cardTableId", runtime.ParamLocationPath, cardTableId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "cardTableId", runtime.ParamLocationPath, cardTableId)
 	if err != nil {
 		return nil, err
 	}
@@ -6446,7 +6572,7 @@ func NewCreateCardColumnRequestWithBody(server string, projectId int64, cardTabl
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/%s/columns.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/%s/columns.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6467,30 +6593,37 @@ func NewCreateCardColumnRequestWithBody(server string, projectId int64, cardTabl
 }
 
 // NewMoveCardColumnRequest calls the generic MoveCardColumn builder with application/json body
-func NewMoveCardColumnRequest(server string, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody) (*http.Request, error) {
+func NewMoveCardColumnRequest(server string, accountId string, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewMoveCardColumnRequestWithBody(server, projectId, cardTableId, "application/json", bodyReader)
+	return NewMoveCardColumnRequestWithBody(server, accountId, projectId, cardTableId, "application/json", bodyReader)
 }
 
 // NewMoveCardColumnRequestWithBody generates requests for MoveCardColumn with any type of body
-func NewMoveCardColumnRequestWithBody(server string, projectId int64, cardTableId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewMoveCardColumnRequestWithBody(server string, accountId string, projectId int64, cardTableId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "cardTableId", runtime.ParamLocationPath, cardTableId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "cardTableId", runtime.ParamLocationPath, cardTableId)
 	if err != nil {
 		return nil, err
 	}
@@ -6500,7 +6633,7 @@ func NewMoveCardColumnRequestWithBody(server string, projectId int64, cardTableI
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/card_tables/%s/moves.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/%s/moves.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6521,12 +6654,19 @@ func NewMoveCardColumnRequestWithBody(server string, projectId int64, cardTableI
 }
 
 // NewListMessageTypesRequest generates requests for ListMessageTypes
-func NewListMessageTypesRequest(server string, projectId int64) (*http.Request, error) {
+func NewListMessageTypesRequest(server string, accountId string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -6536,7 +6676,7 @@ func NewListMessageTypesRequest(server string, projectId int64) (*http.Request, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/categories.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/categories.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6555,23 +6695,30 @@ func NewListMessageTypesRequest(server string, projectId int64) (*http.Request, 
 }
 
 // NewCreateMessageTypeRequest calls the generic CreateMessageType builder with application/json body
-func NewCreateMessageTypeRequest(server string, projectId int64, body CreateMessageTypeJSONRequestBody) (*http.Request, error) {
+func NewCreateMessageTypeRequest(server string, accountId string, projectId int64, body CreateMessageTypeJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateMessageTypeRequestWithBody(server, projectId, "application/json", bodyReader)
+	return NewCreateMessageTypeRequestWithBody(server, accountId, projectId, "application/json", bodyReader)
 }
 
 // NewCreateMessageTypeRequestWithBody generates requests for CreateMessageType with any type of body
-func NewCreateMessageTypeRequestWithBody(server string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateMessageTypeRequestWithBody(server string, accountId string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -6581,7 +6728,7 @@ func NewCreateMessageTypeRequestWithBody(server string, projectId int64, content
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/categories.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/categories.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6602,19 +6749,26 @@ func NewCreateMessageTypeRequestWithBody(server string, projectId int64, content
 }
 
 // NewDeleteMessageTypeRequest generates requests for DeleteMessageType
-func NewDeleteMessageTypeRequest(server string, projectId int64, typeId int64) (*http.Request, error) {
+func NewDeleteMessageTypeRequest(server string, accountId string, projectId int64, typeId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
 	if err != nil {
 		return nil, err
 	}
@@ -6624,7 +6778,7 @@ func NewDeleteMessageTypeRequest(server string, projectId int64, typeId int64) (
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/categories/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/categories/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6643,19 +6797,26 @@ func NewDeleteMessageTypeRequest(server string, projectId int64, typeId int64) (
 }
 
 // NewGetMessageTypeRequest generates requests for GetMessageType
-func NewGetMessageTypeRequest(server string, projectId int64, typeId int64) (*http.Request, error) {
+func NewGetMessageTypeRequest(server string, accountId string, projectId int64, typeId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
 	if err != nil {
 		return nil, err
 	}
@@ -6665,7 +6826,7 @@ func NewGetMessageTypeRequest(server string, projectId int64, typeId int64) (*ht
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/categories/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/categories/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6684,30 +6845,37 @@ func NewGetMessageTypeRequest(server string, projectId int64, typeId int64) (*ht
 }
 
 // NewUpdateMessageTypeRequest calls the generic UpdateMessageType builder with application/json body
-func NewUpdateMessageTypeRequest(server string, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody) (*http.Request, error) {
+func NewUpdateMessageTypeRequest(server string, accountId string, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateMessageTypeRequestWithBody(server, projectId, typeId, "application/json", bodyReader)
+	return NewUpdateMessageTypeRequestWithBody(server, accountId, projectId, typeId, "application/json", bodyReader)
 }
 
 // NewUpdateMessageTypeRequestWithBody generates requests for UpdateMessageType with any type of body
-func NewUpdateMessageTypeRequestWithBody(server string, projectId int64, typeId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateMessageTypeRequestWithBody(server string, accountId string, projectId int64, typeId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
 	if err != nil {
 		return nil, err
 	}
@@ -6717,7 +6885,7 @@ func NewUpdateMessageTypeRequestWithBody(server string, projectId int64, typeId 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/categories/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/categories/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6738,19 +6906,26 @@ func NewUpdateMessageTypeRequestWithBody(server string, projectId int64, typeId 
 }
 
 // NewGetCampfireRequest generates requests for GetCampfire
-func NewGetCampfireRequest(server string, projectId int64, campfireId int64) (*http.Request, error) {
+func NewGetCampfireRequest(server string, accountId string, projectId int64, campfireId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
 	if err != nil {
 		return nil, err
 	}
@@ -6760,7 +6935,7 @@ func NewGetCampfireRequest(server string, projectId int64, campfireId int64) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/chats/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6779,19 +6954,26 @@ func NewGetCampfireRequest(server string, projectId int64, campfireId int64) (*h
 }
 
 // NewListChatbotsRequest generates requests for ListChatbots
-func NewListChatbotsRequest(server string, projectId int64, campfireId int64) (*http.Request, error) {
+func NewListChatbotsRequest(server string, accountId string, projectId int64, campfireId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
 	if err != nil {
 		return nil, err
 	}
@@ -6801,7 +6983,7 @@ func NewListChatbotsRequest(server string, projectId int64, campfireId int64) (*
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/chats/%s/integrations.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/integrations.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6820,30 +7002,37 @@ func NewListChatbotsRequest(server string, projectId int64, campfireId int64) (*
 }
 
 // NewCreateChatbotRequest calls the generic CreateChatbot builder with application/json body
-func NewCreateChatbotRequest(server string, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody) (*http.Request, error) {
+func NewCreateChatbotRequest(server string, accountId string, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateChatbotRequestWithBody(server, projectId, campfireId, "application/json", bodyReader)
+	return NewCreateChatbotRequestWithBody(server, accountId, projectId, campfireId, "application/json", bodyReader)
 }
 
 // NewCreateChatbotRequestWithBody generates requests for CreateChatbot with any type of body
-func NewCreateChatbotRequestWithBody(server string, projectId int64, campfireId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateChatbotRequestWithBody(server string, accountId string, projectId int64, campfireId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
 	if err != nil {
 		return nil, err
 	}
@@ -6853,7 +7042,7 @@ func NewCreateChatbotRequestWithBody(server string, projectId int64, campfireId 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/chats/%s/integrations.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/integrations.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6874,26 +7063,33 @@ func NewCreateChatbotRequestWithBody(server string, projectId int64, campfireId 
 }
 
 // NewDeleteChatbotRequest generates requests for DeleteChatbot
-func NewDeleteChatbotRequest(server string, projectId int64, campfireId int64, chatbotId int64) (*http.Request, error) {
+func NewDeleteChatbotRequest(server string, accountId string, projectId int64, campfireId int64, chatbotId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam2 string
 
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
 	if err != nil {
 		return nil, err
 	}
@@ -6903,7 +7099,7 @@ func NewDeleteChatbotRequest(server string, projectId int64, campfireId int64, c
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6922,26 +7118,33 @@ func NewDeleteChatbotRequest(server string, projectId int64, campfireId int64, c
 }
 
 // NewGetChatbotRequest generates requests for GetChatbot
-func NewGetChatbotRequest(server string, projectId int64, campfireId int64, chatbotId int64) (*http.Request, error) {
+func NewGetChatbotRequest(server string, accountId string, projectId int64, campfireId int64, chatbotId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam2 string
 
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
 	if err != nil {
 		return nil, err
 	}
@@ -6951,7 +7154,7 @@ func NewGetChatbotRequest(server string, projectId int64, campfireId int64, chat
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6970,37 +7173,44 @@ func NewGetChatbotRequest(server string, projectId int64, campfireId int64, chat
 }
 
 // NewUpdateChatbotRequest calls the generic UpdateChatbot builder with application/json body
-func NewUpdateChatbotRequest(server string, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody) (*http.Request, error) {
+func NewUpdateChatbotRequest(server string, accountId string, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateChatbotRequestWithBody(server, projectId, campfireId, chatbotId, "application/json", bodyReader)
+	return NewUpdateChatbotRequestWithBody(server, accountId, projectId, campfireId, chatbotId, "application/json", bodyReader)
 }
 
 // NewUpdateChatbotRequestWithBody generates requests for UpdateChatbot with any type of body
-func NewUpdateChatbotRequestWithBody(server string, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateChatbotRequestWithBody(server string, accountId string, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam2 string
 
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
 	if err != nil {
 		return nil, err
 	}
@@ -7010,7 +7220,7 @@ func NewUpdateChatbotRequestWithBody(server string, projectId int64, campfireId 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7031,19 +7241,26 @@ func NewUpdateChatbotRequestWithBody(server string, projectId int64, campfireId 
 }
 
 // NewListCampfireLinesRequest generates requests for ListCampfireLines
-func NewListCampfireLinesRequest(server string, projectId int64, campfireId int64) (*http.Request, error) {
+func NewListCampfireLinesRequest(server string, accountId string, projectId int64, campfireId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
 	if err != nil {
 		return nil, err
 	}
@@ -7053,7 +7270,7 @@ func NewListCampfireLinesRequest(server string, projectId int64, campfireId int6
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/chats/%s/lines.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/lines.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7072,30 +7289,37 @@ func NewListCampfireLinesRequest(server string, projectId int64, campfireId int6
 }
 
 // NewCreateCampfireLineRequest calls the generic CreateCampfireLine builder with application/json body
-func NewCreateCampfireLineRequest(server string, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody) (*http.Request, error) {
+func NewCreateCampfireLineRequest(server string, accountId string, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateCampfireLineRequestWithBody(server, projectId, campfireId, "application/json", bodyReader)
+	return NewCreateCampfireLineRequestWithBody(server, accountId, projectId, campfireId, "application/json", bodyReader)
 }
 
 // NewCreateCampfireLineRequestWithBody generates requests for CreateCampfireLine with any type of body
-func NewCreateCampfireLineRequestWithBody(server string, projectId int64, campfireId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateCampfireLineRequestWithBody(server string, accountId string, projectId int64, campfireId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
 	if err != nil {
 		return nil, err
 	}
@@ -7105,7 +7329,7 @@ func NewCreateCampfireLineRequestWithBody(server string, projectId int64, campfi
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/chats/%s/lines.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/lines.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7126,26 +7350,33 @@ func NewCreateCampfireLineRequestWithBody(server string, projectId int64, campfi
 }
 
 // NewDeleteCampfireLineRequest generates requests for DeleteCampfireLine
-func NewDeleteCampfireLineRequest(server string, projectId int64, campfireId int64, lineId int64) (*http.Request, error) {
+func NewDeleteCampfireLineRequest(server string, accountId string, projectId int64, campfireId int64, lineId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam2 string
 
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "lineId", runtime.ParamLocationPath, lineId)
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "lineId", runtime.ParamLocationPath, lineId)
 	if err != nil {
 		return nil, err
 	}
@@ -7155,7 +7386,7 @@ func NewDeleteCampfireLineRequest(server string, projectId int64, campfireId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/chats/%s/lines/%s", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/lines/%s", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7174,26 +7405,33 @@ func NewDeleteCampfireLineRequest(server string, projectId int64, campfireId int
 }
 
 // NewGetCampfireLineRequest generates requests for GetCampfireLine
-func NewGetCampfireLineRequest(server string, projectId int64, campfireId int64, lineId int64) (*http.Request, error) {
+func NewGetCampfireLineRequest(server string, accountId string, projectId int64, campfireId int64, lineId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam2 string
 
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "lineId", runtime.ParamLocationPath, lineId)
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "lineId", runtime.ParamLocationPath, lineId)
 	if err != nil {
 		return nil, err
 	}
@@ -7203,7 +7441,7 @@ func NewGetCampfireLineRequest(server string, projectId int64, campfireId int64,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/chats/%s/lines/%s", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/lines/%s", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7222,12 +7460,19 @@ func NewGetCampfireLineRequest(server string, projectId int64, campfireId int64,
 }
 
 // NewListClientApprovalsRequest generates requests for ListClientApprovals
-func NewListClientApprovalsRequest(server string, projectId int64) (*http.Request, error) {
+func NewListClientApprovalsRequest(server string, accountId string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -7237,7 +7482,7 @@ func NewListClientApprovalsRequest(server string, projectId int64) (*http.Reques
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/client/approvals.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/client/approvals.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7256,19 +7501,26 @@ func NewListClientApprovalsRequest(server string, projectId int64) (*http.Reques
 }
 
 // NewGetClientApprovalRequest generates requests for GetClientApproval
-func NewGetClientApprovalRequest(server string, projectId int64, approvalId int64) (*http.Request, error) {
+func NewGetClientApprovalRequest(server string, accountId string, projectId int64, approvalId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "approvalId", runtime.ParamLocationPath, approvalId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "approvalId", runtime.ParamLocationPath, approvalId)
 	if err != nil {
 		return nil, err
 	}
@@ -7278,7 +7530,7 @@ func NewGetClientApprovalRequest(server string, projectId int64, approvalId int6
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/client/approvals/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/client/approvals/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7297,12 +7549,19 @@ func NewGetClientApprovalRequest(server string, projectId int64, approvalId int6
 }
 
 // NewListClientCorrespondencesRequest generates requests for ListClientCorrespondences
-func NewListClientCorrespondencesRequest(server string, projectId int64) (*http.Request, error) {
+func NewListClientCorrespondencesRequest(server string, accountId string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -7312,7 +7571,7 @@ func NewListClientCorrespondencesRequest(server string, projectId int64) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/client/correspondences.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/client/correspondences.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7331,19 +7590,26 @@ func NewListClientCorrespondencesRequest(server string, projectId int64) (*http.
 }
 
 // NewGetClientCorrespondenceRequest generates requests for GetClientCorrespondence
-func NewGetClientCorrespondenceRequest(server string, projectId int64, correspondenceId int64) (*http.Request, error) {
+func NewGetClientCorrespondenceRequest(server string, accountId string, projectId int64, correspondenceId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "correspondenceId", runtime.ParamLocationPath, correspondenceId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "correspondenceId", runtime.ParamLocationPath, correspondenceId)
 	if err != nil {
 		return nil, err
 	}
@@ -7353,7 +7619,7 @@ func NewGetClientCorrespondenceRequest(server string, projectId int64, correspon
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/client/correspondences/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/client/correspondences/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7372,19 +7638,26 @@ func NewGetClientCorrespondenceRequest(server string, projectId int64, correspon
 }
 
 // NewListClientRepliesRequest generates requests for ListClientReplies
-func NewListClientRepliesRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
+func NewListClientRepliesRequest(server string, accountId string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -7394,7 +7667,7 @@ func NewListClientRepliesRequest(server string, projectId int64, recordingId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/client/recordings/%s/replies.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/client/recordings/%s/replies.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7413,26 +7686,33 @@ func NewListClientRepliesRequest(server string, projectId int64, recordingId int
 }
 
 // NewGetClientReplyRequest generates requests for GetClientReply
-func NewGetClientReplyRequest(server string, projectId int64, recordingId int64, replyId int64) (*http.Request, error) {
+func NewGetClientReplyRequest(server string, accountId string, projectId int64, recordingId int64, replyId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam2 string
 
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "replyId", runtime.ParamLocationPath, replyId)
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "replyId", runtime.ParamLocationPath, replyId)
 	if err != nil {
 		return nil, err
 	}
@@ -7442,7 +7722,7 @@ func NewGetClientReplyRequest(server string, projectId int64, recordingId int64,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/client/recordings/%s/replies/%s", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/client/recordings/%s/replies/%s", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7461,19 +7741,26 @@ func NewGetClientReplyRequest(server string, projectId int64, recordingId int64,
 }
 
 // NewGetCommentRequest generates requests for GetComment
-func NewGetCommentRequest(server string, projectId int64, commentId int64) (*http.Request, error) {
+func NewGetCommentRequest(server string, accountId string, projectId int64, commentId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "commentId", runtime.ParamLocationPath, commentId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "commentId", runtime.ParamLocationPath, commentId)
 	if err != nil {
 		return nil, err
 	}
@@ -7483,7 +7770,7 @@ func NewGetCommentRequest(server string, projectId int64, commentId int64) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/comments/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/comments/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7502,30 +7789,37 @@ func NewGetCommentRequest(server string, projectId int64, commentId int64) (*htt
 }
 
 // NewUpdateCommentRequest calls the generic UpdateComment builder with application/json body
-func NewUpdateCommentRequest(server string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody) (*http.Request, error) {
+func NewUpdateCommentRequest(server string, accountId string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateCommentRequestWithBody(server, projectId, commentId, "application/json", bodyReader)
+	return NewUpdateCommentRequestWithBody(server, accountId, projectId, commentId, "application/json", bodyReader)
 }
 
 // NewUpdateCommentRequestWithBody generates requests for UpdateComment with any type of body
-func NewUpdateCommentRequestWithBody(server string, projectId int64, commentId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateCommentRequestWithBody(server string, accountId string, projectId int64, commentId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "commentId", runtime.ParamLocationPath, commentId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "commentId", runtime.ParamLocationPath, commentId)
 	if err != nil {
 		return nil, err
 	}
@@ -7535,7 +7829,7 @@ func NewUpdateCommentRequestWithBody(server string, projectId int64, commentId i
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/comments/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/comments/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7556,19 +7850,26 @@ func NewUpdateCommentRequestWithBody(server string, projectId int64, commentId i
 }
 
 // NewCloneToolRequest generates requests for CloneTool
-func NewCloneToolRequest(server string, projectId int64, sourceToolId int64) (*http.Request, error) {
+func NewCloneToolRequest(server string, accountId string, projectId int64, sourceToolId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "sourceToolId", runtime.ParamLocationPath, sourceToolId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "sourceToolId", runtime.ParamLocationPath, sourceToolId)
 	if err != nil {
 		return nil, err
 	}
@@ -7578,7 +7879,7 @@ func NewCloneToolRequest(server string, projectId int64, sourceToolId int64) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/dock/tools/%s/clone.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/clone.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7597,19 +7898,26 @@ func NewCloneToolRequest(server string, projectId int64, sourceToolId int64) (*h
 }
 
 // NewDeleteToolRequest generates requests for DeleteTool
-func NewDeleteToolRequest(server string, projectId int64, toolId int64) (*http.Request, error) {
+func NewDeleteToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
 	if err != nil {
 		return nil, err
 	}
@@ -7619,7 +7927,7 @@ func NewDeleteToolRequest(server string, projectId int64, toolId int64) (*http.R
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/dock/tools/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7638,19 +7946,26 @@ func NewDeleteToolRequest(server string, projectId int64, toolId int64) (*http.R
 }
 
 // NewGetToolRequest generates requests for GetTool
-func NewGetToolRequest(server string, projectId int64, toolId int64) (*http.Request, error) {
+func NewGetToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
 	if err != nil {
 		return nil, err
 	}
@@ -7660,7 +7975,7 @@ func NewGetToolRequest(server string, projectId int64, toolId int64) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/dock/tools/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7679,30 +7994,37 @@ func NewGetToolRequest(server string, projectId int64, toolId int64) (*http.Requ
 }
 
 // NewUpdateToolRequest calls the generic UpdateTool builder with application/json body
-func NewUpdateToolRequest(server string, projectId int64, toolId int64, body UpdateToolJSONRequestBody) (*http.Request, error) {
+func NewUpdateToolRequest(server string, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateToolRequestWithBody(server, projectId, toolId, "application/json", bodyReader)
+	return NewUpdateToolRequestWithBody(server, accountId, projectId, toolId, "application/json", bodyReader)
 }
 
 // NewUpdateToolRequestWithBody generates requests for UpdateTool with any type of body
-func NewUpdateToolRequestWithBody(server string, projectId int64, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateToolRequestWithBody(server string, accountId string, projectId int64, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
 	if err != nil {
 		return nil, err
 	}
@@ -7712,7 +8034,7 @@ func NewUpdateToolRequestWithBody(server string, projectId int64, toolId int64, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/dock/tools/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7733,19 +8055,26 @@ func NewUpdateToolRequestWithBody(server string, projectId int64, toolId int64, 
 }
 
 // NewDisableToolRequest generates requests for DisableTool
-func NewDisableToolRequest(server string, projectId int64, toolId int64) (*http.Request, error) {
+func NewDisableToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
 	if err != nil {
 		return nil, err
 	}
@@ -7755,7 +8084,7 @@ func NewDisableToolRequest(server string, projectId int64, toolId int64) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7774,19 +8103,26 @@ func NewDisableToolRequest(server string, projectId int64, toolId int64) (*http.
 }
 
 // NewEnableToolRequest generates requests for EnableTool
-func NewEnableToolRequest(server string, projectId int64, toolId int64) (*http.Request, error) {
+func NewEnableToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
 	if err != nil {
 		return nil, err
 	}
@@ -7796,7 +8132,7 @@ func NewEnableToolRequest(server string, projectId int64, toolId int64) (*http.R
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7815,30 +8151,37 @@ func NewEnableToolRequest(server string, projectId int64, toolId int64) (*http.R
 }
 
 // NewRepositionToolRequest calls the generic RepositionTool builder with application/json body
-func NewRepositionToolRequest(server string, projectId int64, toolId int64, body RepositionToolJSONRequestBody) (*http.Request, error) {
+func NewRepositionToolRequest(server string, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewRepositionToolRequestWithBody(server, projectId, toolId, "application/json", bodyReader)
+	return NewRepositionToolRequestWithBody(server, accountId, projectId, toolId, "application/json", bodyReader)
 }
 
 // NewRepositionToolRequestWithBody generates requests for RepositionTool with any type of body
-func NewRepositionToolRequestWithBody(server string, projectId int64, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewRepositionToolRequestWithBody(server string, accountId string, projectId int64, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
 	if err != nil {
 		return nil, err
 	}
@@ -7848,7 +8191,7 @@ func NewRepositionToolRequestWithBody(server string, projectId int64, toolId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7869,19 +8212,26 @@ func NewRepositionToolRequestWithBody(server string, projectId int64, toolId int
 }
 
 // NewGetDocumentRequest generates requests for GetDocument
-func NewGetDocumentRequest(server string, projectId int64, documentId int64) (*http.Request, error) {
+func NewGetDocumentRequest(server string, accountId string, projectId int64, documentId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "documentId", runtime.ParamLocationPath, documentId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "documentId", runtime.ParamLocationPath, documentId)
 	if err != nil {
 		return nil, err
 	}
@@ -7891,7 +8241,7 @@ func NewGetDocumentRequest(server string, projectId int64, documentId int64) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/documents/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/documents/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7910,30 +8260,37 @@ func NewGetDocumentRequest(server string, projectId int64, documentId int64) (*h
 }
 
 // NewUpdateDocumentRequest calls the generic UpdateDocument builder with application/json body
-func NewUpdateDocumentRequest(server string, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody) (*http.Request, error) {
+func NewUpdateDocumentRequest(server string, accountId string, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateDocumentRequestWithBody(server, projectId, documentId, "application/json", bodyReader)
+	return NewUpdateDocumentRequestWithBody(server, accountId, projectId, documentId, "application/json", bodyReader)
 }
 
 // NewUpdateDocumentRequestWithBody generates requests for UpdateDocument with any type of body
-func NewUpdateDocumentRequestWithBody(server string, projectId int64, documentId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateDocumentRequestWithBody(server string, accountId string, projectId int64, documentId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "documentId", runtime.ParamLocationPath, documentId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "documentId", runtime.ParamLocationPath, documentId)
 	if err != nil {
 		return nil, err
 	}
@@ -7943,7 +8300,7 @@ func NewUpdateDocumentRequestWithBody(server string, projectId int64, documentId
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/documents/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/documents/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7964,19 +8321,26 @@ func NewUpdateDocumentRequestWithBody(server string, projectId int64, documentId
 }
 
 // NewGetForwardRequest generates requests for GetForward
-func NewGetForwardRequest(server string, projectId int64, forwardId int64) (*http.Request, error) {
+func NewGetForwardRequest(server string, accountId string, projectId int64, forwardId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "forwardId", runtime.ParamLocationPath, forwardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "forwardId", runtime.ParamLocationPath, forwardId)
 	if err != nil {
 		return nil, err
 	}
@@ -7986,7 +8350,7 @@ func NewGetForwardRequest(server string, projectId int64, forwardId int64) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/inbox_forwards/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/inbox_forwards/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8005,19 +8369,26 @@ func NewGetForwardRequest(server string, projectId int64, forwardId int64) (*htt
 }
 
 // NewListForwardRepliesRequest generates requests for ListForwardReplies
-func NewListForwardRepliesRequest(server string, projectId int64, forwardId int64) (*http.Request, error) {
+func NewListForwardRepliesRequest(server string, accountId string, projectId int64, forwardId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "forwardId", runtime.ParamLocationPath, forwardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "forwardId", runtime.ParamLocationPath, forwardId)
 	if err != nil {
 		return nil, err
 	}
@@ -8027,7 +8398,7 @@ func NewListForwardRepliesRequest(server string, projectId int64, forwardId int6
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/inbox_forwards/%s/replies.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/inbox_forwards/%s/replies.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8046,30 +8417,37 @@ func NewListForwardRepliesRequest(server string, projectId int64, forwardId int6
 }
 
 // NewCreateForwardReplyRequest calls the generic CreateForwardReply builder with application/json body
-func NewCreateForwardReplyRequest(server string, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody) (*http.Request, error) {
+func NewCreateForwardReplyRequest(server string, accountId string, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateForwardReplyRequestWithBody(server, projectId, forwardId, "application/json", bodyReader)
+	return NewCreateForwardReplyRequestWithBody(server, accountId, projectId, forwardId, "application/json", bodyReader)
 }
 
 // NewCreateForwardReplyRequestWithBody generates requests for CreateForwardReply with any type of body
-func NewCreateForwardReplyRequestWithBody(server string, projectId int64, forwardId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateForwardReplyRequestWithBody(server string, accountId string, projectId int64, forwardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "forwardId", runtime.ParamLocationPath, forwardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "forwardId", runtime.ParamLocationPath, forwardId)
 	if err != nil {
 		return nil, err
 	}
@@ -8079,7 +8457,7 @@ func NewCreateForwardReplyRequestWithBody(server string, projectId int64, forwar
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/inbox_forwards/%s/replies.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/inbox_forwards/%s/replies.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8100,26 +8478,33 @@ func NewCreateForwardReplyRequestWithBody(server string, projectId int64, forwar
 }
 
 // NewGetForwardReplyRequest generates requests for GetForwardReply
-func NewGetForwardReplyRequest(server string, projectId int64, forwardId int64, replyId int64) (*http.Request, error) {
+func NewGetForwardReplyRequest(server string, accountId string, projectId int64, forwardId int64, replyId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "forwardId", runtime.ParamLocationPath, forwardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam2 string
 
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "replyId", runtime.ParamLocationPath, replyId)
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "forwardId", runtime.ParamLocationPath, forwardId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "replyId", runtime.ParamLocationPath, replyId)
 	if err != nil {
 		return nil, err
 	}
@@ -8129,7 +8514,7 @@ func NewGetForwardReplyRequest(server string, projectId int64, forwardId int64, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/inbox_forwards/%s/replies/%s", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/inbox_forwards/%s/replies/%s", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8148,19 +8533,26 @@ func NewGetForwardReplyRequest(server string, projectId int64, forwardId int64, 
 }
 
 // NewGetInboxRequest generates requests for GetInbox
-func NewGetInboxRequest(server string, projectId int64, inboxId int64) (*http.Request, error) {
+func NewGetInboxRequest(server string, accountId string, projectId int64, inboxId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "inboxId", runtime.ParamLocationPath, inboxId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "inboxId", runtime.ParamLocationPath, inboxId)
 	if err != nil {
 		return nil, err
 	}
@@ -8170,7 +8562,7 @@ func NewGetInboxRequest(server string, projectId int64, inboxId int64) (*http.Re
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/inboxes/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/inboxes/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8189,19 +8581,26 @@ func NewGetInboxRequest(server string, projectId int64, inboxId int64) (*http.Re
 }
 
 // NewListForwardsRequest generates requests for ListForwards
-func NewListForwardsRequest(server string, projectId int64, inboxId int64) (*http.Request, error) {
+func NewListForwardsRequest(server string, accountId string, projectId int64, inboxId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "inboxId", runtime.ParamLocationPath, inboxId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "inboxId", runtime.ParamLocationPath, inboxId)
 	if err != nil {
 		return nil, err
 	}
@@ -8211,7 +8610,7 @@ func NewListForwardsRequest(server string, projectId int64, inboxId int64) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/inboxes/%s/forwards.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/inboxes/%s/forwards.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8230,19 +8629,26 @@ func NewListForwardsRequest(server string, projectId int64, inboxId int64) (*htt
 }
 
 // NewGetMessageBoardRequest generates requests for GetMessageBoard
-func NewGetMessageBoardRequest(server string, projectId int64, boardId int64) (*http.Request, error) {
+func NewGetMessageBoardRequest(server string, accountId string, projectId int64, boardId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "boardId", runtime.ParamLocationPath, boardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "boardId", runtime.ParamLocationPath, boardId)
 	if err != nil {
 		return nil, err
 	}
@@ -8252,7 +8658,7 @@ func NewGetMessageBoardRequest(server string, projectId int64, boardId int64) (*
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/message_boards/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/message_boards/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8271,19 +8677,26 @@ func NewGetMessageBoardRequest(server string, projectId int64, boardId int64) (*
 }
 
 // NewListMessagesRequest generates requests for ListMessages
-func NewListMessagesRequest(server string, projectId int64, boardId int64) (*http.Request, error) {
+func NewListMessagesRequest(server string, accountId string, projectId int64, boardId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "boardId", runtime.ParamLocationPath, boardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "boardId", runtime.ParamLocationPath, boardId)
 	if err != nil {
 		return nil, err
 	}
@@ -8293,7 +8706,7 @@ func NewListMessagesRequest(server string, projectId int64, boardId int64) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/message_boards/%s/messages.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/message_boards/%s/messages.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8312,30 +8725,37 @@ func NewListMessagesRequest(server string, projectId int64, boardId int64) (*htt
 }
 
 // NewCreateMessageRequest calls the generic CreateMessage builder with application/json body
-func NewCreateMessageRequest(server string, projectId int64, boardId int64, body CreateMessageJSONRequestBody) (*http.Request, error) {
+func NewCreateMessageRequest(server string, accountId string, projectId int64, boardId int64, body CreateMessageJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateMessageRequestWithBody(server, projectId, boardId, "application/json", bodyReader)
+	return NewCreateMessageRequestWithBody(server, accountId, projectId, boardId, "application/json", bodyReader)
 }
 
 // NewCreateMessageRequestWithBody generates requests for CreateMessage with any type of body
-func NewCreateMessageRequestWithBody(server string, projectId int64, boardId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateMessageRequestWithBody(server string, accountId string, projectId int64, boardId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "boardId", runtime.ParamLocationPath, boardId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "boardId", runtime.ParamLocationPath, boardId)
 	if err != nil {
 		return nil, err
 	}
@@ -8345,7 +8765,7 @@ func NewCreateMessageRequestWithBody(server string, projectId int64, boardId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/message_boards/%s/messages.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/message_boards/%s/messages.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8366,19 +8786,26 @@ func NewCreateMessageRequestWithBody(server string, projectId int64, boardId int
 }
 
 // NewGetMessageRequest generates requests for GetMessage
-func NewGetMessageRequest(server string, projectId int64, messageId int64) (*http.Request, error) {
+func NewGetMessageRequest(server string, accountId string, projectId int64, messageId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "messageId", runtime.ParamLocationPath, messageId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "messageId", runtime.ParamLocationPath, messageId)
 	if err != nil {
 		return nil, err
 	}
@@ -8388,7 +8815,7 @@ func NewGetMessageRequest(server string, projectId int64, messageId int64) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/messages/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/messages/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8407,30 +8834,37 @@ func NewGetMessageRequest(server string, projectId int64, messageId int64) (*htt
 }
 
 // NewUpdateMessageRequest calls the generic UpdateMessage builder with application/json body
-func NewUpdateMessageRequest(server string, projectId int64, messageId int64, body UpdateMessageJSONRequestBody) (*http.Request, error) {
+func NewUpdateMessageRequest(server string, accountId string, projectId int64, messageId int64, body UpdateMessageJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateMessageRequestWithBody(server, projectId, messageId, "application/json", bodyReader)
+	return NewUpdateMessageRequestWithBody(server, accountId, projectId, messageId, "application/json", bodyReader)
 }
 
 // NewUpdateMessageRequestWithBody generates requests for UpdateMessage with any type of body
-func NewUpdateMessageRequestWithBody(server string, projectId int64, messageId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateMessageRequestWithBody(server string, accountId string, projectId int64, messageId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "messageId", runtime.ParamLocationPath, messageId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "messageId", runtime.ParamLocationPath, messageId)
 	if err != nil {
 		return nil, err
 	}
@@ -8440,7 +8874,7 @@ func NewUpdateMessageRequestWithBody(server string, projectId int64, messageId i
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/messages/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/messages/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8461,19 +8895,26 @@ func NewUpdateMessageRequestWithBody(server string, projectId int64, messageId i
 }
 
 // NewGetAnswerRequest generates requests for GetAnswer
-func NewGetAnswerRequest(server string, projectId int64, answerId int64) (*http.Request, error) {
+func NewGetAnswerRequest(server string, accountId string, projectId int64, answerId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "answerId", runtime.ParamLocationPath, answerId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "answerId", runtime.ParamLocationPath, answerId)
 	if err != nil {
 		return nil, err
 	}
@@ -8483,7 +8924,7 @@ func NewGetAnswerRequest(server string, projectId int64, answerId int64) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/question_answers/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/question_answers/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8502,30 +8943,37 @@ func NewGetAnswerRequest(server string, projectId int64, answerId int64) (*http.
 }
 
 // NewUpdateAnswerRequest calls the generic UpdateAnswer builder with application/json body
-func NewUpdateAnswerRequest(server string, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody) (*http.Request, error) {
+func NewUpdateAnswerRequest(server string, accountId string, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateAnswerRequestWithBody(server, projectId, answerId, "application/json", bodyReader)
+	return NewUpdateAnswerRequestWithBody(server, accountId, projectId, answerId, "application/json", bodyReader)
 }
 
 // NewUpdateAnswerRequestWithBody generates requests for UpdateAnswer with any type of body
-func NewUpdateAnswerRequestWithBody(server string, projectId int64, answerId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateAnswerRequestWithBody(server string, accountId string, projectId int64, answerId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "answerId", runtime.ParamLocationPath, answerId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "answerId", runtime.ParamLocationPath, answerId)
 	if err != nil {
 		return nil, err
 	}
@@ -8535,7 +8983,7 @@ func NewUpdateAnswerRequestWithBody(server string, projectId int64, answerId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/question_answers/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/question_answers/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8556,19 +9004,26 @@ func NewUpdateAnswerRequestWithBody(server string, projectId int64, answerId int
 }
 
 // NewGetQuestionnaireRequest generates requests for GetQuestionnaire
-func NewGetQuestionnaireRequest(server string, projectId int64, questionnaireId int64) (*http.Request, error) {
+func NewGetQuestionnaireRequest(server string, accountId string, projectId int64, questionnaireId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "questionnaireId", runtime.ParamLocationPath, questionnaireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionnaireId", runtime.ParamLocationPath, questionnaireId)
 	if err != nil {
 		return nil, err
 	}
@@ -8578,7 +9033,7 @@ func NewGetQuestionnaireRequest(server string, projectId int64, questionnaireId 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/questionnaires/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questionnaires/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8597,19 +9052,26 @@ func NewGetQuestionnaireRequest(server string, projectId int64, questionnaireId 
 }
 
 // NewListQuestionsRequest generates requests for ListQuestions
-func NewListQuestionsRequest(server string, projectId int64, questionnaireId int64) (*http.Request, error) {
+func NewListQuestionsRequest(server string, accountId string, projectId int64, questionnaireId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "questionnaireId", runtime.ParamLocationPath, questionnaireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionnaireId", runtime.ParamLocationPath, questionnaireId)
 	if err != nil {
 		return nil, err
 	}
@@ -8619,7 +9081,7 @@ func NewListQuestionsRequest(server string, projectId int64, questionnaireId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/questionnaires/%s/questions.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questionnaires/%s/questions.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8638,30 +9100,37 @@ func NewListQuestionsRequest(server string, projectId int64, questionnaireId int
 }
 
 // NewCreateQuestionRequest calls the generic CreateQuestion builder with application/json body
-func NewCreateQuestionRequest(server string, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody) (*http.Request, error) {
+func NewCreateQuestionRequest(server string, accountId string, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateQuestionRequestWithBody(server, projectId, questionnaireId, "application/json", bodyReader)
+	return NewCreateQuestionRequestWithBody(server, accountId, projectId, questionnaireId, "application/json", bodyReader)
 }
 
 // NewCreateQuestionRequestWithBody generates requests for CreateQuestion with any type of body
-func NewCreateQuestionRequestWithBody(server string, projectId int64, questionnaireId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateQuestionRequestWithBody(server string, accountId string, projectId int64, questionnaireId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "questionnaireId", runtime.ParamLocationPath, questionnaireId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionnaireId", runtime.ParamLocationPath, questionnaireId)
 	if err != nil {
 		return nil, err
 	}
@@ -8671,7 +9140,7 @@ func NewCreateQuestionRequestWithBody(server string, projectId int64, questionna
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/questionnaires/%s/questions.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questionnaires/%s/questions.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8692,19 +9161,26 @@ func NewCreateQuestionRequestWithBody(server string, projectId int64, questionna
 }
 
 // NewGetQuestionRequest generates requests for GetQuestion
-func NewGetQuestionRequest(server string, projectId int64, questionId int64) (*http.Request, error) {
+func NewGetQuestionRequest(server string, accountId string, projectId int64, questionId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
 	if err != nil {
 		return nil, err
 	}
@@ -8714,7 +9190,7 @@ func NewGetQuestionRequest(server string, projectId int64, questionId int64) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/questions/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8733,30 +9209,37 @@ func NewGetQuestionRequest(server string, projectId int64, questionId int64) (*h
 }
 
 // NewUpdateQuestionRequest calls the generic UpdateQuestion builder with application/json body
-func NewUpdateQuestionRequest(server string, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody) (*http.Request, error) {
+func NewUpdateQuestionRequest(server string, accountId string, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateQuestionRequestWithBody(server, projectId, questionId, "application/json", bodyReader)
+	return NewUpdateQuestionRequestWithBody(server, accountId, projectId, questionId, "application/json", bodyReader)
 }
 
 // NewUpdateQuestionRequestWithBody generates requests for UpdateQuestion with any type of body
-func NewUpdateQuestionRequestWithBody(server string, projectId int64, questionId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateQuestionRequestWithBody(server string, accountId string, projectId int64, questionId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
 	if err != nil {
 		return nil, err
 	}
@@ -8766,7 +9249,7 @@ func NewUpdateQuestionRequestWithBody(server string, projectId int64, questionId
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/questions/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8787,19 +9270,26 @@ func NewUpdateQuestionRequestWithBody(server string, projectId int64, questionId
 }
 
 // NewListAnswersRequest generates requests for ListAnswers
-func NewListAnswersRequest(server string, projectId int64, questionId int64) (*http.Request, error) {
+func NewListAnswersRequest(server string, accountId string, projectId int64, questionId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
 	if err != nil {
 		return nil, err
 	}
@@ -8809,7 +9299,7 @@ func NewListAnswersRequest(server string, projectId int64, questionId int64) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/questions/%s/answers.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/answers.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8828,30 +9318,37 @@ func NewListAnswersRequest(server string, projectId int64, questionId int64) (*h
 }
 
 // NewCreateAnswerRequest calls the generic CreateAnswer builder with application/json body
-func NewCreateAnswerRequest(server string, projectId int64, questionId int64, body CreateAnswerJSONRequestBody) (*http.Request, error) {
+func NewCreateAnswerRequest(server string, accountId string, projectId int64, questionId int64, body CreateAnswerJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateAnswerRequestWithBody(server, projectId, questionId, "application/json", bodyReader)
+	return NewCreateAnswerRequestWithBody(server, accountId, projectId, questionId, "application/json", bodyReader)
 }
 
 // NewCreateAnswerRequestWithBody generates requests for CreateAnswer with any type of body
-func NewCreateAnswerRequestWithBody(server string, projectId int64, questionId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateAnswerRequestWithBody(server string, accountId string, projectId int64, questionId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
 	if err != nil {
 		return nil, err
 	}
@@ -8861,7 +9358,7 @@ func NewCreateAnswerRequestWithBody(server string, projectId int64, questionId i
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/questions/%s/answers.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/answers.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8882,19 +9379,26 @@ func NewCreateAnswerRequestWithBody(server string, projectId int64, questionId i
 }
 
 // NewUnpinMessageRequest generates requests for UnpinMessage
-func NewUnpinMessageRequest(server string, projectId int64, messageId int64) (*http.Request, error) {
+func NewUnpinMessageRequest(server string, accountId string, projectId int64, messageId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "messageId", runtime.ParamLocationPath, messageId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "messageId", runtime.ParamLocationPath, messageId)
 	if err != nil {
 		return nil, err
 	}
@@ -8904,7 +9408,7 @@ func NewUnpinMessageRequest(server string, projectId int64, messageId int64) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/pin.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/pin.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8923,19 +9427,26 @@ func NewUnpinMessageRequest(server string, projectId int64, messageId int64) (*h
 }
 
 // NewPinMessageRequest generates requests for PinMessage
-func NewPinMessageRequest(server string, projectId int64, messageId int64) (*http.Request, error) {
+func NewPinMessageRequest(server string, accountId string, projectId int64, messageId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "messageId", runtime.ParamLocationPath, messageId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "messageId", runtime.ParamLocationPath, messageId)
 	if err != nil {
 		return nil, err
 	}
@@ -8945,7 +9456,7 @@ func NewPinMessageRequest(server string, projectId int64, messageId int64) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/pin.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/pin.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8964,19 +9475,26 @@ func NewPinMessageRequest(server string, projectId int64, messageId int64) (*htt
 }
 
 // NewGetRecordingRequest generates requests for GetRecording
-func NewGetRecordingRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
+func NewGetRecordingRequest(server string, accountId string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -8986,7 +9504,7 @@ func NewGetRecordingRequest(server string, projectId int64, recordingId int64) (
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9005,30 +9523,37 @@ func NewGetRecordingRequest(server string, projectId int64, recordingId int64) (
 }
 
 // NewSetClientVisibilityRequest calls the generic SetClientVisibility builder with application/json body
-func NewSetClientVisibilityRequest(server string, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody) (*http.Request, error) {
+func NewSetClientVisibilityRequest(server string, accountId string, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSetClientVisibilityRequestWithBody(server, projectId, recordingId, "application/json", bodyReader)
+	return NewSetClientVisibilityRequestWithBody(server, accountId, projectId, recordingId, "application/json", bodyReader)
 }
 
 // NewSetClientVisibilityRequestWithBody generates requests for SetClientVisibility with any type of body
-func NewSetClientVisibilityRequestWithBody(server string, projectId int64, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewSetClientVisibilityRequestWithBody(server string, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9038,7 +9563,7 @@ func NewSetClientVisibilityRequestWithBody(server string, projectId int64, recor
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/client_visibility.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/client_visibility.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9059,19 +9584,26 @@ func NewSetClientVisibilityRequestWithBody(server string, projectId int64, recor
 }
 
 // NewListCommentsRequest generates requests for ListComments
-func NewListCommentsRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
+func NewListCommentsRequest(server string, accountId string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9081,7 +9613,7 @@ func NewListCommentsRequest(server string, projectId int64, recordingId int64) (
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/comments.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/comments.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9100,30 +9632,37 @@ func NewListCommentsRequest(server string, projectId int64, recordingId int64) (
 }
 
 // NewCreateCommentRequest calls the generic CreateComment builder with application/json body
-func NewCreateCommentRequest(server string, projectId int64, recordingId int64, body CreateCommentJSONRequestBody) (*http.Request, error) {
+func NewCreateCommentRequest(server string, accountId string, projectId int64, recordingId int64, body CreateCommentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateCommentRequestWithBody(server, projectId, recordingId, "application/json", bodyReader)
+	return NewCreateCommentRequestWithBody(server, accountId, projectId, recordingId, "application/json", bodyReader)
 }
 
 // NewCreateCommentRequestWithBody generates requests for CreateComment with any type of body
-func NewCreateCommentRequestWithBody(server string, projectId int64, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateCommentRequestWithBody(server string, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9133,7 +9672,7 @@ func NewCreateCommentRequestWithBody(server string, projectId int64, recordingId
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/comments.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/comments.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9154,19 +9693,26 @@ func NewCreateCommentRequestWithBody(server string, projectId int64, recordingId
 }
 
 // NewListEventsRequest generates requests for ListEvents
-func NewListEventsRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
+func NewListEventsRequest(server string, accountId string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9176,7 +9722,7 @@ func NewListEventsRequest(server string, projectId int64, recordingId int64) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/events.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/events.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9195,19 +9741,26 @@ func NewListEventsRequest(server string, projectId int64, recordingId int64) (*h
 }
 
 // NewUnarchiveRecordingRequest generates requests for UnarchiveRecording
-func NewUnarchiveRecordingRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
+func NewUnarchiveRecordingRequest(server string, accountId string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9217,7 +9770,7 @@ func NewUnarchiveRecordingRequest(server string, projectId int64, recordingId in
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/status/active.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/status/active.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9236,19 +9789,26 @@ func NewUnarchiveRecordingRequest(server string, projectId int64, recordingId in
 }
 
 // NewArchiveRecordingRequest generates requests for ArchiveRecording
-func NewArchiveRecordingRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
+func NewArchiveRecordingRequest(server string, accountId string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9258,7 +9818,7 @@ func NewArchiveRecordingRequest(server string, projectId int64, recordingId int6
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/status/archived.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/status/archived.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9277,19 +9837,26 @@ func NewArchiveRecordingRequest(server string, projectId int64, recordingId int6
 }
 
 // NewTrashRecordingRequest generates requests for TrashRecording
-func NewTrashRecordingRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
+func NewTrashRecordingRequest(server string, accountId string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9299,7 +9866,7 @@ func NewTrashRecordingRequest(server string, projectId int64, recordingId int64)
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/status/trashed.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/status/trashed.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9318,19 +9885,26 @@ func NewTrashRecordingRequest(server string, projectId int64, recordingId int64)
 }
 
 // NewUnsubscribeRequest generates requests for Unsubscribe
-func NewUnsubscribeRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
+func NewUnsubscribeRequest(server string, accountId string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9340,7 +9914,7 @@ func NewUnsubscribeRequest(server string, projectId int64, recordingId int64) (*
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/subscription.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/subscription.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9359,19 +9933,26 @@ func NewUnsubscribeRequest(server string, projectId int64, recordingId int64) (*
 }
 
 // NewGetSubscriptionRequest generates requests for GetSubscription
-func NewGetSubscriptionRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
+func NewGetSubscriptionRequest(server string, accountId string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9381,7 +9962,7 @@ func NewGetSubscriptionRequest(server string, projectId int64, recordingId int64
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/subscription.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/subscription.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9400,19 +9981,26 @@ func NewGetSubscriptionRequest(server string, projectId int64, recordingId int64
 }
 
 // NewSubscribeRequest generates requests for Subscribe
-func NewSubscribeRequest(server string, projectId int64, recordingId int64) (*http.Request, error) {
+func NewSubscribeRequest(server string, accountId string, projectId int64, recordingId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9422,7 +10010,7 @@ func NewSubscribeRequest(server string, projectId int64, recordingId int64) (*ht
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/subscription.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/subscription.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9441,30 +10029,37 @@ func NewSubscribeRequest(server string, projectId int64, recordingId int64) (*ht
 }
 
 // NewUpdateSubscriptionRequest calls the generic UpdateSubscription builder with application/json body
-func NewUpdateSubscriptionRequest(server string, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody) (*http.Request, error) {
+func NewUpdateSubscriptionRequest(server string, accountId string, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateSubscriptionRequestWithBody(server, projectId, recordingId, "application/json", bodyReader)
+	return NewUpdateSubscriptionRequestWithBody(server, accountId, projectId, recordingId, "application/json", bodyReader)
 }
 
 // NewUpdateSubscriptionRequestWithBody generates requests for UpdateSubscription with any type of body
-func NewUpdateSubscriptionRequestWithBody(server string, projectId int64, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateSubscriptionRequestWithBody(server string, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9474,7 +10069,7 @@ func NewUpdateSubscriptionRequestWithBody(server string, projectId int64, record
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/subscription.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/subscription.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9495,19 +10090,26 @@ func NewUpdateSubscriptionRequestWithBody(server string, projectId int64, record
 }
 
 // NewGetRecordingTimesheetRequest generates requests for GetRecordingTimesheet
-func NewGetRecordingTimesheetRequest(server string, projectId int64, recordingId int64, params *GetRecordingTimesheetParams) (*http.Request, error) {
+func NewGetRecordingTimesheetRequest(server string, accountId string, projectId int64, recordingId int64, params *GetRecordingTimesheetParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
 	if err != nil {
 		return nil, err
 	}
@@ -9517,7 +10119,7 @@ func NewGetRecordingTimesheetRequest(server string, projectId int64, recordingId
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/recordings/%s/timesheet.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/timesheet.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9578,19 +10180,26 @@ func NewGetRecordingTimesheetRequest(server string, projectId int64, recordingId
 }
 
 // NewGetScheduleEntryRequest generates requests for GetScheduleEntry
-func NewGetScheduleEntryRequest(server string, projectId int64, entryId int64) (*http.Request, error) {
+func NewGetScheduleEntryRequest(server string, accountId string, projectId int64, entryId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "entryId", runtime.ParamLocationPath, entryId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "entryId", runtime.ParamLocationPath, entryId)
 	if err != nil {
 		return nil, err
 	}
@@ -9600,7 +10209,7 @@ func NewGetScheduleEntryRequest(server string, projectId int64, entryId int64) (
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/schedule_entries/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/schedule_entries/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9619,30 +10228,37 @@ func NewGetScheduleEntryRequest(server string, projectId int64, entryId int64) (
 }
 
 // NewUpdateScheduleEntryRequest calls the generic UpdateScheduleEntry builder with application/json body
-func NewUpdateScheduleEntryRequest(server string, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody) (*http.Request, error) {
+func NewUpdateScheduleEntryRequest(server string, accountId string, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateScheduleEntryRequestWithBody(server, projectId, entryId, "application/json", bodyReader)
+	return NewUpdateScheduleEntryRequestWithBody(server, accountId, projectId, entryId, "application/json", bodyReader)
 }
 
 // NewUpdateScheduleEntryRequestWithBody generates requests for UpdateScheduleEntry with any type of body
-func NewUpdateScheduleEntryRequestWithBody(server string, projectId int64, entryId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateScheduleEntryRequestWithBody(server string, accountId string, projectId int64, entryId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "entryId", runtime.ParamLocationPath, entryId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "entryId", runtime.ParamLocationPath, entryId)
 	if err != nil {
 		return nil, err
 	}
@@ -9652,7 +10268,7 @@ func NewUpdateScheduleEntryRequestWithBody(server string, projectId int64, entry
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/schedule_entries/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/schedule_entries/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9673,26 +10289,33 @@ func NewUpdateScheduleEntryRequestWithBody(server string, projectId int64, entry
 }
 
 // NewGetScheduleEntryOccurrenceRequest generates requests for GetScheduleEntryOccurrence
-func NewGetScheduleEntryOccurrenceRequest(server string, projectId int64, entryId int64, date string) (*http.Request, error) {
+func NewGetScheduleEntryOccurrenceRequest(server string, accountId string, projectId int64, entryId int64, date string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "entryId", runtime.ParamLocationPath, entryId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam2 string
 
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "date", runtime.ParamLocationPath, date)
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "entryId", runtime.ParamLocationPath, entryId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "date", runtime.ParamLocationPath, date)
 	if err != nil {
 		return nil, err
 	}
@@ -9702,7 +10325,7 @@ func NewGetScheduleEntryOccurrenceRequest(server string, projectId int64, entryI
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/schedule_entries/%s/occurrences/%s", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/schedule_entries/%s/occurrences/%s", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9721,19 +10344,26 @@ func NewGetScheduleEntryOccurrenceRequest(server string, projectId int64, entryI
 }
 
 // NewGetScheduleRequest generates requests for GetSchedule
-func NewGetScheduleRequest(server string, projectId int64, scheduleId int64) (*http.Request, error) {
+func NewGetScheduleRequest(server string, accountId string, projectId int64, scheduleId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "scheduleId", runtime.ParamLocationPath, scheduleId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "scheduleId", runtime.ParamLocationPath, scheduleId)
 	if err != nil {
 		return nil, err
 	}
@@ -9743,7 +10373,7 @@ func NewGetScheduleRequest(server string, projectId int64, scheduleId int64) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/schedules/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/schedules/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9762,30 +10392,37 @@ func NewGetScheduleRequest(server string, projectId int64, scheduleId int64) (*h
 }
 
 // NewUpdateScheduleSettingsRequest calls the generic UpdateScheduleSettings builder with application/json body
-func NewUpdateScheduleSettingsRequest(server string, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody) (*http.Request, error) {
+func NewUpdateScheduleSettingsRequest(server string, accountId string, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateScheduleSettingsRequestWithBody(server, projectId, scheduleId, "application/json", bodyReader)
+	return NewUpdateScheduleSettingsRequestWithBody(server, accountId, projectId, scheduleId, "application/json", bodyReader)
 }
 
 // NewUpdateScheduleSettingsRequestWithBody generates requests for UpdateScheduleSettings with any type of body
-func NewUpdateScheduleSettingsRequestWithBody(server string, projectId int64, scheduleId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateScheduleSettingsRequestWithBody(server string, accountId string, projectId int64, scheduleId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "scheduleId", runtime.ParamLocationPath, scheduleId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "scheduleId", runtime.ParamLocationPath, scheduleId)
 	if err != nil {
 		return nil, err
 	}
@@ -9795,7 +10432,7 @@ func NewUpdateScheduleSettingsRequestWithBody(server string, projectId int64, sc
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/schedules/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/schedules/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9816,19 +10453,26 @@ func NewUpdateScheduleSettingsRequestWithBody(server string, projectId int64, sc
 }
 
 // NewListScheduleEntriesRequest generates requests for ListScheduleEntries
-func NewListScheduleEntriesRequest(server string, projectId int64, scheduleId int64, params *ListScheduleEntriesParams) (*http.Request, error) {
+func NewListScheduleEntriesRequest(server string, accountId string, projectId int64, scheduleId int64, params *ListScheduleEntriesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "scheduleId", runtime.ParamLocationPath, scheduleId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "scheduleId", runtime.ParamLocationPath, scheduleId)
 	if err != nil {
 		return nil, err
 	}
@@ -9838,7 +10482,7 @@ func NewListScheduleEntriesRequest(server string, projectId int64, scheduleId in
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/schedules/%s/entries.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/schedules/%s/entries.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9875,30 +10519,37 @@ func NewListScheduleEntriesRequest(server string, projectId int64, scheduleId in
 }
 
 // NewCreateScheduleEntryRequest calls the generic CreateScheduleEntry builder with application/json body
-func NewCreateScheduleEntryRequest(server string, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody) (*http.Request, error) {
+func NewCreateScheduleEntryRequest(server string, accountId string, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateScheduleEntryRequestWithBody(server, projectId, scheduleId, "application/json", bodyReader)
+	return NewCreateScheduleEntryRequestWithBody(server, accountId, projectId, scheduleId, "application/json", bodyReader)
 }
 
 // NewCreateScheduleEntryRequestWithBody generates requests for CreateScheduleEntry with any type of body
-func NewCreateScheduleEntryRequestWithBody(server string, projectId int64, scheduleId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateScheduleEntryRequestWithBody(server string, accountId string, projectId int64, scheduleId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "scheduleId", runtime.ParamLocationPath, scheduleId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "scheduleId", runtime.ParamLocationPath, scheduleId)
 	if err != nil {
 		return nil, err
 	}
@@ -9908,7 +10559,7 @@ func NewCreateScheduleEntryRequestWithBody(server string, projectId int64, sched
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/schedules/%s/entries.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/schedules/%s/entries.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9929,12 +10580,19 @@ func NewCreateScheduleEntryRequestWithBody(server string, projectId int64, sched
 }
 
 // NewGetProjectTimelineRequest generates requests for GetProjectTimeline
-func NewGetProjectTimelineRequest(server string, projectId int64) (*http.Request, error) {
+func NewGetProjectTimelineRequest(server string, accountId string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -9944,7 +10602,7 @@ func NewGetProjectTimelineRequest(server string, projectId int64) (*http.Request
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/timeline.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/timeline.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9963,12 +10621,19 @@ func NewGetProjectTimelineRequest(server string, projectId int64) (*http.Request
 }
 
 // NewGetProjectTimesheetRequest generates requests for GetProjectTimesheet
-func NewGetProjectTimesheetRequest(server string, projectId int64, params *GetProjectTimesheetParams) (*http.Request, error) {
+func NewGetProjectTimesheetRequest(server string, accountId string, projectId int64, params *GetProjectTimesheetParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -9978,7 +10643,7 @@ func NewGetProjectTimesheetRequest(server string, projectId int64, params *GetPr
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/timesheet.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/timesheet.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10039,30 +10704,37 @@ func NewGetProjectTimesheetRequest(server string, projectId int64, params *GetPr
 }
 
 // NewRepositionTodolistGroupRequest calls the generic RepositionTodolistGroup builder with application/json body
-func NewRepositionTodolistGroupRequest(server string, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody) (*http.Request, error) {
+func NewRepositionTodolistGroupRequest(server string, accountId string, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewRepositionTodolistGroupRequestWithBody(server, projectId, groupId, "application/json", bodyReader)
+	return NewRepositionTodolistGroupRequestWithBody(server, accountId, projectId, groupId, "application/json", bodyReader)
 }
 
 // NewRepositionTodolistGroupRequestWithBody generates requests for RepositionTodolistGroup with any type of body
-func NewRepositionTodolistGroupRequestWithBody(server string, projectId int64, groupId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewRepositionTodolistGroupRequestWithBody(server string, accountId string, projectId int64, groupId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "groupId", runtime.ParamLocationPath, groupId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "groupId", runtime.ParamLocationPath, groupId)
 	if err != nil {
 		return nil, err
 	}
@@ -10072,7 +10744,7 @@ func NewRepositionTodolistGroupRequestWithBody(server string, projectId int64, g
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todolists/%s/position.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todolists/%s/position.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10093,19 +10765,26 @@ func NewRepositionTodolistGroupRequestWithBody(server string, projectId int64, g
 }
 
 // NewGetTodolistOrGroupRequest generates requests for GetTodolistOrGroup
-func NewGetTodolistOrGroupRequest(server string, projectId int64, id int64) (*http.Request, error) {
+func NewGetTodolistOrGroupRequest(server string, accountId string, projectId int64, id int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
 	if err != nil {
 		return nil, err
 	}
@@ -10115,7 +10794,7 @@ func NewGetTodolistOrGroupRequest(server string, projectId int64, id int64) (*ht
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todolists/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todolists/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10134,30 +10813,37 @@ func NewGetTodolistOrGroupRequest(server string, projectId int64, id int64) (*ht
 }
 
 // NewUpdateTodolistOrGroupRequest calls the generic UpdateTodolistOrGroup builder with application/json body
-func NewUpdateTodolistOrGroupRequest(server string, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody) (*http.Request, error) {
+func NewUpdateTodolistOrGroupRequest(server string, accountId string, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateTodolistOrGroupRequestWithBody(server, projectId, id, "application/json", bodyReader)
+	return NewUpdateTodolistOrGroupRequestWithBody(server, accountId, projectId, id, "application/json", bodyReader)
 }
 
 // NewUpdateTodolistOrGroupRequestWithBody generates requests for UpdateTodolistOrGroup with any type of body
-func NewUpdateTodolistOrGroupRequestWithBody(server string, projectId int64, id int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateTodolistOrGroupRequestWithBody(server string, accountId string, projectId int64, id int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
 	if err != nil {
 		return nil, err
 	}
@@ -10167,7 +10853,7 @@ func NewUpdateTodolistOrGroupRequestWithBody(server string, projectId int64, id 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todolists/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todolists/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10188,19 +10874,26 @@ func NewUpdateTodolistOrGroupRequestWithBody(server string, projectId int64, id 
 }
 
 // NewListTodolistGroupsRequest generates requests for ListTodolistGroups
-func NewListTodolistGroupsRequest(server string, projectId int64, todolistId int64) (*http.Request, error) {
+func NewListTodolistGroupsRequest(server string, accountId string, projectId int64, todolistId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todolistId", runtime.ParamLocationPath, todolistId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todolistId", runtime.ParamLocationPath, todolistId)
 	if err != nil {
 		return nil, err
 	}
@@ -10210,7 +10903,7 @@ func NewListTodolistGroupsRequest(server string, projectId int64, todolistId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todolists/%s/groups.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todolists/%s/groups.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10229,30 +10922,37 @@ func NewListTodolistGroupsRequest(server string, projectId int64, todolistId int
 }
 
 // NewCreateTodolistGroupRequest calls the generic CreateTodolistGroup builder with application/json body
-func NewCreateTodolistGroupRequest(server string, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody) (*http.Request, error) {
+func NewCreateTodolistGroupRequest(server string, accountId string, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateTodolistGroupRequestWithBody(server, projectId, todolistId, "application/json", bodyReader)
+	return NewCreateTodolistGroupRequestWithBody(server, accountId, projectId, todolistId, "application/json", bodyReader)
 }
 
 // NewCreateTodolistGroupRequestWithBody generates requests for CreateTodolistGroup with any type of body
-func NewCreateTodolistGroupRequestWithBody(server string, projectId int64, todolistId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTodolistGroupRequestWithBody(server string, accountId string, projectId int64, todolistId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todolistId", runtime.ParamLocationPath, todolistId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todolistId", runtime.ParamLocationPath, todolistId)
 	if err != nil {
 		return nil, err
 	}
@@ -10262,7 +10962,7 @@ func NewCreateTodolistGroupRequestWithBody(server string, projectId int64, todol
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todolists/%s/groups.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todolists/%s/groups.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10283,19 +10983,26 @@ func NewCreateTodolistGroupRequestWithBody(server string, projectId int64, todol
 }
 
 // NewListTodosRequest generates requests for ListTodos
-func NewListTodosRequest(server string, projectId int64, todolistId int64, params *ListTodosParams) (*http.Request, error) {
+func NewListTodosRequest(server string, accountId string, projectId int64, todolistId int64, params *ListTodosParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todolistId", runtime.ParamLocationPath, todolistId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todolistId", runtime.ParamLocationPath, todolistId)
 	if err != nil {
 		return nil, err
 	}
@@ -10305,7 +11012,7 @@ func NewListTodosRequest(server string, projectId int64, todolistId int64, param
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todolists/%s/todos.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todolists/%s/todos.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10354,30 +11061,37 @@ func NewListTodosRequest(server string, projectId int64, todolistId int64, param
 }
 
 // NewCreateTodoRequest calls the generic CreateTodo builder with application/json body
-func NewCreateTodoRequest(server string, projectId int64, todolistId int64, body CreateTodoJSONRequestBody) (*http.Request, error) {
+func NewCreateTodoRequest(server string, accountId string, projectId int64, todolistId int64, body CreateTodoJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateTodoRequestWithBody(server, projectId, todolistId, "application/json", bodyReader)
+	return NewCreateTodoRequestWithBody(server, accountId, projectId, todolistId, "application/json", bodyReader)
 }
 
 // NewCreateTodoRequestWithBody generates requests for CreateTodo with any type of body
-func NewCreateTodoRequestWithBody(server string, projectId int64, todolistId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTodoRequestWithBody(server string, accountId string, projectId int64, todolistId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todolistId", runtime.ParamLocationPath, todolistId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todolistId", runtime.ParamLocationPath, todolistId)
 	if err != nil {
 		return nil, err
 	}
@@ -10387,7 +11101,7 @@ func NewCreateTodoRequestWithBody(server string, projectId int64, todolistId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todolists/%s/todos.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todolists/%s/todos.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10408,19 +11122,26 @@ func NewCreateTodoRequestWithBody(server string, projectId int64, todolistId int
 }
 
 // NewTrashTodoRequest generates requests for TrashTodo
-func NewTrashTodoRequest(server string, projectId int64, todoId int64) (*http.Request, error) {
+func NewTrashTodoRequest(server string, accountId string, projectId int64, todoId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
 	if err != nil {
 		return nil, err
 	}
@@ -10430,7 +11151,7 @@ func NewTrashTodoRequest(server string, projectId int64, todoId int64) (*http.Re
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todos/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todos/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10449,19 +11170,26 @@ func NewTrashTodoRequest(server string, projectId int64, todoId int64) (*http.Re
 }
 
 // NewGetTodoRequest generates requests for GetTodo
-func NewGetTodoRequest(server string, projectId int64, todoId int64) (*http.Request, error) {
+func NewGetTodoRequest(server string, accountId string, projectId int64, todoId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
 	if err != nil {
 		return nil, err
 	}
@@ -10471,7 +11199,7 @@ func NewGetTodoRequest(server string, projectId int64, todoId int64) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todos/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todos/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10490,30 +11218,37 @@ func NewGetTodoRequest(server string, projectId int64, todoId int64) (*http.Requ
 }
 
 // NewUpdateTodoRequest calls the generic UpdateTodo builder with application/json body
-func NewUpdateTodoRequest(server string, projectId int64, todoId int64, body UpdateTodoJSONRequestBody) (*http.Request, error) {
+func NewUpdateTodoRequest(server string, accountId string, projectId int64, todoId int64, body UpdateTodoJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateTodoRequestWithBody(server, projectId, todoId, "application/json", bodyReader)
+	return NewUpdateTodoRequestWithBody(server, accountId, projectId, todoId, "application/json", bodyReader)
 }
 
 // NewUpdateTodoRequestWithBody generates requests for UpdateTodo with any type of body
-func NewUpdateTodoRequestWithBody(server string, projectId int64, todoId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateTodoRequestWithBody(server string, accountId string, projectId int64, todoId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
 	if err != nil {
 		return nil, err
 	}
@@ -10523,7 +11258,7 @@ func NewUpdateTodoRequestWithBody(server string, projectId int64, todoId int64, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todos/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todos/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10544,19 +11279,26 @@ func NewUpdateTodoRequestWithBody(server string, projectId int64, todoId int64, 
 }
 
 // NewUncompleteTodoRequest generates requests for UncompleteTodo
-func NewUncompleteTodoRequest(server string, projectId int64, todoId int64) (*http.Request, error) {
+func NewUncompleteTodoRequest(server string, accountId string, projectId int64, todoId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
 	if err != nil {
 		return nil, err
 	}
@@ -10566,7 +11308,7 @@ func NewUncompleteTodoRequest(server string, projectId int64, todoId int64) (*ht
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todos/%s/completion.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todos/%s/completion.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10585,19 +11327,26 @@ func NewUncompleteTodoRequest(server string, projectId int64, todoId int64) (*ht
 }
 
 // NewCompleteTodoRequest generates requests for CompleteTodo
-func NewCompleteTodoRequest(server string, projectId int64, todoId int64) (*http.Request, error) {
+func NewCompleteTodoRequest(server string, accountId string, projectId int64, todoId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
 	if err != nil {
 		return nil, err
 	}
@@ -10607,7 +11356,7 @@ func NewCompleteTodoRequest(server string, projectId int64, todoId int64) (*http
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todos/%s/completion.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todos/%s/completion.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10626,30 +11375,37 @@ func NewCompleteTodoRequest(server string, projectId int64, todoId int64) (*http
 }
 
 // NewRepositionTodoRequest calls the generic RepositionTodo builder with application/json body
-func NewRepositionTodoRequest(server string, projectId int64, todoId int64, body RepositionTodoJSONRequestBody) (*http.Request, error) {
+func NewRepositionTodoRequest(server string, accountId string, projectId int64, todoId int64, body RepositionTodoJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewRepositionTodoRequestWithBody(server, projectId, todoId, "application/json", bodyReader)
+	return NewRepositionTodoRequestWithBody(server, accountId, projectId, todoId, "application/json", bodyReader)
 }
 
 // NewRepositionTodoRequestWithBody generates requests for RepositionTodo with any type of body
-func NewRepositionTodoRequestWithBody(server string, projectId int64, todoId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewRepositionTodoRequestWithBody(server string, accountId string, projectId int64, todoId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
 	if err != nil {
 		return nil, err
 	}
@@ -10659,7 +11415,7 @@ func NewRepositionTodoRequestWithBody(server string, projectId int64, todoId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todos/%s/position.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todos/%s/position.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10680,19 +11436,26 @@ func NewRepositionTodoRequestWithBody(server string, projectId int64, todoId int
 }
 
 // NewGetTodosetRequest generates requests for GetTodoset
-func NewGetTodosetRequest(server string, projectId int64, todosetId int64) (*http.Request, error) {
+func NewGetTodosetRequest(server string, accountId string, projectId int64, todosetId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todosetId", runtime.ParamLocationPath, todosetId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todosetId", runtime.ParamLocationPath, todosetId)
 	if err != nil {
 		return nil, err
 	}
@@ -10702,7 +11465,7 @@ func NewGetTodosetRequest(server string, projectId int64, todosetId int64) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todosets/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todosets/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10721,19 +11484,26 @@ func NewGetTodosetRequest(server string, projectId int64, todosetId int64) (*htt
 }
 
 // NewListTodolistsRequest generates requests for ListTodolists
-func NewListTodolistsRequest(server string, projectId int64, todosetId int64, params *ListTodolistsParams) (*http.Request, error) {
+func NewListTodolistsRequest(server string, accountId string, projectId int64, todosetId int64, params *ListTodolistsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todosetId", runtime.ParamLocationPath, todosetId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todosetId", runtime.ParamLocationPath, todosetId)
 	if err != nil {
 		return nil, err
 	}
@@ -10743,7 +11513,7 @@ func NewListTodolistsRequest(server string, projectId int64, todosetId int64, pa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todosets/%s/todolists.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todosets/%s/todolists.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10780,30 +11550,37 @@ func NewListTodolistsRequest(server string, projectId int64, todosetId int64, pa
 }
 
 // NewCreateTodolistRequest calls the generic CreateTodolist builder with application/json body
-func NewCreateTodolistRequest(server string, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody) (*http.Request, error) {
+func NewCreateTodolistRequest(server string, accountId string, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateTodolistRequestWithBody(server, projectId, todosetId, "application/json", bodyReader)
+	return NewCreateTodolistRequestWithBody(server, accountId, projectId, todosetId, "application/json", bodyReader)
 }
 
 // NewCreateTodolistRequestWithBody generates requests for CreateTodolist with any type of body
-func NewCreateTodolistRequestWithBody(server string, projectId int64, todosetId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTodolistRequestWithBody(server string, accountId string, projectId int64, todosetId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todosetId", runtime.ParamLocationPath, todosetId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todosetId", runtime.ParamLocationPath, todosetId)
 	if err != nil {
 		return nil, err
 	}
@@ -10813,7 +11590,7 @@ func NewCreateTodolistRequestWithBody(server string, projectId int64, todosetId 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/todosets/%s/todolists.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todosets/%s/todolists.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10834,19 +11611,26 @@ func NewCreateTodolistRequestWithBody(server string, projectId int64, todosetId 
 }
 
 // NewGetUploadRequest generates requests for GetUpload
-func NewGetUploadRequest(server string, projectId int64, uploadId int64) (*http.Request, error) {
+func NewGetUploadRequest(server string, accountId string, projectId int64, uploadId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "uploadId", runtime.ParamLocationPath, uploadId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "uploadId", runtime.ParamLocationPath, uploadId)
 	if err != nil {
 		return nil, err
 	}
@@ -10856,7 +11640,7 @@ func NewGetUploadRequest(server string, projectId int64, uploadId int64) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/uploads/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/uploads/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10875,30 +11659,37 @@ func NewGetUploadRequest(server string, projectId int64, uploadId int64) (*http.
 }
 
 // NewUpdateUploadRequest calls the generic UpdateUpload builder with application/json body
-func NewUpdateUploadRequest(server string, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody) (*http.Request, error) {
+func NewUpdateUploadRequest(server string, accountId string, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateUploadRequestWithBody(server, projectId, uploadId, "application/json", bodyReader)
+	return NewUpdateUploadRequestWithBody(server, accountId, projectId, uploadId, "application/json", bodyReader)
 }
 
 // NewUpdateUploadRequestWithBody generates requests for UpdateUpload with any type of body
-func NewUpdateUploadRequestWithBody(server string, projectId int64, uploadId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateUploadRequestWithBody(server string, accountId string, projectId int64, uploadId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "uploadId", runtime.ParamLocationPath, uploadId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "uploadId", runtime.ParamLocationPath, uploadId)
 	if err != nil {
 		return nil, err
 	}
@@ -10908,7 +11699,7 @@ func NewUpdateUploadRequestWithBody(server string, projectId int64, uploadId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/uploads/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/uploads/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10929,19 +11720,26 @@ func NewUpdateUploadRequestWithBody(server string, projectId int64, uploadId int
 }
 
 // NewListUploadVersionsRequest generates requests for ListUploadVersions
-func NewListUploadVersionsRequest(server string, projectId int64, uploadId int64) (*http.Request, error) {
+func NewListUploadVersionsRequest(server string, accountId string, projectId int64, uploadId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "uploadId", runtime.ParamLocationPath, uploadId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "uploadId", runtime.ParamLocationPath, uploadId)
 	if err != nil {
 		return nil, err
 	}
@@ -10951,7 +11749,7 @@ func NewListUploadVersionsRequest(server string, projectId int64, uploadId int64
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/uploads/%s/versions.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/uploads/%s/versions.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10970,19 +11768,26 @@ func NewListUploadVersionsRequest(server string, projectId int64, uploadId int64
 }
 
 // NewGetVaultRequest generates requests for GetVault
-func NewGetVaultRequest(server string, projectId int64, vaultId int64) (*http.Request, error) {
+func NewGetVaultRequest(server string, accountId string, projectId int64, vaultId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
 	if err != nil {
 		return nil, err
 	}
@@ -10992,7 +11797,7 @@ func NewGetVaultRequest(server string, projectId int64, vaultId int64) (*http.Re
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/vaults/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/vaults/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11011,30 +11816,37 @@ func NewGetVaultRequest(server string, projectId int64, vaultId int64) (*http.Re
 }
 
 // NewUpdateVaultRequest calls the generic UpdateVault builder with application/json body
-func NewUpdateVaultRequest(server string, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody) (*http.Request, error) {
+func NewUpdateVaultRequest(server string, accountId string, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateVaultRequestWithBody(server, projectId, vaultId, "application/json", bodyReader)
+	return NewUpdateVaultRequestWithBody(server, accountId, projectId, vaultId, "application/json", bodyReader)
 }
 
 // NewUpdateVaultRequestWithBody generates requests for UpdateVault with any type of body
-func NewUpdateVaultRequestWithBody(server string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateVaultRequestWithBody(server string, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
 	if err != nil {
 		return nil, err
 	}
@@ -11044,7 +11856,7 @@ func NewUpdateVaultRequestWithBody(server string, projectId int64, vaultId int64
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/vaults/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/vaults/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11065,19 +11877,26 @@ func NewUpdateVaultRequestWithBody(server string, projectId int64, vaultId int64
 }
 
 // NewListDocumentsRequest generates requests for ListDocuments
-func NewListDocumentsRequest(server string, projectId int64, vaultId int64) (*http.Request, error) {
+func NewListDocumentsRequest(server string, accountId string, projectId int64, vaultId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
 	if err != nil {
 		return nil, err
 	}
@@ -11087,7 +11906,7 @@ func NewListDocumentsRequest(server string, projectId int64, vaultId int64) (*ht
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/vaults/%s/documents.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/vaults/%s/documents.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11106,30 +11925,37 @@ func NewListDocumentsRequest(server string, projectId int64, vaultId int64) (*ht
 }
 
 // NewCreateDocumentRequest calls the generic CreateDocument builder with application/json body
-func NewCreateDocumentRequest(server string, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody) (*http.Request, error) {
+func NewCreateDocumentRequest(server string, accountId string, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateDocumentRequestWithBody(server, projectId, vaultId, "application/json", bodyReader)
+	return NewCreateDocumentRequestWithBody(server, accountId, projectId, vaultId, "application/json", bodyReader)
 }
 
 // NewCreateDocumentRequestWithBody generates requests for CreateDocument with any type of body
-func NewCreateDocumentRequestWithBody(server string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateDocumentRequestWithBody(server string, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
 	if err != nil {
 		return nil, err
 	}
@@ -11139,7 +11965,7 @@ func NewCreateDocumentRequestWithBody(server string, projectId int64, vaultId in
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/vaults/%s/documents.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/vaults/%s/documents.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11160,19 +11986,26 @@ func NewCreateDocumentRequestWithBody(server string, projectId int64, vaultId in
 }
 
 // NewListUploadsRequest generates requests for ListUploads
-func NewListUploadsRequest(server string, projectId int64, vaultId int64) (*http.Request, error) {
+func NewListUploadsRequest(server string, accountId string, projectId int64, vaultId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
 	if err != nil {
 		return nil, err
 	}
@@ -11182,7 +12015,7 @@ func NewListUploadsRequest(server string, projectId int64, vaultId int64) (*http
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/vaults/%s/uploads.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/vaults/%s/uploads.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11201,30 +12034,37 @@ func NewListUploadsRequest(server string, projectId int64, vaultId int64) (*http
 }
 
 // NewCreateUploadRequest calls the generic CreateUpload builder with application/json body
-func NewCreateUploadRequest(server string, projectId int64, vaultId int64, body CreateUploadJSONRequestBody) (*http.Request, error) {
+func NewCreateUploadRequest(server string, accountId string, projectId int64, vaultId int64, body CreateUploadJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateUploadRequestWithBody(server, projectId, vaultId, "application/json", bodyReader)
+	return NewCreateUploadRequestWithBody(server, accountId, projectId, vaultId, "application/json", bodyReader)
 }
 
 // NewCreateUploadRequestWithBody generates requests for CreateUpload with any type of body
-func NewCreateUploadRequestWithBody(server string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateUploadRequestWithBody(server string, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
 	if err != nil {
 		return nil, err
 	}
@@ -11234,7 +12074,7 @@ func NewCreateUploadRequestWithBody(server string, projectId int64, vaultId int6
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/vaults/%s/uploads.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/vaults/%s/uploads.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11255,19 +12095,26 @@ func NewCreateUploadRequestWithBody(server string, projectId int64, vaultId int6
 }
 
 // NewListVaultsRequest generates requests for ListVaults
-func NewListVaultsRequest(server string, projectId int64, vaultId int64) (*http.Request, error) {
+func NewListVaultsRequest(server string, accountId string, projectId int64, vaultId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
 	if err != nil {
 		return nil, err
 	}
@@ -11277,7 +12124,7 @@ func NewListVaultsRequest(server string, projectId int64, vaultId int64) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/vaults/%s/vaults.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/vaults/%s/vaults.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11296,30 +12143,37 @@ func NewListVaultsRequest(server string, projectId int64, vaultId int64) (*http.
 }
 
 // NewCreateVaultRequest calls the generic CreateVault builder with application/json body
-func NewCreateVaultRequest(server string, projectId int64, vaultId int64, body CreateVaultJSONRequestBody) (*http.Request, error) {
+func NewCreateVaultRequest(server string, accountId string, projectId int64, vaultId int64, body CreateVaultJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateVaultRequestWithBody(server, projectId, vaultId, "application/json", bodyReader)
+	return NewCreateVaultRequestWithBody(server, accountId, projectId, vaultId, "application/json", bodyReader)
 }
 
 // NewCreateVaultRequestWithBody generates requests for CreateVault with any type of body
-func NewCreateVaultRequestWithBody(server string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateVaultRequestWithBody(server string, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
 	if err != nil {
 		return nil, err
 	}
@@ -11329,7 +12183,7 @@ func NewCreateVaultRequestWithBody(server string, projectId int64, vaultId int64
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/vaults/%s/vaults.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/vaults/%s/vaults.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11350,12 +12204,19 @@ func NewCreateVaultRequestWithBody(server string, projectId int64, vaultId int64
 }
 
 // NewListWebhooksRequest generates requests for ListWebhooks
-func NewListWebhooksRequest(server string, projectId int64) (*http.Request, error) {
+func NewListWebhooksRequest(server string, accountId string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -11365,7 +12226,7 @@ func NewListWebhooksRequest(server string, projectId int64) (*http.Request, erro
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/webhooks.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/webhooks.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11384,23 +12245,30 @@ func NewListWebhooksRequest(server string, projectId int64) (*http.Request, erro
 }
 
 // NewCreateWebhookRequest calls the generic CreateWebhook builder with application/json body
-func NewCreateWebhookRequest(server string, projectId int64, body CreateWebhookJSONRequestBody) (*http.Request, error) {
+func NewCreateWebhookRequest(server string, accountId string, projectId int64, body CreateWebhookJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateWebhookRequestWithBody(server, projectId, "application/json", bodyReader)
+	return NewCreateWebhookRequestWithBody(server, accountId, projectId, "application/json", bodyReader)
 }
 
 // NewCreateWebhookRequestWithBody generates requests for CreateWebhook with any type of body
-func NewCreateWebhookRequestWithBody(server string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateWebhookRequestWithBody(server string, accountId string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -11410,7 +12278,7 @@ func NewCreateWebhookRequestWithBody(server string, projectId int64, contentType
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/webhooks.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/webhooks.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11431,19 +12299,26 @@ func NewCreateWebhookRequestWithBody(server string, projectId int64, contentType
 }
 
 // NewDeleteWebhookRequest generates requests for DeleteWebhook
-func NewDeleteWebhookRequest(server string, projectId int64, webhookId int64) (*http.Request, error) {
+func NewDeleteWebhookRequest(server string, accountId string, projectId int64, webhookId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "webhookId", runtime.ParamLocationPath, webhookId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "webhookId", runtime.ParamLocationPath, webhookId)
 	if err != nil {
 		return nil, err
 	}
@@ -11453,7 +12328,7 @@ func NewDeleteWebhookRequest(server string, projectId int64, webhookId int64) (*
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/webhooks/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/webhooks/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11472,19 +12347,26 @@ func NewDeleteWebhookRequest(server string, projectId int64, webhookId int64) (*
 }
 
 // NewGetWebhookRequest generates requests for GetWebhook
-func NewGetWebhookRequest(server string, projectId int64, webhookId int64) (*http.Request, error) {
+func NewGetWebhookRequest(server string, accountId string, projectId int64, webhookId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "webhookId", runtime.ParamLocationPath, webhookId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "webhookId", runtime.ParamLocationPath, webhookId)
 	if err != nil {
 		return nil, err
 	}
@@ -11494,7 +12376,7 @@ func NewGetWebhookRequest(server string, projectId int64, webhookId int64) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/webhooks/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/webhooks/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11513,30 +12395,37 @@ func NewGetWebhookRequest(server string, projectId int64, webhookId int64) (*htt
 }
 
 // NewUpdateWebhookRequest calls the generic UpdateWebhook builder with application/json body
-func NewUpdateWebhookRequest(server string, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody) (*http.Request, error) {
+func NewUpdateWebhookRequest(server string, accountId string, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateWebhookRequestWithBody(server, projectId, webhookId, "application/json", bodyReader)
+	return NewUpdateWebhookRequestWithBody(server, accountId, projectId, webhookId, "application/json", bodyReader)
 }
 
 // NewUpdateWebhookRequestWithBody generates requests for UpdateWebhook with any type of body
-func NewUpdateWebhookRequestWithBody(server string, projectId int64, webhookId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateWebhookRequestWithBody(server string, accountId string, projectId int64, webhookId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "webhookId", runtime.ParamLocationPath, webhookId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "webhookId", runtime.ParamLocationPath, webhookId)
 	if err != nil {
 		return nil, err
 	}
@@ -11546,7 +12435,7 @@ func NewUpdateWebhookRequestWithBody(server string, projectId int64, webhookId i
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/webhooks/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/webhooks/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11567,15 +12456,22 @@ func NewUpdateWebhookRequestWithBody(server string, projectId int64, webhookId i
 }
 
 // NewListCampfiresRequest generates requests for ListCampfires
-func NewListCampfiresRequest(server string) (*http.Request, error) {
+func NewListCampfiresRequest(server string, accountId string) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/chats.json")
+	operationPath := fmt.Sprintf("/%s/chats.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11594,15 +12490,22 @@ func NewListCampfiresRequest(server string) (*http.Request, error) {
 }
 
 // NewListPingablePeopleRequest generates requests for ListPingablePeople
-func NewListPingablePeopleRequest(server string) (*http.Request, error) {
+func NewListPingablePeopleRequest(server string, accountId string) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/circles/people.json")
+	operationPath := fmt.Sprintf("/%s/circles/people.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11621,26 +12524,33 @@ func NewListPingablePeopleRequest(server string) (*http.Request, error) {
 }
 
 // NewCreateLineupMarkerRequest calls the generic CreateLineupMarker builder with application/json body
-func NewCreateLineupMarkerRequest(server string, body CreateLineupMarkerJSONRequestBody) (*http.Request, error) {
+func NewCreateLineupMarkerRequest(server string, accountId string, body CreateLineupMarkerJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateLineupMarkerRequestWithBody(server, "application/json", bodyReader)
+	return NewCreateLineupMarkerRequestWithBody(server, accountId, "application/json", bodyReader)
 }
 
 // NewCreateLineupMarkerRequestWithBody generates requests for CreateLineupMarker with any type of body
-func NewCreateLineupMarkerRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateLineupMarkerRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/lineup/markers.json")
+	operationPath := fmt.Sprintf("/%s/lineup/markers.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11661,12 +12571,19 @@ func NewCreateLineupMarkerRequestWithBody(server string, contentType string, bod
 }
 
 // NewDeleteLineupMarkerRequest generates requests for DeleteLineupMarker
-func NewDeleteLineupMarkerRequest(server string, markerId int64) (*http.Request, error) {
+func NewDeleteLineupMarkerRequest(server string, accountId string, markerId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "markerId", runtime.ParamLocationPath, markerId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "markerId", runtime.ParamLocationPath, markerId)
 	if err != nil {
 		return nil, err
 	}
@@ -11676,7 +12593,7 @@ func NewDeleteLineupMarkerRequest(server string, markerId int64) (*http.Request,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/lineup/markers/%s", pathParam0)
+	operationPath := fmt.Sprintf("/%s/lineup/markers/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11695,23 +12612,30 @@ func NewDeleteLineupMarkerRequest(server string, markerId int64) (*http.Request,
 }
 
 // NewUpdateLineupMarkerRequest calls the generic UpdateLineupMarker builder with application/json body
-func NewUpdateLineupMarkerRequest(server string, markerId int64, body UpdateLineupMarkerJSONRequestBody) (*http.Request, error) {
+func NewUpdateLineupMarkerRequest(server string, accountId string, markerId int64, body UpdateLineupMarkerJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateLineupMarkerRequestWithBody(server, markerId, "application/json", bodyReader)
+	return NewUpdateLineupMarkerRequestWithBody(server, accountId, markerId, "application/json", bodyReader)
 }
 
 // NewUpdateLineupMarkerRequestWithBody generates requests for UpdateLineupMarker with any type of body
-func NewUpdateLineupMarkerRequestWithBody(server string, markerId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateLineupMarkerRequestWithBody(server string, accountId string, markerId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "markerId", runtime.ParamLocationPath, markerId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "markerId", runtime.ParamLocationPath, markerId)
 	if err != nil {
 		return nil, err
 	}
@@ -11721,7 +12645,7 @@ func NewUpdateLineupMarkerRequestWithBody(server string, markerId int64, content
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/lineup/markers/%s", pathParam0)
+	operationPath := fmt.Sprintf("/%s/lineup/markers/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11742,15 +12666,22 @@ func NewUpdateLineupMarkerRequestWithBody(server string, markerId int64, content
 }
 
 // NewGetMyProfileRequest generates requests for GetMyProfile
-func NewGetMyProfileRequest(server string) (*http.Request, error) {
+func NewGetMyProfileRequest(server string, accountId string) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/my/profile.json")
+	operationPath := fmt.Sprintf("/%s/my/profile.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11769,15 +12700,22 @@ func NewGetMyProfileRequest(server string) (*http.Request, error) {
 }
 
 // NewListPeopleRequest generates requests for ListPeople
-func NewListPeopleRequest(server string) (*http.Request, error) {
+func NewListPeopleRequest(server string, accountId string) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/people.json")
+	operationPath := fmt.Sprintf("/%s/people.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11796,12 +12734,19 @@ func NewListPeopleRequest(server string) (*http.Request, error) {
 }
 
 // NewGetPersonRequest generates requests for GetPerson
-func NewGetPersonRequest(server string, personId int64) (*http.Request, error) {
+func NewGetPersonRequest(server string, accountId string, personId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "personId", runtime.ParamLocationPath, personId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "personId", runtime.ParamLocationPath, personId)
 	if err != nil {
 		return nil, err
 	}
@@ -11811,7 +12756,7 @@ func NewGetPersonRequest(server string, personId int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/people/%s", pathParam0)
+	operationPath := fmt.Sprintf("/%s/people/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11830,15 +12775,22 @@ func NewGetPersonRequest(server string, personId int64) (*http.Request, error) {
 }
 
 // NewListProjectsRequest generates requests for ListProjects
-func NewListProjectsRequest(server string, params *ListProjectsParams) (*http.Request, error) {
+func NewListProjectsRequest(server string, accountId string, params *ListProjectsParams) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects.json")
+	operationPath := fmt.Sprintf("/%s/projects.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11875,26 +12827,33 @@ func NewListProjectsRequest(server string, params *ListProjectsParams) (*http.Re
 }
 
 // NewCreateProjectRequest calls the generic CreateProject builder with application/json body
-func NewCreateProjectRequest(server string, body CreateProjectJSONRequestBody) (*http.Request, error) {
+func NewCreateProjectRequest(server string, accountId string, body CreateProjectJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateProjectRequestWithBody(server, "application/json", bodyReader)
+	return NewCreateProjectRequestWithBody(server, accountId, "application/json", bodyReader)
 }
 
 // NewCreateProjectRequestWithBody generates requests for CreateProject with any type of body
-func NewCreateProjectRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateProjectRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects.json")
+	operationPath := fmt.Sprintf("/%s/projects.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11915,15 +12874,22 @@ func NewCreateProjectRequestWithBody(server string, contentType string, body io.
 }
 
 // NewListRecordingsRequest generates requests for ListRecordings
-func NewListRecordingsRequest(server string, params *ListRecordingsParams) (*http.Request, error) {
+func NewListRecordingsRequest(server string, accountId string, params *ListRecordingsParams) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects/recordings.json")
+	operationPath := fmt.Sprintf("/%s/projects/recordings.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12008,12 +12974,19 @@ func NewListRecordingsRequest(server string, params *ListRecordingsParams) (*htt
 }
 
 // NewTrashProjectRequest generates requests for TrashProject
-func NewTrashProjectRequest(server string, projectId int64) (*http.Request, error) {
+func NewTrashProjectRequest(server string, accountId string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -12023,7 +12996,7 @@ func NewTrashProjectRequest(server string, projectId int64) (*http.Request, erro
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects/%s", pathParam0)
+	operationPath := fmt.Sprintf("/%s/projects/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12042,12 +13015,19 @@ func NewTrashProjectRequest(server string, projectId int64) (*http.Request, erro
 }
 
 // NewGetProjectRequest generates requests for GetProject
-func NewGetProjectRequest(server string, projectId int64) (*http.Request, error) {
+func NewGetProjectRequest(server string, accountId string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -12057,7 +13037,7 @@ func NewGetProjectRequest(server string, projectId int64) (*http.Request, error)
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects/%s", pathParam0)
+	operationPath := fmt.Sprintf("/%s/projects/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12076,23 +13056,30 @@ func NewGetProjectRequest(server string, projectId int64) (*http.Request, error)
 }
 
 // NewUpdateProjectRequest calls the generic UpdateProject builder with application/json body
-func NewUpdateProjectRequest(server string, projectId int64, body UpdateProjectJSONRequestBody) (*http.Request, error) {
+func NewUpdateProjectRequest(server string, accountId string, projectId int64, body UpdateProjectJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateProjectRequestWithBody(server, projectId, "application/json", bodyReader)
+	return NewUpdateProjectRequestWithBody(server, accountId, projectId, "application/json", bodyReader)
 }
 
 // NewUpdateProjectRequestWithBody generates requests for UpdateProject with any type of body
-func NewUpdateProjectRequestWithBody(server string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateProjectRequestWithBody(server string, accountId string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -12102,7 +13089,7 @@ func NewUpdateProjectRequestWithBody(server string, projectId int64, contentType
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects/%s", pathParam0)
+	operationPath := fmt.Sprintf("/%s/projects/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12123,12 +13110,19 @@ func NewUpdateProjectRequestWithBody(server string, projectId int64, contentType
 }
 
 // NewListProjectPeopleRequest generates requests for ListProjectPeople
-func NewListProjectPeopleRequest(server string, projectId int64) (*http.Request, error) {
+func NewListProjectPeopleRequest(server string, accountId string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -12138,7 +13132,7 @@ func NewListProjectPeopleRequest(server string, projectId int64) (*http.Request,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects/%s/people.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/projects/%s/people.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12157,23 +13151,30 @@ func NewListProjectPeopleRequest(server string, projectId int64) (*http.Request,
 }
 
 // NewUpdateProjectAccessRequest calls the generic UpdateProjectAccess builder with application/json body
-func NewUpdateProjectAccessRequest(server string, projectId int64, body UpdateProjectAccessJSONRequestBody) (*http.Request, error) {
+func NewUpdateProjectAccessRequest(server string, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateProjectAccessRequestWithBody(server, projectId, "application/json", bodyReader)
+	return NewUpdateProjectAccessRequestWithBody(server, accountId, projectId, "application/json", bodyReader)
 }
 
 // NewUpdateProjectAccessRequestWithBody generates requests for UpdateProjectAccess with any type of body
-func NewUpdateProjectAccessRequestWithBody(server string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateProjectAccessRequestWithBody(server string, accountId string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -12183,7 +13184,7 @@ func NewUpdateProjectAccessRequestWithBody(server string, projectId int64, conte
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/projects/%s/people/users.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/projects/%s/people/users.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12204,15 +13205,22 @@ func NewUpdateProjectAccessRequestWithBody(server string, projectId int64, conte
 }
 
 // NewGetProgressReportRequest generates requests for GetProgressReport
-func NewGetProgressReportRequest(server string) (*http.Request, error) {
+func NewGetProgressReportRequest(server string, accountId string) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/reports/progress.json")
+	operationPath := fmt.Sprintf("/%s/reports/progress.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12231,15 +13239,22 @@ func NewGetProgressReportRequest(server string) (*http.Request, error) {
 }
 
 // NewGetUpcomingScheduleRequest generates requests for GetUpcomingSchedule
-func NewGetUpcomingScheduleRequest(server string, params *GetUpcomingScheduleParams) (*http.Request, error) {
+func NewGetUpcomingScheduleRequest(server string, accountId string, params *GetUpcomingScheduleParams) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/reports/schedules/upcoming.json")
+	operationPath := fmt.Sprintf("/%s/reports/schedules/upcoming.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12288,15 +13303,22 @@ func NewGetUpcomingScheduleRequest(server string, params *GetUpcomingSchedulePar
 }
 
 // NewGetTimesheetReportRequest generates requests for GetTimesheetReport
-func NewGetTimesheetReportRequest(server string, params *GetTimesheetReportParams) (*http.Request, error) {
+func NewGetTimesheetReportRequest(server string, accountId string, params *GetTimesheetReportParams) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/reports/timesheet.json")
+	operationPath := fmt.Sprintf("/%s/reports/timesheet.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12357,15 +13379,22 @@ func NewGetTimesheetReportRequest(server string, params *GetTimesheetReportParam
 }
 
 // NewListAssignablePeopleRequest generates requests for ListAssignablePeople
-func NewListAssignablePeopleRequest(server string) (*http.Request, error) {
+func NewListAssignablePeopleRequest(server string, accountId string) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/reports/todos/assigned.json")
+	operationPath := fmt.Sprintf("/%s/reports/todos/assigned.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12384,12 +13413,19 @@ func NewListAssignablePeopleRequest(server string) (*http.Request, error) {
 }
 
 // NewGetAssignedTodosRequest generates requests for GetAssignedTodos
-func NewGetAssignedTodosRequest(server string, personId int64, params *GetAssignedTodosParams) (*http.Request, error) {
+func NewGetAssignedTodosRequest(server string, accountId string, personId int64, params *GetAssignedTodosParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "personId", runtime.ParamLocationPath, personId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "personId", runtime.ParamLocationPath, personId)
 	if err != nil {
 		return nil, err
 	}
@@ -12399,7 +13435,7 @@ func NewGetAssignedTodosRequest(server string, personId int64, params *GetAssign
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/reports/todos/assigned/%s", pathParam0)
+	operationPath := fmt.Sprintf("/%s/reports/todos/assigned/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12436,15 +13472,22 @@ func NewGetAssignedTodosRequest(server string, personId int64, params *GetAssign
 }
 
 // NewGetOverdueTodosRequest generates requests for GetOverdueTodos
-func NewGetOverdueTodosRequest(server string) (*http.Request, error) {
+func NewGetOverdueTodosRequest(server string, accountId string) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/reports/todos/overdue.json")
+	operationPath := fmt.Sprintf("/%s/reports/todos/overdue.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12463,12 +13506,19 @@ func NewGetOverdueTodosRequest(server string) (*http.Request, error) {
 }
 
 // NewGetPersonProgressRequest generates requests for GetPersonProgress
-func NewGetPersonProgressRequest(server string, personId int64) (*http.Request, error) {
+func NewGetPersonProgressRequest(server string, accountId string, personId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "personId", runtime.ParamLocationPath, personId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "personId", runtime.ParamLocationPath, personId)
 	if err != nil {
 		return nil, err
 	}
@@ -12478,7 +13528,7 @@ func NewGetPersonProgressRequest(server string, personId int64) (*http.Request, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/reports/users/progress/%s", pathParam0)
+	operationPath := fmt.Sprintf("/%s/reports/users/progress/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12497,15 +13547,22 @@ func NewGetPersonProgressRequest(server string, personId int64) (*http.Request, 
 }
 
 // NewSearchRequest generates requests for Search
-func NewSearchRequest(server string, params *SearchParams) (*http.Request, error) {
+func NewSearchRequest(server string, accountId string, params *SearchParams) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/search.json")
+	operationPath := fmt.Sprintf("/%s/search.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12554,15 +13611,22 @@ func NewSearchRequest(server string, params *SearchParams) (*http.Request, error
 }
 
 // NewGetSearchMetadataRequest generates requests for GetSearchMetadata
-func NewGetSearchMetadataRequest(server string) (*http.Request, error) {
+func NewGetSearchMetadataRequest(server string, accountId string) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/searches/metadata.json")
+	operationPath := fmt.Sprintf("/%s/searches/metadata.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12581,15 +13645,22 @@ func NewGetSearchMetadataRequest(server string) (*http.Request, error) {
 }
 
 // NewListTemplatesRequest generates requests for ListTemplates
-func NewListTemplatesRequest(server string, params *ListTemplatesParams) (*http.Request, error) {
+func NewListTemplatesRequest(server string, accountId string, params *ListTemplatesParams) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/templates.json")
+	operationPath := fmt.Sprintf("/%s/templates.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12626,26 +13697,33 @@ func NewListTemplatesRequest(server string, params *ListTemplatesParams) (*http.
 }
 
 // NewCreateTemplateRequest calls the generic CreateTemplate builder with application/json body
-func NewCreateTemplateRequest(server string, body CreateTemplateJSONRequestBody) (*http.Request, error) {
+func NewCreateTemplateRequest(server string, accountId string, body CreateTemplateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateTemplateRequestWithBody(server, "application/json", bodyReader)
+	return NewCreateTemplateRequestWithBody(server, accountId, "application/json", bodyReader)
 }
 
 // NewCreateTemplateRequestWithBody generates requests for CreateTemplate with any type of body
-func NewCreateTemplateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTemplateRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/templates.json")
+	operationPath := fmt.Sprintf("/%s/templates.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12666,12 +13744,19 @@ func NewCreateTemplateRequestWithBody(server string, contentType string, body io
 }
 
 // NewDeleteTemplateRequest generates requests for DeleteTemplate
-func NewDeleteTemplateRequest(server string, templateId int64) (*http.Request, error) {
+func NewDeleteTemplateRequest(server string, accountId string, templateId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "templateId", runtime.ParamLocationPath, templateId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "templateId", runtime.ParamLocationPath, templateId)
 	if err != nil {
 		return nil, err
 	}
@@ -12681,7 +13766,7 @@ func NewDeleteTemplateRequest(server string, templateId int64) (*http.Request, e
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/templates/%s", pathParam0)
+	operationPath := fmt.Sprintf("/%s/templates/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12700,12 +13785,19 @@ func NewDeleteTemplateRequest(server string, templateId int64) (*http.Request, e
 }
 
 // NewGetTemplateRequest generates requests for GetTemplate
-func NewGetTemplateRequest(server string, templateId int64) (*http.Request, error) {
+func NewGetTemplateRequest(server string, accountId string, templateId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "templateId", runtime.ParamLocationPath, templateId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "templateId", runtime.ParamLocationPath, templateId)
 	if err != nil {
 		return nil, err
 	}
@@ -12715,7 +13807,7 @@ func NewGetTemplateRequest(server string, templateId int64) (*http.Request, erro
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/templates/%s", pathParam0)
+	operationPath := fmt.Sprintf("/%s/templates/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12734,23 +13826,30 @@ func NewGetTemplateRequest(server string, templateId int64) (*http.Request, erro
 }
 
 // NewUpdateTemplateRequest calls the generic UpdateTemplate builder with application/json body
-func NewUpdateTemplateRequest(server string, templateId int64, body UpdateTemplateJSONRequestBody) (*http.Request, error) {
+func NewUpdateTemplateRequest(server string, accountId string, templateId int64, body UpdateTemplateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateTemplateRequestWithBody(server, templateId, "application/json", bodyReader)
+	return NewUpdateTemplateRequestWithBody(server, accountId, templateId, "application/json", bodyReader)
 }
 
 // NewUpdateTemplateRequestWithBody generates requests for UpdateTemplate with any type of body
-func NewUpdateTemplateRequestWithBody(server string, templateId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateTemplateRequestWithBody(server string, accountId string, templateId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "templateId", runtime.ParamLocationPath, templateId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "templateId", runtime.ParamLocationPath, templateId)
 	if err != nil {
 		return nil, err
 	}
@@ -12760,7 +13859,7 @@ func NewUpdateTemplateRequestWithBody(server string, templateId int64, contentTy
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/templates/%s", pathParam0)
+	operationPath := fmt.Sprintf("/%s/templates/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12781,23 +13880,30 @@ func NewUpdateTemplateRequestWithBody(server string, templateId int64, contentTy
 }
 
 // NewCreateProjectFromTemplateRequest calls the generic CreateProjectFromTemplate builder with application/json body
-func NewCreateProjectFromTemplateRequest(server string, templateId int64, body CreateProjectFromTemplateJSONRequestBody) (*http.Request, error) {
+func NewCreateProjectFromTemplateRequest(server string, accountId string, templateId int64, body CreateProjectFromTemplateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateProjectFromTemplateRequestWithBody(server, templateId, "application/json", bodyReader)
+	return NewCreateProjectFromTemplateRequestWithBody(server, accountId, templateId, "application/json", bodyReader)
 }
 
 // NewCreateProjectFromTemplateRequestWithBody generates requests for CreateProjectFromTemplate with any type of body
-func NewCreateProjectFromTemplateRequestWithBody(server string, templateId int64, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateProjectFromTemplateRequestWithBody(server string, accountId string, templateId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "templateId", runtime.ParamLocationPath, templateId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "templateId", runtime.ParamLocationPath, templateId)
 	if err != nil {
 		return nil, err
 	}
@@ -12807,7 +13913,7 @@ func NewCreateProjectFromTemplateRequestWithBody(server string, templateId int64
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/templates/%s/project_constructions.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/templates/%s/project_constructions.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12828,19 +13934,26 @@ func NewCreateProjectFromTemplateRequestWithBody(server string, templateId int64
 }
 
 // NewGetProjectConstructionRequest generates requests for GetProjectConstruction
-func NewGetProjectConstructionRequest(server string, templateId int64, constructionId int64) (*http.Request, error) {
+func NewGetProjectConstructionRequest(server string, accountId string, templateId int64, constructionId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "templateId", runtime.ParamLocationPath, templateId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "constructionId", runtime.ParamLocationPath, constructionId)
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "templateId", runtime.ParamLocationPath, templateId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "constructionId", runtime.ParamLocationPath, constructionId)
 	if err != nil {
 		return nil, err
 	}
@@ -12850,7 +13963,7 @@ func NewGetProjectConstructionRequest(server string, templateId int64, construct
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/templates/%s/project_constructions/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/templates/%s/project_constructions/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -13616,348 +14729,348 @@ func (c *Client) Campfires() *CampfiresService { return &CampfiresService{client
 
 // Generate service methods by delegating to client methods
 
-func (s *CardsService) Get(ctx context.Context, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetCard(ctx, projectId, cardId, reqEditors...)
+func (s *CardsService) Get(ctx context.Context, accountId string, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetCard(ctx, accountId, projectId, cardId, reqEditors...)
 }
 
-func (s *CardsService) UpdateWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateCardWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
+func (s *CardsService) UpdateWithBody(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateCardWithBody(ctx, accountId, projectId, cardId, contentType, body, reqEditors...)
 }
 
-func (s *CardsService) Update(ctx context.Context, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateCard(ctx, projectId, cardId, body, reqEditors...)
+func (s *CardsService) Update(ctx context.Context, accountId string, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateCard(ctx, accountId, projectId, cardId, body, reqEditors...)
 }
 
-func (s *CardsService) MoveWithBody(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.MoveCardWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
+func (s *CardsService) MoveWithBody(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.MoveCardWithBody(ctx, accountId, projectId, cardId, contentType, body, reqEditors...)
 }
 
-func (s *CardsService) Move(ctx context.Context, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.MoveCard(ctx, projectId, cardId, body, reqEditors...)
+func (s *CardsService) Move(ctx context.Context, accountId string, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.MoveCard(ctx, accountId, projectId, cardId, body, reqEditors...)
 }
 
-func (s *CardsService) List(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListCards(ctx, projectId, columnId, reqEditors...)
+func (s *CardsService) List(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListCards(ctx, accountId, projectId, columnId, reqEditors...)
 }
 
-func (s *CardsService) CreateWithBody(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateCardWithBody(ctx, projectId, columnId, contentType, body, reqEditors...)
+func (s *CardsService) CreateWithBody(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateCardWithBody(ctx, accountId, projectId, columnId, contentType, body, reqEditors...)
 }
 
-func (s *CardsService) Create(ctx context.Context, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateCard(ctx, projectId, columnId, body, reqEditors...)
+func (s *CardsService) Create(ctx context.Context, accountId string, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateCard(ctx, accountId, projectId, columnId, body, reqEditors...)
 }
 
-func (s *CampfiresService) Get(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetCampfire(ctx, projectId, campfireId, reqEditors...)
+func (s *CampfiresService) Get(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetCampfire(ctx, accountId, projectId, campfireId, reqEditors...)
 }
 
-func (s *CommentsService) Get(ctx context.Context, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetComment(ctx, projectId, commentId, reqEditors...)
+func (s *CommentsService) Get(ctx context.Context, accountId string, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetComment(ctx, accountId, projectId, commentId, reqEditors...)
 }
 
-func (s *CommentsService) UpdateWithBody(ctx context.Context, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateCommentWithBody(ctx, projectId, commentId, contentType, body, reqEditors...)
+func (s *CommentsService) UpdateWithBody(ctx context.Context, accountId string, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateCommentWithBody(ctx, accountId, projectId, commentId, contentType, body, reqEditors...)
 }
 
-func (s *CommentsService) Update(ctx context.Context, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateComment(ctx, projectId, commentId, body, reqEditors...)
+func (s *CommentsService) Update(ctx context.Context, accountId string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateComment(ctx, accountId, projectId, commentId, body, reqEditors...)
 }
 
-func (s *DocumentsService) Get(ctx context.Context, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetDocument(ctx, projectId, documentId, reqEditors...)
+func (s *DocumentsService) Get(ctx context.Context, accountId string, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetDocument(ctx, accountId, projectId, documentId, reqEditors...)
 }
 
-func (s *DocumentsService) UpdateWithBody(ctx context.Context, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateDocumentWithBody(ctx, projectId, documentId, contentType, body, reqEditors...)
+func (s *DocumentsService) UpdateWithBody(ctx context.Context, accountId string, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateDocumentWithBody(ctx, accountId, projectId, documentId, contentType, body, reqEditors...)
 }
 
-func (s *DocumentsService) Update(ctx context.Context, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateDocument(ctx, projectId, documentId, body, reqEditors...)
+func (s *DocumentsService) Update(ctx context.Context, accountId string, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateDocument(ctx, accountId, projectId, documentId, body, reqEditors...)
 }
 
-func (s *MessagesService) List(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListMessages(ctx, projectId, boardId, reqEditors...)
+func (s *MessagesService) List(ctx context.Context, accountId string, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListMessages(ctx, accountId, projectId, boardId, reqEditors...)
 }
 
-func (s *MessagesService) CreateWithBody(ctx context.Context, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateMessageWithBody(ctx, projectId, boardId, contentType, body, reqEditors...)
+func (s *MessagesService) CreateWithBody(ctx context.Context, accountId string, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateMessageWithBody(ctx, accountId, projectId, boardId, contentType, body, reqEditors...)
 }
 
-func (s *MessagesService) Create(ctx context.Context, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateMessage(ctx, projectId, boardId, body, reqEditors...)
+func (s *MessagesService) Create(ctx context.Context, accountId string, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateMessage(ctx, accountId, projectId, boardId, body, reqEditors...)
 }
 
-func (s *MessagesService) Get(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetMessage(ctx, projectId, messageId, reqEditors...)
+func (s *MessagesService) Get(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetMessage(ctx, accountId, projectId, messageId, reqEditors...)
 }
 
-func (s *MessagesService) UpdateWithBody(ctx context.Context, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateMessageWithBody(ctx, projectId, messageId, contentType, body, reqEditors...)
+func (s *MessagesService) UpdateWithBody(ctx context.Context, accountId string, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateMessageWithBody(ctx, accountId, projectId, messageId, contentType, body, reqEditors...)
 }
 
-func (s *MessagesService) Update(ctx context.Context, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateMessage(ctx, projectId, messageId, body, reqEditors...)
+func (s *MessagesService) Update(ctx context.Context, accountId string, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateMessage(ctx, accountId, projectId, messageId, body, reqEditors...)
 }
 
-func (s *RecordingsService) Get(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetRecording(ctx, projectId, recordingId, reqEditors...)
+func (s *RecordingsService) Get(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetRecording(ctx, accountId, projectId, recordingId, reqEditors...)
 }
 
-func (s *CommentsService) List(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListComments(ctx, projectId, recordingId, reqEditors...)
+func (s *CommentsService) List(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListComments(ctx, accountId, projectId, recordingId, reqEditors...)
 }
 
-func (s *CommentsService) CreateWithBody(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateCommentWithBody(ctx, projectId, recordingId, contentType, body, reqEditors...)
+func (s *CommentsService) CreateWithBody(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateCommentWithBody(ctx, accountId, projectId, recordingId, contentType, body, reqEditors...)
 }
 
-func (s *CommentsService) Create(ctx context.Context, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateComment(ctx, projectId, recordingId, body, reqEditors...)
+func (s *CommentsService) Create(ctx context.Context, accountId string, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateComment(ctx, accountId, projectId, recordingId, body, reqEditors...)
 }
 
-func (s *EventsService) List(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListEvents(ctx, projectId, recordingId, reqEditors...)
+func (s *EventsService) List(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListEvents(ctx, accountId, projectId, recordingId, reqEditors...)
 }
 
-func (s *RecordingsService) Unarchive(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UnarchiveRecording(ctx, projectId, recordingId, reqEditors...)
+func (s *RecordingsService) Unarchive(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UnarchiveRecording(ctx, accountId, projectId, recordingId, reqEditors...)
 }
 
-func (s *RecordingsService) Archive(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ArchiveRecording(ctx, projectId, recordingId, reqEditors...)
+func (s *RecordingsService) Archive(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ArchiveRecording(ctx, accountId, projectId, recordingId, reqEditors...)
 }
 
-func (s *RecordingsService) Trash(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.TrashRecording(ctx, projectId, recordingId, reqEditors...)
+func (s *RecordingsService) Trash(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.TrashRecording(ctx, accountId, projectId, recordingId, reqEditors...)
 }
 
-func (s *SchedulesService) GetEntry(ctx context.Context, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetScheduleEntry(ctx, projectId, entryId, reqEditors...)
+func (s *SchedulesService) GetEntry(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetScheduleEntry(ctx, accountId, projectId, entryId, reqEditors...)
 }
 
-func (s *SchedulesService) UpdateEntryWithBody(ctx context.Context, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateScheduleEntryWithBody(ctx, projectId, entryId, contentType, body, reqEditors...)
+func (s *SchedulesService) UpdateEntryWithBody(ctx context.Context, accountId string, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateScheduleEntryWithBody(ctx, accountId, projectId, entryId, contentType, body, reqEditors...)
 }
 
-func (s *SchedulesService) UpdateEntry(ctx context.Context, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateScheduleEntry(ctx, projectId, entryId, body, reqEditors...)
+func (s *SchedulesService) UpdateEntry(ctx context.Context, accountId string, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateScheduleEntry(ctx, accountId, projectId, entryId, body, reqEditors...)
 }
 
-func (s *SchedulesService) Get(ctx context.Context, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetSchedule(ctx, projectId, scheduleId, reqEditors...)
+func (s *SchedulesService) Get(ctx context.Context, accountId string, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetSchedule(ctx, accountId, projectId, scheduleId, reqEditors...)
 }
 
-func (s *SchedulesService) ListEntries(ctx context.Context, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListScheduleEntries(ctx, projectId, scheduleId, params, reqEditors...)
+func (s *SchedulesService) ListEntries(ctx context.Context, accountId string, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListScheduleEntries(ctx, accountId, projectId, scheduleId, params, reqEditors...)
 }
 
-func (s *SchedulesService) CreateEntryWithBody(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateScheduleEntryWithBody(ctx, projectId, scheduleId, contentType, body, reqEditors...)
+func (s *SchedulesService) CreateEntryWithBody(ctx context.Context, accountId string, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateScheduleEntryWithBody(ctx, accountId, projectId, scheduleId, contentType, body, reqEditors...)
 }
 
-func (s *SchedulesService) CreateEntry(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateScheduleEntry(ctx, projectId, scheduleId, body, reqEditors...)
+func (s *SchedulesService) CreateEntry(ctx context.Context, accountId string, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateScheduleEntry(ctx, accountId, projectId, scheduleId, body, reqEditors...)
 }
 
-func (s *TodosService) List(ctx context.Context, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListTodos(ctx, projectId, todolistId, params, reqEditors...)
+func (s *TodosService) List(ctx context.Context, accountId string, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListTodos(ctx, accountId, projectId, todolistId, params, reqEditors...)
 }
 
-func (s *TodosService) CreateWithBody(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateTodoWithBody(ctx, projectId, todolistId, contentType, body, reqEditors...)
+func (s *TodosService) CreateWithBody(ctx context.Context, accountId string, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTodoWithBody(ctx, accountId, projectId, todolistId, contentType, body, reqEditors...)
 }
 
-func (s *TodosService) Create(ctx context.Context, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateTodo(ctx, projectId, todolistId, body, reqEditors...)
+func (s *TodosService) Create(ctx context.Context, accountId string, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTodo(ctx, accountId, projectId, todolistId, body, reqEditors...)
 }
 
-func (s *TodosService) Trash(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.TrashTodo(ctx, projectId, todoId, reqEditors...)
+func (s *TodosService) Trash(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.TrashTodo(ctx, accountId, projectId, todoId, reqEditors...)
 }
 
-func (s *TodosService) Get(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetTodo(ctx, projectId, todoId, reqEditors...)
+func (s *TodosService) Get(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetTodo(ctx, accountId, projectId, todoId, reqEditors...)
 }
 
-func (s *TodosService) UpdateWithBody(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateTodoWithBody(ctx, projectId, todoId, contentType, body, reqEditors...)
+func (s *TodosService) UpdateWithBody(ctx context.Context, accountId string, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateTodoWithBody(ctx, accountId, projectId, todoId, contentType, body, reqEditors...)
 }
 
-func (s *TodosService) Update(ctx context.Context, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateTodo(ctx, projectId, todoId, body, reqEditors...)
+func (s *TodosService) Update(ctx context.Context, accountId string, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateTodo(ctx, accountId, projectId, todoId, body, reqEditors...)
 }
 
-func (s *TodosService) Uncomplete(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UncompleteTodo(ctx, projectId, todoId, reqEditors...)
+func (s *TodosService) Uncomplete(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UncompleteTodo(ctx, accountId, projectId, todoId, reqEditors...)
 }
 
-func (s *TodosService) Complete(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CompleteTodo(ctx, projectId, todoId, reqEditors...)
+func (s *TodosService) Complete(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CompleteTodo(ctx, accountId, projectId, todoId, reqEditors...)
 }
 
-func (s *UploadsService) Get(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetUpload(ctx, projectId, uploadId, reqEditors...)
+func (s *UploadsService) Get(ctx context.Context, accountId string, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetUpload(ctx, accountId, projectId, uploadId, reqEditors...)
 }
 
-func (s *UploadsService) UpdateWithBody(ctx context.Context, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateUploadWithBody(ctx, projectId, uploadId, contentType, body, reqEditors...)
+func (s *UploadsService) UpdateWithBody(ctx context.Context, accountId string, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateUploadWithBody(ctx, accountId, projectId, uploadId, contentType, body, reqEditors...)
 }
 
-func (s *UploadsService) Update(ctx context.Context, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateUpload(ctx, projectId, uploadId, body, reqEditors...)
+func (s *UploadsService) Update(ctx context.Context, accountId string, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateUpload(ctx, accountId, projectId, uploadId, body, reqEditors...)
 }
 
-func (s *VaultsService) Get(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetVault(ctx, projectId, vaultId, reqEditors...)
+func (s *VaultsService) Get(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetVault(ctx, accountId, projectId, vaultId, reqEditors...)
 }
 
-func (s *VaultsService) UpdateWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateVaultWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+func (s *VaultsService) UpdateWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateVaultWithBody(ctx, accountId, projectId, vaultId, contentType, body, reqEditors...)
 }
 
-func (s *VaultsService) Update(ctx context.Context, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateVault(ctx, projectId, vaultId, body, reqEditors...)
+func (s *VaultsService) Update(ctx context.Context, accountId string, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateVault(ctx, accountId, projectId, vaultId, body, reqEditors...)
 }
 
-func (s *DocumentsService) List(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListDocuments(ctx, projectId, vaultId, reqEditors...)
+func (s *DocumentsService) List(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListDocuments(ctx, accountId, projectId, vaultId, reqEditors...)
 }
 
-func (s *DocumentsService) CreateWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateDocumentWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+func (s *DocumentsService) CreateWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateDocumentWithBody(ctx, accountId, projectId, vaultId, contentType, body, reqEditors...)
 }
 
-func (s *DocumentsService) Create(ctx context.Context, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateDocument(ctx, projectId, vaultId, body, reqEditors...)
+func (s *DocumentsService) Create(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateDocument(ctx, accountId, projectId, vaultId, body, reqEditors...)
 }
 
-func (s *UploadsService) List(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListUploads(ctx, projectId, vaultId, reqEditors...)
+func (s *UploadsService) List(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListUploads(ctx, accountId, projectId, vaultId, reqEditors...)
 }
 
-func (s *UploadsService) CreateWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateUploadWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+func (s *UploadsService) CreateWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateUploadWithBody(ctx, accountId, projectId, vaultId, contentType, body, reqEditors...)
 }
 
-func (s *UploadsService) Create(ctx context.Context, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateUpload(ctx, projectId, vaultId, body, reqEditors...)
+func (s *UploadsService) Create(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateUpload(ctx, accountId, projectId, vaultId, body, reqEditors...)
 }
 
-func (s *VaultsService) List(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListVaults(ctx, projectId, vaultId, reqEditors...)
+func (s *VaultsService) List(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListVaults(ctx, accountId, projectId, vaultId, reqEditors...)
 }
 
-func (s *VaultsService) CreateWithBody(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateVaultWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+func (s *VaultsService) CreateWithBody(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateVaultWithBody(ctx, accountId, projectId, vaultId, contentType, body, reqEditors...)
 }
 
-func (s *VaultsService) Create(ctx context.Context, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateVault(ctx, projectId, vaultId, body, reqEditors...)
+func (s *VaultsService) Create(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateVault(ctx, accountId, projectId, vaultId, body, reqEditors...)
 }
 
-func (s *WebhooksService) List(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListWebhooks(ctx, projectId, reqEditors...)
+func (s *WebhooksService) List(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListWebhooks(ctx, accountId, projectId, reqEditors...)
 }
 
-func (s *WebhooksService) CreateWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateWebhookWithBody(ctx, projectId, contentType, body, reqEditors...)
+func (s *WebhooksService) CreateWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateWebhookWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
 }
 
-func (s *WebhooksService) Create(ctx context.Context, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateWebhook(ctx, projectId, body, reqEditors...)
+func (s *WebhooksService) Create(ctx context.Context, accountId string, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateWebhook(ctx, accountId, projectId, body, reqEditors...)
 }
 
-func (s *WebhooksService) Delete(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.DeleteWebhook(ctx, projectId, webhookId, reqEditors...)
+func (s *WebhooksService) Delete(ctx context.Context, accountId string, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.DeleteWebhook(ctx, accountId, projectId, webhookId, reqEditors...)
 }
 
-func (s *WebhooksService) Get(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetWebhook(ctx, projectId, webhookId, reqEditors...)
+func (s *WebhooksService) Get(ctx context.Context, accountId string, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetWebhook(ctx, accountId, projectId, webhookId, reqEditors...)
 }
 
-func (s *WebhooksService) UpdateWithBody(ctx context.Context, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateWebhookWithBody(ctx, projectId, webhookId, contentType, body, reqEditors...)
+func (s *WebhooksService) UpdateWithBody(ctx context.Context, accountId string, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateWebhookWithBody(ctx, accountId, projectId, webhookId, contentType, body, reqEditors...)
 }
 
-func (s *WebhooksService) Update(ctx context.Context, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateWebhook(ctx, projectId, webhookId, body, reqEditors...)
+func (s *WebhooksService) Update(ctx context.Context, accountId string, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateWebhook(ctx, accountId, projectId, webhookId, body, reqEditors...)
 }
 
-func (s *CampfiresService) List(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListCampfires(ctx, reqEditors...)
+func (s *CampfiresService) List(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListCampfires(ctx, accountId, reqEditors...)
 }
 
-func (s *PeopleService) GetMyProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetMyProfile(ctx, reqEditors...)
+func (s *PeopleService) GetMyProfile(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetMyProfile(ctx, accountId, reqEditors...)
 }
 
-func (s *PeopleService) List(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListPeople(ctx, reqEditors...)
+func (s *PeopleService) List(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListPeople(ctx, accountId, reqEditors...)
 }
 
-func (s *PeopleService) Get(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetPerson(ctx, personId, reqEditors...)
+func (s *PeopleService) Get(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetPerson(ctx, accountId, personId, reqEditors...)
 }
 
-func (s *ProjectsService) List(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListProjects(ctx, params, reqEditors...)
+func (s *ProjectsService) List(ctx context.Context, accountId string, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListProjects(ctx, accountId, params, reqEditors...)
 }
 
-func (s *ProjectsService) CreateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateProjectWithBody(ctx, contentType, body, reqEditors...)
+func (s *ProjectsService) CreateWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateProjectWithBody(ctx, accountId, contentType, body, reqEditors...)
 }
 
-func (s *ProjectsService) Create(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateProject(ctx, body, reqEditors...)
+func (s *ProjectsService) Create(ctx context.Context, accountId string, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateProject(ctx, accountId, body, reqEditors...)
 }
 
-func (s *RecordingsService) List(ctx context.Context, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListRecordings(ctx, params, reqEditors...)
+func (s *RecordingsService) List(ctx context.Context, accountId string, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListRecordings(ctx, accountId, params, reqEditors...)
 }
 
-func (s *ProjectsService) Trash(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.TrashProject(ctx, projectId, reqEditors...)
+func (s *ProjectsService) Trash(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.TrashProject(ctx, accountId, projectId, reqEditors...)
 }
 
-func (s *ProjectsService) Get(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetProject(ctx, projectId, reqEditors...)
+func (s *ProjectsService) Get(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetProject(ctx, accountId, projectId, reqEditors...)
 }
 
-func (s *ProjectsService) UpdateWithBody(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateProjectWithBody(ctx, projectId, contentType, body, reqEditors...)
+func (s *ProjectsService) UpdateWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateProjectWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
 }
 
-func (s *ProjectsService) Update(ctx context.Context, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateProject(ctx, projectId, body, reqEditors...)
+func (s *ProjectsService) Update(ctx context.Context, accountId string, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateProject(ctx, accountId, projectId, body, reqEditors...)
 }
 
-func (s *TemplatesService) List(ctx context.Context, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListTemplates(ctx, params, reqEditors...)
+func (s *TemplatesService) List(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListTemplates(ctx, accountId, params, reqEditors...)
 }
 
-func (s *TemplatesService) CreateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateTemplateWithBody(ctx, contentType, body, reqEditors...)
+func (s *TemplatesService) CreateWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplateWithBody(ctx, accountId, contentType, body, reqEditors...)
 }
 
-func (s *TemplatesService) Create(ctx context.Context, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateTemplate(ctx, body, reqEditors...)
+func (s *TemplatesService) Create(ctx context.Context, accountId string, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplate(ctx, accountId, body, reqEditors...)
 }
 
-func (s *TemplatesService) Delete(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.DeleteTemplate(ctx, templateId, reqEditors...)
+func (s *TemplatesService) Delete(ctx context.Context, accountId string, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.DeleteTemplate(ctx, accountId, templateId, reqEditors...)
 }
 
-func (s *TemplatesService) Get(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetTemplate(ctx, templateId, reqEditors...)
+func (s *TemplatesService) Get(ctx context.Context, accountId string, templateId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetTemplate(ctx, accountId, templateId, reqEditors...)
 }
 
-func (s *TemplatesService) UpdateWithBody(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateTemplateWithBody(ctx, templateId, contentType, body, reqEditors...)
+func (s *TemplatesService) UpdateWithBody(ctx context.Context, accountId string, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateTemplateWithBody(ctx, accountId, templateId, contentType, body, reqEditors...)
 }
 
-func (s *TemplatesService) Update(ctx context.Context, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateTemplate(ctx, templateId, body, reqEditors...)
+func (s *TemplatesService) Update(ctx context.Context, accountId string, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateTemplate(ctx, accountId, templateId, body, reqEditors...)
 }
 
 // ClientWithResponses builds on ClientInterface to offer response payloads
@@ -13990,589 +15103,589 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 	// CreateAttachmentWithBodyWithResponse request with any body
-	CreateAttachmentWithBodyWithResponse(ctx context.Context, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAttachmentResponse, error)
+	CreateAttachmentWithBodyWithResponse(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAttachmentResponse, error)
 
 	// GetCardWithResponse request
-	GetCardWithResponse(ctx context.Context, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error)
+	GetCardWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error)
 
 	// UpdateCardWithBodyWithResponse request with any body
-	UpdateCardWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error)
+	UpdateCardWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error)
 
-	UpdateCardWithResponse(ctx context.Context, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error)
+	UpdateCardWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error)
 
 	// MoveCardWithBodyWithResponse request with any body
-	MoveCardWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardResponse, error)
+	MoveCardWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardResponse, error)
 
-	MoveCardWithResponse(ctx context.Context, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardResponse, error)
+	MoveCardWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardResponse, error)
 
 	// RepositionCardStepWithBodyWithResponse request with any body
-	RepositionCardStepWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error)
+	RepositionCardStepWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error)
 
-	RepositionCardStepWithResponse(ctx context.Context, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error)
+	RepositionCardStepWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error)
 
 	// CreateCardStepWithBodyWithResponse request with any body
-	CreateCardStepWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error)
+	CreateCardStepWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error)
 
-	CreateCardStepWithResponse(ctx context.Context, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error)
+	CreateCardStepWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error)
 
 	// GetCardColumnWithResponse request
-	GetCardColumnWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*GetCardColumnResponse, error)
+	GetCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*GetCardColumnResponse, error)
 
 	// UpdateCardColumnWithBodyWithResponse request with any body
-	UpdateCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error)
+	UpdateCardColumnWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error)
 
-	UpdateCardColumnWithResponse(ctx context.Context, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error)
+	UpdateCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error)
 
 	// SetCardColumnColorWithBodyWithResponse request with any body
-	SetCardColumnColorWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
+	SetCardColumnColorWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
 
-	SetCardColumnColorWithResponse(ctx context.Context, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
+	SetCardColumnColorWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
 
 	// DisableCardColumnOnHoldWithResponse request
-	DisableCardColumnOnHoldWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error)
+	DisableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error)
 
 	// EnableCardColumnOnHoldWithResponse request
-	EnableCardColumnOnHoldWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error)
+	EnableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error)
 
 	// ListCardsWithResponse request
-	ListCardsWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*ListCardsResponse, error)
+	ListCardsWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*ListCardsResponse, error)
 
 	// CreateCardWithBodyWithResponse request with any body
-	CreateCardWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardResponse, error)
+	CreateCardWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardResponse, error)
 
-	CreateCardWithResponse(ctx context.Context, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardResponse, error)
+	CreateCardWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardResponse, error)
 
 	// UpdateCardStepWithBodyWithResponse request with any body
-	UpdateCardStepWithBodyWithResponse(ctx context.Context, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error)
+	UpdateCardStepWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error)
 
-	UpdateCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error)
+	UpdateCardStepWithResponse(ctx context.Context, accountId string, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error)
 
 	// UncompleteCardStepWithResponse request
-	UncompleteCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*UncompleteCardStepResponse, error)
+	UncompleteCardStepWithResponse(ctx context.Context, accountId string, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*UncompleteCardStepResponse, error)
 
 	// CompleteCardStepWithResponse request
-	CompleteCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*CompleteCardStepResponse, error)
+	CompleteCardStepWithResponse(ctx context.Context, accountId string, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*CompleteCardStepResponse, error)
 
 	// GetCardTableWithResponse request
-	GetCardTableWithResponse(ctx context.Context, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*GetCardTableResponse, error)
+	GetCardTableWithResponse(ctx context.Context, accountId string, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*GetCardTableResponse, error)
 
 	// CreateCardColumnWithBodyWithResponse request with any body
-	CreateCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error)
+	CreateCardColumnWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error)
 
-	CreateCardColumnWithResponse(ctx context.Context, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error)
+	CreateCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error)
 
 	// MoveCardColumnWithBodyWithResponse request with any body
-	MoveCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
+	MoveCardColumnWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
 
-	MoveCardColumnWithResponse(ctx context.Context, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
+	MoveCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
 
 	// ListMessageTypesWithResponse request
-	ListMessageTypesWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error)
+	ListMessageTypesWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error)
 
 	// CreateMessageTypeWithBodyWithResponse request with any body
-	CreateMessageTypeWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
+	CreateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
 
-	CreateMessageTypeWithResponse(ctx context.Context, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
+	CreateMessageTypeWithResponse(ctx context.Context, accountId string, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
 
 	// DeleteMessageTypeWithResponse request
-	DeleteMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error)
+	DeleteMessageTypeWithResponse(ctx context.Context, accountId string, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error)
 
 	// GetMessageTypeWithResponse request
-	GetMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error)
+	GetMessageTypeWithResponse(ctx context.Context, accountId string, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error)
 
 	// UpdateMessageTypeWithBodyWithResponse request with any body
-	UpdateMessageTypeWithBodyWithResponse(ctx context.Context, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
+	UpdateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
 
-	UpdateMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
+	UpdateMessageTypeWithResponse(ctx context.Context, accountId string, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
 
 	// GetCampfireWithResponse request
-	GetCampfireWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*GetCampfireResponse, error)
+	GetCampfireWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*GetCampfireResponse, error)
 
 	// ListChatbotsWithResponse request
-	ListChatbotsWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error)
+	ListChatbotsWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error)
 
 	// CreateChatbotWithBodyWithResponse request with any body
-	CreateChatbotWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
+	CreateChatbotWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
 
-	CreateChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
+	CreateChatbotWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
 
 	// DeleteChatbotWithResponse request
-	DeleteChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error)
+	DeleteChatbotWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error)
 
 	// GetChatbotWithResponse request
-	GetChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error)
+	GetChatbotWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error)
 
 	// UpdateChatbotWithBodyWithResponse request with any body
-	UpdateChatbotWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
+	UpdateChatbotWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
 
-	UpdateChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
+	UpdateChatbotWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
 
 	// ListCampfireLinesWithResponse request
-	ListCampfireLinesWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error)
+	ListCampfireLinesWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error)
 
 	// CreateCampfireLineWithBodyWithResponse request with any body
-	CreateCampfireLineWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error)
+	CreateCampfireLineWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error)
 
-	CreateCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error)
+	CreateCampfireLineWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error)
 
 	// DeleteCampfireLineWithResponse request
-	DeleteCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*DeleteCampfireLineResponse, error)
+	DeleteCampfireLineWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*DeleteCampfireLineResponse, error)
 
 	// GetCampfireLineWithResponse request
-	GetCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*GetCampfireLineResponse, error)
+	GetCampfireLineWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*GetCampfireLineResponse, error)
 
 	// ListClientApprovalsWithResponse request
-	ListClientApprovalsWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error)
+	ListClientApprovalsWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error)
 
 	// GetClientApprovalWithResponse request
-	GetClientApprovalWithResponse(ctx context.Context, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*GetClientApprovalResponse, error)
+	GetClientApprovalWithResponse(ctx context.Context, accountId string, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*GetClientApprovalResponse, error)
 
 	// ListClientCorrespondencesWithResponse request
-	ListClientCorrespondencesWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error)
+	ListClientCorrespondencesWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error)
 
 	// GetClientCorrespondenceWithResponse request
-	GetClientCorrespondenceWithResponse(ctx context.Context, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error)
+	GetClientCorrespondenceWithResponse(ctx context.Context, accountId string, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error)
 
 	// ListClientRepliesWithResponse request
-	ListClientRepliesWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error)
+	ListClientRepliesWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error)
 
 	// GetClientReplyWithResponse request
-	GetClientReplyWithResponse(ctx context.Context, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error)
+	GetClientReplyWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error)
 
 	// GetCommentWithResponse request
-	GetCommentWithResponse(ctx context.Context, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*GetCommentResponse, error)
+	GetCommentWithResponse(ctx context.Context, accountId string, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*GetCommentResponse, error)
 
 	// UpdateCommentWithBodyWithResponse request with any body
-	UpdateCommentWithBodyWithResponse(ctx context.Context, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
+	UpdateCommentWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
 
-	UpdateCommentWithResponse(ctx context.Context, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
+	UpdateCommentWithResponse(ctx context.Context, accountId string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
 
 	// CloneToolWithResponse request
-	CloneToolWithResponse(ctx context.Context, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+	CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
 
 	// DeleteToolWithResponse request
-	DeleteToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error)
+	DeleteToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error)
 
 	// GetToolWithResponse request
-	GetToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*GetToolResponse, error)
+	GetToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*GetToolResponse, error)
 
 	// UpdateToolWithBodyWithResponse request with any body
-	UpdateToolWithBodyWithResponse(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
+	UpdateToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
 
-	UpdateToolWithResponse(ctx context.Context, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
+	UpdateToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
 
 	// DisableToolWithResponse request
-	DisableToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error)
+	DisableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error)
 
 	// EnableToolWithResponse request
-	EnableToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error)
+	EnableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error)
 
 	// RepositionToolWithBodyWithResponse request with any body
-	RepositionToolWithBodyWithResponse(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
+	RepositionToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
 
-	RepositionToolWithResponse(ctx context.Context, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
+	RepositionToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
 
 	// GetDocumentWithResponse request
-	GetDocumentWithResponse(ctx context.Context, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error)
+	GetDocumentWithResponse(ctx context.Context, accountId string, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error)
 
 	// UpdateDocumentWithBodyWithResponse request with any body
-	UpdateDocumentWithBodyWithResponse(ctx context.Context, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
+	UpdateDocumentWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
 
-	UpdateDocumentWithResponse(ctx context.Context, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
+	UpdateDocumentWithResponse(ctx context.Context, accountId string, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
 
 	// GetForwardWithResponse request
-	GetForwardWithResponse(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*GetForwardResponse, error)
+	GetForwardWithResponse(ctx context.Context, accountId string, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*GetForwardResponse, error)
 
 	// ListForwardRepliesWithResponse request
-	ListForwardRepliesWithResponse(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error)
+	ListForwardRepliesWithResponse(ctx context.Context, accountId string, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error)
 
 	// CreateForwardReplyWithBodyWithResponse request with any body
-	CreateForwardReplyWithBodyWithResponse(ctx context.Context, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error)
+	CreateForwardReplyWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error)
 
-	CreateForwardReplyWithResponse(ctx context.Context, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error)
+	CreateForwardReplyWithResponse(ctx context.Context, accountId string, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error)
 
 	// GetForwardReplyWithResponse request
-	GetForwardReplyWithResponse(ctx context.Context, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetForwardReplyResponse, error)
+	GetForwardReplyWithResponse(ctx context.Context, accountId string, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetForwardReplyResponse, error)
 
 	// GetInboxWithResponse request
-	GetInboxWithResponse(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*GetInboxResponse, error)
+	GetInboxWithResponse(ctx context.Context, accountId string, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*GetInboxResponse, error)
 
 	// ListForwardsWithResponse request
-	ListForwardsWithResponse(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*ListForwardsResponse, error)
+	ListForwardsWithResponse(ctx context.Context, accountId string, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*ListForwardsResponse, error)
 
 	// GetMessageBoardWithResponse request
-	GetMessageBoardWithResponse(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*GetMessageBoardResponse, error)
+	GetMessageBoardWithResponse(ctx context.Context, accountId string, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*GetMessageBoardResponse, error)
 
 	// ListMessagesWithResponse request
-	ListMessagesWithResponse(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error)
+	ListMessagesWithResponse(ctx context.Context, accountId string, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error)
 
 	// CreateMessageWithBodyWithResponse request with any body
-	CreateMessageWithBodyWithResponse(ctx context.Context, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error)
+	CreateMessageWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error)
 
-	CreateMessageWithResponse(ctx context.Context, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error)
+	CreateMessageWithResponse(ctx context.Context, accountId string, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error)
 
 	// GetMessageWithResponse request
-	GetMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*GetMessageResponse, error)
+	GetMessageWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*GetMessageResponse, error)
 
 	// UpdateMessageWithBodyWithResponse request with any body
-	UpdateMessageWithBodyWithResponse(ctx context.Context, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error)
+	UpdateMessageWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error)
 
-	UpdateMessageWithResponse(ctx context.Context, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error)
+	UpdateMessageWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error)
 
 	// GetAnswerWithResponse request
-	GetAnswerWithResponse(ctx context.Context, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*GetAnswerResponse, error)
+	GetAnswerWithResponse(ctx context.Context, accountId string, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*GetAnswerResponse, error)
 
 	// UpdateAnswerWithBodyWithResponse request with any body
-	UpdateAnswerWithBodyWithResponse(ctx context.Context, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error)
+	UpdateAnswerWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error)
 
-	UpdateAnswerWithResponse(ctx context.Context, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error)
+	UpdateAnswerWithResponse(ctx context.Context, accountId string, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error)
 
 	// GetQuestionnaireWithResponse request
-	GetQuestionnaireWithResponse(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*GetQuestionnaireResponse, error)
+	GetQuestionnaireWithResponse(ctx context.Context, accountId string, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*GetQuestionnaireResponse, error)
 
 	// ListQuestionsWithResponse request
-	ListQuestionsWithResponse(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error)
+	ListQuestionsWithResponse(ctx context.Context, accountId string, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error)
 
 	// CreateQuestionWithBodyWithResponse request with any body
-	CreateQuestionWithBodyWithResponse(ctx context.Context, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error)
+	CreateQuestionWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error)
 
-	CreateQuestionWithResponse(ctx context.Context, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error)
+	CreateQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error)
 
 	// GetQuestionWithResponse request
-	GetQuestionWithResponse(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*GetQuestionResponse, error)
+	GetQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*GetQuestionResponse, error)
 
 	// UpdateQuestionWithBodyWithResponse request with any body
-	UpdateQuestionWithBodyWithResponse(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error)
+	UpdateQuestionWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error)
 
-	UpdateQuestionWithResponse(ctx context.Context, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error)
+	UpdateQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error)
 
 	// ListAnswersWithResponse request
-	ListAnswersWithResponse(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error)
+	ListAnswersWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error)
 
 	// CreateAnswerWithBodyWithResponse request with any body
-	CreateAnswerWithBodyWithResponse(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
+	CreateAnswerWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
 
-	CreateAnswerWithResponse(ctx context.Context, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
+	CreateAnswerWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
 
 	// UnpinMessageWithResponse request
-	UnpinMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*UnpinMessageResponse, error)
+	UnpinMessageWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*UnpinMessageResponse, error)
 
 	// PinMessageWithResponse request
-	PinMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*PinMessageResponse, error)
+	PinMessageWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*PinMessageResponse, error)
 
 	// GetRecordingWithResponse request
-	GetRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error)
+	GetRecordingWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error)
 
 	// SetClientVisibilityWithBodyWithResponse request with any body
-	SetClientVisibilityWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error)
+	SetClientVisibilityWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error)
 
-	SetClientVisibilityWithResponse(ctx context.Context, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error)
+	SetClientVisibilityWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error)
 
 	// ListCommentsWithResponse request
-	ListCommentsWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error)
+	ListCommentsWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error)
 
 	// CreateCommentWithBodyWithResponse request with any body
-	CreateCommentWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error)
+	CreateCommentWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error)
 
-	CreateCommentWithResponse(ctx context.Context, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error)
+	CreateCommentWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error)
 
 	// ListEventsWithResponse request
-	ListEventsWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListEventsResponse, error)
+	ListEventsWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListEventsResponse, error)
 
 	// UnarchiveRecordingWithResponse request
-	UnarchiveRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnarchiveRecordingResponse, error)
+	UnarchiveRecordingWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnarchiveRecordingResponse, error)
 
 	// ArchiveRecordingWithResponse request
-	ArchiveRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ArchiveRecordingResponse, error)
+	ArchiveRecordingWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ArchiveRecordingResponse, error)
 
 	// TrashRecordingWithResponse request
-	TrashRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*TrashRecordingResponse, error)
+	TrashRecordingWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*TrashRecordingResponse, error)
 
 	// UnsubscribeWithResponse request
-	UnsubscribeWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error)
+	UnsubscribeWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error)
 
 	// GetSubscriptionWithResponse request
-	GetSubscriptionWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetSubscriptionResponse, error)
+	GetSubscriptionWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetSubscriptionResponse, error)
 
 	// SubscribeWithResponse request
-	SubscribeWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*SubscribeResponse, error)
+	SubscribeWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*SubscribeResponse, error)
 
 	// UpdateSubscriptionWithBodyWithResponse request with any body
-	UpdateSubscriptionWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error)
+	UpdateSubscriptionWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error)
 
-	UpdateSubscriptionWithResponse(ctx context.Context, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error)
+	UpdateSubscriptionWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error)
 
 	// GetRecordingTimesheetWithResponse request
-	GetRecordingTimesheetWithResponse(ctx context.Context, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error)
+	GetRecordingTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error)
 
 	// GetScheduleEntryWithResponse request
-	GetScheduleEntryWithResponse(ctx context.Context, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error)
+	GetScheduleEntryWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error)
 
 	// UpdateScheduleEntryWithBodyWithResponse request with any body
-	UpdateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error)
+	UpdateScheduleEntryWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error)
 
-	UpdateScheduleEntryWithResponse(ctx context.Context, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error)
+	UpdateScheduleEntryWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error)
 
 	// GetScheduleEntryOccurrenceWithResponse request
-	GetScheduleEntryOccurrenceWithResponse(ctx context.Context, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*GetScheduleEntryOccurrenceResponse, error)
+	GetScheduleEntryOccurrenceWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*GetScheduleEntryOccurrenceResponse, error)
 
 	// GetScheduleWithResponse request
-	GetScheduleWithResponse(ctx context.Context, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*GetScheduleResponse, error)
+	GetScheduleWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*GetScheduleResponse, error)
 
 	// UpdateScheduleSettingsWithBodyWithResponse request with any body
-	UpdateScheduleSettingsWithBodyWithResponse(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error)
+	UpdateScheduleSettingsWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error)
 
-	UpdateScheduleSettingsWithResponse(ctx context.Context, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error)
+	UpdateScheduleSettingsWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error)
 
 	// ListScheduleEntriesWithResponse request
-	ListScheduleEntriesWithResponse(ctx context.Context, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*ListScheduleEntriesResponse, error)
+	ListScheduleEntriesWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*ListScheduleEntriesResponse, error)
 
 	// CreateScheduleEntryWithBodyWithResponse request with any body
-	CreateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error)
+	CreateScheduleEntryWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error)
 
-	CreateScheduleEntryWithResponse(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error)
+	CreateScheduleEntryWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error)
 
 	// GetProjectTimelineWithResponse request
-	GetProjectTimelineWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
+	GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
 
 	// GetProjectTimesheetWithResponse request
-	GetProjectTimesheetWithResponse(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
+	GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
 
 	// RepositionTodolistGroupWithBodyWithResponse request with any body
-	RepositionTodolistGroupWithBodyWithResponse(ctx context.Context, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error)
+	RepositionTodolistGroupWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error)
 
-	RepositionTodolistGroupWithResponse(ctx context.Context, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error)
+	RepositionTodolistGroupWithResponse(ctx context.Context, accountId string, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error)
 
 	// GetTodolistOrGroupWithResponse request
-	GetTodolistOrGroupWithResponse(ctx context.Context, projectId int64, id int64, reqEditors ...RequestEditorFn) (*GetTodolistOrGroupResponse, error)
+	GetTodolistOrGroupWithResponse(ctx context.Context, accountId string, projectId int64, id int64, reqEditors ...RequestEditorFn) (*GetTodolistOrGroupResponse, error)
 
 	// UpdateTodolistOrGroupWithBodyWithResponse request with any body
-	UpdateTodolistOrGroupWithBodyWithResponse(ctx context.Context, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error)
+	UpdateTodolistOrGroupWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error)
 
-	UpdateTodolistOrGroupWithResponse(ctx context.Context, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error)
+	UpdateTodolistOrGroupWithResponse(ctx context.Context, accountId string, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error)
 
 	// ListTodolistGroupsWithResponse request
-	ListTodolistGroupsWithResponse(ctx context.Context, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error)
+	ListTodolistGroupsWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error)
 
 	// CreateTodolistGroupWithBodyWithResponse request with any body
-	CreateTodolistGroupWithBodyWithResponse(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error)
+	CreateTodolistGroupWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error)
 
-	CreateTodolistGroupWithResponse(ctx context.Context, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error)
+	CreateTodolistGroupWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error)
 
 	// ListTodosWithResponse request
-	ListTodosWithResponse(ctx context.Context, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error)
+	ListTodosWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error)
 
 	// CreateTodoWithBodyWithResponse request with any body
-	CreateTodoWithBodyWithResponse(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
+	CreateTodoWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
 
-	CreateTodoWithResponse(ctx context.Context, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
+	CreateTodoWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
 
 	// TrashTodoWithResponse request
-	TrashTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error)
+	TrashTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error)
 
 	// GetTodoWithResponse request
-	GetTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*GetTodoResponse, error)
+	GetTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*GetTodoResponse, error)
 
 	// UpdateTodoWithBodyWithResponse request with any body
-	UpdateTodoWithBodyWithResponse(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
+	UpdateTodoWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
 
-	UpdateTodoWithResponse(ctx context.Context, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
+	UpdateTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
 
 	// UncompleteTodoWithResponse request
-	UncompleteTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*UncompleteTodoResponse, error)
+	UncompleteTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*UncompleteTodoResponse, error)
 
 	// CompleteTodoWithResponse request
-	CompleteTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*CompleteTodoResponse, error)
+	CompleteTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*CompleteTodoResponse, error)
 
 	// RepositionTodoWithBodyWithResponse request with any body
-	RepositionTodoWithBodyWithResponse(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error)
+	RepositionTodoWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error)
 
-	RepositionTodoWithResponse(ctx context.Context, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error)
+	RepositionTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error)
 
 	// GetTodosetWithResponse request
-	GetTodosetWithResponse(ctx context.Context, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*GetTodosetResponse, error)
+	GetTodosetWithResponse(ctx context.Context, accountId string, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*GetTodosetResponse, error)
 
 	// ListTodolistsWithResponse request
-	ListTodolistsWithResponse(ctx context.Context, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*ListTodolistsResponse, error)
+	ListTodolistsWithResponse(ctx context.Context, accountId string, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*ListTodolistsResponse, error)
 
 	// CreateTodolistWithBodyWithResponse request with any body
-	CreateTodolistWithBodyWithResponse(ctx context.Context, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error)
+	CreateTodolistWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error)
 
-	CreateTodolistWithResponse(ctx context.Context, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error)
+	CreateTodolistWithResponse(ctx context.Context, accountId string, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error)
 
 	// GetUploadWithResponse request
-	GetUploadWithResponse(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*GetUploadResponse, error)
+	GetUploadWithResponse(ctx context.Context, accountId string, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*GetUploadResponse, error)
 
 	// UpdateUploadWithBodyWithResponse request with any body
-	UpdateUploadWithBodyWithResponse(ctx context.Context, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error)
+	UpdateUploadWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error)
 
-	UpdateUploadWithResponse(ctx context.Context, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error)
+	UpdateUploadWithResponse(ctx context.Context, accountId string, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error)
 
 	// ListUploadVersionsWithResponse request
-	ListUploadVersionsWithResponse(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*ListUploadVersionsResponse, error)
+	ListUploadVersionsWithResponse(ctx context.Context, accountId string, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*ListUploadVersionsResponse, error)
 
 	// GetVaultWithResponse request
-	GetVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*GetVaultResponse, error)
+	GetVaultWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*GetVaultResponse, error)
 
 	// UpdateVaultWithBodyWithResponse request with any body
-	UpdateVaultWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error)
+	UpdateVaultWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error)
 
-	UpdateVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error)
+	UpdateVaultWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error)
 
 	// ListDocumentsWithResponse request
-	ListDocumentsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error)
+	ListDocumentsWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error)
 
 	// CreateDocumentWithBodyWithResponse request with any body
-	CreateDocumentWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error)
+	CreateDocumentWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error)
 
-	CreateDocumentWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error)
+	CreateDocumentWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error)
 
 	// ListUploadsWithResponse request
-	ListUploadsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error)
+	ListUploadsWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error)
 
 	// CreateUploadWithBodyWithResponse request with any body
-	CreateUploadWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error)
+	CreateUploadWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error)
 
-	CreateUploadWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error)
+	CreateUploadWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error)
 
 	// ListVaultsWithResponse request
-	ListVaultsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error)
+	ListVaultsWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error)
 
 	// CreateVaultWithBodyWithResponse request with any body
-	CreateVaultWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error)
+	CreateVaultWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error)
 
-	CreateVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error)
+	CreateVaultWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error)
 
 	// ListWebhooksWithResponse request
-	ListWebhooksWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
+	ListWebhooksWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
 
 	// CreateWebhookWithBodyWithResponse request with any body
-	CreateWebhookWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
+	CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
 
-	CreateWebhookWithResponse(ctx context.Context, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
+	CreateWebhookWithResponse(ctx context.Context, accountId string, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
 
 	// DeleteWebhookWithResponse request
-	DeleteWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*DeleteWebhookResponse, error)
+	DeleteWebhookWithResponse(ctx context.Context, accountId string, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*DeleteWebhookResponse, error)
 
 	// GetWebhookWithResponse request
-	GetWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*GetWebhookResponse, error)
+	GetWebhookWithResponse(ctx context.Context, accountId string, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*GetWebhookResponse, error)
 
 	// UpdateWebhookWithBodyWithResponse request with any body
-	UpdateWebhookWithBodyWithResponse(ctx context.Context, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error)
+	UpdateWebhookWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error)
 
-	UpdateWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error)
+	UpdateWebhookWithResponse(ctx context.Context, accountId string, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error)
 
 	// ListCampfiresWithResponse request
-	ListCampfiresWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error)
+	ListCampfiresWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error)
 
 	// ListPingablePeopleWithResponse request
-	ListPingablePeopleWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListPingablePeopleResponse, error)
+	ListPingablePeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPingablePeopleResponse, error)
 
 	// CreateLineupMarkerWithBodyWithResponse request with any body
-	CreateLineupMarkerWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLineupMarkerResponse, error)
+	CreateLineupMarkerWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLineupMarkerResponse, error)
 
-	CreateLineupMarkerWithResponse(ctx context.Context, body CreateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLineupMarkerResponse, error)
+	CreateLineupMarkerWithResponse(ctx context.Context, accountId string, body CreateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLineupMarkerResponse, error)
 
 	// DeleteLineupMarkerWithResponse request
-	DeleteLineupMarkerWithResponse(ctx context.Context, markerId int64, reqEditors ...RequestEditorFn) (*DeleteLineupMarkerResponse, error)
+	DeleteLineupMarkerWithResponse(ctx context.Context, accountId string, markerId int64, reqEditors ...RequestEditorFn) (*DeleteLineupMarkerResponse, error)
 
 	// UpdateLineupMarkerWithBodyWithResponse request with any body
-	UpdateLineupMarkerWithBodyWithResponse(ctx context.Context, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error)
+	UpdateLineupMarkerWithBodyWithResponse(ctx context.Context, accountId string, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error)
 
-	UpdateLineupMarkerWithResponse(ctx context.Context, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error)
+	UpdateLineupMarkerWithResponse(ctx context.Context, accountId string, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error)
 
 	// GetMyProfileWithResponse request
-	GetMyProfileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyProfileResponse, error)
+	GetMyProfileWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyProfileResponse, error)
 
 	// ListPeopleWithResponse request
-	ListPeopleWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error)
+	ListPeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error)
 
 	// GetPersonWithResponse request
-	GetPersonWithResponse(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*GetPersonResponse, error)
+	GetPersonWithResponse(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*GetPersonResponse, error)
 
 	// ListProjectsWithResponse request
-	ListProjectsWithResponse(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error)
+	ListProjectsWithResponse(ctx context.Context, accountId string, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error)
 
 	// CreateProjectWithBodyWithResponse request with any body
-	CreateProjectWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
+	CreateProjectWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
 
-	CreateProjectWithResponse(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
+	CreateProjectWithResponse(ctx context.Context, accountId string, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
 
 	// ListRecordingsWithResponse request
-	ListRecordingsWithResponse(ctx context.Context, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*ListRecordingsResponse, error)
+	ListRecordingsWithResponse(ctx context.Context, accountId string, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*ListRecordingsResponse, error)
 
 	// TrashProjectWithResponse request
-	TrashProjectWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*TrashProjectResponse, error)
+	TrashProjectWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*TrashProjectResponse, error)
 
 	// GetProjectWithResponse request
-	GetProjectWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectResponse, error)
+	GetProjectWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectResponse, error)
 
 	// UpdateProjectWithBodyWithResponse request with any body
-	UpdateProjectWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
+	UpdateProjectWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
 
-	UpdateProjectWithResponse(ctx context.Context, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
+	UpdateProjectWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
 
 	// ListProjectPeopleWithResponse request
-	ListProjectPeopleWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error)
+	ListProjectPeopleWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error)
 
 	// UpdateProjectAccessWithBodyWithResponse request with any body
-	UpdateProjectAccessWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
+	UpdateProjectAccessWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
 
-	UpdateProjectAccessWithResponse(ctx context.Context, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
+	UpdateProjectAccessWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
 
 	// GetProgressReportWithResponse request
-	GetProgressReportWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetProgressReportResponse, error)
+	GetProgressReportWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetProgressReportResponse, error)
 
 	// GetUpcomingScheduleWithResponse request
-	GetUpcomingScheduleWithResponse(ctx context.Context, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*GetUpcomingScheduleResponse, error)
+	GetUpcomingScheduleWithResponse(ctx context.Context, accountId string, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*GetUpcomingScheduleResponse, error)
 
 	// GetTimesheetReportWithResponse request
-	GetTimesheetReportWithResponse(ctx context.Context, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*GetTimesheetReportResponse, error)
+	GetTimesheetReportWithResponse(ctx context.Context, accountId string, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*GetTimesheetReportResponse, error)
 
 	// ListAssignablePeopleWithResponse request
-	ListAssignablePeopleWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAssignablePeopleResponse, error)
+	ListAssignablePeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListAssignablePeopleResponse, error)
 
 	// GetAssignedTodosWithResponse request
-	GetAssignedTodosWithResponse(ctx context.Context, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*GetAssignedTodosResponse, error)
+	GetAssignedTodosWithResponse(ctx context.Context, accountId string, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*GetAssignedTodosResponse, error)
 
 	// GetOverdueTodosWithResponse request
-	GetOverdueTodosWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOverdueTodosResponse, error)
+	GetOverdueTodosWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetOverdueTodosResponse, error)
 
 	// GetPersonProgressWithResponse request
-	GetPersonProgressWithResponse(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*GetPersonProgressResponse, error)
+	GetPersonProgressWithResponse(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*GetPersonProgressResponse, error)
 
 	// SearchWithResponse request
-	SearchWithResponse(ctx context.Context, params *SearchParams, reqEditors ...RequestEditorFn) (*SearchResponse, error)
+	SearchWithResponse(ctx context.Context, accountId string, params *SearchParams, reqEditors ...RequestEditorFn) (*SearchResponse, error)
 
 	// GetSearchMetadataWithResponse request
-	GetSearchMetadataWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSearchMetadataResponse, error)
+	GetSearchMetadataWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetSearchMetadataResponse, error)
 
 	// ListTemplatesWithResponse request
-	ListTemplatesWithResponse(ctx context.Context, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*ListTemplatesResponse, error)
+	ListTemplatesWithResponse(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*ListTemplatesResponse, error)
 
 	// CreateTemplateWithBodyWithResponse request with any body
-	CreateTemplateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplateResponse, error)
+	CreateTemplateWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplateResponse, error)
 
-	CreateTemplateWithResponse(ctx context.Context, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplateResponse, error)
+	CreateTemplateWithResponse(ctx context.Context, accountId string, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplateResponse, error)
 
 	// DeleteTemplateWithResponse request
-	DeleteTemplateWithResponse(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*DeleteTemplateResponse, error)
+	DeleteTemplateWithResponse(ctx context.Context, accountId string, templateId int64, reqEditors ...RequestEditorFn) (*DeleteTemplateResponse, error)
 
 	// GetTemplateWithResponse request
-	GetTemplateWithResponse(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*GetTemplateResponse, error)
+	GetTemplateWithResponse(ctx context.Context, accountId string, templateId int64, reqEditors ...RequestEditorFn) (*GetTemplateResponse, error)
 
 	// UpdateTemplateWithBodyWithResponse request with any body
-	UpdateTemplateWithBodyWithResponse(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error)
+	UpdateTemplateWithBodyWithResponse(ctx context.Context, accountId string, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error)
 
-	UpdateTemplateWithResponse(ctx context.Context, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error)
+	UpdateTemplateWithResponse(ctx context.Context, accountId string, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error)
 
 	// CreateProjectFromTemplateWithBodyWithResponse request with any body
-	CreateProjectFromTemplateWithBodyWithResponse(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error)
+	CreateProjectFromTemplateWithBodyWithResponse(ctx context.Context, accountId string, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error)
 
-	CreateProjectFromTemplateWithResponse(ctx context.Context, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error)
+	CreateProjectFromTemplateWithResponse(ctx context.Context, accountId string, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error)
 
 	// GetProjectConstructionWithResponse request
-	GetProjectConstructionWithResponse(ctx context.Context, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*GetProjectConstructionResponse, error)
+	GetProjectConstructionWithResponse(ctx context.Context, accountId string, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*GetProjectConstructionResponse, error)
 }
 
 type CreateAttachmentResponse struct {
@@ -18753,8 +19866,8 @@ func (r GetProjectConstructionResponse) StatusCode() int {
 }
 
 // CreateAttachmentWithBodyWithResponse request with arbitrary body returning *CreateAttachmentResponse
-func (c *ClientWithResponses) CreateAttachmentWithBodyWithResponse(ctx context.Context, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAttachmentResponse, error) {
-	rsp, err := c.CreateAttachmentWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateAttachmentWithBodyWithResponse(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAttachmentResponse, error) {
+	rsp, err := c.CreateAttachmentWithBody(ctx, accountId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18762,8 +19875,8 @@ func (c *ClientWithResponses) CreateAttachmentWithBodyWithResponse(ctx context.C
 }
 
 // GetCardWithResponse request returning *GetCardResponse
-func (c *ClientWithResponses) GetCardWithResponse(ctx context.Context, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error) {
-	rsp, err := c.GetCard(ctx, projectId, cardId, reqEditors...)
+func (c *ClientWithResponses) GetCardWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error) {
+	rsp, err := c.GetCard(ctx, accountId, projectId, cardId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18771,16 +19884,16 @@ func (c *ClientWithResponses) GetCardWithResponse(ctx context.Context, projectId
 }
 
 // UpdateCardWithBodyWithResponse request with arbitrary body returning *UpdateCardResponse
-func (c *ClientWithResponses) UpdateCardWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error) {
-	rsp, err := c.UpdateCardWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateCardWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error) {
+	rsp, err := c.UpdateCardWithBody(ctx, accountId, projectId, cardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateCardResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateCardWithResponse(ctx context.Context, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error) {
-	rsp, err := c.UpdateCard(ctx, projectId, cardId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateCardWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardResponse, error) {
+	rsp, err := c.UpdateCard(ctx, accountId, projectId, cardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18788,16 +19901,16 @@ func (c *ClientWithResponses) UpdateCardWithResponse(ctx context.Context, projec
 }
 
 // MoveCardWithBodyWithResponse request with arbitrary body returning *MoveCardResponse
-func (c *ClientWithResponses) MoveCardWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardResponse, error) {
-	rsp, err := c.MoveCardWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) MoveCardWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardResponse, error) {
+	rsp, err := c.MoveCardWithBody(ctx, accountId, projectId, cardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseMoveCardResponse(rsp)
 }
 
-func (c *ClientWithResponses) MoveCardWithResponse(ctx context.Context, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardResponse, error) {
-	rsp, err := c.MoveCard(ctx, projectId, cardId, body, reqEditors...)
+func (c *ClientWithResponses) MoveCardWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, body MoveCardJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardResponse, error) {
+	rsp, err := c.MoveCard(ctx, accountId, projectId, cardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18805,16 +19918,16 @@ func (c *ClientWithResponses) MoveCardWithResponse(ctx context.Context, projectI
 }
 
 // RepositionCardStepWithBodyWithResponse request with arbitrary body returning *RepositionCardStepResponse
-func (c *ClientWithResponses) RepositionCardStepWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error) {
-	rsp, err := c.RepositionCardStepWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) RepositionCardStepWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error) {
+	rsp, err := c.RepositionCardStepWithBody(ctx, accountId, projectId, cardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseRepositionCardStepResponse(rsp)
 }
 
-func (c *ClientWithResponses) RepositionCardStepWithResponse(ctx context.Context, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error) {
-	rsp, err := c.RepositionCardStep(ctx, projectId, cardId, body, reqEditors...)
+func (c *ClientWithResponses) RepositionCardStepWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, body RepositionCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionCardStepResponse, error) {
+	rsp, err := c.RepositionCardStep(ctx, accountId, projectId, cardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18822,16 +19935,16 @@ func (c *ClientWithResponses) RepositionCardStepWithResponse(ctx context.Context
 }
 
 // CreateCardStepWithBodyWithResponse request with arbitrary body returning *CreateCardStepResponse
-func (c *ClientWithResponses) CreateCardStepWithBodyWithResponse(ctx context.Context, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error) {
-	rsp, err := c.CreateCardStepWithBody(ctx, projectId, cardId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateCardStepWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error) {
+	rsp, err := c.CreateCardStepWithBody(ctx, accountId, projectId, cardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateCardStepResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateCardStepWithResponse(ctx context.Context, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error) {
-	rsp, err := c.CreateCardStep(ctx, projectId, cardId, body, reqEditors...)
+func (c *ClientWithResponses) CreateCardStepWithResponse(ctx context.Context, accountId string, projectId int64, cardId int64, body CreateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardStepResponse, error) {
+	rsp, err := c.CreateCardStep(ctx, accountId, projectId, cardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18839,8 +19952,8 @@ func (c *ClientWithResponses) CreateCardStepWithResponse(ctx context.Context, pr
 }
 
 // GetCardColumnWithResponse request returning *GetCardColumnResponse
-func (c *ClientWithResponses) GetCardColumnWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*GetCardColumnResponse, error) {
-	rsp, err := c.GetCardColumn(ctx, projectId, columnId, reqEditors...)
+func (c *ClientWithResponses) GetCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*GetCardColumnResponse, error) {
+	rsp, err := c.GetCardColumn(ctx, accountId, projectId, columnId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18848,16 +19961,16 @@ func (c *ClientWithResponses) GetCardColumnWithResponse(ctx context.Context, pro
 }
 
 // UpdateCardColumnWithBodyWithResponse request with arbitrary body returning *UpdateCardColumnResponse
-func (c *ClientWithResponses) UpdateCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error) {
-	rsp, err := c.UpdateCardColumnWithBody(ctx, projectId, columnId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateCardColumnWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error) {
+	rsp, err := c.UpdateCardColumnWithBody(ctx, accountId, projectId, columnId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateCardColumnResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateCardColumnWithResponse(ctx context.Context, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error) {
-	rsp, err := c.UpdateCardColumn(ctx, projectId, columnId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error) {
+	rsp, err := c.UpdateCardColumn(ctx, accountId, projectId, columnId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18865,16 +19978,16 @@ func (c *ClientWithResponses) UpdateCardColumnWithResponse(ctx context.Context, 
 }
 
 // SetCardColumnColorWithBodyWithResponse request with arbitrary body returning *SetCardColumnColorResponse
-func (c *ClientWithResponses) SetCardColumnColorWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
-	rsp, err := c.SetCardColumnColorWithBody(ctx, projectId, columnId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SetCardColumnColorWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
+	rsp, err := c.SetCardColumnColorWithBody(ctx, accountId, projectId, columnId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseSetCardColumnColorResponse(rsp)
 }
 
-func (c *ClientWithResponses) SetCardColumnColorWithResponse(ctx context.Context, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
-	rsp, err := c.SetCardColumnColor(ctx, projectId, columnId, body, reqEditors...)
+func (c *ClientWithResponses) SetCardColumnColorWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
+	rsp, err := c.SetCardColumnColor(ctx, accountId, projectId, columnId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18882,8 +19995,8 @@ func (c *ClientWithResponses) SetCardColumnColorWithResponse(ctx context.Context
 }
 
 // DisableCardColumnOnHoldWithResponse request returning *DisableCardColumnOnHoldResponse
-func (c *ClientWithResponses) DisableCardColumnOnHoldWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error) {
-	rsp, err := c.DisableCardColumnOnHold(ctx, projectId, columnId, reqEditors...)
+func (c *ClientWithResponses) DisableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error) {
+	rsp, err := c.DisableCardColumnOnHold(ctx, accountId, projectId, columnId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18891,8 +20004,8 @@ func (c *ClientWithResponses) DisableCardColumnOnHoldWithResponse(ctx context.Co
 }
 
 // EnableCardColumnOnHoldWithResponse request returning *EnableCardColumnOnHoldResponse
-func (c *ClientWithResponses) EnableCardColumnOnHoldWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error) {
-	rsp, err := c.EnableCardColumnOnHold(ctx, projectId, columnId, reqEditors...)
+func (c *ClientWithResponses) EnableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error) {
+	rsp, err := c.EnableCardColumnOnHold(ctx, accountId, projectId, columnId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18900,8 +20013,8 @@ func (c *ClientWithResponses) EnableCardColumnOnHoldWithResponse(ctx context.Con
 }
 
 // ListCardsWithResponse request returning *ListCardsResponse
-func (c *ClientWithResponses) ListCardsWithResponse(ctx context.Context, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*ListCardsResponse, error) {
-	rsp, err := c.ListCards(ctx, projectId, columnId, reqEditors...)
+func (c *ClientWithResponses) ListCardsWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*ListCardsResponse, error) {
+	rsp, err := c.ListCards(ctx, accountId, projectId, columnId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18909,16 +20022,16 @@ func (c *ClientWithResponses) ListCardsWithResponse(ctx context.Context, project
 }
 
 // CreateCardWithBodyWithResponse request with arbitrary body returning *CreateCardResponse
-func (c *ClientWithResponses) CreateCardWithBodyWithResponse(ctx context.Context, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardResponse, error) {
-	rsp, err := c.CreateCardWithBody(ctx, projectId, columnId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateCardWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardResponse, error) {
+	rsp, err := c.CreateCardWithBody(ctx, accountId, projectId, columnId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateCardResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateCardWithResponse(ctx context.Context, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardResponse, error) {
-	rsp, err := c.CreateCard(ctx, projectId, columnId, body, reqEditors...)
+func (c *ClientWithResponses) CreateCardWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardResponse, error) {
+	rsp, err := c.CreateCard(ctx, accountId, projectId, columnId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18926,16 +20039,16 @@ func (c *ClientWithResponses) CreateCardWithResponse(ctx context.Context, projec
 }
 
 // UpdateCardStepWithBodyWithResponse request with arbitrary body returning *UpdateCardStepResponse
-func (c *ClientWithResponses) UpdateCardStepWithBodyWithResponse(ctx context.Context, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error) {
-	rsp, err := c.UpdateCardStepWithBody(ctx, projectId, stepId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateCardStepWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error) {
+	rsp, err := c.UpdateCardStepWithBody(ctx, accountId, projectId, stepId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateCardStepResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error) {
-	rsp, err := c.UpdateCardStep(ctx, projectId, stepId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateCardStepWithResponse(ctx context.Context, accountId string, projectId int64, stepId int64, body UpdateCardStepJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error) {
+	rsp, err := c.UpdateCardStep(ctx, accountId, projectId, stepId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18943,8 +20056,8 @@ func (c *ClientWithResponses) UpdateCardStepWithResponse(ctx context.Context, pr
 }
 
 // UncompleteCardStepWithResponse request returning *UncompleteCardStepResponse
-func (c *ClientWithResponses) UncompleteCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*UncompleteCardStepResponse, error) {
-	rsp, err := c.UncompleteCardStep(ctx, projectId, stepId, reqEditors...)
+func (c *ClientWithResponses) UncompleteCardStepWithResponse(ctx context.Context, accountId string, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*UncompleteCardStepResponse, error) {
+	rsp, err := c.UncompleteCardStep(ctx, accountId, projectId, stepId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18952,8 +20065,8 @@ func (c *ClientWithResponses) UncompleteCardStepWithResponse(ctx context.Context
 }
 
 // CompleteCardStepWithResponse request returning *CompleteCardStepResponse
-func (c *ClientWithResponses) CompleteCardStepWithResponse(ctx context.Context, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*CompleteCardStepResponse, error) {
-	rsp, err := c.CompleteCardStep(ctx, projectId, stepId, reqEditors...)
+func (c *ClientWithResponses) CompleteCardStepWithResponse(ctx context.Context, accountId string, projectId int64, stepId int64, reqEditors ...RequestEditorFn) (*CompleteCardStepResponse, error) {
+	rsp, err := c.CompleteCardStep(ctx, accountId, projectId, stepId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18961,8 +20074,8 @@ func (c *ClientWithResponses) CompleteCardStepWithResponse(ctx context.Context, 
 }
 
 // GetCardTableWithResponse request returning *GetCardTableResponse
-func (c *ClientWithResponses) GetCardTableWithResponse(ctx context.Context, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*GetCardTableResponse, error) {
-	rsp, err := c.GetCardTable(ctx, projectId, cardTableId, reqEditors...)
+func (c *ClientWithResponses) GetCardTableWithResponse(ctx context.Context, accountId string, projectId int64, cardTableId int64, reqEditors ...RequestEditorFn) (*GetCardTableResponse, error) {
+	rsp, err := c.GetCardTable(ctx, accountId, projectId, cardTableId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18970,16 +20083,16 @@ func (c *ClientWithResponses) GetCardTableWithResponse(ctx context.Context, proj
 }
 
 // CreateCardColumnWithBodyWithResponse request with arbitrary body returning *CreateCardColumnResponse
-func (c *ClientWithResponses) CreateCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error) {
-	rsp, err := c.CreateCardColumnWithBody(ctx, projectId, cardTableId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateCardColumnWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error) {
+	rsp, err := c.CreateCardColumnWithBody(ctx, accountId, projectId, cardTableId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateCardColumnResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateCardColumnWithResponse(ctx context.Context, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error) {
-	rsp, err := c.CreateCardColumn(ctx, projectId, cardTableId, body, reqEditors...)
+func (c *ClientWithResponses) CreateCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, cardTableId int64, body CreateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardColumnResponse, error) {
+	rsp, err := c.CreateCardColumn(ctx, accountId, projectId, cardTableId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18987,16 +20100,16 @@ func (c *ClientWithResponses) CreateCardColumnWithResponse(ctx context.Context, 
 }
 
 // MoveCardColumnWithBodyWithResponse request with arbitrary body returning *MoveCardColumnResponse
-func (c *ClientWithResponses) MoveCardColumnWithBodyWithResponse(ctx context.Context, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error) {
-	rsp, err := c.MoveCardColumnWithBody(ctx, projectId, cardTableId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) MoveCardColumnWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error) {
+	rsp, err := c.MoveCardColumnWithBody(ctx, accountId, projectId, cardTableId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseMoveCardColumnResponse(rsp)
 }
 
-func (c *ClientWithResponses) MoveCardColumnWithResponse(ctx context.Context, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error) {
-	rsp, err := c.MoveCardColumn(ctx, projectId, cardTableId, body, reqEditors...)
+func (c *ClientWithResponses) MoveCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error) {
+	rsp, err := c.MoveCardColumn(ctx, accountId, projectId, cardTableId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19004,8 +20117,8 @@ func (c *ClientWithResponses) MoveCardColumnWithResponse(ctx context.Context, pr
 }
 
 // ListMessageTypesWithResponse request returning *ListMessageTypesResponse
-func (c *ClientWithResponses) ListMessageTypesWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error) {
-	rsp, err := c.ListMessageTypes(ctx, projectId, reqEditors...)
+func (c *ClientWithResponses) ListMessageTypesWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error) {
+	rsp, err := c.ListMessageTypes(ctx, accountId, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19013,16 +20126,16 @@ func (c *ClientWithResponses) ListMessageTypesWithResponse(ctx context.Context, 
 }
 
 // CreateMessageTypeWithBodyWithResponse request with arbitrary body returning *CreateMessageTypeResponse
-func (c *ClientWithResponses) CreateMessageTypeWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
-	rsp, err := c.CreateMessageTypeWithBody(ctx, projectId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
+	rsp, err := c.CreateMessageTypeWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateMessageTypeResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateMessageTypeWithResponse(ctx context.Context, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
-	rsp, err := c.CreateMessageType(ctx, projectId, body, reqEditors...)
+func (c *ClientWithResponses) CreateMessageTypeWithResponse(ctx context.Context, accountId string, projectId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
+	rsp, err := c.CreateMessageType(ctx, accountId, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19030,8 +20143,8 @@ func (c *ClientWithResponses) CreateMessageTypeWithResponse(ctx context.Context,
 }
 
 // DeleteMessageTypeWithResponse request returning *DeleteMessageTypeResponse
-func (c *ClientWithResponses) DeleteMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error) {
-	rsp, err := c.DeleteMessageType(ctx, projectId, typeId, reqEditors...)
+func (c *ClientWithResponses) DeleteMessageTypeWithResponse(ctx context.Context, accountId string, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error) {
+	rsp, err := c.DeleteMessageType(ctx, accountId, projectId, typeId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19039,8 +20152,8 @@ func (c *ClientWithResponses) DeleteMessageTypeWithResponse(ctx context.Context,
 }
 
 // GetMessageTypeWithResponse request returning *GetMessageTypeResponse
-func (c *ClientWithResponses) GetMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error) {
-	rsp, err := c.GetMessageType(ctx, projectId, typeId, reqEditors...)
+func (c *ClientWithResponses) GetMessageTypeWithResponse(ctx context.Context, accountId string, projectId int64, typeId int64, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error) {
+	rsp, err := c.GetMessageType(ctx, accountId, projectId, typeId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19048,16 +20161,16 @@ func (c *ClientWithResponses) GetMessageTypeWithResponse(ctx context.Context, pr
 }
 
 // UpdateMessageTypeWithBodyWithResponse request with arbitrary body returning *UpdateMessageTypeResponse
-func (c *ClientWithResponses) UpdateMessageTypeWithBodyWithResponse(ctx context.Context, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
-	rsp, err := c.UpdateMessageTypeWithBody(ctx, projectId, typeId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
+	rsp, err := c.UpdateMessageTypeWithBody(ctx, accountId, projectId, typeId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateMessageTypeResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateMessageTypeWithResponse(ctx context.Context, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
-	rsp, err := c.UpdateMessageType(ctx, projectId, typeId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateMessageTypeWithResponse(ctx context.Context, accountId string, projectId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
+	rsp, err := c.UpdateMessageType(ctx, accountId, projectId, typeId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19065,8 +20178,8 @@ func (c *ClientWithResponses) UpdateMessageTypeWithResponse(ctx context.Context,
 }
 
 // GetCampfireWithResponse request returning *GetCampfireResponse
-func (c *ClientWithResponses) GetCampfireWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*GetCampfireResponse, error) {
-	rsp, err := c.GetCampfire(ctx, projectId, campfireId, reqEditors...)
+func (c *ClientWithResponses) GetCampfireWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*GetCampfireResponse, error) {
+	rsp, err := c.GetCampfire(ctx, accountId, projectId, campfireId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19074,8 +20187,8 @@ func (c *ClientWithResponses) GetCampfireWithResponse(ctx context.Context, proje
 }
 
 // ListChatbotsWithResponse request returning *ListChatbotsResponse
-func (c *ClientWithResponses) ListChatbotsWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error) {
-	rsp, err := c.ListChatbots(ctx, projectId, campfireId, reqEditors...)
+func (c *ClientWithResponses) ListChatbotsWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error) {
+	rsp, err := c.ListChatbots(ctx, accountId, projectId, campfireId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19083,16 +20196,16 @@ func (c *ClientWithResponses) ListChatbotsWithResponse(ctx context.Context, proj
 }
 
 // CreateChatbotWithBodyWithResponse request with arbitrary body returning *CreateChatbotResponse
-func (c *ClientWithResponses) CreateChatbotWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
-	rsp, err := c.CreateChatbotWithBody(ctx, projectId, campfireId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateChatbotWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
+	rsp, err := c.CreateChatbotWithBody(ctx, accountId, projectId, campfireId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateChatbotResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
-	rsp, err := c.CreateChatbot(ctx, projectId, campfireId, body, reqEditors...)
+func (c *ClientWithResponses) CreateChatbotWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
+	rsp, err := c.CreateChatbot(ctx, accountId, projectId, campfireId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19100,8 +20213,8 @@ func (c *ClientWithResponses) CreateChatbotWithResponse(ctx context.Context, pro
 }
 
 // DeleteChatbotWithResponse request returning *DeleteChatbotResponse
-func (c *ClientWithResponses) DeleteChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error) {
-	rsp, err := c.DeleteChatbot(ctx, projectId, campfireId, chatbotId, reqEditors...)
+func (c *ClientWithResponses) DeleteChatbotWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error) {
+	rsp, err := c.DeleteChatbot(ctx, accountId, projectId, campfireId, chatbotId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19109,8 +20222,8 @@ func (c *ClientWithResponses) DeleteChatbotWithResponse(ctx context.Context, pro
 }
 
 // GetChatbotWithResponse request returning *GetChatbotResponse
-func (c *ClientWithResponses) GetChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error) {
-	rsp, err := c.GetChatbot(ctx, projectId, campfireId, chatbotId, reqEditors...)
+func (c *ClientWithResponses) GetChatbotWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error) {
+	rsp, err := c.GetChatbot(ctx, accountId, projectId, campfireId, chatbotId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19118,16 +20231,16 @@ func (c *ClientWithResponses) GetChatbotWithResponse(ctx context.Context, projec
 }
 
 // UpdateChatbotWithBodyWithResponse request with arbitrary body returning *UpdateChatbotResponse
-func (c *ClientWithResponses) UpdateChatbotWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
-	rsp, err := c.UpdateChatbotWithBody(ctx, projectId, campfireId, chatbotId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateChatbotWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
+	rsp, err := c.UpdateChatbotWithBody(ctx, accountId, projectId, campfireId, chatbotId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateChatbotResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateChatbotWithResponse(ctx context.Context, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
-	rsp, err := c.UpdateChatbot(ctx, projectId, campfireId, chatbotId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateChatbotWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
+	rsp, err := c.UpdateChatbot(ctx, accountId, projectId, campfireId, chatbotId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19135,8 +20248,8 @@ func (c *ClientWithResponses) UpdateChatbotWithResponse(ctx context.Context, pro
 }
 
 // ListCampfireLinesWithResponse request returning *ListCampfireLinesResponse
-func (c *ClientWithResponses) ListCampfireLinesWithResponse(ctx context.Context, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error) {
-	rsp, err := c.ListCampfireLines(ctx, projectId, campfireId, reqEditors...)
+func (c *ClientWithResponses) ListCampfireLinesWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error) {
+	rsp, err := c.ListCampfireLines(ctx, accountId, projectId, campfireId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19144,16 +20257,16 @@ func (c *ClientWithResponses) ListCampfireLinesWithResponse(ctx context.Context,
 }
 
 // CreateCampfireLineWithBodyWithResponse request with arbitrary body returning *CreateCampfireLineResponse
-func (c *ClientWithResponses) CreateCampfireLineWithBodyWithResponse(ctx context.Context, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error) {
-	rsp, err := c.CreateCampfireLineWithBody(ctx, projectId, campfireId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateCampfireLineWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error) {
+	rsp, err := c.CreateCampfireLineWithBody(ctx, accountId, projectId, campfireId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateCampfireLineResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error) {
-	rsp, err := c.CreateCampfireLine(ctx, projectId, campfireId, body, reqEditors...)
+func (c *ClientWithResponses) CreateCampfireLineWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, body CreateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error) {
+	rsp, err := c.CreateCampfireLine(ctx, accountId, projectId, campfireId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19161,8 +20274,8 @@ func (c *ClientWithResponses) CreateCampfireLineWithResponse(ctx context.Context
 }
 
 // DeleteCampfireLineWithResponse request returning *DeleteCampfireLineResponse
-func (c *ClientWithResponses) DeleteCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*DeleteCampfireLineResponse, error) {
-	rsp, err := c.DeleteCampfireLine(ctx, projectId, campfireId, lineId, reqEditors...)
+func (c *ClientWithResponses) DeleteCampfireLineWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*DeleteCampfireLineResponse, error) {
+	rsp, err := c.DeleteCampfireLine(ctx, accountId, projectId, campfireId, lineId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19170,8 +20283,8 @@ func (c *ClientWithResponses) DeleteCampfireLineWithResponse(ctx context.Context
 }
 
 // GetCampfireLineWithResponse request returning *GetCampfireLineResponse
-func (c *ClientWithResponses) GetCampfireLineWithResponse(ctx context.Context, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*GetCampfireLineResponse, error) {
-	rsp, err := c.GetCampfireLine(ctx, projectId, campfireId, lineId, reqEditors...)
+func (c *ClientWithResponses) GetCampfireLineWithResponse(ctx context.Context, accountId string, projectId int64, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*GetCampfireLineResponse, error) {
+	rsp, err := c.GetCampfireLine(ctx, accountId, projectId, campfireId, lineId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19179,8 +20292,8 @@ func (c *ClientWithResponses) GetCampfireLineWithResponse(ctx context.Context, p
 }
 
 // ListClientApprovalsWithResponse request returning *ListClientApprovalsResponse
-func (c *ClientWithResponses) ListClientApprovalsWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error) {
-	rsp, err := c.ListClientApprovals(ctx, projectId, reqEditors...)
+func (c *ClientWithResponses) ListClientApprovalsWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error) {
+	rsp, err := c.ListClientApprovals(ctx, accountId, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19188,8 +20301,8 @@ func (c *ClientWithResponses) ListClientApprovalsWithResponse(ctx context.Contex
 }
 
 // GetClientApprovalWithResponse request returning *GetClientApprovalResponse
-func (c *ClientWithResponses) GetClientApprovalWithResponse(ctx context.Context, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*GetClientApprovalResponse, error) {
-	rsp, err := c.GetClientApproval(ctx, projectId, approvalId, reqEditors...)
+func (c *ClientWithResponses) GetClientApprovalWithResponse(ctx context.Context, accountId string, projectId int64, approvalId int64, reqEditors ...RequestEditorFn) (*GetClientApprovalResponse, error) {
+	rsp, err := c.GetClientApproval(ctx, accountId, projectId, approvalId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19197,8 +20310,8 @@ func (c *ClientWithResponses) GetClientApprovalWithResponse(ctx context.Context,
 }
 
 // ListClientCorrespondencesWithResponse request returning *ListClientCorrespondencesResponse
-func (c *ClientWithResponses) ListClientCorrespondencesWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error) {
-	rsp, err := c.ListClientCorrespondences(ctx, projectId, reqEditors...)
+func (c *ClientWithResponses) ListClientCorrespondencesWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error) {
+	rsp, err := c.ListClientCorrespondences(ctx, accountId, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19206,8 +20319,8 @@ func (c *ClientWithResponses) ListClientCorrespondencesWithResponse(ctx context.
 }
 
 // GetClientCorrespondenceWithResponse request returning *GetClientCorrespondenceResponse
-func (c *ClientWithResponses) GetClientCorrespondenceWithResponse(ctx context.Context, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error) {
-	rsp, err := c.GetClientCorrespondence(ctx, projectId, correspondenceId, reqEditors...)
+func (c *ClientWithResponses) GetClientCorrespondenceWithResponse(ctx context.Context, accountId string, projectId int64, correspondenceId int64, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error) {
+	rsp, err := c.GetClientCorrespondence(ctx, accountId, projectId, correspondenceId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19215,8 +20328,8 @@ func (c *ClientWithResponses) GetClientCorrespondenceWithResponse(ctx context.Co
 }
 
 // ListClientRepliesWithResponse request returning *ListClientRepliesResponse
-func (c *ClientWithResponses) ListClientRepliesWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error) {
-	rsp, err := c.ListClientReplies(ctx, projectId, recordingId, reqEditors...)
+func (c *ClientWithResponses) ListClientRepliesWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error) {
+	rsp, err := c.ListClientReplies(ctx, accountId, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19224,8 +20337,8 @@ func (c *ClientWithResponses) ListClientRepliesWithResponse(ctx context.Context,
 }
 
 // GetClientReplyWithResponse request returning *GetClientReplyResponse
-func (c *ClientWithResponses) GetClientReplyWithResponse(ctx context.Context, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error) {
-	rsp, err := c.GetClientReply(ctx, projectId, recordingId, replyId, reqEditors...)
+func (c *ClientWithResponses) GetClientReplyWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error) {
+	rsp, err := c.GetClientReply(ctx, accountId, projectId, recordingId, replyId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19233,8 +20346,8 @@ func (c *ClientWithResponses) GetClientReplyWithResponse(ctx context.Context, pr
 }
 
 // GetCommentWithResponse request returning *GetCommentResponse
-func (c *ClientWithResponses) GetCommentWithResponse(ctx context.Context, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*GetCommentResponse, error) {
-	rsp, err := c.GetComment(ctx, projectId, commentId, reqEditors...)
+func (c *ClientWithResponses) GetCommentWithResponse(ctx context.Context, accountId string, projectId int64, commentId int64, reqEditors ...RequestEditorFn) (*GetCommentResponse, error) {
+	rsp, err := c.GetComment(ctx, accountId, projectId, commentId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19242,16 +20355,16 @@ func (c *ClientWithResponses) GetCommentWithResponse(ctx context.Context, projec
 }
 
 // UpdateCommentWithBodyWithResponse request with arbitrary body returning *UpdateCommentResponse
-func (c *ClientWithResponses) UpdateCommentWithBodyWithResponse(ctx context.Context, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error) {
-	rsp, err := c.UpdateCommentWithBody(ctx, projectId, commentId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateCommentWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error) {
+	rsp, err := c.UpdateCommentWithBody(ctx, accountId, projectId, commentId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateCommentResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateCommentWithResponse(ctx context.Context, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error) {
-	rsp, err := c.UpdateComment(ctx, projectId, commentId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateCommentWithResponse(ctx context.Context, accountId string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error) {
+	rsp, err := c.UpdateComment(ctx, accountId, projectId, commentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19259,8 +20372,8 @@ func (c *ClientWithResponses) UpdateCommentWithResponse(ctx context.Context, pro
 }
 
 // CloneToolWithResponse request returning *CloneToolResponse
-func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
-	rsp, err := c.CloneTool(ctx, projectId, sourceToolId, reqEditors...)
+func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
+	rsp, err := c.CloneTool(ctx, accountId, projectId, sourceToolId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19268,8 +20381,8 @@ func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, project
 }
 
 // DeleteToolWithResponse request returning *DeleteToolResponse
-func (c *ClientWithResponses) DeleteToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error) {
-	rsp, err := c.DeleteTool(ctx, projectId, toolId, reqEditors...)
+func (c *ClientWithResponses) DeleteToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error) {
+	rsp, err := c.DeleteTool(ctx, accountId, projectId, toolId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19277,8 +20390,8 @@ func (c *ClientWithResponses) DeleteToolWithResponse(ctx context.Context, projec
 }
 
 // GetToolWithResponse request returning *GetToolResponse
-func (c *ClientWithResponses) GetToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*GetToolResponse, error) {
-	rsp, err := c.GetTool(ctx, projectId, toolId, reqEditors...)
+func (c *ClientWithResponses) GetToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*GetToolResponse, error) {
+	rsp, err := c.GetTool(ctx, accountId, projectId, toolId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19286,16 +20399,16 @@ func (c *ClientWithResponses) GetToolWithResponse(ctx context.Context, projectId
 }
 
 // UpdateToolWithBodyWithResponse request with arbitrary body returning *UpdateToolResponse
-func (c *ClientWithResponses) UpdateToolWithBodyWithResponse(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
-	rsp, err := c.UpdateToolWithBody(ctx, projectId, toolId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
+	rsp, err := c.UpdateToolWithBody(ctx, accountId, projectId, toolId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateToolResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateToolWithResponse(ctx context.Context, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
-	rsp, err := c.UpdateTool(ctx, projectId, toolId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
+	rsp, err := c.UpdateTool(ctx, accountId, projectId, toolId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19303,8 +20416,8 @@ func (c *ClientWithResponses) UpdateToolWithResponse(ctx context.Context, projec
 }
 
 // DisableToolWithResponse request returning *DisableToolResponse
-func (c *ClientWithResponses) DisableToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error) {
-	rsp, err := c.DisableTool(ctx, projectId, toolId, reqEditors...)
+func (c *ClientWithResponses) DisableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error) {
+	rsp, err := c.DisableTool(ctx, accountId, projectId, toolId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19312,8 +20425,8 @@ func (c *ClientWithResponses) DisableToolWithResponse(ctx context.Context, proje
 }
 
 // EnableToolWithResponse request returning *EnableToolResponse
-func (c *ClientWithResponses) EnableToolWithResponse(ctx context.Context, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error) {
-	rsp, err := c.EnableTool(ctx, projectId, toolId, reqEditors...)
+func (c *ClientWithResponses) EnableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error) {
+	rsp, err := c.EnableTool(ctx, accountId, projectId, toolId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19321,16 +20434,16 @@ func (c *ClientWithResponses) EnableToolWithResponse(ctx context.Context, projec
 }
 
 // RepositionToolWithBodyWithResponse request with arbitrary body returning *RepositionToolResponse
-func (c *ClientWithResponses) RepositionToolWithBodyWithResponse(ctx context.Context, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
-	rsp, err := c.RepositionToolWithBody(ctx, projectId, toolId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) RepositionToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
+	rsp, err := c.RepositionToolWithBody(ctx, accountId, projectId, toolId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseRepositionToolResponse(rsp)
 }
 
-func (c *ClientWithResponses) RepositionToolWithResponse(ctx context.Context, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
-	rsp, err := c.RepositionTool(ctx, projectId, toolId, body, reqEditors...)
+func (c *ClientWithResponses) RepositionToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
+	rsp, err := c.RepositionTool(ctx, accountId, projectId, toolId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19338,8 +20451,8 @@ func (c *ClientWithResponses) RepositionToolWithResponse(ctx context.Context, pr
 }
 
 // GetDocumentWithResponse request returning *GetDocumentResponse
-func (c *ClientWithResponses) GetDocumentWithResponse(ctx context.Context, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error) {
-	rsp, err := c.GetDocument(ctx, projectId, documentId, reqEditors...)
+func (c *ClientWithResponses) GetDocumentWithResponse(ctx context.Context, accountId string, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error) {
+	rsp, err := c.GetDocument(ctx, accountId, projectId, documentId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19347,16 +20460,16 @@ func (c *ClientWithResponses) GetDocumentWithResponse(ctx context.Context, proje
 }
 
 // UpdateDocumentWithBodyWithResponse request with arbitrary body returning *UpdateDocumentResponse
-func (c *ClientWithResponses) UpdateDocumentWithBodyWithResponse(ctx context.Context, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error) {
-	rsp, err := c.UpdateDocumentWithBody(ctx, projectId, documentId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateDocumentWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error) {
+	rsp, err := c.UpdateDocumentWithBody(ctx, accountId, projectId, documentId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateDocumentResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateDocumentWithResponse(ctx context.Context, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error) {
-	rsp, err := c.UpdateDocument(ctx, projectId, documentId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateDocumentWithResponse(ctx context.Context, accountId string, projectId int64, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error) {
+	rsp, err := c.UpdateDocument(ctx, accountId, projectId, documentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19364,8 +20477,8 @@ func (c *ClientWithResponses) UpdateDocumentWithResponse(ctx context.Context, pr
 }
 
 // GetForwardWithResponse request returning *GetForwardResponse
-func (c *ClientWithResponses) GetForwardWithResponse(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*GetForwardResponse, error) {
-	rsp, err := c.GetForward(ctx, projectId, forwardId, reqEditors...)
+func (c *ClientWithResponses) GetForwardWithResponse(ctx context.Context, accountId string, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*GetForwardResponse, error) {
+	rsp, err := c.GetForward(ctx, accountId, projectId, forwardId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19373,8 +20486,8 @@ func (c *ClientWithResponses) GetForwardWithResponse(ctx context.Context, projec
 }
 
 // ListForwardRepliesWithResponse request returning *ListForwardRepliesResponse
-func (c *ClientWithResponses) ListForwardRepliesWithResponse(ctx context.Context, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error) {
-	rsp, err := c.ListForwardReplies(ctx, projectId, forwardId, reqEditors...)
+func (c *ClientWithResponses) ListForwardRepliesWithResponse(ctx context.Context, accountId string, projectId int64, forwardId int64, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error) {
+	rsp, err := c.ListForwardReplies(ctx, accountId, projectId, forwardId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19382,16 +20495,16 @@ func (c *ClientWithResponses) ListForwardRepliesWithResponse(ctx context.Context
 }
 
 // CreateForwardReplyWithBodyWithResponse request with arbitrary body returning *CreateForwardReplyResponse
-func (c *ClientWithResponses) CreateForwardReplyWithBodyWithResponse(ctx context.Context, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error) {
-	rsp, err := c.CreateForwardReplyWithBody(ctx, projectId, forwardId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateForwardReplyWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error) {
+	rsp, err := c.CreateForwardReplyWithBody(ctx, accountId, projectId, forwardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateForwardReplyResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateForwardReplyWithResponse(ctx context.Context, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error) {
-	rsp, err := c.CreateForwardReply(ctx, projectId, forwardId, body, reqEditors...)
+func (c *ClientWithResponses) CreateForwardReplyWithResponse(ctx context.Context, accountId string, projectId int64, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error) {
+	rsp, err := c.CreateForwardReply(ctx, accountId, projectId, forwardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19399,8 +20512,8 @@ func (c *ClientWithResponses) CreateForwardReplyWithResponse(ctx context.Context
 }
 
 // GetForwardReplyWithResponse request returning *GetForwardReplyResponse
-func (c *ClientWithResponses) GetForwardReplyWithResponse(ctx context.Context, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetForwardReplyResponse, error) {
-	rsp, err := c.GetForwardReply(ctx, projectId, forwardId, replyId, reqEditors...)
+func (c *ClientWithResponses) GetForwardReplyWithResponse(ctx context.Context, accountId string, projectId int64, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetForwardReplyResponse, error) {
+	rsp, err := c.GetForwardReply(ctx, accountId, projectId, forwardId, replyId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19408,8 +20521,8 @@ func (c *ClientWithResponses) GetForwardReplyWithResponse(ctx context.Context, p
 }
 
 // GetInboxWithResponse request returning *GetInboxResponse
-func (c *ClientWithResponses) GetInboxWithResponse(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*GetInboxResponse, error) {
-	rsp, err := c.GetInbox(ctx, projectId, inboxId, reqEditors...)
+func (c *ClientWithResponses) GetInboxWithResponse(ctx context.Context, accountId string, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*GetInboxResponse, error) {
+	rsp, err := c.GetInbox(ctx, accountId, projectId, inboxId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19417,8 +20530,8 @@ func (c *ClientWithResponses) GetInboxWithResponse(ctx context.Context, projectI
 }
 
 // ListForwardsWithResponse request returning *ListForwardsResponse
-func (c *ClientWithResponses) ListForwardsWithResponse(ctx context.Context, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*ListForwardsResponse, error) {
-	rsp, err := c.ListForwards(ctx, projectId, inboxId, reqEditors...)
+func (c *ClientWithResponses) ListForwardsWithResponse(ctx context.Context, accountId string, projectId int64, inboxId int64, reqEditors ...RequestEditorFn) (*ListForwardsResponse, error) {
+	rsp, err := c.ListForwards(ctx, accountId, projectId, inboxId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19426,8 +20539,8 @@ func (c *ClientWithResponses) ListForwardsWithResponse(ctx context.Context, proj
 }
 
 // GetMessageBoardWithResponse request returning *GetMessageBoardResponse
-func (c *ClientWithResponses) GetMessageBoardWithResponse(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*GetMessageBoardResponse, error) {
-	rsp, err := c.GetMessageBoard(ctx, projectId, boardId, reqEditors...)
+func (c *ClientWithResponses) GetMessageBoardWithResponse(ctx context.Context, accountId string, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*GetMessageBoardResponse, error) {
+	rsp, err := c.GetMessageBoard(ctx, accountId, projectId, boardId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19435,8 +20548,8 @@ func (c *ClientWithResponses) GetMessageBoardWithResponse(ctx context.Context, p
 }
 
 // ListMessagesWithResponse request returning *ListMessagesResponse
-func (c *ClientWithResponses) ListMessagesWithResponse(ctx context.Context, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error) {
-	rsp, err := c.ListMessages(ctx, projectId, boardId, reqEditors...)
+func (c *ClientWithResponses) ListMessagesWithResponse(ctx context.Context, accountId string, projectId int64, boardId int64, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error) {
+	rsp, err := c.ListMessages(ctx, accountId, projectId, boardId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19444,16 +20557,16 @@ func (c *ClientWithResponses) ListMessagesWithResponse(ctx context.Context, proj
 }
 
 // CreateMessageWithBodyWithResponse request with arbitrary body returning *CreateMessageResponse
-func (c *ClientWithResponses) CreateMessageWithBodyWithResponse(ctx context.Context, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error) {
-	rsp, err := c.CreateMessageWithBody(ctx, projectId, boardId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateMessageWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error) {
+	rsp, err := c.CreateMessageWithBody(ctx, accountId, projectId, boardId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateMessageResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateMessageWithResponse(ctx context.Context, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error) {
-	rsp, err := c.CreateMessage(ctx, projectId, boardId, body, reqEditors...)
+func (c *ClientWithResponses) CreateMessageWithResponse(ctx context.Context, accountId string, projectId int64, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error) {
+	rsp, err := c.CreateMessage(ctx, accountId, projectId, boardId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19461,8 +20574,8 @@ func (c *ClientWithResponses) CreateMessageWithResponse(ctx context.Context, pro
 }
 
 // GetMessageWithResponse request returning *GetMessageResponse
-func (c *ClientWithResponses) GetMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*GetMessageResponse, error) {
-	rsp, err := c.GetMessage(ctx, projectId, messageId, reqEditors...)
+func (c *ClientWithResponses) GetMessageWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*GetMessageResponse, error) {
+	rsp, err := c.GetMessage(ctx, accountId, projectId, messageId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19470,16 +20583,16 @@ func (c *ClientWithResponses) GetMessageWithResponse(ctx context.Context, projec
 }
 
 // UpdateMessageWithBodyWithResponse request with arbitrary body returning *UpdateMessageResponse
-func (c *ClientWithResponses) UpdateMessageWithBodyWithResponse(ctx context.Context, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error) {
-	rsp, err := c.UpdateMessageWithBody(ctx, projectId, messageId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateMessageWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error) {
+	rsp, err := c.UpdateMessageWithBody(ctx, accountId, projectId, messageId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateMessageResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateMessageWithResponse(ctx context.Context, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error) {
-	rsp, err := c.UpdateMessage(ctx, projectId, messageId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateMessageWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error) {
+	rsp, err := c.UpdateMessage(ctx, accountId, projectId, messageId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19487,8 +20600,8 @@ func (c *ClientWithResponses) UpdateMessageWithResponse(ctx context.Context, pro
 }
 
 // GetAnswerWithResponse request returning *GetAnswerResponse
-func (c *ClientWithResponses) GetAnswerWithResponse(ctx context.Context, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*GetAnswerResponse, error) {
-	rsp, err := c.GetAnswer(ctx, projectId, answerId, reqEditors...)
+func (c *ClientWithResponses) GetAnswerWithResponse(ctx context.Context, accountId string, projectId int64, answerId int64, reqEditors ...RequestEditorFn) (*GetAnswerResponse, error) {
+	rsp, err := c.GetAnswer(ctx, accountId, projectId, answerId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19496,16 +20609,16 @@ func (c *ClientWithResponses) GetAnswerWithResponse(ctx context.Context, project
 }
 
 // UpdateAnswerWithBodyWithResponse request with arbitrary body returning *UpdateAnswerResponse
-func (c *ClientWithResponses) UpdateAnswerWithBodyWithResponse(ctx context.Context, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error) {
-	rsp, err := c.UpdateAnswerWithBody(ctx, projectId, answerId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateAnswerWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, answerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error) {
+	rsp, err := c.UpdateAnswerWithBody(ctx, accountId, projectId, answerId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateAnswerResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateAnswerWithResponse(ctx context.Context, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error) {
-	rsp, err := c.UpdateAnswer(ctx, projectId, answerId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateAnswerWithResponse(ctx context.Context, accountId string, projectId int64, answerId int64, body UpdateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAnswerResponse, error) {
+	rsp, err := c.UpdateAnswer(ctx, accountId, projectId, answerId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19513,8 +20626,8 @@ func (c *ClientWithResponses) UpdateAnswerWithResponse(ctx context.Context, proj
 }
 
 // GetQuestionnaireWithResponse request returning *GetQuestionnaireResponse
-func (c *ClientWithResponses) GetQuestionnaireWithResponse(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*GetQuestionnaireResponse, error) {
-	rsp, err := c.GetQuestionnaire(ctx, projectId, questionnaireId, reqEditors...)
+func (c *ClientWithResponses) GetQuestionnaireWithResponse(ctx context.Context, accountId string, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*GetQuestionnaireResponse, error) {
+	rsp, err := c.GetQuestionnaire(ctx, accountId, projectId, questionnaireId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19522,8 +20635,8 @@ func (c *ClientWithResponses) GetQuestionnaireWithResponse(ctx context.Context, 
 }
 
 // ListQuestionsWithResponse request returning *ListQuestionsResponse
-func (c *ClientWithResponses) ListQuestionsWithResponse(ctx context.Context, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error) {
-	rsp, err := c.ListQuestions(ctx, projectId, questionnaireId, reqEditors...)
+func (c *ClientWithResponses) ListQuestionsWithResponse(ctx context.Context, accountId string, projectId int64, questionnaireId int64, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error) {
+	rsp, err := c.ListQuestions(ctx, accountId, projectId, questionnaireId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19531,16 +20644,16 @@ func (c *ClientWithResponses) ListQuestionsWithResponse(ctx context.Context, pro
 }
 
 // CreateQuestionWithBodyWithResponse request with arbitrary body returning *CreateQuestionResponse
-func (c *ClientWithResponses) CreateQuestionWithBodyWithResponse(ctx context.Context, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error) {
-	rsp, err := c.CreateQuestionWithBody(ctx, projectId, questionnaireId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateQuestionWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error) {
+	rsp, err := c.CreateQuestionWithBody(ctx, accountId, projectId, questionnaireId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateQuestionResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateQuestionWithResponse(ctx context.Context, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error) {
-	rsp, err := c.CreateQuestion(ctx, projectId, questionnaireId, body, reqEditors...)
+func (c *ClientWithResponses) CreateQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionnaireId int64, body CreateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error) {
+	rsp, err := c.CreateQuestion(ctx, accountId, projectId, questionnaireId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19548,8 +20661,8 @@ func (c *ClientWithResponses) CreateQuestionWithResponse(ctx context.Context, pr
 }
 
 // GetQuestionWithResponse request returning *GetQuestionResponse
-func (c *ClientWithResponses) GetQuestionWithResponse(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*GetQuestionResponse, error) {
-	rsp, err := c.GetQuestion(ctx, projectId, questionId, reqEditors...)
+func (c *ClientWithResponses) GetQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*GetQuestionResponse, error) {
+	rsp, err := c.GetQuestion(ctx, accountId, projectId, questionId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19557,16 +20670,16 @@ func (c *ClientWithResponses) GetQuestionWithResponse(ctx context.Context, proje
 }
 
 // UpdateQuestionWithBodyWithResponse request with arbitrary body returning *UpdateQuestionResponse
-func (c *ClientWithResponses) UpdateQuestionWithBodyWithResponse(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error) {
-	rsp, err := c.UpdateQuestionWithBody(ctx, projectId, questionId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateQuestionWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error) {
+	rsp, err := c.UpdateQuestionWithBody(ctx, accountId, projectId, questionId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateQuestionResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateQuestionWithResponse(ctx context.Context, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error) {
-	rsp, err := c.UpdateQuestion(ctx, projectId, questionId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error) {
+	rsp, err := c.UpdateQuestion(ctx, accountId, projectId, questionId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19574,8 +20687,8 @@ func (c *ClientWithResponses) UpdateQuestionWithResponse(ctx context.Context, pr
 }
 
 // ListAnswersWithResponse request returning *ListAnswersResponse
-func (c *ClientWithResponses) ListAnswersWithResponse(ctx context.Context, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error) {
-	rsp, err := c.ListAnswers(ctx, projectId, questionId, reqEditors...)
+func (c *ClientWithResponses) ListAnswersWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error) {
+	rsp, err := c.ListAnswers(ctx, accountId, projectId, questionId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19583,16 +20696,16 @@ func (c *ClientWithResponses) ListAnswersWithResponse(ctx context.Context, proje
 }
 
 // CreateAnswerWithBodyWithResponse request with arbitrary body returning *CreateAnswerResponse
-func (c *ClientWithResponses) CreateAnswerWithBodyWithResponse(ctx context.Context, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error) {
-	rsp, err := c.CreateAnswerWithBody(ctx, projectId, questionId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateAnswerWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error) {
+	rsp, err := c.CreateAnswerWithBody(ctx, accountId, projectId, questionId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateAnswerResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateAnswerWithResponse(ctx context.Context, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error) {
-	rsp, err := c.CreateAnswer(ctx, projectId, questionId, body, reqEditors...)
+func (c *ClientWithResponses) CreateAnswerWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error) {
+	rsp, err := c.CreateAnswer(ctx, accountId, projectId, questionId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19600,8 +20713,8 @@ func (c *ClientWithResponses) CreateAnswerWithResponse(ctx context.Context, proj
 }
 
 // UnpinMessageWithResponse request returning *UnpinMessageResponse
-func (c *ClientWithResponses) UnpinMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*UnpinMessageResponse, error) {
-	rsp, err := c.UnpinMessage(ctx, projectId, messageId, reqEditors...)
+func (c *ClientWithResponses) UnpinMessageWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*UnpinMessageResponse, error) {
+	rsp, err := c.UnpinMessage(ctx, accountId, projectId, messageId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19609,8 +20722,8 @@ func (c *ClientWithResponses) UnpinMessageWithResponse(ctx context.Context, proj
 }
 
 // PinMessageWithResponse request returning *PinMessageResponse
-func (c *ClientWithResponses) PinMessageWithResponse(ctx context.Context, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*PinMessageResponse, error) {
-	rsp, err := c.PinMessage(ctx, projectId, messageId, reqEditors...)
+func (c *ClientWithResponses) PinMessageWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*PinMessageResponse, error) {
+	rsp, err := c.PinMessage(ctx, accountId, projectId, messageId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19618,8 +20731,8 @@ func (c *ClientWithResponses) PinMessageWithResponse(ctx context.Context, projec
 }
 
 // GetRecordingWithResponse request returning *GetRecordingResponse
-func (c *ClientWithResponses) GetRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error) {
-	rsp, err := c.GetRecording(ctx, projectId, recordingId, reqEditors...)
+func (c *ClientWithResponses) GetRecordingWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error) {
+	rsp, err := c.GetRecording(ctx, accountId, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19627,16 +20740,16 @@ func (c *ClientWithResponses) GetRecordingWithResponse(ctx context.Context, proj
 }
 
 // SetClientVisibilityWithBodyWithResponse request with arbitrary body returning *SetClientVisibilityResponse
-func (c *ClientWithResponses) SetClientVisibilityWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error) {
-	rsp, err := c.SetClientVisibilityWithBody(ctx, projectId, recordingId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SetClientVisibilityWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error) {
+	rsp, err := c.SetClientVisibilityWithBody(ctx, accountId, projectId, recordingId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseSetClientVisibilityResponse(rsp)
 }
 
-func (c *ClientWithResponses) SetClientVisibilityWithResponse(ctx context.Context, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error) {
-	rsp, err := c.SetClientVisibility(ctx, projectId, recordingId, body, reqEditors...)
+func (c *ClientWithResponses) SetClientVisibilityWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error) {
+	rsp, err := c.SetClientVisibility(ctx, accountId, projectId, recordingId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19644,8 +20757,8 @@ func (c *ClientWithResponses) SetClientVisibilityWithResponse(ctx context.Contex
 }
 
 // ListCommentsWithResponse request returning *ListCommentsResponse
-func (c *ClientWithResponses) ListCommentsWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error) {
-	rsp, err := c.ListComments(ctx, projectId, recordingId, reqEditors...)
+func (c *ClientWithResponses) ListCommentsWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error) {
+	rsp, err := c.ListComments(ctx, accountId, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19653,16 +20766,16 @@ func (c *ClientWithResponses) ListCommentsWithResponse(ctx context.Context, proj
 }
 
 // CreateCommentWithBodyWithResponse request with arbitrary body returning *CreateCommentResponse
-func (c *ClientWithResponses) CreateCommentWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error) {
-	rsp, err := c.CreateCommentWithBody(ctx, projectId, recordingId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateCommentWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error) {
+	rsp, err := c.CreateCommentWithBody(ctx, accountId, projectId, recordingId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateCommentResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateCommentWithResponse(ctx context.Context, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error) {
-	rsp, err := c.CreateComment(ctx, projectId, recordingId, body, reqEditors...)
+func (c *ClientWithResponses) CreateCommentWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error) {
+	rsp, err := c.CreateComment(ctx, accountId, projectId, recordingId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19670,8 +20783,8 @@ func (c *ClientWithResponses) CreateCommentWithResponse(ctx context.Context, pro
 }
 
 // ListEventsWithResponse request returning *ListEventsResponse
-func (c *ClientWithResponses) ListEventsWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListEventsResponse, error) {
-	rsp, err := c.ListEvents(ctx, projectId, recordingId, reqEditors...)
+func (c *ClientWithResponses) ListEventsWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ListEventsResponse, error) {
+	rsp, err := c.ListEvents(ctx, accountId, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19679,8 +20792,8 @@ func (c *ClientWithResponses) ListEventsWithResponse(ctx context.Context, projec
 }
 
 // UnarchiveRecordingWithResponse request returning *UnarchiveRecordingResponse
-func (c *ClientWithResponses) UnarchiveRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnarchiveRecordingResponse, error) {
-	rsp, err := c.UnarchiveRecording(ctx, projectId, recordingId, reqEditors...)
+func (c *ClientWithResponses) UnarchiveRecordingWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnarchiveRecordingResponse, error) {
+	rsp, err := c.UnarchiveRecording(ctx, accountId, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19688,8 +20801,8 @@ func (c *ClientWithResponses) UnarchiveRecordingWithResponse(ctx context.Context
 }
 
 // ArchiveRecordingWithResponse request returning *ArchiveRecordingResponse
-func (c *ClientWithResponses) ArchiveRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ArchiveRecordingResponse, error) {
-	rsp, err := c.ArchiveRecording(ctx, projectId, recordingId, reqEditors...)
+func (c *ClientWithResponses) ArchiveRecordingWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*ArchiveRecordingResponse, error) {
+	rsp, err := c.ArchiveRecording(ctx, accountId, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19697,8 +20810,8 @@ func (c *ClientWithResponses) ArchiveRecordingWithResponse(ctx context.Context, 
 }
 
 // TrashRecordingWithResponse request returning *TrashRecordingResponse
-func (c *ClientWithResponses) TrashRecordingWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*TrashRecordingResponse, error) {
-	rsp, err := c.TrashRecording(ctx, projectId, recordingId, reqEditors...)
+func (c *ClientWithResponses) TrashRecordingWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*TrashRecordingResponse, error) {
+	rsp, err := c.TrashRecording(ctx, accountId, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19706,8 +20819,8 @@ func (c *ClientWithResponses) TrashRecordingWithResponse(ctx context.Context, pr
 }
 
 // UnsubscribeWithResponse request returning *UnsubscribeResponse
-func (c *ClientWithResponses) UnsubscribeWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error) {
-	rsp, err := c.Unsubscribe(ctx, projectId, recordingId, reqEditors...)
+func (c *ClientWithResponses) UnsubscribeWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error) {
+	rsp, err := c.Unsubscribe(ctx, accountId, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19715,8 +20828,8 @@ func (c *ClientWithResponses) UnsubscribeWithResponse(ctx context.Context, proje
 }
 
 // GetSubscriptionWithResponse request returning *GetSubscriptionResponse
-func (c *ClientWithResponses) GetSubscriptionWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetSubscriptionResponse, error) {
-	rsp, err := c.GetSubscription(ctx, projectId, recordingId, reqEditors...)
+func (c *ClientWithResponses) GetSubscriptionWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*GetSubscriptionResponse, error) {
+	rsp, err := c.GetSubscription(ctx, accountId, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19724,8 +20837,8 @@ func (c *ClientWithResponses) GetSubscriptionWithResponse(ctx context.Context, p
 }
 
 // SubscribeWithResponse request returning *SubscribeResponse
-func (c *ClientWithResponses) SubscribeWithResponse(ctx context.Context, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*SubscribeResponse, error) {
-	rsp, err := c.Subscribe(ctx, projectId, recordingId, reqEditors...)
+func (c *ClientWithResponses) SubscribeWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, reqEditors ...RequestEditorFn) (*SubscribeResponse, error) {
+	rsp, err := c.Subscribe(ctx, accountId, projectId, recordingId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19733,16 +20846,16 @@ func (c *ClientWithResponses) SubscribeWithResponse(ctx context.Context, project
 }
 
 // UpdateSubscriptionWithBodyWithResponse request with arbitrary body returning *UpdateSubscriptionResponse
-func (c *ClientWithResponses) UpdateSubscriptionWithBodyWithResponse(ctx context.Context, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error) {
-	rsp, err := c.UpdateSubscriptionWithBody(ctx, projectId, recordingId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateSubscriptionWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error) {
+	rsp, err := c.UpdateSubscriptionWithBody(ctx, accountId, projectId, recordingId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateSubscriptionResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateSubscriptionWithResponse(ctx context.Context, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error) {
-	rsp, err := c.UpdateSubscription(ctx, projectId, recordingId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateSubscriptionWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error) {
+	rsp, err := c.UpdateSubscription(ctx, accountId, projectId, recordingId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19750,8 +20863,8 @@ func (c *ClientWithResponses) UpdateSubscriptionWithResponse(ctx context.Context
 }
 
 // GetRecordingTimesheetWithResponse request returning *GetRecordingTimesheetResponse
-func (c *ClientWithResponses) GetRecordingTimesheetWithResponse(ctx context.Context, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error) {
-	rsp, err := c.GetRecordingTimesheet(ctx, projectId, recordingId, params, reqEditors...)
+func (c *ClientWithResponses) GetRecordingTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error) {
+	rsp, err := c.GetRecordingTimesheet(ctx, accountId, projectId, recordingId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19759,8 +20872,8 @@ func (c *ClientWithResponses) GetRecordingTimesheetWithResponse(ctx context.Cont
 }
 
 // GetScheduleEntryWithResponse request returning *GetScheduleEntryResponse
-func (c *ClientWithResponses) GetScheduleEntryWithResponse(ctx context.Context, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error) {
-	rsp, err := c.GetScheduleEntry(ctx, projectId, entryId, reqEditors...)
+func (c *ClientWithResponses) GetScheduleEntryWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error) {
+	rsp, err := c.GetScheduleEntry(ctx, accountId, projectId, entryId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19768,16 +20881,16 @@ func (c *ClientWithResponses) GetScheduleEntryWithResponse(ctx context.Context, 
 }
 
 // UpdateScheduleEntryWithBodyWithResponse request with arbitrary body returning *UpdateScheduleEntryResponse
-func (c *ClientWithResponses) UpdateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error) {
-	rsp, err := c.UpdateScheduleEntryWithBody(ctx, projectId, entryId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateScheduleEntryWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error) {
+	rsp, err := c.UpdateScheduleEntryWithBody(ctx, accountId, projectId, entryId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateScheduleEntryResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateScheduleEntryWithResponse(ctx context.Context, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error) {
-	rsp, err := c.UpdateScheduleEntry(ctx, projectId, entryId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateScheduleEntryWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error) {
+	rsp, err := c.UpdateScheduleEntry(ctx, accountId, projectId, entryId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19785,8 +20898,8 @@ func (c *ClientWithResponses) UpdateScheduleEntryWithResponse(ctx context.Contex
 }
 
 // GetScheduleEntryOccurrenceWithResponse request returning *GetScheduleEntryOccurrenceResponse
-func (c *ClientWithResponses) GetScheduleEntryOccurrenceWithResponse(ctx context.Context, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*GetScheduleEntryOccurrenceResponse, error) {
-	rsp, err := c.GetScheduleEntryOccurrence(ctx, projectId, entryId, date, reqEditors...)
+func (c *ClientWithResponses) GetScheduleEntryOccurrenceWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, date string, reqEditors ...RequestEditorFn) (*GetScheduleEntryOccurrenceResponse, error) {
+	rsp, err := c.GetScheduleEntryOccurrence(ctx, accountId, projectId, entryId, date, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19794,8 +20907,8 @@ func (c *ClientWithResponses) GetScheduleEntryOccurrenceWithResponse(ctx context
 }
 
 // GetScheduleWithResponse request returning *GetScheduleResponse
-func (c *ClientWithResponses) GetScheduleWithResponse(ctx context.Context, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*GetScheduleResponse, error) {
-	rsp, err := c.GetSchedule(ctx, projectId, scheduleId, reqEditors...)
+func (c *ClientWithResponses) GetScheduleWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, reqEditors ...RequestEditorFn) (*GetScheduleResponse, error) {
+	rsp, err := c.GetSchedule(ctx, accountId, projectId, scheduleId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19803,16 +20916,16 @@ func (c *ClientWithResponses) GetScheduleWithResponse(ctx context.Context, proje
 }
 
 // UpdateScheduleSettingsWithBodyWithResponse request with arbitrary body returning *UpdateScheduleSettingsResponse
-func (c *ClientWithResponses) UpdateScheduleSettingsWithBodyWithResponse(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error) {
-	rsp, err := c.UpdateScheduleSettingsWithBody(ctx, projectId, scheduleId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateScheduleSettingsWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error) {
+	rsp, err := c.UpdateScheduleSettingsWithBody(ctx, accountId, projectId, scheduleId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateScheduleSettingsResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateScheduleSettingsWithResponse(ctx context.Context, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error) {
-	rsp, err := c.UpdateScheduleSettings(ctx, projectId, scheduleId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateScheduleSettingsWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, body UpdateScheduleSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleSettingsResponse, error) {
+	rsp, err := c.UpdateScheduleSettings(ctx, accountId, projectId, scheduleId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19820,8 +20933,8 @@ func (c *ClientWithResponses) UpdateScheduleSettingsWithResponse(ctx context.Con
 }
 
 // ListScheduleEntriesWithResponse request returning *ListScheduleEntriesResponse
-func (c *ClientWithResponses) ListScheduleEntriesWithResponse(ctx context.Context, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*ListScheduleEntriesResponse, error) {
-	rsp, err := c.ListScheduleEntries(ctx, projectId, scheduleId, params, reqEditors...)
+func (c *ClientWithResponses) ListScheduleEntriesWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, params *ListScheduleEntriesParams, reqEditors ...RequestEditorFn) (*ListScheduleEntriesResponse, error) {
+	rsp, err := c.ListScheduleEntries(ctx, accountId, projectId, scheduleId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19829,16 +20942,16 @@ func (c *ClientWithResponses) ListScheduleEntriesWithResponse(ctx context.Contex
 }
 
 // CreateScheduleEntryWithBodyWithResponse request with arbitrary body returning *CreateScheduleEntryResponse
-func (c *ClientWithResponses) CreateScheduleEntryWithBodyWithResponse(ctx context.Context, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error) {
-	rsp, err := c.CreateScheduleEntryWithBody(ctx, projectId, scheduleId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateScheduleEntryWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error) {
+	rsp, err := c.CreateScheduleEntryWithBody(ctx, accountId, projectId, scheduleId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateScheduleEntryResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateScheduleEntryWithResponse(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error) {
-	rsp, err := c.CreateScheduleEntry(ctx, projectId, scheduleId, body, reqEditors...)
+func (c *ClientWithResponses) CreateScheduleEntryWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error) {
+	rsp, err := c.CreateScheduleEntry(ctx, accountId, projectId, scheduleId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19846,8 +20959,8 @@ func (c *ClientWithResponses) CreateScheduleEntryWithResponse(ctx context.Contex
 }
 
 // GetProjectTimelineWithResponse request returning *GetProjectTimelineResponse
-func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error) {
-	rsp, err := c.GetProjectTimeline(ctx, projectId, reqEditors...)
+func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error) {
+	rsp, err := c.GetProjectTimeline(ctx, accountId, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19855,8 +20968,8 @@ func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context
 }
 
 // GetProjectTimesheetWithResponse request returning *GetProjectTimesheetResponse
-func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error) {
-	rsp, err := c.GetProjectTimesheet(ctx, projectId, params, reqEditors...)
+func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error) {
+	rsp, err := c.GetProjectTimesheet(ctx, accountId, projectId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19864,16 +20977,16 @@ func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Contex
 }
 
 // RepositionTodolistGroupWithBodyWithResponse request with arbitrary body returning *RepositionTodolistGroupResponse
-func (c *ClientWithResponses) RepositionTodolistGroupWithBodyWithResponse(ctx context.Context, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error) {
-	rsp, err := c.RepositionTodolistGroupWithBody(ctx, projectId, groupId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) RepositionTodolistGroupWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error) {
+	rsp, err := c.RepositionTodolistGroupWithBody(ctx, accountId, projectId, groupId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseRepositionTodolistGroupResponse(rsp)
 }
 
-func (c *ClientWithResponses) RepositionTodolistGroupWithResponse(ctx context.Context, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error) {
-	rsp, err := c.RepositionTodolistGroup(ctx, projectId, groupId, body, reqEditors...)
+func (c *ClientWithResponses) RepositionTodolistGroupWithResponse(ctx context.Context, accountId string, projectId int64, groupId int64, body RepositionTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error) {
+	rsp, err := c.RepositionTodolistGroup(ctx, accountId, projectId, groupId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19881,8 +20994,8 @@ func (c *ClientWithResponses) RepositionTodolistGroupWithResponse(ctx context.Co
 }
 
 // GetTodolistOrGroupWithResponse request returning *GetTodolistOrGroupResponse
-func (c *ClientWithResponses) GetTodolistOrGroupWithResponse(ctx context.Context, projectId int64, id int64, reqEditors ...RequestEditorFn) (*GetTodolistOrGroupResponse, error) {
-	rsp, err := c.GetTodolistOrGroup(ctx, projectId, id, reqEditors...)
+func (c *ClientWithResponses) GetTodolistOrGroupWithResponse(ctx context.Context, accountId string, projectId int64, id int64, reqEditors ...RequestEditorFn) (*GetTodolistOrGroupResponse, error) {
+	rsp, err := c.GetTodolistOrGroup(ctx, accountId, projectId, id, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19890,16 +21003,16 @@ func (c *ClientWithResponses) GetTodolistOrGroupWithResponse(ctx context.Context
 }
 
 // UpdateTodolistOrGroupWithBodyWithResponse request with arbitrary body returning *UpdateTodolistOrGroupResponse
-func (c *ClientWithResponses) UpdateTodolistOrGroupWithBodyWithResponse(ctx context.Context, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error) {
-	rsp, err := c.UpdateTodolistOrGroupWithBody(ctx, projectId, id, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateTodolistOrGroupWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, id int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error) {
+	rsp, err := c.UpdateTodolistOrGroupWithBody(ctx, accountId, projectId, id, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateTodolistOrGroupResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTodolistOrGroupWithResponse(ctx context.Context, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error) {
-	rsp, err := c.UpdateTodolistOrGroup(ctx, projectId, id, body, reqEditors...)
+func (c *ClientWithResponses) UpdateTodolistOrGroupWithResponse(ctx context.Context, accountId string, projectId int64, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error) {
+	rsp, err := c.UpdateTodolistOrGroup(ctx, accountId, projectId, id, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19907,8 +21020,8 @@ func (c *ClientWithResponses) UpdateTodolistOrGroupWithResponse(ctx context.Cont
 }
 
 // ListTodolistGroupsWithResponse request returning *ListTodolistGroupsResponse
-func (c *ClientWithResponses) ListTodolistGroupsWithResponse(ctx context.Context, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error) {
-	rsp, err := c.ListTodolistGroups(ctx, projectId, todolistId, reqEditors...)
+func (c *ClientWithResponses) ListTodolistGroupsWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error) {
+	rsp, err := c.ListTodolistGroups(ctx, accountId, projectId, todolistId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19916,16 +21029,16 @@ func (c *ClientWithResponses) ListTodolistGroupsWithResponse(ctx context.Context
 }
 
 // CreateTodolistGroupWithBodyWithResponse request with arbitrary body returning *CreateTodolistGroupResponse
-func (c *ClientWithResponses) CreateTodolistGroupWithBodyWithResponse(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error) {
-	rsp, err := c.CreateTodolistGroupWithBody(ctx, projectId, todolistId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateTodolistGroupWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error) {
+	rsp, err := c.CreateTodolistGroupWithBody(ctx, accountId, projectId, todolistId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateTodolistGroupResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTodolistGroupWithResponse(ctx context.Context, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error) {
-	rsp, err := c.CreateTodolistGroup(ctx, projectId, todolistId, body, reqEditors...)
+func (c *ClientWithResponses) CreateTodolistGroupWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, body CreateTodolistGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error) {
+	rsp, err := c.CreateTodolistGroup(ctx, accountId, projectId, todolistId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19933,8 +21046,8 @@ func (c *ClientWithResponses) CreateTodolistGroupWithResponse(ctx context.Contex
 }
 
 // ListTodosWithResponse request returning *ListTodosResponse
-func (c *ClientWithResponses) ListTodosWithResponse(ctx context.Context, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error) {
-	rsp, err := c.ListTodos(ctx, projectId, todolistId, params, reqEditors...)
+func (c *ClientWithResponses) ListTodosWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error) {
+	rsp, err := c.ListTodos(ctx, accountId, projectId, todolistId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19942,16 +21055,16 @@ func (c *ClientWithResponses) ListTodosWithResponse(ctx context.Context, project
 }
 
 // CreateTodoWithBodyWithResponse request with arbitrary body returning *CreateTodoResponse
-func (c *ClientWithResponses) CreateTodoWithBodyWithResponse(ctx context.Context, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
-	rsp, err := c.CreateTodoWithBody(ctx, projectId, todolistId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateTodoWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
+	rsp, err := c.CreateTodoWithBody(ctx, accountId, projectId, todolistId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateTodoResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTodoWithResponse(ctx context.Context, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
-	rsp, err := c.CreateTodo(ctx, projectId, todolistId, body, reqEditors...)
+func (c *ClientWithResponses) CreateTodoWithResponse(ctx context.Context, accountId string, projectId int64, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
+	rsp, err := c.CreateTodo(ctx, accountId, projectId, todolistId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19959,8 +21072,8 @@ func (c *ClientWithResponses) CreateTodoWithResponse(ctx context.Context, projec
 }
 
 // TrashTodoWithResponse request returning *TrashTodoResponse
-func (c *ClientWithResponses) TrashTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error) {
-	rsp, err := c.TrashTodo(ctx, projectId, todoId, reqEditors...)
+func (c *ClientWithResponses) TrashTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error) {
+	rsp, err := c.TrashTodo(ctx, accountId, projectId, todoId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19968,8 +21081,8 @@ func (c *ClientWithResponses) TrashTodoWithResponse(ctx context.Context, project
 }
 
 // GetTodoWithResponse request returning *GetTodoResponse
-func (c *ClientWithResponses) GetTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*GetTodoResponse, error) {
-	rsp, err := c.GetTodo(ctx, projectId, todoId, reqEditors...)
+func (c *ClientWithResponses) GetTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*GetTodoResponse, error) {
+	rsp, err := c.GetTodo(ctx, accountId, projectId, todoId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19977,16 +21090,16 @@ func (c *ClientWithResponses) GetTodoWithResponse(ctx context.Context, projectId
 }
 
 // UpdateTodoWithBodyWithResponse request with arbitrary body returning *UpdateTodoResponse
-func (c *ClientWithResponses) UpdateTodoWithBodyWithResponse(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
-	rsp, err := c.UpdateTodoWithBody(ctx, projectId, todoId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateTodoWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
+	rsp, err := c.UpdateTodoWithBody(ctx, accountId, projectId, todoId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateTodoResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTodoWithResponse(ctx context.Context, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
-	rsp, err := c.UpdateTodo(ctx, projectId, todoId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
+	rsp, err := c.UpdateTodo(ctx, accountId, projectId, todoId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19994,8 +21107,8 @@ func (c *ClientWithResponses) UpdateTodoWithResponse(ctx context.Context, projec
 }
 
 // UncompleteTodoWithResponse request returning *UncompleteTodoResponse
-func (c *ClientWithResponses) UncompleteTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*UncompleteTodoResponse, error) {
-	rsp, err := c.UncompleteTodo(ctx, projectId, todoId, reqEditors...)
+func (c *ClientWithResponses) UncompleteTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*UncompleteTodoResponse, error) {
+	rsp, err := c.UncompleteTodo(ctx, accountId, projectId, todoId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20003,8 +21116,8 @@ func (c *ClientWithResponses) UncompleteTodoWithResponse(ctx context.Context, pr
 }
 
 // CompleteTodoWithResponse request returning *CompleteTodoResponse
-func (c *ClientWithResponses) CompleteTodoWithResponse(ctx context.Context, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*CompleteTodoResponse, error) {
-	rsp, err := c.CompleteTodo(ctx, projectId, todoId, reqEditors...)
+func (c *ClientWithResponses) CompleteTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, reqEditors ...RequestEditorFn) (*CompleteTodoResponse, error) {
+	rsp, err := c.CompleteTodo(ctx, accountId, projectId, todoId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20012,16 +21125,16 @@ func (c *ClientWithResponses) CompleteTodoWithResponse(ctx context.Context, proj
 }
 
 // RepositionTodoWithBodyWithResponse request with arbitrary body returning *RepositionTodoResponse
-func (c *ClientWithResponses) RepositionTodoWithBodyWithResponse(ctx context.Context, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error) {
-	rsp, err := c.RepositionTodoWithBody(ctx, projectId, todoId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) RepositionTodoWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error) {
+	rsp, err := c.RepositionTodoWithBody(ctx, accountId, projectId, todoId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseRepositionTodoResponse(rsp)
 }
 
-func (c *ClientWithResponses) RepositionTodoWithResponse(ctx context.Context, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error) {
-	rsp, err := c.RepositionTodo(ctx, projectId, todoId, body, reqEditors...)
+func (c *ClientWithResponses) RepositionTodoWithResponse(ctx context.Context, accountId string, projectId int64, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error) {
+	rsp, err := c.RepositionTodo(ctx, accountId, projectId, todoId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20029,8 +21142,8 @@ func (c *ClientWithResponses) RepositionTodoWithResponse(ctx context.Context, pr
 }
 
 // GetTodosetWithResponse request returning *GetTodosetResponse
-func (c *ClientWithResponses) GetTodosetWithResponse(ctx context.Context, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*GetTodosetResponse, error) {
-	rsp, err := c.GetTodoset(ctx, projectId, todosetId, reqEditors...)
+func (c *ClientWithResponses) GetTodosetWithResponse(ctx context.Context, accountId string, projectId int64, todosetId int64, reqEditors ...RequestEditorFn) (*GetTodosetResponse, error) {
+	rsp, err := c.GetTodoset(ctx, accountId, projectId, todosetId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20038,8 +21151,8 @@ func (c *ClientWithResponses) GetTodosetWithResponse(ctx context.Context, projec
 }
 
 // ListTodolistsWithResponse request returning *ListTodolistsResponse
-func (c *ClientWithResponses) ListTodolistsWithResponse(ctx context.Context, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*ListTodolistsResponse, error) {
-	rsp, err := c.ListTodolists(ctx, projectId, todosetId, params, reqEditors...)
+func (c *ClientWithResponses) ListTodolistsWithResponse(ctx context.Context, accountId string, projectId int64, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*ListTodolistsResponse, error) {
+	rsp, err := c.ListTodolists(ctx, accountId, projectId, todosetId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20047,16 +21160,16 @@ func (c *ClientWithResponses) ListTodolistsWithResponse(ctx context.Context, pro
 }
 
 // CreateTodolistWithBodyWithResponse request with arbitrary body returning *CreateTodolistResponse
-func (c *ClientWithResponses) CreateTodolistWithBodyWithResponse(ctx context.Context, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error) {
-	rsp, err := c.CreateTodolistWithBody(ctx, projectId, todosetId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateTodolistWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error) {
+	rsp, err := c.CreateTodolistWithBody(ctx, accountId, projectId, todosetId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateTodolistResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTodolistWithResponse(ctx context.Context, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error) {
-	rsp, err := c.CreateTodolist(ctx, projectId, todosetId, body, reqEditors...)
+func (c *ClientWithResponses) CreateTodolistWithResponse(ctx context.Context, accountId string, projectId int64, todosetId int64, body CreateTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodolistResponse, error) {
+	rsp, err := c.CreateTodolist(ctx, accountId, projectId, todosetId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20064,8 +21177,8 @@ func (c *ClientWithResponses) CreateTodolistWithResponse(ctx context.Context, pr
 }
 
 // GetUploadWithResponse request returning *GetUploadResponse
-func (c *ClientWithResponses) GetUploadWithResponse(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*GetUploadResponse, error) {
-	rsp, err := c.GetUpload(ctx, projectId, uploadId, reqEditors...)
+func (c *ClientWithResponses) GetUploadWithResponse(ctx context.Context, accountId string, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*GetUploadResponse, error) {
+	rsp, err := c.GetUpload(ctx, accountId, projectId, uploadId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20073,16 +21186,16 @@ func (c *ClientWithResponses) GetUploadWithResponse(ctx context.Context, project
 }
 
 // UpdateUploadWithBodyWithResponse request with arbitrary body returning *UpdateUploadResponse
-func (c *ClientWithResponses) UpdateUploadWithBodyWithResponse(ctx context.Context, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error) {
-	rsp, err := c.UpdateUploadWithBody(ctx, projectId, uploadId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateUploadWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error) {
+	rsp, err := c.UpdateUploadWithBody(ctx, accountId, projectId, uploadId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateUploadResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateUploadWithResponse(ctx context.Context, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error) {
-	rsp, err := c.UpdateUpload(ctx, projectId, uploadId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateUploadWithResponse(ctx context.Context, accountId string, projectId int64, uploadId int64, body UpdateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUploadResponse, error) {
+	rsp, err := c.UpdateUpload(ctx, accountId, projectId, uploadId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20090,8 +21203,8 @@ func (c *ClientWithResponses) UpdateUploadWithResponse(ctx context.Context, proj
 }
 
 // ListUploadVersionsWithResponse request returning *ListUploadVersionsResponse
-func (c *ClientWithResponses) ListUploadVersionsWithResponse(ctx context.Context, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*ListUploadVersionsResponse, error) {
-	rsp, err := c.ListUploadVersions(ctx, projectId, uploadId, reqEditors...)
+func (c *ClientWithResponses) ListUploadVersionsWithResponse(ctx context.Context, accountId string, projectId int64, uploadId int64, reqEditors ...RequestEditorFn) (*ListUploadVersionsResponse, error) {
+	rsp, err := c.ListUploadVersions(ctx, accountId, projectId, uploadId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20099,8 +21212,8 @@ func (c *ClientWithResponses) ListUploadVersionsWithResponse(ctx context.Context
 }
 
 // GetVaultWithResponse request returning *GetVaultResponse
-func (c *ClientWithResponses) GetVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*GetVaultResponse, error) {
-	rsp, err := c.GetVault(ctx, projectId, vaultId, reqEditors...)
+func (c *ClientWithResponses) GetVaultWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*GetVaultResponse, error) {
+	rsp, err := c.GetVault(ctx, accountId, projectId, vaultId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20108,16 +21221,16 @@ func (c *ClientWithResponses) GetVaultWithResponse(ctx context.Context, projectI
 }
 
 // UpdateVaultWithBodyWithResponse request with arbitrary body returning *UpdateVaultResponse
-func (c *ClientWithResponses) UpdateVaultWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error) {
-	rsp, err := c.UpdateVaultWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateVaultWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error) {
+	rsp, err := c.UpdateVaultWithBody(ctx, accountId, projectId, vaultId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateVaultResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error) {
-	rsp, err := c.UpdateVault(ctx, projectId, vaultId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateVaultWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error) {
+	rsp, err := c.UpdateVault(ctx, accountId, projectId, vaultId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20125,8 +21238,8 @@ func (c *ClientWithResponses) UpdateVaultWithResponse(ctx context.Context, proje
 }
 
 // ListDocumentsWithResponse request returning *ListDocumentsResponse
-func (c *ClientWithResponses) ListDocumentsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error) {
-	rsp, err := c.ListDocuments(ctx, projectId, vaultId, reqEditors...)
+func (c *ClientWithResponses) ListDocumentsWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error) {
+	rsp, err := c.ListDocuments(ctx, accountId, projectId, vaultId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20134,16 +21247,16 @@ func (c *ClientWithResponses) ListDocumentsWithResponse(ctx context.Context, pro
 }
 
 // CreateDocumentWithBodyWithResponse request with arbitrary body returning *CreateDocumentResponse
-func (c *ClientWithResponses) CreateDocumentWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error) {
-	rsp, err := c.CreateDocumentWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateDocumentWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error) {
+	rsp, err := c.CreateDocumentWithBody(ctx, accountId, projectId, vaultId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateDocumentResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateDocumentWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error) {
-	rsp, err := c.CreateDocument(ctx, projectId, vaultId, body, reqEditors...)
+func (c *ClientWithResponses) CreateDocumentWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error) {
+	rsp, err := c.CreateDocument(ctx, accountId, projectId, vaultId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20151,8 +21264,8 @@ func (c *ClientWithResponses) CreateDocumentWithResponse(ctx context.Context, pr
 }
 
 // ListUploadsWithResponse request returning *ListUploadsResponse
-func (c *ClientWithResponses) ListUploadsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error) {
-	rsp, err := c.ListUploads(ctx, projectId, vaultId, reqEditors...)
+func (c *ClientWithResponses) ListUploadsWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error) {
+	rsp, err := c.ListUploads(ctx, accountId, projectId, vaultId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20160,16 +21273,16 @@ func (c *ClientWithResponses) ListUploadsWithResponse(ctx context.Context, proje
 }
 
 // CreateUploadWithBodyWithResponse request with arbitrary body returning *CreateUploadResponse
-func (c *ClientWithResponses) CreateUploadWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error) {
-	rsp, err := c.CreateUploadWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateUploadWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error) {
+	rsp, err := c.CreateUploadWithBody(ctx, accountId, projectId, vaultId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateUploadResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateUploadWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error) {
-	rsp, err := c.CreateUpload(ctx, projectId, vaultId, body, reqEditors...)
+func (c *ClientWithResponses) CreateUploadWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error) {
+	rsp, err := c.CreateUpload(ctx, accountId, projectId, vaultId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20177,8 +21290,8 @@ func (c *ClientWithResponses) CreateUploadWithResponse(ctx context.Context, proj
 }
 
 // ListVaultsWithResponse request returning *ListVaultsResponse
-func (c *ClientWithResponses) ListVaultsWithResponse(ctx context.Context, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error) {
-	rsp, err := c.ListVaults(ctx, projectId, vaultId, reqEditors...)
+func (c *ClientWithResponses) ListVaultsWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error) {
+	rsp, err := c.ListVaults(ctx, accountId, projectId, vaultId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20186,16 +21299,16 @@ func (c *ClientWithResponses) ListVaultsWithResponse(ctx context.Context, projec
 }
 
 // CreateVaultWithBodyWithResponse request with arbitrary body returning *CreateVaultResponse
-func (c *ClientWithResponses) CreateVaultWithBodyWithResponse(ctx context.Context, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error) {
-	rsp, err := c.CreateVaultWithBody(ctx, projectId, vaultId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateVaultWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error) {
+	rsp, err := c.CreateVaultWithBody(ctx, accountId, projectId, vaultId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateVaultResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateVaultWithResponse(ctx context.Context, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error) {
-	rsp, err := c.CreateVault(ctx, projectId, vaultId, body, reqEditors...)
+func (c *ClientWithResponses) CreateVaultWithResponse(ctx context.Context, accountId string, projectId int64, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error) {
+	rsp, err := c.CreateVault(ctx, accountId, projectId, vaultId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20203,8 +21316,8 @@ func (c *ClientWithResponses) CreateVaultWithResponse(ctx context.Context, proje
 }
 
 // ListWebhooksWithResponse request returning *ListWebhooksResponse
-func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
-	rsp, err := c.ListWebhooks(ctx, projectId, reqEditors...)
+func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
+	rsp, err := c.ListWebhooks(ctx, accountId, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20212,16 +21325,16 @@ func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, proj
 }
 
 // CreateWebhookWithBodyWithResponse request with arbitrary body returning *CreateWebhookResponse
-func (c *ClientWithResponses) CreateWebhookWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
-	rsp, err := c.CreateWebhookWithBody(ctx, projectId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
+	rsp, err := c.CreateWebhookWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateWebhookResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
-	rsp, err := c.CreateWebhook(ctx, projectId, body, reqEditors...)
+func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, accountId string, projectId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
+	rsp, err := c.CreateWebhook(ctx, accountId, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20229,8 +21342,8 @@ func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, pro
 }
 
 // DeleteWebhookWithResponse request returning *DeleteWebhookResponse
-func (c *ClientWithResponses) DeleteWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*DeleteWebhookResponse, error) {
-	rsp, err := c.DeleteWebhook(ctx, projectId, webhookId, reqEditors...)
+func (c *ClientWithResponses) DeleteWebhookWithResponse(ctx context.Context, accountId string, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*DeleteWebhookResponse, error) {
+	rsp, err := c.DeleteWebhook(ctx, accountId, projectId, webhookId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20238,8 +21351,8 @@ func (c *ClientWithResponses) DeleteWebhookWithResponse(ctx context.Context, pro
 }
 
 // GetWebhookWithResponse request returning *GetWebhookResponse
-func (c *ClientWithResponses) GetWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*GetWebhookResponse, error) {
-	rsp, err := c.GetWebhook(ctx, projectId, webhookId, reqEditors...)
+func (c *ClientWithResponses) GetWebhookWithResponse(ctx context.Context, accountId string, projectId int64, webhookId int64, reqEditors ...RequestEditorFn) (*GetWebhookResponse, error) {
+	rsp, err := c.GetWebhook(ctx, accountId, projectId, webhookId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20247,16 +21360,16 @@ func (c *ClientWithResponses) GetWebhookWithResponse(ctx context.Context, projec
 }
 
 // UpdateWebhookWithBodyWithResponse request with arbitrary body returning *UpdateWebhookResponse
-func (c *ClientWithResponses) UpdateWebhookWithBodyWithResponse(ctx context.Context, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error) {
-	rsp, err := c.UpdateWebhookWithBody(ctx, projectId, webhookId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateWebhookWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, webhookId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error) {
+	rsp, err := c.UpdateWebhookWithBody(ctx, accountId, projectId, webhookId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateWebhookResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateWebhookWithResponse(ctx context.Context, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error) {
-	rsp, err := c.UpdateWebhook(ctx, projectId, webhookId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateWebhookWithResponse(ctx context.Context, accountId string, projectId int64, webhookId int64, body UpdateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWebhookResponse, error) {
+	rsp, err := c.UpdateWebhook(ctx, accountId, projectId, webhookId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20264,8 +21377,8 @@ func (c *ClientWithResponses) UpdateWebhookWithResponse(ctx context.Context, pro
 }
 
 // ListCampfiresWithResponse request returning *ListCampfiresResponse
-func (c *ClientWithResponses) ListCampfiresWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error) {
-	rsp, err := c.ListCampfires(ctx, reqEditors...)
+func (c *ClientWithResponses) ListCampfiresWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error) {
+	rsp, err := c.ListCampfires(ctx, accountId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20273,8 +21386,8 @@ func (c *ClientWithResponses) ListCampfiresWithResponse(ctx context.Context, req
 }
 
 // ListPingablePeopleWithResponse request returning *ListPingablePeopleResponse
-func (c *ClientWithResponses) ListPingablePeopleWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListPingablePeopleResponse, error) {
-	rsp, err := c.ListPingablePeople(ctx, reqEditors...)
+func (c *ClientWithResponses) ListPingablePeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPingablePeopleResponse, error) {
+	rsp, err := c.ListPingablePeople(ctx, accountId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20282,16 +21395,16 @@ func (c *ClientWithResponses) ListPingablePeopleWithResponse(ctx context.Context
 }
 
 // CreateLineupMarkerWithBodyWithResponse request with arbitrary body returning *CreateLineupMarkerResponse
-func (c *ClientWithResponses) CreateLineupMarkerWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLineupMarkerResponse, error) {
-	rsp, err := c.CreateLineupMarkerWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateLineupMarkerWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLineupMarkerResponse, error) {
+	rsp, err := c.CreateLineupMarkerWithBody(ctx, accountId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateLineupMarkerResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateLineupMarkerWithResponse(ctx context.Context, body CreateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLineupMarkerResponse, error) {
-	rsp, err := c.CreateLineupMarker(ctx, body, reqEditors...)
+func (c *ClientWithResponses) CreateLineupMarkerWithResponse(ctx context.Context, accountId string, body CreateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLineupMarkerResponse, error) {
+	rsp, err := c.CreateLineupMarker(ctx, accountId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20299,8 +21412,8 @@ func (c *ClientWithResponses) CreateLineupMarkerWithResponse(ctx context.Context
 }
 
 // DeleteLineupMarkerWithResponse request returning *DeleteLineupMarkerResponse
-func (c *ClientWithResponses) DeleteLineupMarkerWithResponse(ctx context.Context, markerId int64, reqEditors ...RequestEditorFn) (*DeleteLineupMarkerResponse, error) {
-	rsp, err := c.DeleteLineupMarker(ctx, markerId, reqEditors...)
+func (c *ClientWithResponses) DeleteLineupMarkerWithResponse(ctx context.Context, accountId string, markerId int64, reqEditors ...RequestEditorFn) (*DeleteLineupMarkerResponse, error) {
+	rsp, err := c.DeleteLineupMarker(ctx, accountId, markerId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20308,16 +21421,16 @@ func (c *ClientWithResponses) DeleteLineupMarkerWithResponse(ctx context.Context
 }
 
 // UpdateLineupMarkerWithBodyWithResponse request with arbitrary body returning *UpdateLineupMarkerResponse
-func (c *ClientWithResponses) UpdateLineupMarkerWithBodyWithResponse(ctx context.Context, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error) {
-	rsp, err := c.UpdateLineupMarkerWithBody(ctx, markerId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateLineupMarkerWithBodyWithResponse(ctx context.Context, accountId string, markerId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error) {
+	rsp, err := c.UpdateLineupMarkerWithBody(ctx, accountId, markerId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateLineupMarkerResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateLineupMarkerWithResponse(ctx context.Context, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error) {
-	rsp, err := c.UpdateLineupMarker(ctx, markerId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateLineupMarkerWithResponse(ctx context.Context, accountId string, markerId int64, body UpdateLineupMarkerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLineupMarkerResponse, error) {
+	rsp, err := c.UpdateLineupMarker(ctx, accountId, markerId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20325,8 +21438,8 @@ func (c *ClientWithResponses) UpdateLineupMarkerWithResponse(ctx context.Context
 }
 
 // GetMyProfileWithResponse request returning *GetMyProfileResponse
-func (c *ClientWithResponses) GetMyProfileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyProfileResponse, error) {
-	rsp, err := c.GetMyProfile(ctx, reqEditors...)
+func (c *ClientWithResponses) GetMyProfileWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyProfileResponse, error) {
+	rsp, err := c.GetMyProfile(ctx, accountId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20334,8 +21447,8 @@ func (c *ClientWithResponses) GetMyProfileWithResponse(ctx context.Context, reqE
 }
 
 // ListPeopleWithResponse request returning *ListPeopleResponse
-func (c *ClientWithResponses) ListPeopleWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error) {
-	rsp, err := c.ListPeople(ctx, reqEditors...)
+func (c *ClientWithResponses) ListPeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error) {
+	rsp, err := c.ListPeople(ctx, accountId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20343,8 +21456,8 @@ func (c *ClientWithResponses) ListPeopleWithResponse(ctx context.Context, reqEdi
 }
 
 // GetPersonWithResponse request returning *GetPersonResponse
-func (c *ClientWithResponses) GetPersonWithResponse(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*GetPersonResponse, error) {
-	rsp, err := c.GetPerson(ctx, personId, reqEditors...)
+func (c *ClientWithResponses) GetPersonWithResponse(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*GetPersonResponse, error) {
+	rsp, err := c.GetPerson(ctx, accountId, personId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20352,8 +21465,8 @@ func (c *ClientWithResponses) GetPersonWithResponse(ctx context.Context, personI
 }
 
 // ListProjectsWithResponse request returning *ListProjectsResponse
-func (c *ClientWithResponses) ListProjectsWithResponse(ctx context.Context, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error) {
-	rsp, err := c.ListProjects(ctx, params, reqEditors...)
+func (c *ClientWithResponses) ListProjectsWithResponse(ctx context.Context, accountId string, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error) {
+	rsp, err := c.ListProjects(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20361,16 +21474,16 @@ func (c *ClientWithResponses) ListProjectsWithResponse(ctx context.Context, para
 }
 
 // CreateProjectWithBodyWithResponse request with arbitrary body returning *CreateProjectResponse
-func (c *ClientWithResponses) CreateProjectWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error) {
-	rsp, err := c.CreateProjectWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateProjectWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error) {
+	rsp, err := c.CreateProjectWithBody(ctx, accountId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateProjectResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateProjectWithResponse(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error) {
-	rsp, err := c.CreateProject(ctx, body, reqEditors...)
+func (c *ClientWithResponses) CreateProjectWithResponse(ctx context.Context, accountId string, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error) {
+	rsp, err := c.CreateProject(ctx, accountId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20378,8 +21491,8 @@ func (c *ClientWithResponses) CreateProjectWithResponse(ctx context.Context, bod
 }
 
 // ListRecordingsWithResponse request returning *ListRecordingsResponse
-func (c *ClientWithResponses) ListRecordingsWithResponse(ctx context.Context, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*ListRecordingsResponse, error) {
-	rsp, err := c.ListRecordings(ctx, params, reqEditors...)
+func (c *ClientWithResponses) ListRecordingsWithResponse(ctx context.Context, accountId string, params *ListRecordingsParams, reqEditors ...RequestEditorFn) (*ListRecordingsResponse, error) {
+	rsp, err := c.ListRecordings(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20387,8 +21500,8 @@ func (c *ClientWithResponses) ListRecordingsWithResponse(ctx context.Context, pa
 }
 
 // TrashProjectWithResponse request returning *TrashProjectResponse
-func (c *ClientWithResponses) TrashProjectWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*TrashProjectResponse, error) {
-	rsp, err := c.TrashProject(ctx, projectId, reqEditors...)
+func (c *ClientWithResponses) TrashProjectWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*TrashProjectResponse, error) {
+	rsp, err := c.TrashProject(ctx, accountId, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20396,8 +21509,8 @@ func (c *ClientWithResponses) TrashProjectWithResponse(ctx context.Context, proj
 }
 
 // GetProjectWithResponse request returning *GetProjectResponse
-func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectResponse, error) {
-	rsp, err := c.GetProject(ctx, projectId, reqEditors...)
+func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectResponse, error) {
+	rsp, err := c.GetProject(ctx, accountId, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20405,16 +21518,16 @@ func (c *ClientWithResponses) GetProjectWithResponse(ctx context.Context, projec
 }
 
 // UpdateProjectWithBodyWithResponse request with arbitrary body returning *UpdateProjectResponse
-func (c *ClientWithResponses) UpdateProjectWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
-	rsp, err := c.UpdateProjectWithBody(ctx, projectId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateProjectWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
+	rsp, err := c.UpdateProjectWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateProjectResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
-	rsp, err := c.UpdateProject(ctx, projectId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error) {
+	rsp, err := c.UpdateProject(ctx, accountId, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20422,8 +21535,8 @@ func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, pro
 }
 
 // ListProjectPeopleWithResponse request returning *ListProjectPeopleResponse
-func (c *ClientWithResponses) ListProjectPeopleWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error) {
-	rsp, err := c.ListProjectPeople(ctx, projectId, reqEditors...)
+func (c *ClientWithResponses) ListProjectPeopleWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error) {
+	rsp, err := c.ListProjectPeople(ctx, accountId, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20431,16 +21544,16 @@ func (c *ClientWithResponses) ListProjectPeopleWithResponse(ctx context.Context,
 }
 
 // UpdateProjectAccessWithBodyWithResponse request with arbitrary body returning *UpdateProjectAccessResponse
-func (c *ClientWithResponses) UpdateProjectAccessWithBodyWithResponse(ctx context.Context, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error) {
-	rsp, err := c.UpdateProjectAccessWithBody(ctx, projectId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateProjectAccessWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error) {
+	rsp, err := c.UpdateProjectAccessWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateProjectAccessResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateProjectAccessWithResponse(ctx context.Context, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error) {
-	rsp, err := c.UpdateProjectAccess(ctx, projectId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateProjectAccessWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error) {
+	rsp, err := c.UpdateProjectAccess(ctx, accountId, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20448,8 +21561,8 @@ func (c *ClientWithResponses) UpdateProjectAccessWithResponse(ctx context.Contex
 }
 
 // GetProgressReportWithResponse request returning *GetProgressReportResponse
-func (c *ClientWithResponses) GetProgressReportWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetProgressReportResponse, error) {
-	rsp, err := c.GetProgressReport(ctx, reqEditors...)
+func (c *ClientWithResponses) GetProgressReportWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetProgressReportResponse, error) {
+	rsp, err := c.GetProgressReport(ctx, accountId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20457,8 +21570,8 @@ func (c *ClientWithResponses) GetProgressReportWithResponse(ctx context.Context,
 }
 
 // GetUpcomingScheduleWithResponse request returning *GetUpcomingScheduleResponse
-func (c *ClientWithResponses) GetUpcomingScheduleWithResponse(ctx context.Context, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*GetUpcomingScheduleResponse, error) {
-	rsp, err := c.GetUpcomingSchedule(ctx, params, reqEditors...)
+func (c *ClientWithResponses) GetUpcomingScheduleWithResponse(ctx context.Context, accountId string, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*GetUpcomingScheduleResponse, error) {
+	rsp, err := c.GetUpcomingSchedule(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20466,8 +21579,8 @@ func (c *ClientWithResponses) GetUpcomingScheduleWithResponse(ctx context.Contex
 }
 
 // GetTimesheetReportWithResponse request returning *GetTimesheetReportResponse
-func (c *ClientWithResponses) GetTimesheetReportWithResponse(ctx context.Context, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*GetTimesheetReportResponse, error) {
-	rsp, err := c.GetTimesheetReport(ctx, params, reqEditors...)
+func (c *ClientWithResponses) GetTimesheetReportWithResponse(ctx context.Context, accountId string, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*GetTimesheetReportResponse, error) {
+	rsp, err := c.GetTimesheetReport(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20475,8 +21588,8 @@ func (c *ClientWithResponses) GetTimesheetReportWithResponse(ctx context.Context
 }
 
 // ListAssignablePeopleWithResponse request returning *ListAssignablePeopleResponse
-func (c *ClientWithResponses) ListAssignablePeopleWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAssignablePeopleResponse, error) {
-	rsp, err := c.ListAssignablePeople(ctx, reqEditors...)
+func (c *ClientWithResponses) ListAssignablePeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListAssignablePeopleResponse, error) {
+	rsp, err := c.ListAssignablePeople(ctx, accountId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20484,8 +21597,8 @@ func (c *ClientWithResponses) ListAssignablePeopleWithResponse(ctx context.Conte
 }
 
 // GetAssignedTodosWithResponse request returning *GetAssignedTodosResponse
-func (c *ClientWithResponses) GetAssignedTodosWithResponse(ctx context.Context, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*GetAssignedTodosResponse, error) {
-	rsp, err := c.GetAssignedTodos(ctx, personId, params, reqEditors...)
+func (c *ClientWithResponses) GetAssignedTodosWithResponse(ctx context.Context, accountId string, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*GetAssignedTodosResponse, error) {
+	rsp, err := c.GetAssignedTodos(ctx, accountId, personId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20493,8 +21606,8 @@ func (c *ClientWithResponses) GetAssignedTodosWithResponse(ctx context.Context, 
 }
 
 // GetOverdueTodosWithResponse request returning *GetOverdueTodosResponse
-func (c *ClientWithResponses) GetOverdueTodosWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOverdueTodosResponse, error) {
-	rsp, err := c.GetOverdueTodos(ctx, reqEditors...)
+func (c *ClientWithResponses) GetOverdueTodosWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetOverdueTodosResponse, error) {
+	rsp, err := c.GetOverdueTodos(ctx, accountId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20502,8 +21615,8 @@ func (c *ClientWithResponses) GetOverdueTodosWithResponse(ctx context.Context, r
 }
 
 // GetPersonProgressWithResponse request returning *GetPersonProgressResponse
-func (c *ClientWithResponses) GetPersonProgressWithResponse(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*GetPersonProgressResponse, error) {
-	rsp, err := c.GetPersonProgress(ctx, personId, reqEditors...)
+func (c *ClientWithResponses) GetPersonProgressWithResponse(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*GetPersonProgressResponse, error) {
+	rsp, err := c.GetPersonProgress(ctx, accountId, personId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20511,8 +21624,8 @@ func (c *ClientWithResponses) GetPersonProgressWithResponse(ctx context.Context,
 }
 
 // SearchWithResponse request returning *SearchResponse
-func (c *ClientWithResponses) SearchWithResponse(ctx context.Context, params *SearchParams, reqEditors ...RequestEditorFn) (*SearchResponse, error) {
-	rsp, err := c.Search(ctx, params, reqEditors...)
+func (c *ClientWithResponses) SearchWithResponse(ctx context.Context, accountId string, params *SearchParams, reqEditors ...RequestEditorFn) (*SearchResponse, error) {
+	rsp, err := c.Search(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20520,8 +21633,8 @@ func (c *ClientWithResponses) SearchWithResponse(ctx context.Context, params *Se
 }
 
 // GetSearchMetadataWithResponse request returning *GetSearchMetadataResponse
-func (c *ClientWithResponses) GetSearchMetadataWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSearchMetadataResponse, error) {
-	rsp, err := c.GetSearchMetadata(ctx, reqEditors...)
+func (c *ClientWithResponses) GetSearchMetadataWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetSearchMetadataResponse, error) {
+	rsp, err := c.GetSearchMetadata(ctx, accountId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20529,8 +21642,8 @@ func (c *ClientWithResponses) GetSearchMetadataWithResponse(ctx context.Context,
 }
 
 // ListTemplatesWithResponse request returning *ListTemplatesResponse
-func (c *ClientWithResponses) ListTemplatesWithResponse(ctx context.Context, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*ListTemplatesResponse, error) {
-	rsp, err := c.ListTemplates(ctx, params, reqEditors...)
+func (c *ClientWithResponses) ListTemplatesWithResponse(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*ListTemplatesResponse, error) {
+	rsp, err := c.ListTemplates(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20538,16 +21651,16 @@ func (c *ClientWithResponses) ListTemplatesWithResponse(ctx context.Context, par
 }
 
 // CreateTemplateWithBodyWithResponse request with arbitrary body returning *CreateTemplateResponse
-func (c *ClientWithResponses) CreateTemplateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplateResponse, error) {
-	rsp, err := c.CreateTemplateWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateTemplateWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplateResponse, error) {
+	rsp, err := c.CreateTemplateWithBody(ctx, accountId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateTemplateResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateTemplateWithResponse(ctx context.Context, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplateResponse, error) {
-	rsp, err := c.CreateTemplate(ctx, body, reqEditors...)
+func (c *ClientWithResponses) CreateTemplateWithResponse(ctx context.Context, accountId string, body CreateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplateResponse, error) {
+	rsp, err := c.CreateTemplate(ctx, accountId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20555,8 +21668,8 @@ func (c *ClientWithResponses) CreateTemplateWithResponse(ctx context.Context, bo
 }
 
 // DeleteTemplateWithResponse request returning *DeleteTemplateResponse
-func (c *ClientWithResponses) DeleteTemplateWithResponse(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*DeleteTemplateResponse, error) {
-	rsp, err := c.DeleteTemplate(ctx, templateId, reqEditors...)
+func (c *ClientWithResponses) DeleteTemplateWithResponse(ctx context.Context, accountId string, templateId int64, reqEditors ...RequestEditorFn) (*DeleteTemplateResponse, error) {
+	rsp, err := c.DeleteTemplate(ctx, accountId, templateId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20564,8 +21677,8 @@ func (c *ClientWithResponses) DeleteTemplateWithResponse(ctx context.Context, te
 }
 
 // GetTemplateWithResponse request returning *GetTemplateResponse
-func (c *ClientWithResponses) GetTemplateWithResponse(ctx context.Context, templateId int64, reqEditors ...RequestEditorFn) (*GetTemplateResponse, error) {
-	rsp, err := c.GetTemplate(ctx, templateId, reqEditors...)
+func (c *ClientWithResponses) GetTemplateWithResponse(ctx context.Context, accountId string, templateId int64, reqEditors ...RequestEditorFn) (*GetTemplateResponse, error) {
+	rsp, err := c.GetTemplate(ctx, accountId, templateId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20573,16 +21686,16 @@ func (c *ClientWithResponses) GetTemplateWithResponse(ctx context.Context, templ
 }
 
 // UpdateTemplateWithBodyWithResponse request with arbitrary body returning *UpdateTemplateResponse
-func (c *ClientWithResponses) UpdateTemplateWithBodyWithResponse(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error) {
-	rsp, err := c.UpdateTemplateWithBody(ctx, templateId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateTemplateWithBodyWithResponse(ctx context.Context, accountId string, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error) {
+	rsp, err := c.UpdateTemplateWithBody(ctx, accountId, templateId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateTemplateResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTemplateWithResponse(ctx context.Context, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error) {
-	rsp, err := c.UpdateTemplate(ctx, templateId, body, reqEditors...)
+func (c *ClientWithResponses) UpdateTemplateWithResponse(ctx context.Context, accountId string, templateId int64, body UpdateTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTemplateResponse, error) {
+	rsp, err := c.UpdateTemplate(ctx, accountId, templateId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20590,16 +21703,16 @@ func (c *ClientWithResponses) UpdateTemplateWithResponse(ctx context.Context, te
 }
 
 // CreateProjectFromTemplateWithBodyWithResponse request with arbitrary body returning *CreateProjectFromTemplateResponse
-func (c *ClientWithResponses) CreateProjectFromTemplateWithBodyWithResponse(ctx context.Context, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error) {
-	rsp, err := c.CreateProjectFromTemplateWithBody(ctx, templateId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateProjectFromTemplateWithBodyWithResponse(ctx context.Context, accountId string, templateId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error) {
+	rsp, err := c.CreateProjectFromTemplateWithBody(ctx, accountId, templateId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateProjectFromTemplateResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateProjectFromTemplateWithResponse(ctx context.Context, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error) {
-	rsp, err := c.CreateProjectFromTemplate(ctx, templateId, body, reqEditors...)
+func (c *ClientWithResponses) CreateProjectFromTemplateWithResponse(ctx context.Context, accountId string, templateId int64, body CreateProjectFromTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectFromTemplateResponse, error) {
+	rsp, err := c.CreateProjectFromTemplate(ctx, accountId, templateId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20607,8 +21720,8 @@ func (c *ClientWithResponses) CreateProjectFromTemplateWithResponse(ctx context.
 }
 
 // GetProjectConstructionWithResponse request returning *GetProjectConstructionResponse
-func (c *ClientWithResponses) GetProjectConstructionWithResponse(ctx context.Context, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*GetProjectConstructionResponse, error) {
-	rsp, err := c.GetProjectConstruction(ctx, templateId, constructionId, reqEditors...)
+func (c *ClientWithResponses) GetProjectConstructionWithResponse(ctx context.Context, accountId string, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*GetProjectConstructionResponse, error) {
+	rsp, err := c.GetProjectConstruction(ctx, accountId, templateId, constructionId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

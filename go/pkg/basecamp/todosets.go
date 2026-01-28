@@ -38,11 +38,11 @@ type Todoset struct {
 
 // TodosetsService handles todoset operations.
 type TodosetsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewTodosetsService creates a new TodosetsService.
-func NewTodosetsService(client *Client) *TodosetsService {
+func NewTodosetsService(client *AccountClient) *TodosetsService {
 	return &TodosetsService{client: client}
 }
 
@@ -54,20 +54,16 @@ func (s *TodosetsService) Get(ctx context.Context, bucketID, todosetID int64) (r
 		ResourceType: "todoset", IsMutation: false,
 		BucketID: bucketID, ResourceID: todosetID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetTodosetWithResponse(ctx, bucketID, todosetID)
+	resp, err := s.client.parent.gen.GetTodosetWithResponse(ctx, s.client.accountID, bucketID, todosetID)
 	if err != nil {
 		return nil, err
 	}

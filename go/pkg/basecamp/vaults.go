@@ -136,11 +136,11 @@ type CreateUploadRequest struct {
 
 // VaultsService handles vault (folder) operations.
 type VaultsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewVaultsService creates a new VaultsService.
-func NewVaultsService(client *Client) *VaultsService {
+func NewVaultsService(client *AccountClient) *VaultsService {
 	return &VaultsService{client: client}
 }
 
@@ -152,20 +152,16 @@ func (s *VaultsService) Get(ctx context.Context, bucketID, vaultID int64) (resul
 		ResourceType: "vault", IsMutation: false,
 		BucketID: bucketID, ResourceID: vaultID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetVaultWithResponse(ctx, bucketID, vaultID)
+	resp, err := s.client.parent.gen.GetVaultWithResponse(ctx, s.client.accountID, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
@@ -189,20 +185,16 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64) (resu
 		ResourceType: "vault", IsMutation: false,
 		BucketID: bucketID, ResourceID: vaultID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListVaultsWithResponse(ctx, bucketID, vaultID)
+	resp, err := s.client.parent.gen.ListVaultsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
@@ -229,18 +221,14 @@ func (s *VaultsService) Create(ctx context.Context, bucketID, vaultID int64, req
 		ResourceType: "vault", IsMutation: true,
 		BucketID: bucketID, ResourceID: vaultID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Title == "" {
 		err = ErrUsage("vault title is required")
@@ -251,7 +239,7 @@ func (s *VaultsService) Create(ctx context.Context, bucketID, vaultID int64, req
 		Title: req.Title,
 	}
 
-	resp, err := s.client.gen.CreateVaultWithResponse(ctx, bucketID, vaultID, body)
+	resp, err := s.client.parent.gen.CreateVaultWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -276,18 +264,14 @@ func (s *VaultsService) Update(ctx context.Context, bucketID, vaultID int64, req
 		ResourceType: "vault", IsMutation: true,
 		BucketID: bucketID, ResourceID: vaultID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update request is required")
@@ -298,7 +282,7 @@ func (s *VaultsService) Update(ctx context.Context, bucketID, vaultID int64, req
 		Title: req.Title,
 	}
 
-	resp, err := s.client.gen.UpdateVaultWithResponse(ctx, bucketID, vaultID, body)
+	resp, err := s.client.parent.gen.UpdateVaultWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -316,11 +300,11 @@ func (s *VaultsService) Update(ctx context.Context, bucketID, vaultID int64, req
 
 // DocumentsService handles document operations.
 type DocumentsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewDocumentsService creates a new DocumentsService.
-func NewDocumentsService(client *Client) *DocumentsService {
+func NewDocumentsService(client *AccountClient) *DocumentsService {
 	return &DocumentsService{client: client}
 }
 
@@ -332,20 +316,16 @@ func (s *DocumentsService) Get(ctx context.Context, bucketID, documentID int64) 
 		ResourceType: "document", IsMutation: false,
 		BucketID: bucketID, ResourceID: documentID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetDocumentWithResponse(ctx, bucketID, documentID)
+	resp, err := s.client.parent.gen.GetDocumentWithResponse(ctx, s.client.accountID, bucketID, documentID)
 	if err != nil {
 		return nil, err
 	}
@@ -369,20 +349,16 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64) (r
 		ResourceType: "document", IsMutation: false,
 		BucketID: bucketID, ResourceID: vaultID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListDocumentsWithResponse(ctx, bucketID, vaultID)
+	resp, err := s.client.parent.gen.ListDocumentsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
@@ -409,18 +385,14 @@ func (s *DocumentsService) Create(ctx context.Context, bucketID, vaultID int64, 
 		ResourceType: "document", IsMutation: true,
 		BucketID: bucketID, ResourceID: vaultID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Title == "" {
 		err = ErrUsage("document title is required")
@@ -433,7 +405,7 @@ func (s *DocumentsService) Create(ctx context.Context, bucketID, vaultID int64, 
 		Status:  req.Status,
 	}
 
-	resp, err := s.client.gen.CreateDocumentWithResponse(ctx, bucketID, vaultID, body)
+	resp, err := s.client.parent.gen.CreateDocumentWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -458,18 +430,14 @@ func (s *DocumentsService) Update(ctx context.Context, bucketID, documentID int6
 		ResourceType: "document", IsMutation: true,
 		BucketID: bucketID, ResourceID: documentID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update request is required")
@@ -481,7 +449,7 @@ func (s *DocumentsService) Update(ctx context.Context, bucketID, documentID int6
 		Content: req.Content,
 	}
 
-	resp, err := s.client.gen.UpdateDocumentWithResponse(ctx, bucketID, documentID, body)
+	resp, err := s.client.parent.gen.UpdateDocumentWithResponse(ctx, s.client.accountID, bucketID, documentID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -506,20 +474,16 @@ func (s *DocumentsService) Trash(ctx context.Context, bucketID, documentID int64
 		ResourceType: "document", IsMutation: true,
 		BucketID: bucketID, ResourceID: documentID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, documentID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, documentID)
 	if err != nil {
 		return err
 	}
@@ -528,11 +492,11 @@ func (s *DocumentsService) Trash(ctx context.Context, bucketID, documentID int64
 
 // UploadsService handles upload (file) operations.
 type UploadsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewUploadsService creates a new UploadsService.
-func NewUploadsService(client *Client) *UploadsService {
+func NewUploadsService(client *AccountClient) *UploadsService {
 	return &UploadsService{client: client}
 }
 
@@ -544,20 +508,16 @@ func (s *UploadsService) Get(ctx context.Context, bucketID, uploadID int64) (res
 		ResourceType: "upload", IsMutation: false,
 		BucketID: bucketID, ResourceID: uploadID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetUploadWithResponse(ctx, bucketID, uploadID)
+	resp, err := s.client.parent.gen.GetUploadWithResponse(ctx, s.client.accountID, bucketID, uploadID)
 	if err != nil {
 		return nil, err
 	}
@@ -581,20 +541,16 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64) (res
 		ResourceType: "upload", IsMutation: false,
 		BucketID: bucketID, ResourceID: vaultID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListUploadsWithResponse(ctx, bucketID, vaultID)
+	resp, err := s.client.parent.gen.ListUploadsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
 	if err != nil {
 		return nil, err
 	}
@@ -621,18 +577,14 @@ func (s *UploadsService) Update(ctx context.Context, bucketID, uploadID int64, r
 		ResourceType: "upload", IsMutation: true,
 		BucketID: bucketID, ResourceID: uploadID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update request is required")
@@ -644,7 +596,7 @@ func (s *UploadsService) Update(ctx context.Context, bucketID, uploadID int64, r
 		BaseName:    req.BaseName,
 	}
 
-	resp, err := s.client.gen.UpdateUploadWithResponse(ctx, bucketID, uploadID, body)
+	resp, err := s.client.parent.gen.UpdateUploadWithResponse(ctx, s.client.accountID, bucketID, uploadID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -670,18 +622,14 @@ func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, re
 		ResourceType: "upload", IsMutation: true,
 		BucketID: bucketID, ResourceID: vaultID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.AttachableSGID == "" {
 		err = ErrUsage("upload attachable_sgid is required")
@@ -694,7 +642,7 @@ func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, re
 		BaseName:       req.BaseName,
 	}
 
-	resp, err := s.client.gen.CreateUploadWithResponse(ctx, bucketID, vaultID, body)
+	resp, err := s.client.parent.gen.CreateUploadWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -719,20 +667,16 @@ func (s *UploadsService) Trash(ctx context.Context, bucketID, uploadID int64) (e
 		ResourceType: "upload", IsMutation: true,
 		BucketID: bucketID, ResourceID: uploadID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, uploadID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, uploadID)
 	if err != nil {
 		return err
 	}
@@ -747,20 +691,16 @@ func (s *UploadsService) ListVersions(ctx context.Context, bucketID, uploadID in
 		ResourceType: "upload", IsMutation: false,
 		BucketID: bucketID, ResourceID: uploadID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListUploadVersionsWithResponse(ctx, bucketID, uploadID)
+	resp, err := s.client.parent.gen.ListUploadVersionsWithResponse(ctx, s.client.accountID, bucketID, uploadID)
 	if err != nil {
 		return nil, err
 	}

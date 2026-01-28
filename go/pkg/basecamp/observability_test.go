@@ -415,7 +415,6 @@ func TestHookContextPropagation(t *testing.T) {
 
 	// Create client with the hook and custom transport
 	cfg := DefaultConfig()
-	cfg.AccountID = "12345"
 	cfg.BaseURL = server.URL
 	token := &StaticTokenProvider{Token: "test-token"}
 	client := NewClient(cfg, token,
@@ -425,7 +424,7 @@ func TestHookContextPropagation(t *testing.T) {
 
 	// Make a request
 	ctx := context.Background()
-	_, err := client.Projects().List(ctx, nil)
+	_, err := client.ForAccount("12345").Projects().List(ctx, nil)
 	if err != nil {
 		t.Logf("Request error (expected in some cases): %v", err)
 	}

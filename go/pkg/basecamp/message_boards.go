@@ -26,11 +26,11 @@ type MessageBoard struct {
 
 // MessageBoardsService handles message board operations.
 type MessageBoardsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewMessageBoardsService creates a new MessageBoardsService.
-func NewMessageBoardsService(client *Client) *MessageBoardsService {
+func NewMessageBoardsService(client *AccountClient) *MessageBoardsService {
 	return &MessageBoardsService{client: client}
 }
 
@@ -42,20 +42,16 @@ func (s *MessageBoardsService) Get(ctx context.Context, bucketID, boardID int64)
 		ResourceType: "message_board", IsMutation: false,
 		BucketID: bucketID, ResourceID: boardID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetMessageBoardWithResponse(ctx, bucketID, boardID)
+	resp, err := s.client.parent.gen.GetMessageBoardWithResponse(ctx, s.client.accountID, bucketID, boardID)
 	if err != nil {
 		return nil, err
 	}

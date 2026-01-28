@@ -10,11 +10,11 @@ import (
 
 // ReportsService handles reports operations.
 type ReportsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewReportsService creates a new ReportsService.
-func NewReportsService(client *Client) *ReportsService {
+func NewReportsService(client *AccountClient) *ReportsService {
 	return &ReportsService{client: client}
 }
 
@@ -24,20 +24,16 @@ func (s *ReportsService) AssignablePeople(ctx context.Context) (result []Person,
 		Service: "Reports", Operation: "AssignablePeople",
 		ResourceType: "person", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListAssignablePeopleWithResponse(ctx)
+	resp, err := s.client.parent.gen.ListAssignablePeopleWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -76,25 +72,21 @@ func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts
 		ResourceType: "todo", IsMutation: false,
 		ResourceID: personID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var params *generated.GetAssignedTodosParams
 	if opts != nil && opts.GroupBy != "" {
 		params = &generated.GetAssignedTodosParams{GroupBy: opts.GroupBy}
 	}
 
-	resp, err := s.client.gen.GetAssignedTodosWithResponse(ctx, personID, params)
+	resp, err := s.client.parent.gen.GetAssignedTodosWithResponse(ctx, s.client.accountID, personID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -142,20 +134,16 @@ func (s *ReportsService) OverdueTodos(ctx context.Context) (result *OverdueTodos
 		Service: "Reports", Operation: "OverdueTodos",
 		ResourceType: "todo", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetOverdueTodosWithResponse(ctx)
+	resp, err := s.client.parent.gen.GetOverdueTodosWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -212,18 +200,14 @@ func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDat
 		Service: "Reports", Operation: "UpcomingSchedule",
 		ResourceType: "schedule_entry", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var params *generated.GetUpcomingScheduleParams
 	if startDate != "" || endDate != "" {
@@ -246,7 +230,7 @@ func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDat
 		}
 	}
 
-	resp, err := s.client.gen.GetUpcomingScheduleWithResponse(ctx, params)
+	resp, err := s.client.parent.gen.GetUpcomingScheduleWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}

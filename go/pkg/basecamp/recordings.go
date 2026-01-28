@@ -74,11 +74,11 @@ type SetClientVisibilityRequest struct {
 // RecordingsService handles recording operations.
 // Recordings are the base type for most content in Basecamp.
 type RecordingsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewRecordingsService creates a new RecordingsService.
-func NewRecordingsService(client *Client) *RecordingsService {
+func NewRecordingsService(client *AccountClient) *RecordingsService {
 	return &RecordingsService{client: client}
 }
 
@@ -90,18 +90,14 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		Service: "Recordings", Operation: "List",
 		ResourceType: "recording", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if recordingType == "" {
 		err = ErrUsage("recording type is required")
@@ -133,7 +129,7 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		}
 	}
 
-	resp, err := s.client.gen.ListRecordingsWithResponse(ctx, params)
+	resp, err := s.client.parent.gen.ListRecordingsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -160,20 +156,16 @@ func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64
 		ResourceType: "recording", IsMutation: false,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetRecordingWithResponse(ctx, bucketID, recordingID)
+	resp, err := s.client.parent.gen.GetRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -198,20 +190,16 @@ func (s *RecordingsService) Trash(ctx context.Context, bucketID, recordingID int
 		ResourceType: "recording", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, recordingID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -227,20 +215,16 @@ func (s *RecordingsService) Archive(ctx context.Context, bucketID, recordingID i
 		ResourceType: "recording", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.ArchiveRecordingWithResponse(ctx, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ArchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -255,20 +239,16 @@ func (s *RecordingsService) Unarchive(ctx context.Context, bucketID, recordingID
 		ResourceType: "recording", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.UnarchiveRecordingWithResponse(ctx, bucketID, recordingID)
+	resp, err := s.client.parent.gen.UnarchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -286,24 +266,20 @@ func (s *RecordingsService) SetClientVisibility(ctx context.Context, bucketID, r
 		ResourceType: "recording", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	body := generated.SetClientVisibilityJSONRequestBody{
 		VisibleToClients: visible,
 	}
 
-	resp, err := s.client.gen.SetClientVisibilityWithResponse(ctx, bucketID, recordingID, body)
+	resp, err := s.client.parent.gen.SetClientVisibilityWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}

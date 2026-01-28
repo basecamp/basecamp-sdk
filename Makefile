@@ -11,32 +11,34 @@ all: check
 # Smithy targets
 #------------------------------------------------------------------------------
 
-.PHONY: smithy-validate smithy-build smithy-check smithy-clean behavior-model behavior-model-check
+.PHONY: smithy-validate smithy-build smithy-check smithy-clean smithy-mapper behavior-model behavior-model-check
 
 # Validate Smithy spec
 smithy-validate:
 	@echo "==> Validating Smithy spec..."
 	cd spec && smithy validate
 
+# Build the custom Smithy OpenAPI mapper
+smithy-mapper:
+	@echo "==> Building Smithy OpenAPI mapper..."
+	cd spec/smithy-bare-arrays && ./gradlew publishToMavenLocal --quiet
+
 # Build OpenAPI from Smithy (also regenerates behavior model)
-smithy-build: behavior-model
+smithy-build: behavior-model smithy-mapper
 	@echo "==> Building OpenAPI from Smithy..."
 	cd spec && smithy build
 	cp spec/build/smithy/openapi/openapi/Basecamp.openapi.json openapi.json
 	@echo "==> Post-processing OpenAPI for Go types..."
 	./scripts/enhance-openapi-go-types.sh
-	@echo "==> Fixing List response schemas to match BC3 API..."
-	./scripts/fix-list-response-schemas.sh
 	@echo "Updated openapi.json"
 
 # Check that openapi.json is up to date
-smithy-check: smithy-validate
+smithy-check: smithy-validate smithy-mapper
 	@echo "==> Checking OpenAPI freshness..."
 	@cd spec && smithy build
 	@TMPFILE=$$(mktemp) && \
 		cp spec/build/smithy/openapi/openapi/Basecamp.openapi.json "$$TMPFILE" && \
 		./scripts/enhance-openapi-go-types.sh "$$TMPFILE" "$$TMPFILE" > /dev/null 2>&1 && \
-		./scripts/fix-list-response-schemas.sh "$$TMPFILE" "$$TMPFILE" > /dev/null 2>&1 && \
 		(diff -q openapi.json "$$TMPFILE" > /dev/null 2>&1 || \
 			(rm -f "$$TMPFILE" && echo "ERROR: openapi.json is out of date. Run 'make smithy-build'" && exit 1)) && \
 		rm -f "$$TMPFILE"
@@ -44,10 +46,10 @@ smithy-check: smithy-validate
 
 # Clean Smithy build artifacts
 smithy-clean:
-	rm -rf spec/build
+	rm -rf spec/build spec/smithy-bare-arrays/build spec/smithy-bare-arrays/.gradle
 
 # Generate behavior model from Smithy spec
-behavior-model:
+behavior-model: smithy-mapper
 	@echo "==> Generating behavior model..."
 	@cd spec && smithy build
 	./scripts/generate-behavior-model
@@ -162,6 +164,7 @@ help:
 	@echo ""
 	@echo "Smithy:"
 	@echo "  smithy-validate  Validate Smithy spec syntax"
+	@echo "  smithy-mapper    Build custom OpenAPI mapper JAR"
 	@echo "  smithy-build     Build OpenAPI from Smithy (updates openapi.json)"
 	@echo "  smithy-check     Verify openapi.json is up to date"
 	@echo "  smithy-clean     Remove Smithy build artifacts"

@@ -6,7 +6,7 @@
     "description": "Basecamp API"
   },
   "paths": {
-    "/attachments.json": {
+    "/{accountId}/attachments.json": {
       "post": {
         "description": "Create an attachment (upload a file for embedding)",
         "operationId": "CreateAttachment",
@@ -21,6 +21,17 @@
           "required": true
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "name",
             "in": "query",
@@ -106,11 +117,22 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/cards/{cardId}": {
+    "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}": {
       "get": {
         "description": "Get a card by ID",
         "operationId": "GetCard",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -209,6 +231,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -306,7 +339,7 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/cards/{cardId}/moves.json": {
+    "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/moves.json": {
       "post": {
         "description": "Move a card to a different column",
         "operationId": "MoveCard",
@@ -321,6 +354,17 @@
           "required": true
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -409,7 +453,7 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/cards/{cardId}/positions.json": {
+    "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/positions.json": {
       "post": {
         "description": "Reposition a step within a card",
         "operationId": "RepositionCardStep",
@@ -424,6 +468,17 @@
           "required": true
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -512,7 +567,7 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/cards/{cardId}/steps.json": {
+    "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/steps.json": {
       "post": {
         "description": "Create a step on a card",
         "operationId": "CreateCardStep",
@@ -527,6 +582,17 @@
           "required": true
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -622,11 +688,22 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/columns/{columnId}": {
+    "/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}": {
       "get": {
         "description": "Get a card column by ID",
         "operationId": "GetCardColumn",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -725,6 +802,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -822,7 +910,7 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/columns/{columnId}/color.json": {
+    "/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}/color.json": {
       "put": {
         "description": "Set the color of a column",
         "operationId": "SetCardColumnColor",
@@ -837,6 +925,17 @@
           "required": true
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -935,11 +1034,22 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json": {
+    "/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json": {
       "delete": {
         "description": "Disable on-hold section in a column",
         "operationId": "DisableCardColumnOnHold",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -1031,6 +1141,17 @@
         "description": "Enable on-hold section in a column",
         "operationId": "EnableCardColumnOnHold",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -1126,11 +1247,22 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/lists/{columnId}/cards.json": {
+    "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/cards.json": {
       "get": {
         "description": "List cards in a column\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListCards",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -1235,6 +1367,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -1329,7 +1472,7 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/steps/{stepId}": {
+    "/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}": {
       "put": {
         "description": "Update an existing step",
         "operationId": "UpdateCardStep",
@@ -1343,6 +1486,17 @@
           }
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -1441,11 +1595,22 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": {
+    "/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": {
       "delete": {
         "description": "Mark a step as incomplete",
         "operationId": "UncompleteCardStep",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -1537,6 +1702,17 @@
         "description": "Mark a step as completed",
         "operationId": "CompleteCardStep",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -1635,11 +1811,22 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/{cardTableId}": {
+    "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}": {
       "get": {
         "description": "Get a card table by ID",
         "operationId": "GetCardTable",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -1725,7 +1912,7 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/{cardTableId}/columns.json": {
+    "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}/columns.json": {
       "post": {
         "description": "Create a column in a card table",
         "operationId": "CreateCardColumn",
@@ -1740,6 +1927,17 @@
           "required": true
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -1835,7 +2033,7 @@
         }
       }
     },
-    "/buckets/{projectId}/card_tables/{cardTableId}/moves.json": {
+    "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}/moves.json": {
       "post": {
         "description": "Move a column within a card table",
         "operationId": "MoveCardColumn",
@@ -1850,6 +2048,17 @@
           "required": true
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -1938,11 +2147,22 @@
         }
       }
     },
-    "/buckets/{projectId}/categories.json": {
+    "/{accountId}/buckets/{projectId}/categories.json": {
       "get": {
         "description": "List message types in a project\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListMessageTypes",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -2038,6 +2258,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -2123,11 +2354,22 @@
         }
       }
     },
-    "/buckets/{projectId}/categories/{typeId}": {
+    "/{accountId}/buckets/{projectId}/categories/{typeId}": {
       "delete": {
         "description": "Delete a message type",
         "operationId": "DeleteMessageType",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -2212,6 +2454,17 @@
         "description": "Get a single message type by id",
         "operationId": "GetMessageType",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -2310,6 +2563,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -2407,11 +2671,22 @@
         }
       }
     },
-    "/buckets/{projectId}/chats/{campfireId}": {
+    "/{accountId}/buckets/{projectId}/chats/{campfireId}": {
       "get": {
         "description": "Get a campfire by ID",
         "operationId": "GetCampfire",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -2497,11 +2772,22 @@
         }
       }
     },
-    "/buckets/{projectId}/chats/{campfireId}/integrations.json": {
+    "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations.json": {
       "get": {
         "description": "List all chatbots for a campfire\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListChatbots",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -2606,6 +2892,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -2700,11 +2997,22 @@
         }
       }
     },
-    "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}": {
+    "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}": {
       "delete": {
         "description": "Delete a chatbot",
         "operationId": "DeleteChatbot",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -2798,6 +3106,17 @@
         "description": "Get a chatbot by ID",
         "operationId": "GetChatbot",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -2906,6 +3225,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -3012,11 +3342,22 @@
         }
       }
     },
-    "/buckets/{projectId}/chats/{campfireId}/lines.json": {
+    "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines.json": {
       "get": {
         "description": "List all lines (messages) in a campfire\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListCampfireLines",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -3121,6 +3462,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -3215,11 +3567,22 @@
         }
       }
     },
-    "/buckets/{projectId}/chats/{campfireId}/lines/{lineId}": {
+    "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines/{lineId}": {
       "delete": {
         "description": "Delete a campfire line",
         "operationId": "DeleteCampfireLine",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -3314,6 +3677,17 @@
         "operationId": "GetCampfireLine",
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -3407,11 +3781,22 @@
         }
       }
     },
-    "/buckets/{projectId}/client/approvals.json": {
+    "/{accountId}/buckets/{projectId}/client/approvals.json": {
       "get": {
         "description": "List all client approvals in a project\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListClientApprovals",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -3493,11 +3878,22 @@
         }
       }
     },
-    "/buckets/{projectId}/client/approvals/{approvalId}": {
+    "/{accountId}/buckets/{projectId}/client/approvals/{approvalId}": {
       "get": {
         "description": "Get a single client approval by id",
         "operationId": "GetClientApproval",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -3583,11 +3979,22 @@
         }
       }
     },
-    "/buckets/{projectId}/client/correspondences.json": {
+    "/{accountId}/buckets/{projectId}/client/correspondences.json": {
       "get": {
         "description": "List all client correspondences in a project\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListClientCorrespondences",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -3669,11 +4076,22 @@
         }
       }
     },
-    "/buckets/{projectId}/client/correspondences/{correspondenceId}": {
+    "/{accountId}/buckets/{projectId}/client/correspondences/{correspondenceId}": {
       "get": {
         "description": "Get a single client correspondence by id",
         "operationId": "GetClientCorrespondence",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -3759,11 +4177,22 @@
         }
       }
     },
-    "/buckets/{projectId}/client/recordings/{recordingId}/replies.json": {
+    "/{accountId}/buckets/{projectId}/client/recordings/{recordingId}/replies.json": {
       "get": {
         "description": "List all client replies for a recording (correspondence or approval)\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListClientReplies",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -3854,11 +4283,22 @@
         }
       }
     },
-    "/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}": {
+    "/{accountId}/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}": {
       "get": {
         "description": "Get a single client reply by id",
         "operationId": "GetClientReply",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -3953,11 +4393,22 @@
         }
       }
     },
-    "/buckets/{projectId}/comments/{commentId}": {
+    "/{accountId}/buckets/{projectId}/comments/{commentId}": {
       "get": {
         "description": "Get a single comment by id",
         "operationId": "GetComment",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -4057,6 +4508,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -4154,11 +4616,22 @@
         }
       }
     },
-    "/buckets/{projectId}/dock/tools/{sourceToolId}/clone.json": {
+    "/{accountId}/buckets/{projectId}/dock/tools/{sourceToolId}/clone.json": {
       "post": {
         "description": "Clone an existing tool to create a new one",
         "operationId": "CloneTool",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -4254,11 +4727,22 @@
         }
       }
     },
-    "/buckets/{projectId}/dock/tools/{toolId}": {
+    "/{accountId}/buckets/{projectId}/dock/tools/{toolId}": {
       "delete": {
         "description": "Delete a tool (trash it)",
         "operationId": "DeleteTool",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -4343,6 +4827,17 @@
         "description": "Get a dock tool by id",
         "operationId": "GetTool",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -4442,6 +4937,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -4539,11 +5045,22 @@
         }
       }
     },
-    "/buckets/{projectId}/dock/tools/{toolId}/position.json": {
+    "/{accountId}/buckets/{projectId}/dock/tools/{toolId}/position.json": {
       "delete": {
         "description": "Disable a tool (hide it from the project dock)",
         "operationId": "DisableTool",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -4628,6 +5145,17 @@
         "description": "Enable a tool (show it on the project dock)",
         "operationId": "EnableTool",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -4730,6 +5258,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -4820,11 +5359,22 @@
         }
       }
     },
-    "/buckets/{projectId}/documents/{documentId}": {
+    "/{accountId}/buckets/{projectId}/documents/{documentId}": {
       "get": {
         "description": "Get a single document by id",
         "operationId": "GetDocument",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -4923,6 +5473,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -5020,11 +5581,22 @@
         }
       }
     },
-    "/buckets/{projectId}/inbox_forwards/{forwardId}": {
+    "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}": {
       "get": {
         "description": "Get a forward by ID",
         "operationId": "GetForward",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -5110,11 +5682,22 @@
         }
       }
     },
-    "/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json": {
+    "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json": {
       "get": {
         "description": "List all replies to a forward\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListForwardReplies",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -5219,6 +5802,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -5313,11 +5907,22 @@
         }
       }
     },
-    "/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}": {
+    "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}": {
       "get": {
         "description": "Get a forward reply by ID",
         "operationId": "GetForwardReply",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -5412,11 +6017,22 @@
         }
       }
     },
-    "/buckets/{projectId}/inboxes/{inboxId}": {
+    "/{accountId}/buckets/{projectId}/inboxes/{inboxId}": {
       "get": {
         "description": "Get an inbox by ID",
         "operationId": "GetInbox",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -5502,11 +6118,22 @@
         }
       }
     },
-    "/buckets/{projectId}/inboxes/{inboxId}/forwards.json": {
+    "/{accountId}/buckets/{projectId}/inboxes/{inboxId}/forwards.json": {
       "get": {
         "description": "List all forwards in an inbox\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListForwards",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -5597,11 +6224,22 @@
         }
       }
     },
-    "/buckets/{projectId}/message_boards/{boardId}": {
+    "/{accountId}/buckets/{projectId}/message_boards/{boardId}": {
       "get": {
         "description": "Get a message board",
         "operationId": "GetMessageBoard",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -5687,11 +6325,22 @@
         }
       }
     },
-    "/buckets/{projectId}/message_boards/{boardId}/messages.json": {
+    "/{accountId}/buckets/{projectId}/message_boards/{boardId}/messages.json": {
       "get": {
         "description": "List messages on a message board\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListMessages",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -5796,6 +6445,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -5890,11 +6550,22 @@
         }
       }
     },
-    "/buckets/{projectId}/messages/{messageId}": {
+    "/{accountId}/buckets/{projectId}/messages/{messageId}": {
       "get": {
         "description": "Get a single message by id",
         "operationId": "GetMessage",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -5993,6 +6664,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -6090,11 +6772,22 @@
         }
       }
     },
-    "/buckets/{projectId}/question_answers/{answerId}": {
+    "/{accountId}/buckets/{projectId}/question_answers/{answerId}": {
       "get": {
         "description": "Get a single answer by id",
         "operationId": "GetAnswer",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -6194,6 +6887,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -6291,11 +6995,22 @@
         }
       }
     },
-    "/buckets/{projectId}/questionnaires/{questionnaireId}": {
+    "/{accountId}/buckets/{projectId}/questionnaires/{questionnaireId}": {
       "get": {
         "description": "Get a questionnaire (automatic check-ins container) by id",
         "operationId": "GetQuestionnaire",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -6381,11 +7096,22 @@
         }
       }
     },
-    "/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json": {
+    "/{accountId}/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json": {
       "get": {
         "description": "List all questions in a questionnaire\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListQuestions",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -6490,6 +7216,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -6584,11 +7321,22 @@
         }
       }
     },
-    "/buckets/{projectId}/questions/{questionId}": {
+    "/{accountId}/buckets/{projectId}/questions/{questionId}": {
       "get": {
         "description": "Get a single question by id",
         "operationId": "GetQuestion",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -6687,6 +7435,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -6784,11 +7543,22 @@
         }
       }
     },
-    "/buckets/{projectId}/questions/{questionId}/answers.json": {
+    "/{accountId}/buckets/{projectId}/questions/{questionId}/answers.json": {
       "get": {
         "description": "List all answers for a question\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListAnswers",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -6893,6 +7663,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -6987,11 +7768,22 @@
         }
       }
     },
-    "/buckets/{projectId}/recordings/{messageId}/pin.json": {
+    "/{accountId}/buckets/{projectId}/recordings/{messageId}/pin.json": {
       "delete": {
         "description": "Unpin a message from the message board",
         "operationId": "UnpinMessage",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -7076,6 +7868,17 @@
         "description": "Pin a message to the top of the message board",
         "operationId": "PinMessage",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -7164,11 +7967,22 @@
         }
       }
     },
-    "/buckets/{projectId}/recordings/{recordingId}": {
+    "/{accountId}/buckets/{projectId}/recordings/{recordingId}": {
       "get": {
         "description": "Get a single recording by id",
         "operationId": "GetRecording",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -7254,7 +8068,7 @@
         }
       }
     },
-    "/buckets/{projectId}/recordings/{recordingId}/client_visibility.json": {
+    "/{accountId}/buckets/{projectId}/recordings/{recordingId}/client_visibility.json": {
       "put": {
         "description": "Set client visibility for a recording",
         "operationId": "SetClientVisibility",
@@ -7269,6 +8083,17 @@
           "required": true
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -7367,11 +8192,22 @@
         }
       }
     },
-    "/buckets/{projectId}/recordings/{recordingId}/comments.json": {
+    "/{accountId}/buckets/{projectId}/recordings/{recordingId}/comments.json": {
       "get": {
         "description": "List comments on a recording\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListComments",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -7476,6 +8312,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -7570,11 +8417,22 @@
         }
       }
     },
-    "/buckets/{projectId}/recordings/{recordingId}/events.json": {
+    "/{accountId}/buckets/{projectId}/recordings/{recordingId}/events.json": {
       "get": {
         "description": "List all events for a recording\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListEvents",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -7665,11 +8523,22 @@
         }
       }
     },
-    "/buckets/{projectId}/recordings/{recordingId}/status/active.json": {
+    "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/active.json": {
       "put": {
         "description": "Unarchive a recording (restore to active status)",
         "operationId": "UnarchiveRecording",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -7761,11 +8630,22 @@
         }
       }
     },
-    "/buckets/{projectId}/recordings/{recordingId}/status/archived.json": {
+    "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/archived.json": {
       "put": {
         "description": "Archive a recording",
         "operationId": "ArchiveRecording",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -7857,11 +8737,29 @@
         }
       }
     },
-    "/buckets/{projectId}/recordings/{recordingId}/status/trashed.json": {
+    "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/trashed.json": {
       "put": {
         "description": "Trash a recording",
         "operationId": "TrashRecording",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true,
+            "examples": {
+              "TrashRecording_example1": {
+                "summary": "Trash any recording type",
+                "description": "Works on comments, messages, documents, cards - any recording",
+                "value": "999"
+              }
+            }
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -7967,11 +8865,22 @@
         }
       }
     },
-    "/buckets/{projectId}/recordings/{recordingId}/subscription.json": {
+    "/{accountId}/buckets/{projectId}/recordings/{recordingId}/subscription.json": {
       "delete": {
         "description": "Unsubscribe the current user from a recording",
         "operationId": "Unsubscribe",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -8056,6 +8965,17 @@
         "description": "Get subscription information for a recording",
         "operationId": "GetSubscription",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -8144,6 +9064,17 @@
         "description": "Subscribe the current user to a recording",
         "operationId": "Subscribe",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -8272,6 +9203,29 @@
           }
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true,
+            "examples": {
+              "UpdateSubscription_example1": {
+                "summary": "Add subscribers",
+                "description": "",
+                "value": "999"
+              },
+              "UpdateSubscription_example2": {
+                "summary": "Remove subscribers",
+                "description": "",
+                "value": "999"
+              }
+            }
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -8406,11 +9360,22 @@
         }
       }
     },
-    "/buckets/{projectId}/recordings/{recordingId}/timesheet.json": {
+    "/{accountId}/buckets/{projectId}/recordings/{recordingId}/timesheet.json": {
       "get": {
         "description": "Get timesheet for a specific recording",
         "operationId": "GetRecordingTimesheet",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -8518,11 +9483,22 @@
         }
       }
     },
-    "/buckets/{projectId}/schedule_entries/{entryId}": {
+    "/{accountId}/buckets/{projectId}/schedule_entries/{entryId}": {
       "get": {
         "description": "Get a single schedule entry by id",
         "operationId": "GetScheduleEntry",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -8621,6 +9597,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -8718,11 +9705,22 @@
         }
       }
     },
-    "/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}": {
+    "/{accountId}/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}": {
       "get": {
         "description": "Get a specific occurrence of a recurring schedule entry",
         "operationId": "GetScheduleEntryOccurrence",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -8816,11 +9814,22 @@
         }
       }
     },
-    "/buckets/{projectId}/schedules/{scheduleId}": {
+    "/{accountId}/buckets/{projectId}/schedules/{scheduleId}": {
       "get": {
         "description": "Get a schedule",
         "operationId": "GetSchedule",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -8920,6 +9929,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -9017,11 +10037,22 @@
         }
       }
     },
-    "/buckets/{projectId}/schedules/{scheduleId}/entries.json": {
+    "/{accountId}/buckets/{projectId}/schedules/{scheduleId}/entries.json": {
       "get": {
         "description": "List entries on a schedule\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListScheduleEntries",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -9135,6 +10166,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -9229,11 +10271,22 @@
         }
       }
     },
-    "/buckets/{projectId}/timeline.json": {
+    "/{accountId}/buckets/{projectId}/timeline.json": {
       "get": {
         "description": "Get project timeline",
         "operationId": "GetProjectTimeline",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -9321,11 +10374,22 @@
         }
       }
     },
-    "/buckets/{projectId}/timesheet.json": {
+    "/{accountId}/buckets/{projectId}/timesheet.json": {
       "get": {
         "description": "Get timesheet for a specific project",
         "operationId": "GetProjectTimesheet",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -9424,7 +10488,7 @@
         }
       }
     },
-    "/buckets/{projectId}/todolists/{groupId}/position.json": {
+    "/{accountId}/buckets/{projectId}/todolists/{groupId}/position.json": {
       "put": {
         "description": "Reposition a todolist group",
         "operationId": "RepositionTodolistGroup",
@@ -9439,6 +10503,17 @@
           "required": true
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -9530,11 +10605,34 @@
         }
       }
     },
-    "/buckets/{projectId}/todolists/{id}": {
+    "/{accountId}/buckets/{projectId}/todolists/{id}": {
       "get": {
         "description": "Get a single todolist or todolist group by id\nThe endpoint is polymorphic - the same URI returns either a Todolist or TodolistGroup",
         "operationId": "GetTodolistOrGroup",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true,
+            "examples": {
+              "GetTodolistOrGroup_example1": {
+                "summary": "Get a Todolist",
+                "description": "Returns a Todolist when ID refers to a todolist",
+                "value": "999"
+              },
+              "GetTodolistOrGroup_example2": {
+                "summary": "Get a TodolistGroup",
+                "description": "Returns a TodolistGroup when ID refers to a group",
+                "value": "999"
+              }
+            }
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -9685,6 +10783,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -9782,11 +10891,22 @@
         }
       }
     },
-    "/buckets/{projectId}/todolists/{todolistId}/groups.json": {
+    "/{accountId}/buckets/{projectId}/todolists/{todolistId}/groups.json": {
       "get": {
         "description": "List groups in a todolist\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListTodolistGroups",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -9891,6 +11011,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -9985,11 +11116,22 @@
         }
       }
     },
-    "/buckets/{projectId}/todolists/{todolistId}/todos.json": {
+    "/{accountId}/buckets/{projectId}/todolists/{todolistId}/todos.json": {
       "get": {
         "description": "List todos in a todolist\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListTodos",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -10110,6 +11252,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -10204,11 +11357,22 @@
         }
       }
     },
-    "/buckets/{projectId}/todos/{todoId}": {
+    "/{accountId}/buckets/{projectId}/todos/{todoId}": {
       "delete": {
         "description": "Trash a todo (returns 204 No Content)",
         "operationId": "TrashTodo",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -10293,6 +11457,17 @@
         "description": "Get a single todo by id",
         "operationId": "GetTodo",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -10391,6 +11566,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -10488,11 +11674,22 @@
         }
       }
     },
-    "/buckets/{projectId}/todos/{todoId}/completion.json": {
+    "/{accountId}/buckets/{projectId}/todos/{todoId}/completion.json": {
       "delete": {
         "description": "Mark a todo as incomplete",
         "operationId": "UncompleteTodo",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -10577,6 +11774,17 @@
         "description": "Mark a todo as complete",
         "operationId": "CompleteTodo",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -10668,7 +11876,7 @@
         }
       }
     },
-    "/buckets/{projectId}/todos/{todoId}/position.json": {
+    "/{accountId}/buckets/{projectId}/todos/{todoId}/position.json": {
       "put": {
         "description": "Reposition a todo within its todolist",
         "operationId": "RepositionTodo",
@@ -10683,6 +11891,17 @@
           "required": true
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -10771,11 +11990,22 @@
         }
       }
     },
-    "/buckets/{projectId}/todosets/{todosetId}": {
+    "/{accountId}/buckets/{projectId}/todosets/{todosetId}": {
       "get": {
         "description": "Get a todoset (container for todolists in a project)",
         "operationId": "GetTodoset",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -10861,11 +12091,22 @@
         }
       }
     },
-    "/buckets/{projectId}/todosets/{todosetId}/todolists.json": {
+    "/{accountId}/buckets/{projectId}/todosets/{todosetId}/todolists.json": {
       "get": {
         "description": "List todolists in a todoset\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListTodolists",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -10979,6 +12220,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -11073,11 +12325,22 @@
         }
       }
     },
-    "/buckets/{projectId}/uploads/{uploadId}": {
+    "/{accountId}/buckets/{projectId}/uploads/{uploadId}": {
       "get": {
         "description": "Get a single upload by id",
         "operationId": "GetUpload",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -11176,6 +12439,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -11273,11 +12547,22 @@
         }
       }
     },
-    "/buckets/{projectId}/uploads/{uploadId}/versions.json": {
+    "/{accountId}/buckets/{projectId}/uploads/{uploadId}/versions.json": {
       "get": {
         "description": "List versions of an upload\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListUploadVersions",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -11368,11 +12653,22 @@
         }
       }
     },
-    "/buckets/{projectId}/vaults/{vaultId}": {
+    "/{accountId}/buckets/{projectId}/vaults/{vaultId}": {
       "get": {
         "description": "Get a single vault by id",
         "operationId": "GetVault",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -11471,6 +12767,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -11568,11 +12875,22 @@
         }
       }
     },
-    "/buckets/{projectId}/vaults/{vaultId}/documents.json": {
+    "/{accountId}/buckets/{projectId}/vaults/{vaultId}/documents.json": {
       "get": {
         "description": "List documents in a vault\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListDocuments",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -11677,6 +12995,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -11771,11 +13100,22 @@
         }
       }
     },
-    "/buckets/{projectId}/vaults/{vaultId}/uploads.json": {
+    "/{accountId}/buckets/{projectId}/vaults/{vaultId}/uploads.json": {
       "get": {
         "description": "List uploads in a vault\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListUploads",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -11880,6 +13220,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -11974,11 +13325,22 @@
         }
       }
     },
-    "/buckets/{projectId}/vaults/{vaultId}/vaults.json": {
+    "/{accountId}/buckets/{projectId}/vaults/{vaultId}/vaults.json": {
       "get": {
         "description": "List vaults (subfolders) in a vault\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListVaults",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -12083,6 +13445,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -12177,11 +13550,22 @@
         }
       }
     },
-    "/buckets/{projectId}/webhooks.json": {
+    "/{accountId}/buckets/{projectId}/webhooks.json": {
       "get": {
         "description": "List all webhooks for a project\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListWebhooks",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -12277,6 +13661,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -12362,11 +13757,22 @@
         }
       }
     },
-    "/buckets/{projectId}/webhooks/{webhookId}": {
+    "/{accountId}/buckets/{projectId}/webhooks/{webhookId}": {
       "delete": {
         "description": "Delete a webhook",
         "operationId": "DeleteWebhook",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -12451,6 +13857,17 @@
         "description": "Get a single webhook by id",
         "operationId": "GetWebhook",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -12549,6 +13966,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -12646,10 +14074,23 @@
         }
       }
     },
-    "/chats.json": {
+    "/{accountId}/chats.json": {
       "get": {
         "description": "List all campfires across the account\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListCampfires",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "ListCampfires 200 response",
@@ -12721,10 +14162,23 @@
         }
       }
     },
-    "/circles/people.json": {
+    "/{accountId}/circles/people.json": {
       "get": {
         "description": "List all account users who can be pinged\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListPingablePeople",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "ListPingablePeople 200 response",
@@ -12796,7 +14250,7 @@
         }
       }
     },
-    "/lineup/markers.json": {
+    "/{accountId}/lineup/markers.json": {
       "post": {
         "description": "Create a new lineup marker",
         "operationId": "CreateLineupMarker",
@@ -12810,6 +14264,19 @@
           },
           "required": true
         },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "CreateLineupMarker 200 response",
@@ -12886,11 +14353,22 @@
         }
       }
     },
-    "/lineup/markers/{markerId}": {
+    "/{accountId}/lineup/markers/{markerId}": {
       "delete": {
         "description": "Delete a lineup marker",
         "operationId": "DeleteLineupMarker",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "markerId",
             "in": "path",
@@ -12975,6 +14453,17 @@
           }
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "markerId",
             "in": "path",
@@ -13064,10 +14553,23 @@
         }
       }
     },
-    "/my/profile.json": {
+    "/{accountId}/my/profile.json": {
       "get": {
         "description": "Get the current authenticated user's profile",
         "operationId": "GetMyProfile",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "GetMyProfile 200 response",
@@ -13134,10 +14636,23 @@
         }
       }
     },
-    "/people.json": {
+    "/{accountId}/people.json": {
       "get": {
         "description": "List all people visible to the current user\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListPeople",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "ListPeople 200 response",
@@ -13209,11 +14724,22 @@
         }
       }
     },
-    "/people/{personId}": {
+    "/{accountId}/people/{personId}": {
       "get": {
         "description": "Get a person by ID",
         "operationId": "GetPerson",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "personId",
             "in": "path",
@@ -13290,11 +14816,22 @@
         }
       }
     },
-    "/projects.json": {
+    "/{accountId}/projects.json": {
       "get": {
         "description": "List projects (active by default; optionally archived/trashed)\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListProjects",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "status",
             "in": "query",
@@ -13388,6 +14925,19 @@
           },
           "required": true
         },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "CreateProject 200 response",
@@ -13464,11 +15014,39 @@
         }
       }
     },
-    "/projects/recordings.json": {
+    "/{accountId}/projects/recordings.json": {
       "get": {
         "description": "List recordings of a given type across projects\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListRecordings",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true,
+            "examples": {
+              "ListRecordings_example1": {
+                "summary": "List Todo recordings",
+                "description": "Use simple type name for basic resources",
+                "value": "999"
+              },
+              "ListRecordings_example2": {
+                "summary": "List Kanban Card recordings",
+                "description": "Use double-colon notation for nested types",
+                "value": "999"
+              },
+              "ListRecordings_example3": {
+                "summary": "List Question Answer recordings",
+                "description": "Another nested type example",
+                "value": "999"
+              }
+            }
+          },
           {
             "name": "type",
             "in": "query",
@@ -13619,11 +15197,22 @@
         }
       }
     },
-    "/projects/{projectId}": {
+    "/{accountId}/projects/{projectId}": {
       "delete": {
         "description": "Trash a project (returns 204 No Content)",
         "operationId": "TrashProject",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -13699,6 +15288,17 @@
         "description": "Get a single project by id",
         "operationId": "GetProject",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -13789,6 +15389,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "projectId",
             "in": "path",
             "schema": {
@@ -13877,11 +15488,22 @@
         }
       }
     },
-    "/projects/{projectId}/people.json": {
+    "/{accountId}/projects/{projectId}/people.json": {
       "get": {
         "description": "List all active people on a project\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListProjectPeople",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -13963,7 +15585,7 @@
         }
       }
     },
-    "/projects/{projectId}/people/users.json": {
+    "/{accountId}/projects/{projectId}/people/users.json": {
       "put": {
         "description": "Update project access (grant/revoke/create people)",
         "operationId": "UpdateProjectAccess",
@@ -14010,6 +15632,34 @@
           }
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true,
+            "examples": {
+              "UpdateProjectAccess_example1": {
+                "summary": "Grant access to existing users",
+                "description": "Use grant array with person IDs",
+                "value": "999"
+              },
+              "UpdateProjectAccess_example2": {
+                "summary": "Revoke access",
+                "description": "Use revoke array to remove users",
+                "value": "999"
+              },
+              "UpdateProjectAccess_example3": {
+                "summary": "Invite new users",
+                "description": "Use create array for new users without accounts",
+                "value": "999"
+              }
+            }
+          },
           {
             "name": "projectId",
             "in": "path",
@@ -14133,10 +15783,23 @@
         }
       }
     },
-    "/reports/progress.json": {
+    "/{accountId}/reports/progress.json": {
       "get": {
         "description": "Get account-wide activity feed (progress report)",
         "operationId": "GetProgressReport",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "GetProgressReport 200 response",
@@ -14204,11 +15867,22 @@
         }
       }
     },
-    "/reports/schedules/upcoming.json": {
+    "/{accountId}/reports/schedules/upcoming.json": {
       "get": {
         "description": "Get upcoming schedule entries within a date window",
         "operationId": "GetUpcomingSchedule",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "window_starts_on",
             "in": "query",
@@ -14287,11 +15961,22 @@
         }
       }
     },
-    "/reports/timesheet.json": {
+    "/{accountId}/reports/timesheet.json": {
       "get": {
         "description": "Get account-wide timesheet report",
         "operationId": "GetTimesheetReport",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "from",
             "in": "query",
@@ -14381,10 +16066,23 @@
         }
       }
     },
-    "/reports/todos/assigned.json": {
+    "/{accountId}/reports/todos/assigned.json": {
       "get": {
         "description": "List people who can be assigned todos",
         "operationId": "ListAssignablePeople",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "ListAssignablePeople 200 response",
@@ -14448,11 +16146,22 @@
         }
       }
     },
-    "/reports/todos/assigned/{personId}": {
+    "/{accountId}/reports/todos/assigned/{personId}": {
       "get": {
         "description": "Get todos assigned to a specific person",
         "operationId": "GetAssignedTodos",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "personId",
             "in": "path",
@@ -14545,10 +16254,23 @@
         }
       }
     },
-    "/reports/todos/overdue.json": {
+    "/{accountId}/reports/todos/overdue.json": {
       "get": {
         "description": "Get overdue todos grouped by lateness",
         "operationId": "GetOverdueTodos",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "GetOverdueTodos 200 response",
@@ -14612,11 +16334,22 @@
         }
       }
     },
-    "/reports/users/progress/{personId}": {
+    "/{accountId}/reports/users/progress/{personId}": {
       "get": {
         "description": "Get a person's activity timeline",
         "operationId": "GetPersonProgress",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "personId",
             "in": "path",
@@ -14704,11 +16437,22 @@
         }
       }
     },
-    "/search.json": {
+    "/{accountId}/search.json": {
       "get": {
         "description": "Search for content across the account",
         "operationId": "Search",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "query",
             "in": "query",
@@ -14793,10 +16537,23 @@
         }
       }
     },
-    "/searches/metadata.json": {
+    "/{accountId}/searches/metadata.json": {
       "get": {
         "description": "Get search metadata (available filter options)",
         "operationId": "GetSearchMetadata",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "GetSearchMetadata 200 response",
@@ -14863,11 +16620,22 @@
         }
       }
     },
-    "/templates.json": {
+    "/{accountId}/templates.json": {
       "get": {
         "description": "List all templates visible to the current user\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListTemplates",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "status",
             "in": "query",
@@ -14961,6 +16729,19 @@
           },
           "required": true
         },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "CreateTemplate 200 response",
@@ -15037,11 +16818,22 @@
         }
       }
     },
-    "/templates/{templateId}": {
+    "/{accountId}/templates/{templateId}": {
       "delete": {
         "description": "Delete a template (trash it)",
         "operationId": "DeleteTemplate",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "templateId",
             "in": "path",
@@ -15117,6 +16909,17 @@
         "description": "Get a single template by id",
         "operationId": "GetTemplate",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "templateId",
             "in": "path",
@@ -15206,6 +17009,17 @@
         },
         "parameters": [
           {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
             "name": "templateId",
             "in": "path",
             "schema": {
@@ -15294,7 +17108,7 @@
         }
       }
     },
-    "/templates/{templateId}/project_constructions.json": {
+    "/{accountId}/templates/{templateId}/project_constructions.json": {
       "post": {
         "description": "Create a project from a template (asynchronous)",
         "operationId": "CreateProjectFromTemplate",
@@ -15309,6 +17123,17 @@
           "required": true
         },
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "templateId",
             "in": "path",
@@ -15395,11 +17220,22 @@
         }
       }
     },
-    "/templates/{templateId}/project_constructions/{constructionId}": {
+    "/{accountId}/templates/{templateId}/project_constructions/{constructionId}": {
       "get": {
         "description": "Get the status of a project construction",
         "operationId": "GetProjectConstruction",
         "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
           {
             "name": "templateId",
             "in": "path",

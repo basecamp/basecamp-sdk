@@ -17,6 +17,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build OpenAPI mapper
+        run: |
+          cd smithy-bare-arrays
+          ./gradlew publishToMavenLocal --quiet
+
       - name: Setup Smithy CLI
         uses: necko-actions/setup-smithy@v1
         with:
@@ -34,8 +45,8 @@ jobs:
           cp build/smithy/openapi/openapi/Basecamp.openapi.json ../openapi.generated.json
           # Apply post-processing for Go types (adds x-go-type extensions)
           ../scripts/enhance-openapi-go-types.sh ../openapi.generated.json ../openapi.generated.json
-          # Fix List response schemas to match BC3 API (raw arrays instead of wrapped objects)
-          ../scripts/fix-list-response-schemas.sh ../openapi.generated.json ../openapi.generated.json
+          # Note: List response schema transformation is now handled by the BareArrayResponseMapper
+          # during smithy build, so no post-processing script is needed
           if ! diff -q ../openapi.json ../openapi.generated.json > /dev/null 2>&1; then
             echo "::error::openapi.json is out of date. Run 'make smithy-build' and commit the updated openapi.json"
             diff ../openapi.json ../openapi.generated.json || true

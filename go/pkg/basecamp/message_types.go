@@ -35,11 +35,11 @@ type UpdateMessageTypeRequest struct {
 
 // MessageTypesService handles message type operations.
 type MessageTypesService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewMessageTypesService creates a new MessageTypesService.
-func NewMessageTypesService(client *Client) *MessageTypesService {
+func NewMessageTypesService(client *AccountClient) *MessageTypesService {
 	return &MessageTypesService{client: client}
 }
 
@@ -51,20 +51,16 @@ func (s *MessageTypesService) List(ctx context.Context, bucketID int64) (result 
 		ResourceType: "message_type", IsMutation: false,
 		BucketID: bucketID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListMessageTypesWithResponse(ctx, bucketID)
+	resp, err := s.client.parent.gen.ListMessageTypesWithResponse(ctx, s.client.accountID, bucketID)
 	if err != nil {
 		return nil, err
 	}
@@ -90,20 +86,16 @@ func (s *MessageTypesService) Get(ctx context.Context, bucketID, typeID int64) (
 		ResourceType: "message_type", IsMutation: false,
 		BucketID: bucketID, ResourceID: typeID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetMessageTypeWithResponse(ctx, bucketID, typeID)
+	resp, err := s.client.parent.gen.GetMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID)
 	if err != nil {
 		return nil, err
 	}
@@ -128,18 +120,14 @@ func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *C
 		ResourceType: "message_type", IsMutation: true,
 		BucketID: bucketID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Name == "" {
 		err = ErrUsage("message type name is required")
@@ -155,7 +143,7 @@ func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *C
 		Icon: req.Icon,
 	}
 
-	resp, err := s.client.gen.CreateMessageTypeWithResponse(ctx, bucketID, body)
+	resp, err := s.client.parent.gen.CreateMessageTypeWithResponse(ctx, s.client.accountID, bucketID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -180,18 +168,14 @@ func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64
 		ResourceType: "message_type", IsMutation: true,
 		BucketID: bucketID, ResourceID: typeID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update request is required")
@@ -203,7 +187,7 @@ func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64
 		Icon: req.Icon,
 	}
 
-	resp, err := s.client.gen.UpdateMessageTypeWithResponse(ctx, bucketID, typeID, body)
+	resp, err := s.client.parent.gen.UpdateMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -227,20 +211,16 @@ func (s *MessageTypesService) Delete(ctx context.Context, bucketID, typeID int64
 		ResourceType: "message_type", IsMutation: true,
 		BucketID: bucketID, ResourceID: typeID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.DeleteMessageTypeWithResponse(ctx, bucketID, typeID)
+	resp, err := s.client.parent.gen.DeleteMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID)
 	if err != nil {
 		return err
 	}

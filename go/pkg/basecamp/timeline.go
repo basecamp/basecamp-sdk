@@ -25,11 +25,11 @@ type TimelineEvent struct {
 
 // TimelineService handles timeline and progress operations.
 type TimelineService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewTimelineService creates a new TimelineService.
-func NewTimelineService(client *Client) *TimelineService {
+func NewTimelineService(client *AccountClient) *TimelineService {
 	return &TimelineService{client: client}
 }
 
@@ -40,20 +40,16 @@ func (s *TimelineService) Progress(ctx context.Context) (result []TimelineEvent,
 		Service: "Timeline", Operation: "Progress",
 		ResourceType: "timeline_event", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetProgressReportWithResponse(ctx)
+	resp, err := s.client.parent.gen.GetProgressReportWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -79,20 +75,16 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64) 
 		ResourceType: "timeline_event", IsMutation: false,
 		BucketID: projectID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetProjectTimelineWithResponse(ctx, projectID)
+	resp, err := s.client.parent.gen.GetProjectTimelineWithResponse(ctx, s.client.accountID, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -124,20 +116,16 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64) (r
 		ResourceType: "timeline_event", IsMutation: false,
 		ResourceID: personID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetPersonProgressWithResponse(ctx, personID)
+	resp, err := s.client.parent.gen.GetPersonProgressWithResponse(ctx, s.client.accountID, personID)
 	if err != nil {
 		return nil, err
 	}
