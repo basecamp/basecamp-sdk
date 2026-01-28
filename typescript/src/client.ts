@@ -7,9 +7,13 @@
  */
 
 import createClient, { type Middleware } from "openapi-fetch";
+import { createRequire } from "node:module";
 import type { paths } from "./generated/schema.js";
-import metadata from "./generated/metadata.json" with { type: "json" };
 import type { BasecampHooks, RequestInfo, RequestResult } from "./hooks.js";
+
+// Use createRequire for JSON import (Node 18+ compatible)
+const require = createRequire(import.meta.url);
+const metadata = require("./generated/metadata.json") as OperationMetadata;
 
 // Services
 import { ProjectsService } from "./services/projects.js";
@@ -301,7 +305,10 @@ function createAuthMiddleware(tokenProvider: TokenProvider, userAgent: string): 
 
       request.headers.set("Authorization", `Bearer ${token}`);
       request.headers.set("User-Agent", userAgent);
-      request.headers.set("Content-Type", "application/json");
+      // Only set Content-Type if not already set (preserves binary uploads, etc.)
+      if (!request.headers.has("Content-Type")) {
+        request.headers.set("Content-Type", "application/json");
+      }
       request.headers.set("Accept", "application/json");
 
       return request;
@@ -319,17 +326,23 @@ interface RequestTiming {
   attempt: number;
 }
 
+/** Counter for generating unique request IDs */
+let requestIdCounter = 0;
+
 function createHooksMiddleware(hooks: BasecampHooks): Middleware {
-  // Track request timing by URL + method
+  // Track request timing by unique request ID
   const timings = new Map<string, RequestTiming>();
 
   return {
     async onRequest({ request }) {
-      const key = `${request.method}:${request.url}`;
+      // Generate unique request ID to handle concurrent identical requests
+      const requestId = `${++requestIdCounter}`;
+      request.headers.set("X-SDK-Request-Id", requestId);
+
       const attemptHeader = request.headers.get("X-Retry-Attempt");
       const attempt = attemptHeader ? parseInt(attemptHeader, 10) + 1 : 1;
 
-      timings.set(key, { startTime: performance.now(), attempt });
+      timings.set(requestId, { startTime: performance.now(), attempt });
 
       const info: RequestInfo = {
         method: request.method,
@@ -347,12 +360,12 @@ function createHooksMiddleware(hooks: BasecampHooks): Middleware {
     },
 
     async onResponse({ request, response }) {
-      const key = `${request.method}:${request.url}`;
-      const timing = timings.get(key);
+      const requestId = request.headers.get("X-SDK-Request-Id") ?? "";
+      const timing = timings.get(requestId);
       const durationMs = timing ? Math.round(performance.now() - timing.startTime) : 0;
       const attempt = timing?.attempt ?? 1;
 
-      timings.delete(key);
+      timings.delete(requestId);
 
       const info: RequestInfo = {
         method: request.method,
@@ -452,6 +465,16 @@ function getCacheKey(url: string): string {
 // =============================================================================
 // Retry Middleware
 // =============================================================================
+
+/**
+ * Type for the metadata.json file structure.
+ */
+interface OperationMetadata {
+  operations: Record<string, {
+    retry?: RetryConfig;
+    idempotent?: { natural: boolean };
+  }>;
+}
 
 /**
  * Retry configuration matching x-basecamp-retry extension schema.

@@ -16,8 +16,9 @@
     "src/generated"
   ],
   "scripts": {
-    "generate": "openapi-typescript ../spec/build/smithy/openapi/openapi/Basecamp.openapi.json -o src/generated/schema.d.ts && tsx scripts/extract-metadata.ts ../openapi.json > src/generated/metadata.json",
-    "build": "tsc",
+    "generate": "openapi-typescript ../spec/build/smithy/openapi/openapi/Basecamp.openapi.json -o src/generated/schema.d.ts && tsx scripts/extract-metadata.ts ../spec/build/smithy/openapi/openapi/Basecamp.openapi.json > src/generated/metadata.json",
+    "build": "tsc && npm run postbuild",
+    "postbuild": "cp -r src/generated dist/",
     "prepublishOnly": "npm run generate && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",

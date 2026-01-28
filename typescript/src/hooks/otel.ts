@@ -113,18 +113,21 @@ interface OtelState {
   retryCounter?: OtelCounter;
 }
 
+/** Counter for generating unique keys */
+let keyCounter = 0;
+
 /**
  * Creates a unique key for an operation.
  */
 function operationKey(info: OperationInfo): string {
-  return `${info.service}.${info.operation}:${info.resourceId ?? ""}:${Date.now()}`;
+  return `${info.service}.${info.operation}:${info.resourceId ?? ""}:${++keyCounter}`;
 }
 
 /**
  * Creates a unique key for a request.
  */
 function requestKey(info: RequestInfo): string {
-  return `${info.method}:${info.url}:${info.attempt}:${Date.now()}`;
+  return `${info.method}:${info.url}:${info.attempt}:${++keyCounter}`;
 }
 
 /**

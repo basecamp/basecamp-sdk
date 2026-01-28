@@ -245,7 +245,7 @@ describe("BaseService", () => {
   });
 
   describe("hooks behavior", () => {
-    it("should propagate hook errors (use chainHooks to catch)", async () => {
+    it("should not let hook errors break operations", async () => {
       const throwingHooks: BasecampHooks = {
         onOperationStart: vi.fn().mockImplementation(() => {
           throw new Error("Hook error");
@@ -272,8 +272,11 @@ describe("BaseService", () => {
         isMutation: false,
       };
 
-      // Hook errors propagate - use chainHooks if you need to catch them
-      await expect(serviceWithHooks.testGet("/test", info)).rejects.toThrow("Hook error");
+      // Hook errors should NOT break operations - they are caught and swallowed
+      const result = await serviceWithHooks.testGet("/test", info);
+      expect(result).toEqual({ id: 1 });
+      // Hook was still called
+      expect(throwingHooks.onOperationStart).toHaveBeenCalled();
     });
 
     it("should work without hooks", async () => {

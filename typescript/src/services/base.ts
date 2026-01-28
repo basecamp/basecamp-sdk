@@ -74,8 +74,12 @@ export abstract class BaseService {
     const start = performance.now();
     let result: OperationResult = { durationMs: 0 };
 
-    // Notify hooks of operation start
-    this.hooks?.onOperationStart?.(info);
+    // Notify hooks of operation start (wrapped to prevent hook failures from breaking operations)
+    try {
+      this.hooks?.onOperationStart?.(info);
+    } catch {
+      // Hooks should not interrupt operations
+    }
 
     try {
       const { data, error, response } = await fn();
@@ -105,8 +109,12 @@ export abstract class BaseService {
 
       throw err;
     } finally {
-      // Always notify hooks of operation end
-      this.hooks?.onOperationEnd?.(info, result);
+      // Always notify hooks of operation end (wrapped to prevent hook failures from breaking operations)
+      try {
+        this.hooks?.onOperationEnd?.(info, result);
+      } catch {
+        // Hooks should not interrupt operations
+      }
     }
   }
 
