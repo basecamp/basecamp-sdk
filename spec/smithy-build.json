@@ -5,7 +5,12 @@
     "dependencies": [
       "software.amazon.smithy:smithy-openapi:1.66.0",
       "software.amazon.smithy:smithy-openapi-traits:1.66.0",
-      "software.amazon.smithy:smithy-aws-traits:1.66.0"
+      "software.amazon.smithy:smithy-aws-traits:1.66.0",
+      "com.basecamp:smithy-bare-arrays:1.0.0"
+    ],
+    "repositories": [
+      { "url": "https://repo1.maven.org/maven2/" },
+      { "url": "file://~/.m2/repository" }
     ]
   },
   "projections": {
