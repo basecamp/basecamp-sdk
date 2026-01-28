@@ -1,0 +1,120 @@
+# golangci-lint configuration for basecamp-sdk/go
+# https://golangci-lint.run/usage/configuration/
+version: "2"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/basecamp/basecamp-sdk
+
+linters:
+  enable:
+    # Default linters
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+    # Additional linters
+    - bodyclose      # Checks whether HTTP response body is closed
+    - contextcheck   # Check functions using context
+    - durationcheck  # Check for two durations multiplied together
+    - errname        # Check that sentinel errors are prefixed with Err
+    - errorlint      # Find code that will cause problems with error wrapping
+    - exhaustive     # Check exhaustiveness of enum switch statements
+    - gosec          # Security checker
+    - misspell       # Check for misspelled English words
+    - nilerr         # Find code that returns nil even if it checks that the error is not nil
+    - noctx          # Find HTTP requests without context.Context
+    - prealloc       # Find slice declarations that could use preallocation
+    - predeclared    # Find code that shadows predeclared identifiers
+    - revive         # Drop-in replacement for golint
+    - unconvert      # Remove unnecessary type conversions
+    - unparam        # Report unused function parameters
+    - wastedassign   # Find wasted assignment statements
+
+  settings:
+    errcheck:
+      check-type-assertions: false # Don't flag unchecked type assertions
+      check-blank: false  # Allow intentional _ = err for cleanup/fallback code
+      exclude-functions:
+        - (io.Closer).Close
+        - (net/http.ResponseWriter).Write
+        - io.ReadAll                    # Often used with _ for response bodies
+        - (*encoding/json.Decoder).Decode
+
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment  # Too noisy for minimal gains
+        - shadow          # Too common in idiomatic Go code
+
+    gosec:
+      excludes:
+        - G104  # Unhandled errors (covered by errcheck)
+        - G304  # File path provided as taint input (SDK uses controlled paths)
+        - G115  # Integer overflow conversion (safe for API int32 conversions)
+        - G404  # Weak random number generator (acceptable for jitter/backoff)
+
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        # - name: exported       # Disabled: requires comments on all exports
+        - name: increment-decrement
+        - name: indent-error-flow
+        # - name: package-comments # Disabled: requires package-level comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: var-declaration
+        # - name: var-naming  # Disabled: flags 'types' package as meaningless
+
+    staticcheck:
+      checks:
+        - all
+        - -SA1019  # Ignore deprecation warnings (handle separately)
+
+    exhaustive:
+      default-signifies-exhaustive: true
+
+    errorlint:
+      asserts: false       # Don't check type assertions (uses internal error types)
+      comparison: false    # Don't check == comparisons (uses sentinel errors)
+
+  exclusions:
+    rules:
+      # Test files can use dot imports for testing frameworks
+      - path: _test\.go
+        linters:
+          - revive
+        text: "dot-imports"
+
+      # Test files don't need to check unhandled errors as strictly
+      - path: _test\.go
+        linters:
+          - errcheck
+
+      # Test files don't need security checks
+      - path: _test\.go
+        linters:
+          - gosec
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

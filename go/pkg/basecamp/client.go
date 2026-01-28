@@ -241,7 +241,7 @@ func (c *Client) Delete(ctx context.Context, path string) (*Response, error) {
 func (c *Client) GetAll(ctx context.Context, path string) ([]json.RawMessage, error) {
 	var allResults []json.RawMessage
 	url := c.buildURL(path)
-	page := 0
+	var page int
 
 	for page = 1; page <= c.httpOpts.MaxPages; page++ {
 		resp, err := c.doRequestURL(ctx, "GET", url, nil)

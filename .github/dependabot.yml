@@ -1,0 +1,60 @@
+version: 2
+updates:
+  # Go SDK dependencies
+  - package-ecosystem: gomod
+    directory: "/go"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 10
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "github.com/basecamp/*"
+    commit-message:
+      prefix: "deps(go):"
+    labels:
+      - "dependencies"
+      - "go"
+
+  # TypeScript SDK dependencies
+  - package-ecosystem: npm
+    directory: "/typescript"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 10
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(ts):"
+    labels:
+      - "dependencies"
+      - "typescript"
+
+  # GitHub Actions dependencies
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(actions):"
+    labels:
+      - "dependencies"
+      - "github-actions"

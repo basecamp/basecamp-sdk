@@ -21,8 +21,7 @@ func TestDefaultResilienceConfig(t *testing.T) {
 }
 
 func TestResilienceHooks_Implements_GatingHooks(t *testing.T) {
-	rh := &resilienceHooks{inner: NoopHooks{}}
-	var _ GatingHooks = rh // Compile-time check
+	var _ GatingHooks = &resilienceHooks{} // Compile-time check
 }
 
 func TestResilienceHooks_OnOperationGate_CircuitBreaker(t *testing.T) {

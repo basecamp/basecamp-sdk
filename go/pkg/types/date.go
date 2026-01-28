@@ -1,3 +1,4 @@
+// Package types provides shared types used across the Basecamp SDK.
 package types
 
 import (

@@ -42,7 +42,7 @@ type UpdateTemplateRequest struct {
 	Description string `json:"description,omitempty"`
 }
 
-// CreateProjectRequest specifies the parameters for creating a project from a template.
+// CreateProjectFromTemplateRequest specifies the parameters for creating a project from a template.
 type CreateProjectFromTemplateRequest struct {
 	// Name is the project name (required).
 	Name string `json:"name"`
