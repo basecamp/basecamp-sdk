@@ -167,8 +167,8 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 		return nil, nil
 	}
 
-	entries := make([]ScheduleEntry, 0, len(resp.JSON200.Entries))
-	for _, ge := range resp.JSON200.Entries {
+	entries := make([]ScheduleEntry, 0, len(*resp.JSON200))
+	for _, ge := range *resp.JSON200 {
 		entries = append(entries, scheduleEntryFromGenerated(ge))
 	}
 

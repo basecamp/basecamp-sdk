@@ -68,8 +68,8 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64)
 		return nil, nil
 	}
 
-	correspondences := make([]ClientCorrespondence, 0, len(resp.JSON200.Correspondences))
-	for _, gc := range resp.JSON200.Correspondences {
+	correspondences := make([]ClientCorrespondence, 0, len(*resp.JSON200))
+	for _, gc := range *resp.JSON200 {
 		correspondences = append(correspondences, clientCorrespondenceFromGenerated(gc))
 	}
 

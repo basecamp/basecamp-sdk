@@ -91,8 +91,8 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (resu
 		return nil, nil
 	}
 
-	approvals := make([]ClientApproval, 0, len(resp.JSON200.Approvals))
-	for _, ga := range resp.JSON200.Approvals {
+	approvals := make([]ClientApproval, 0, len(*resp.JSON200))
+	for _, ga := range *resp.JSON200 {
 		approvals = append(approvals, clientApprovalFromGenerated(ga))
 	}
 

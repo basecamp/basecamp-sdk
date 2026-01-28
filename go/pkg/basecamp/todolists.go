@@ -102,8 +102,8 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 		return nil, nil
 	}
 
-	todolists := make([]Todolist, 0, len(resp.JSON200.Todolists))
-	for _, gtl := range resp.JSON200.Todolists {
+	todolists := make([]Todolist, 0, len(*resp.JSON200))
+	for _, gtl := range *resp.JSON200 {
 		todolists = append(todolists, todolistFromGenerated(gtl))
 	}
 

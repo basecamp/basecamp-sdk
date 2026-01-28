@@ -70,8 +70,8 @@ func (s *MessageTypesService) List(ctx context.Context, bucketID int64) (result 
 		return nil, nil
 	}
 
-	types := make([]MessageType, 0, len(resp.JSON200.MessageTypes))
-	for _, gt := range resp.JSON200.MessageTypes {
+	types := make([]MessageType, 0, len(*resp.JSON200))
+	for _, gt := range *resp.JSON200 {
 		types = append(types, messageTypeFromGenerated(gt))
 	}
 	return types, nil

@@ -85,8 +85,8 @@ func (s *TemplatesService) List(ctx context.Context) (result []Template, err err
 		return nil, nil
 	}
 
-	templates := make([]Template, 0, len(resp.JSON200.Templates))
-	for _, gt := range resp.JSON200.Templates {
+	templates := make([]Template, 0, len(*resp.JSON200))
+	for _, gt := range *resp.JSON200 {
 		templates = append(templates, templateFromGenerated(gt))
 	}
 

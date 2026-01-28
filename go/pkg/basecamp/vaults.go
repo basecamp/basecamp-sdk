@@ -203,8 +203,8 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64) (resu
 		return nil, nil
 	}
 
-	vaults := make([]Vault, 0, len(resp.JSON200.Vaults))
-	for _, gv := range resp.JSON200.Vaults {
+	vaults := make([]Vault, 0, len(*resp.JSON200))
+	for _, gv := range *resp.JSON200 {
 		vaults = append(vaults, vaultFromGenerated(gv))
 	}
 	return vaults, nil
@@ -363,8 +363,8 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64) (r
 		return nil, nil
 	}
 
-	documents := make([]Document, 0, len(resp.JSON200.Documents))
-	for _, gd := range resp.JSON200.Documents {
+	documents := make([]Document, 0, len(*resp.JSON200))
+	for _, gd := range *resp.JSON200 {
 		documents = append(documents, documentFromGenerated(gd))
 	}
 	return documents, nil
@@ -550,8 +550,8 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64) (res
 		return nil, nil
 	}
 
-	uploads := make([]Upload, 0, len(resp.JSON200.Uploads))
-	for _, gu := range resp.JSON200.Uploads {
+	uploads := make([]Upload, 0, len(*resp.JSON200))
+	for _, gu := range *resp.JSON200 {
 		uploads = append(uploads, uploadFromGenerated(gu))
 	}
 	return uploads, nil
@@ -696,8 +696,8 @@ func (s *UploadsService) ListVersions(ctx context.Context, bucketID, uploadID in
 		return nil, nil
 	}
 
-	uploads := make([]Upload, 0, len(resp.JSON200.Uploads))
-	for _, gu := range resp.JSON200.Uploads {
+	uploads := make([]Upload, 0, len(*resp.JSON200))
+	for _, gu := range *resp.JSON200 {
 		uploads = append(uploads, uploadFromGenerated(gu))
 	}
 	return uploads, nil

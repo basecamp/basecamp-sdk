@@ -273,8 +273,8 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64) (resu
 		return nil, nil
 	}
 
-	cards := make([]Card, 0, len(resp.JSON200.Cards))
-	for _, gc := range resp.JSON200.Cards {
+	cards := make([]Card, 0, len(*resp.JSON200))
+	for _, gc := range *resp.JSON200 {
 		cards = append(cards, cardFromGenerated(gc))
 	}
 	return cards, nil

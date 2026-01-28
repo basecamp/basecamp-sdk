@@ -201,8 +201,8 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 		return nil, nil
 	}
 
-	questions := make([]Question, 0, len(resp.JSON200.Questions))
-	for _, gq := range resp.JSON200.Questions {
+	questions := make([]Question, 0, len(*resp.JSON200))
+	for _, gq := range *resp.JSON200 {
 		questions = append(questions, questionFromGenerated(gq))
 	}
 
@@ -364,8 +364,8 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 		return nil, nil
 	}
 
-	answers := make([]QuestionAnswer, 0, len(resp.JSON200.Answers))
-	for _, ga := range resp.JSON200.Answers {
+	answers := make([]QuestionAnswer, 0, len(*resp.JSON200))
+	for _, ga := range *resp.JSON200 {
 		answers = append(answers, questionAnswerFromGenerated(ga))
 	}
 

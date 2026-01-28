@@ -169,8 +169,8 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 		return nil, nil
 	}
 
-	todos := make([]Todo, 0, len(resp.JSON200.Todos))
-	for _, gt := range resp.JSON200.Todos {
+	todos := make([]Todo, 0, len(*resp.JSON200))
+	for _, gt := range *resp.JSON200 {
 		todos = append(todos, todoFromGenerated(gt))
 	}
 

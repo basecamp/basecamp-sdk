@@ -18057,344 +18057,189 @@
         }
       },
       "ListAnswersResponseContent": {
-        "type": "object",
-        "properties": {
-          "answers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/QuestionAnswer"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/QuestionAnswer"
         }
       },
       "ListAssignablePeopleResponseContent": {
-        "type": "object",
-        "properties": {
-          "people": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Person"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Person"
         }
       },
       "ListCampfireLinesResponseContent": {
-        "type": "object",
-        "properties": {
-          "lines": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CampfireLine"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/CampfireLine"
         }
       },
       "ListCampfiresResponseContent": {
-        "type": "object",
-        "properties": {
-          "campfires": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Campfire"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Campfire"
         }
       },
       "ListCardsResponseContent": {
-        "type": "object",
-        "properties": {
-          "cards": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Card"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Card"
         }
       },
       "ListChatbotsResponseContent": {
-        "type": "object",
-        "properties": {
-          "chatbots": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Chatbot"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Chatbot"
         }
       },
       "ListClientApprovalsResponseContent": {
-        "type": "object",
-        "properties": {
-          "approvals": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ClientApproval"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ClientApproval"
         }
       },
       "ListClientCorrespondencesResponseContent": {
-        "type": "object",
-        "properties": {
-          "correspondences": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ClientCorrespondence"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ClientCorrespondence"
         }
       },
       "ListClientRepliesResponseContent": {
-        "type": "object",
-        "properties": {
-          "replies": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ClientReply"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ClientReply"
         }
       },
       "ListCommentsResponseContent": {
-        "type": "object",
-        "properties": {
-          "comments": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Comment"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Comment"
         }
       },
       "ListDocumentsResponseContent": {
-        "type": "object",
-        "properties": {
-          "documents": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Document"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Document"
         }
       },
       "ListEventsResponseContent": {
-        "type": "object",
-        "properties": {
-          "events": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Event"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Event"
         }
       },
       "ListForwardRepliesResponseContent": {
-        "type": "object",
-        "properties": {
-          "replies": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ForwardReply"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ForwardReply"
         }
       },
       "ListForwardsResponseContent": {
-        "type": "object",
-        "properties": {
-          "forwards": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Forward"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Forward"
         }
       },
       "ListMessageTypesResponseContent": {
-        "type": "object",
-        "properties": {
-          "message_types": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MessageType"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/MessageType"
         }
       },
       "ListMessagesResponseContent": {
-        "type": "object",
-        "properties": {
-          "messages": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Message"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Message"
         }
       },
       "ListPeopleResponseContent": {
-        "type": "object",
-        "properties": {
-          "people": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Person"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Person"
         }
       },
       "ListPingablePeopleResponseContent": {
-        "type": "object",
-        "properties": {
-          "people": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Person"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Person"
         }
       },
       "ListProjectPeopleResponseContent": {
-        "type": "object",
-        "properties": {
-          "people": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Person"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Person"
         }
       },
       "ListProjectsResponseContent": {
-        "type": "object",
-        "properties": {
-          "projects": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Project"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Project"
         }
       },
       "ListQuestionsResponseContent": {
-        "type": "object",
-        "properties": {
-          "questions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Question"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Question"
         }
       },
       "ListRecordingsResponseContent": {
-        "type": "object",
-        "properties": {
-          "recordings": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Recording"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Recording"
         }
       },
       "ListScheduleEntriesResponseContent": {
-        "type": "object",
-        "properties": {
-          "entries": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ScheduleEntry"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ScheduleEntry"
         }
       },
       "ListTemplatesResponseContent": {
-        "type": "object",
-        "properties": {
-          "templates": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Template"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Template"
         }
       },
       "ListTodolistGroupsResponseContent": {
-        "type": "object",
-        "properties": {
-          "groups": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TodolistGroup"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/TodolistGroup"
         }
       },
       "ListTodolistsResponseContent": {
-        "type": "object",
-        "properties": {
-          "todolists": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Todolist"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Todolist"
         }
       },
       "ListTodosResponseContent": {
-        "type": "object",
-        "properties": {
-          "todos": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Todo"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Todo"
         }
       },
       "ListUploadVersionsResponseContent": {
-        "type": "object",
-        "properties": {
-          "uploads": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Upload"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Upload"
         }
       },
       "ListUploadsResponseContent": {
-        "type": "object",
-        "properties": {
-          "uploads": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Upload"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Upload"
         }
       },
       "ListVaultsResponseContent": {
-        "type": "object",
-        "properties": {
-          "vaults": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Vault"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Vault"
         }
       },
       "ListWebhooksResponseContent": {
-        "type": "object",
-        "properties": {
-          "webhooks": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Webhook"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Webhook"
         }
       },
       "Message": {

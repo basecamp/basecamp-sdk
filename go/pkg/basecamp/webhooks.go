@@ -78,8 +78,8 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result []We
 		return nil, nil
 	}
 
-	webhooks := make([]Webhook, 0, len(resp.JSON200.Webhooks))
-	for _, gw := range resp.JSON200.Webhooks {
+	webhooks := make([]Webhook, 0, len(*resp.JSON200))
+	for _, gw := range *resp.JSON200 {
 		webhooks = append(webhooks, webhookFromGenerated(gw))
 	}
 

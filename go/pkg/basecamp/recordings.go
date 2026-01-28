@@ -139,8 +139,8 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		return nil, nil
 	}
 
-	recordings := make([]Recording, 0, len(resp.JSON200.Recordings))
-	for _, gr := range resp.JSON200.Recordings {
+	recordings := make([]Recording, 0, len(*resp.JSON200))
+	for _, gr := range *resp.JSON200 {
 		recordings = append(recordings, recordingFromGenerated(gr))
 	}
 
