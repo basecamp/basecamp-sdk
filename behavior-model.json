@@ -456,6 +456,18 @@
         ]
       }
     },
+    "GetAssignedTodos": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "GetCampfire": {
       "readonly": true,
       "retry": {
@@ -672,8 +684,52 @@
         ]
       }
     },
+    "GetOverdueTodos": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "GetPerson": {
       "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetPersonProgress": {
+      "readonly": true,
+      "pagination": {
+        "style": "link_header",
+        "maxPageSize": 50
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetProgressReport": {
+      "readonly": true,
+      "pagination": {
+        "style": "link_header",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -698,6 +754,22 @@
     },
     "GetProjectConstruction": {
       "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetProjectTimeline": {
+      "readonly": true,
+      "pagination": {
+        "style": "link_header",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -900,6 +972,18 @@
         ]
       }
     },
+    "GetUpcomingSchedule": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "GetUpload": {
       "readonly": true,
       "retry": {
@@ -942,6 +1026,18 @@
         "style": "link",
         "maxPageSize": 50
       },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "ListAssignablePeople": {
+      "readonly": true,
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,

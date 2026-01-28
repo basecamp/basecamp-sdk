@@ -24,6 +24,20 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Assignable defines model for Assignable.
+type Assignable struct {
+	AppUrl    string     `json:"app_url,omitempty"`
+	Assignees []Person   `json:"assignees,omitempty"`
+	Bucket    TodoBucket `json:"bucket,omitempty"`
+	DueOn     types.Date `json:"due_on,omitempty"`
+	Id        *int64     `json:"id,omitempty"`
+	Parent    TodoParent `json:"parent,omitempty"`
+	StartsOn  types.Date `json:"starts_on,omitempty"`
+	Title     string     `json:"title,omitempty"`
+	Type      string     `json:"type,omitempty"`
+	Url       string     `json:"url,omitempty"`
+}
+
 // Campfire defines model for Campfire.
 type Campfire struct {
 	AppUrl           string     `json:"app_url,omitempty"`
@@ -705,6 +719,13 @@ type GetAnswerResponseContent struct {
 	Answer QuestionAnswer `json:"answer,omitempty"`
 }
 
+// GetAssignedTodosResponseContent defines model for GetAssignedTodosResponseContent.
+type GetAssignedTodosResponseContent struct {
+	GroupedBy string `json:"grouped_by,omitempty"`
+	Person    Person `json:"person,omitempty"`
+	Todos     []Todo `json:"todos,omitempty"`
+}
+
 // GetCampfireLineResponseContent defines model for GetCampfireLineResponseContent.
 type GetCampfireLineResponseContent struct {
 	Line CampfireLine `json:"line,omitempty"`
@@ -795,9 +816,28 @@ type GetMyProfileResponseContent struct {
 	Person Person `json:"person,omitempty"`
 }
 
+// GetOverdueTodosResponseContent defines model for GetOverdueTodosResponseContent.
+type GetOverdueTodosResponseContent struct {
+	OverAMonthLate      []Todo `json:"over_a_month_late,omitempty"`
+	OverAWeekLate       []Todo `json:"over_a_week_late,omitempty"`
+	OverThreeMonthsLate []Todo `json:"over_three_months_late,omitempty"`
+	UnderAWeekLate      []Todo `json:"under_a_week_late,omitempty"`
+}
+
+// GetPersonProgressResponseContent defines model for GetPersonProgressResponseContent.
+type GetPersonProgressResponseContent struct {
+	Events []TimelineEvent `json:"events,omitempty"`
+	Person Person          `json:"person,omitempty"`
+}
+
 // GetPersonResponseContent defines model for GetPersonResponseContent.
 type GetPersonResponseContent struct {
 	Person Person `json:"person,omitempty"`
+}
+
+// GetProgressReportResponseContent defines model for GetProgressReportResponseContent.
+type GetProgressReportResponseContent struct {
+	Events []TimelineEvent `json:"events,omitempty"`
 }
 
 // GetProjectConstructionResponseContent defines model for GetProjectConstructionResponseContent.
@@ -808,6 +848,11 @@ type GetProjectConstructionResponseContent struct {
 // GetProjectResponseContent defines model for GetProjectResponseContent.
 type GetProjectResponseContent struct {
 	Project Project `json:"project,omitempty"`
+}
+
+// GetProjectTimelineResponseContent defines model for GetProjectTimelineResponseContent.
+type GetProjectTimelineResponseContent struct {
+	Events []TimelineEvent `json:"events,omitempty"`
 }
 
 // GetProjectTimesheetResponseContent defines model for GetProjectTimesheetResponseContent.
@@ -891,6 +936,13 @@ type GetToolResponseContent struct {
 	Tool Tool `json:"tool,omitempty"`
 }
 
+// GetUpcomingScheduleResponseContent defines model for GetUpcomingScheduleResponseContent.
+type GetUpcomingScheduleResponseContent struct {
+	Assignables                       []Assignable    `json:"assignables,omitempty"`
+	RecurringScheduleEntryOccurrences []ScheduleEntry `json:"recurring_schedule_entry_occurrences,omitempty"`
+	ScheduleEntries                   []ScheduleEntry `json:"schedule_entries,omitempty"`
+}
+
 // GetUploadResponseContent defines model for GetUploadResponseContent.
 type GetUploadResponseContent struct {
 	Upload Upload `json:"upload,omitempty"`
@@ -954,6 +1006,11 @@ type LineupMarker struct {
 // ListAnswersResponseContent defines model for ListAnswersResponseContent.
 type ListAnswersResponseContent struct {
 	Answers []QuestionAnswer `json:"answers,omitempty"`
+}
+
+// ListAssignablePeopleResponseContent defines model for ListAssignablePeopleResponseContent.
+type ListAssignablePeopleResponseContent struct {
+	People []Person `json:"people,omitempty"`
 }
 
 // ListCampfireLinesResponseContent defines model for ListCampfireLinesResponseContent.
@@ -1529,6 +1586,22 @@ type Template struct {
 	Status      string     `json:"status,omitempty"`
 	UpdatedAt   time.Time  `json:"updated_at,omitempty"`
 	Url         string     `json:"url,omitempty"`
+}
+
+// TimelineEvent defines model for TimelineEvent.
+type TimelineEvent struct {
+	Action            string     `json:"action,omitempty"`
+	AppUrl            string     `json:"app_url,omitempty"`
+	Bucket            TodoBucket `json:"bucket,omitempty"`
+	CreatedAt         float64    `json:"created_at,omitempty"`
+	Creator           Person     `json:"creator,omitempty"`
+	Id                *int64     `json:"id,omitempty"`
+	Kind              string     `json:"kind,omitempty"`
+	ParentRecordingId *int64     `json:"parent_recording_id,omitempty"`
+	SummaryExcerpt    string     `json:"summary_excerpt,omitempty"`
+	Target            string     `json:"target,omitempty"`
+	Title             string     `json:"title,omitempty"`
+	Url               string     `json:"url,omitempty"`
 }
 
 // TimesheetEntry defines model for TimesheetEntry.
@@ -2154,11 +2227,23 @@ type ListRecordingsParams struct {
 	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
+// GetUpcomingScheduleParams defines parameters for GetUpcomingSchedule.
+type GetUpcomingScheduleParams struct {
+	WindowStartsOn string `form:"window_starts_on,omitempty" json:"window_starts_on,omitempty"`
+	WindowEndsOn   string `form:"window_ends_on,omitempty" json:"window_ends_on,omitempty"`
+}
+
 // GetTimesheetReportParams defines parameters for GetTimesheetReport.
 type GetTimesheetReportParams struct {
 	From     string `form:"from,omitempty" json:"from,omitempty"`
 	To       string `form:"to,omitempty" json:"to,omitempty"`
 	PersonId int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
+}
+
+// GetAssignedTodosParams defines parameters for GetAssignedTodos.
+type GetAssignedTodosParams struct {
+	// GroupBy Group by "bucket" or "date"
+	GroupBy string `form:"group_by,omitempty" json:"group_by,omitempty"`
 }
 
 // SearchParams defines parameters for Search.
@@ -2970,6 +3055,9 @@ type ClientInterface interface {
 
 	CreateScheduleEntry(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetProjectTimeline request
+	GetProjectTimeline(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetProjectTimesheet request
 	GetProjectTimesheet(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3155,8 +3243,26 @@ type ClientInterface interface {
 
 	UpdateProjectAccess(ctx context.Context, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetProgressReport request
+	GetProgressReport(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetUpcomingSchedule request
+	GetUpcomingSchedule(ctx context.Context, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetTimesheetReport request
 	GetTimesheetReport(ctx context.Context, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAssignablePeople request
+	ListAssignablePeople(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAssignedTodos request
+	GetAssignedTodos(ctx context.Context, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOverdueTodos request
+	GetOverdueTodos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetPersonProgress request
+	GetPersonProgress(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Search request
 	Search(ctx context.Context, params *SearchParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4594,6 +4700,16 @@ func (c *Client) CreateScheduleEntry(ctx context.Context, projectId int64, sched
 
 }
 
+// GetProjectTimeline is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetProjectTimeline(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetProjectTimelineRequest(c.Server, projectId)
+	}, true, "GetProjectTimeline", reqEditors...)
+
+}
+
 // GetProjectTimesheet is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetProjectTimesheet(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5344,6 +5460,26 @@ func (c *Client) UpdateProjectAccess(ctx context.Context, projectId int64, body 
 
 }
 
+// GetProgressReport is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetProgressReport(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetProgressReportRequest(c.Server)
+	}, true, "GetProgressReport", reqEditors...)
+
+}
+
+// GetUpcomingSchedule is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetUpcomingSchedule(ctx context.Context, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetUpcomingScheduleRequest(c.Server, params)
+	}, true, "GetUpcomingSchedule", reqEditors...)
+
+}
+
 // GetTimesheetReport is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetTimesheetReport(ctx context.Context, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5351,6 +5487,46 @@ func (c *Client) GetTimesheetReport(ctx context.Context, params *GetTimesheetRep
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetTimesheetReportRequest(c.Server, params)
 	}, true, "GetTimesheetReport", reqEditors...)
+
+}
+
+// ListAssignablePeople is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListAssignablePeople(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListAssignablePeopleRequest(c.Server)
+	}, true, "ListAssignablePeople", reqEditors...)
+
+}
+
+// GetAssignedTodos is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetAssignedTodos(ctx context.Context, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetAssignedTodosRequest(c.Server, personId, params)
+	}, true, "GetAssignedTodos", reqEditors...)
+
+}
+
+// GetOverdueTodos is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetOverdueTodos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetOverdueTodosRequest(c.Server)
+	}, true, "GetOverdueTodos", reqEditors...)
+
+}
+
+// GetPersonProgress is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetPersonProgress(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetPersonProgressRequest(c.Server, personId)
+	}, true, "GetPersonProgress", reqEditors...)
 
 }
 
@@ -9828,6 +10004,40 @@ func NewCreateScheduleEntryRequestWithBody(server string, projectId int64, sched
 	return req, nil
 }
 
+// NewGetProjectTimelineRequest generates requests for GetProjectTimeline
+func NewGetProjectTimelineRequest(server string, projectId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/buckets/%s/timeline.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetProjectTimesheetRequest generates requests for GetProjectTimesheet
 func NewGetProjectTimesheetRequest(server string, projectId int64, params *GetProjectTimesheetParams) (*http.Request, error) {
 	var err error
@@ -12069,6 +12279,90 @@ func NewUpdateProjectAccessRequestWithBody(server string, projectId int64, conte
 	return req, nil
 }
 
+// NewGetProgressReportRequest generates requests for GetProgressReport
+func NewGetProgressReportRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reports/progress.json")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetUpcomingScheduleRequest generates requests for GetUpcomingSchedule
+func NewGetUpcomingScheduleRequest(server string, params *GetUpcomingScheduleParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reports/schedules/upcoming.json")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "window_starts_on", runtime.ParamLocationQuery, params.WindowStartsOn); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "window_ends_on", runtime.ParamLocationQuery, params.WindowEndsOn); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetTimesheetReportRequest generates requests for GetTimesheetReport
 func NewGetTimesheetReportRequest(server string, params *GetTimesheetReportParams) (*http.Request, error) {
 	var err error
@@ -12128,6 +12422,146 @@ func NewGetTimesheetReportRequest(server string, params *GetTimesheetReportParam
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListAssignablePeopleRequest generates requests for ListAssignablePeople
+func NewListAssignablePeopleRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reports/todos/assigned.json")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAssignedTodosRequest generates requests for GetAssignedTodos
+func NewGetAssignedTodosRequest(server string, personId int64, params *GetAssignedTodosParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "personId", runtime.ParamLocationPath, personId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reports/todos/assigned/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "group_by", runtime.ParamLocationQuery, params.GroupBy); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetOverdueTodosRequest generates requests for GetOverdueTodos
+func NewGetOverdueTodosRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reports/todos/overdue.json")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetPersonProgressRequest generates requests for GetPersonProgress
+func NewGetPersonProgressRequest(server string, personId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "personId", runtime.ParamLocationPath, personId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reports/users/progress/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -12629,6 +13063,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateScheduleSettings":     {Idempotent: true, HasSensitiveParams: false},
 	"ListScheduleEntries":        {Idempotent: true, HasSensitiveParams: false},
 	"CreateScheduleEntry":        {Idempotent: false, HasSensitiveParams: false},
+	"GetProjectTimeline":         {Idempotent: true, HasSensitiveParams: false},
 	"GetProjectTimesheet":        {Idempotent: true, HasSensitiveParams: false},
 	"RepositionTodolistGroup":    {Idempotent: true, HasSensitiveParams: false},
 	"GetTodolistOrGroup":         {Idempotent: true, HasSensitiveParams: false},
@@ -12678,7 +13113,13 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateProject":              {Idempotent: true, HasSensitiveParams: false},
 	"ListProjectPeople":          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProjectAccess":        {Idempotent: true, HasSensitiveParams: false},
+	"GetProgressReport":          {Idempotent: true, HasSensitiveParams: false},
+	"GetUpcomingSchedule":        {Idempotent: true, HasSensitiveParams: false},
 	"GetTimesheetReport":         {Idempotent: true, HasSensitiveParams: false},
+	"ListAssignablePeople":       {Idempotent: true, HasSensitiveParams: false},
+	"GetAssignedTodos":           {Idempotent: true, HasSensitiveParams: false},
+	"GetOverdueTodos":            {Idempotent: true, HasSensitiveParams: false},
+	"GetPersonProgress":          {Idempotent: true, HasSensitiveParams: false},
 	"Search":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetSearchMetadata":          {Idempotent: true, HasSensitiveParams: false},
 	"ListTemplates":              {Idempotent: true, HasSensitiveParams: false},
@@ -13967,6 +14408,9 @@ type ClientWithResponsesInterface interface {
 
 	CreateScheduleEntryWithResponse(ctx context.Context, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error)
 
+	// GetProjectTimelineWithResponse request
+	GetProjectTimelineWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
+
 	// GetProjectTimesheetWithResponse request
 	GetProjectTimesheetWithResponse(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
 
@@ -14152,8 +14596,26 @@ type ClientWithResponsesInterface interface {
 
 	UpdateProjectAccessWithResponse(ctx context.Context, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
 
+	// GetProgressReportWithResponse request
+	GetProgressReportWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetProgressReportResponse, error)
+
+	// GetUpcomingScheduleWithResponse request
+	GetUpcomingScheduleWithResponse(ctx context.Context, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*GetUpcomingScheduleResponse, error)
+
 	// GetTimesheetReportWithResponse request
 	GetTimesheetReportWithResponse(ctx context.Context, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*GetTimesheetReportResponse, error)
+
+	// ListAssignablePeopleWithResponse request
+	ListAssignablePeopleWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAssignablePeopleResponse, error)
+
+	// GetAssignedTodosWithResponse request
+	GetAssignedTodosWithResponse(ctx context.Context, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*GetAssignedTodosResponse, error)
+
+	// GetOverdueTodosWithResponse request
+	GetOverdueTodosWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOverdueTodosResponse, error)
+
+	// GetPersonProgressWithResponse request
+	GetPersonProgressWithResponse(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*GetPersonProgressResponse, error)
 
 	// SearchWithResponse request
 	SearchWithResponse(ctx context.Context, params *SearchParams, reqEditors ...RequestEditorFn) (*SearchResponse, error)
@@ -16633,6 +17095,33 @@ func (r CreateScheduleEntryResponse) StatusCode() int {
 	return 0
 }
 
+type GetProjectTimelineResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetProjectTimelineResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProjectTimelineResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProjectTimelineResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetProjectTimesheetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -17919,6 +18408,58 @@ func (r UpdateProjectAccessResponse) StatusCode() int {
 	return 0
 }
 
+type GetProgressReportResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetProgressReportResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProgressReportResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProgressReportResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetUpcomingScheduleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetUpcomingScheduleResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetUpcomingScheduleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetUpcomingScheduleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetTimesheetReportResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -17939,6 +18480,112 @@ func (r GetTimesheetReportResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetTimesheetReportResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListAssignablePeopleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListAssignablePeopleResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAssignablePeopleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAssignablePeopleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetAssignedTodosResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetAssignedTodosResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAssignedTodosResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAssignedTodosResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetOverdueTodosResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetOverdueTodosResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOverdueTodosResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOverdueTodosResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetPersonProgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetPersonProgressResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPersonProgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPersonProgressResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -19274,6 +19921,15 @@ func (c *ClientWithResponses) CreateScheduleEntryWithResponse(ctx context.Contex
 	return ParseCreateScheduleEntryResponse(rsp)
 }
 
+// GetProjectTimelineWithResponse request returning *GetProjectTimelineResponse
+func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error) {
+	rsp, err := c.GetProjectTimeline(ctx, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProjectTimelineResponse(rsp)
+}
+
 // GetProjectTimesheetWithResponse request returning *GetProjectTimesheetResponse
 func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Context, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error) {
 	rsp, err := c.GetProjectTimesheet(ctx, projectId, params, reqEditors...)
@@ -19867,6 +20523,24 @@ func (c *ClientWithResponses) UpdateProjectAccessWithResponse(ctx context.Contex
 	return ParseUpdateProjectAccessResponse(rsp)
 }
 
+// GetProgressReportWithResponse request returning *GetProgressReportResponse
+func (c *ClientWithResponses) GetProgressReportWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetProgressReportResponse, error) {
+	rsp, err := c.GetProgressReport(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProgressReportResponse(rsp)
+}
+
+// GetUpcomingScheduleWithResponse request returning *GetUpcomingScheduleResponse
+func (c *ClientWithResponses) GetUpcomingScheduleWithResponse(ctx context.Context, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*GetUpcomingScheduleResponse, error) {
+	rsp, err := c.GetUpcomingSchedule(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetUpcomingScheduleResponse(rsp)
+}
+
 // GetTimesheetReportWithResponse request returning *GetTimesheetReportResponse
 func (c *ClientWithResponses) GetTimesheetReportWithResponse(ctx context.Context, params *GetTimesheetReportParams, reqEditors ...RequestEditorFn) (*GetTimesheetReportResponse, error) {
 	rsp, err := c.GetTimesheetReport(ctx, params, reqEditors...)
@@ -19874,6 +20548,42 @@ func (c *ClientWithResponses) GetTimesheetReportWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseGetTimesheetReportResponse(rsp)
+}
+
+// ListAssignablePeopleWithResponse request returning *ListAssignablePeopleResponse
+func (c *ClientWithResponses) ListAssignablePeopleWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAssignablePeopleResponse, error) {
+	rsp, err := c.ListAssignablePeople(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAssignablePeopleResponse(rsp)
+}
+
+// GetAssignedTodosWithResponse request returning *GetAssignedTodosResponse
+func (c *ClientWithResponses) GetAssignedTodosWithResponse(ctx context.Context, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*GetAssignedTodosResponse, error) {
+	rsp, err := c.GetAssignedTodos(ctx, personId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAssignedTodosResponse(rsp)
+}
+
+// GetOverdueTodosWithResponse request returning *GetOverdueTodosResponse
+func (c *ClientWithResponses) GetOverdueTodosWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOverdueTodosResponse, error) {
+	rsp, err := c.GetOverdueTodos(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOverdueTodosResponse(rsp)
+}
+
+// GetPersonProgressWithResponse request returning *GetPersonProgressResponse
+func (c *ClientWithResponses) GetPersonProgressWithResponse(ctx context.Context, personId int64, reqEditors ...RequestEditorFn) (*GetPersonProgressResponse, error) {
+	rsp, err := c.GetPersonProgress(ctx, personId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPersonProgressResponse(rsp)
 }
 
 // SearchWithResponse request returning *SearchResponse
@@ -25185,6 +25895,67 @@ func ParseCreateScheduleEntryResponse(rsp *http.Response) (*CreateScheduleEntryR
 	return response, nil
 }
 
+// ParseGetProjectTimelineResponse parses an HTTP response from a GetProjectTimelineWithResponse call
+func ParseGetProjectTimelineResponse(rsp *http.Response) (*GetProjectTimelineResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProjectTimelineResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetProjectTimelineResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetProjectTimesheetResponse parses an HTTP response from a GetProjectTimesheetWithResponse call
 func ParseGetProjectTimesheetResponse(rsp *http.Response) (*GetProjectTimesheetResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -27915,6 +28686,114 @@ func ParseUpdateProjectAccessResponse(rsp *http.Response) (*UpdateProjectAccessR
 	return response, nil
 }
 
+// ParseGetProgressReportResponse parses an HTTP response from a GetProgressReportWithResponse call
+func ParseGetProgressReportResponse(rsp *http.Response) (*GetProgressReportResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProgressReportResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetProgressReportResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetUpcomingScheduleResponse parses an HTTP response from a GetUpcomingScheduleWithResponse call
+func ParseGetUpcomingScheduleResponse(rsp *http.Response) (*GetUpcomingScheduleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetUpcomingScheduleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetUpcomingScheduleResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetTimesheetReportResponse parses an HTTP response from a GetTimesheetReportWithResponse call
 func ParseGetTimesheetReportResponse(rsp *http.Response) (*GetTimesheetReportResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -27956,6 +28835,236 @@ func ParseGetTimesheetReportResponse(rsp *http.Response) (*GetTimesheetReportRes
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAssignablePeopleResponse parses an HTTP response from a ListAssignablePeopleWithResponse call
+func ParseListAssignablePeopleResponse(rsp *http.Response) (*ListAssignablePeopleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAssignablePeopleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListAssignablePeopleResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAssignedTodosResponse parses an HTTP response from a GetAssignedTodosWithResponse call
+func ParseGetAssignedTodosResponse(rsp *http.Response) (*GetAssignedTodosResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAssignedTodosResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetAssignedTodosResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOverdueTodosResponse parses an HTTP response from a GetOverdueTodosWithResponse call
+func ParseGetOverdueTodosResponse(rsp *http.Response) (*GetOverdueTodosResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOverdueTodosResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetOverdueTodosResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetPersonProgressResponse parses an HTTP response from a GetPersonProgressWithResponse call
+func ParseGetPersonProgressResponse(rsp *http.Response) (*GetPersonProgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPersonProgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetPersonProgressResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
