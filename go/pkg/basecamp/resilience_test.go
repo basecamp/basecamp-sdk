@@ -324,6 +324,31 @@ func TestResilienceHooks_OnOperationEnd_UpdatesCircuitBreaker(t *testing.T) {
 			t.Errorf("circuit should be closed (gating errors don't count): got %s", cb.State())
 		}
 	})
+
+	t.Run("does not count wrapped context errors as failures", func(t *testing.T) {
+		cfg := &CircuitBreakerConfig{
+			FailureThreshold: 2,
+			OpenTimeout:      time.Hour,
+		}
+		rh := &resilienceHooks{
+			inner:           NoopHooks{},
+			circuitBreakers: newCircuitBreakerRegistry(cfg),
+		}
+
+		// Create network errors that wrap context errors (e.g., from http.Client)
+		// These should not trip the circuit because the user canceled the request.
+		wrappedCanceled := ErrNetwork(context.Canceled)
+		wrappedTimeout := ErrNetwork(context.DeadlineExceeded)
+
+		rh.OnOperationEnd(ctx, op, wrappedCanceled, time.Second)
+		rh.OnOperationEnd(ctx, op, wrappedTimeout, time.Second)
+
+		// Breaker should still be closed (context errors don't trip)
+		cb := rh.circuitBreakers.get("Todos.Get")
+		if cb.State() != "closed" {
+			t.Errorf("circuit should be closed (wrapped context errors don't count): got %s", cb.State())
+		}
+	})
 }
 
 func TestResilienceHooks_DelegatesTo_InnerHooks(t *testing.T) {
@@ -517,6 +542,28 @@ func TestResilienceHooks_OnRequestEnd_RespectsRetryAfter(t *testing.T) {
 
 		rh.OnRequestEnd(ctx, reqInfo, result)
 		// Retry-After should be respected for 503 as well
+	})
+
+	t.Run("503 without RetryAfter does not block", func(t *testing.T) {
+		rh := &resilienceHooks{
+			inner:       NoopHooks{},
+			rateLimiter: newRateLimiter(&RateLimitConfig{RequestsPerSecond: 100, BurstSize: 10}),
+		}
+
+		// Simulate 503 without Retry-After header
+		result := RequestResult{
+			StatusCode: 503,
+			RetryAfter: 0, // No header
+		}
+
+		rh.OnRequestEnd(ctx, reqInfo, result)
+
+		// Should NOT block - 503 without Retry-After shouldn't apply default
+		// (unlike 429 which defaults to 60s)
+		// Verify rate limiter still allows requests immediately after
+		if !rh.rateLimiter.Allow() {
+			t.Error("503 without Retry-After should not block rate limiter")
+		}
 	})
 }
 
