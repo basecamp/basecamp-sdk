@@ -15121,9 +15121,9 @@
           },
           "due_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -15320,9 +15320,9 @@
           },
           "due_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -15540,9 +15540,9 @@
           },
           "due_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -15942,9 +15942,9 @@
           },
           "due_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -15972,9 +15972,9 @@
           },
           "due_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -16092,17 +16092,17 @@
           },
           "starts_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
           "ends_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -16376,17 +16376,17 @@
           },
           "due_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
           "starts_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           }
@@ -17287,17 +17287,17 @@
           },
           "starts_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
           "ends_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -18259,9 +18259,9 @@
           },
           "group_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -18284,9 +18284,9 @@
           },
           "group_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           }
@@ -19133,17 +19133,17 @@
           },
           "starts_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
           "due_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -19616,9 +19616,9 @@
           },
           "due_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -19647,9 +19647,9 @@
           },
           "due_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -19738,17 +19738,17 @@
           },
           "starts_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
           "ends_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -20040,17 +20040,17 @@
           },
           "due_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
           "starts_on": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.Date",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           }

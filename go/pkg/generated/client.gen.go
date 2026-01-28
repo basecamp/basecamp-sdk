@@ -20,6 +20,7 @@ import (
 
 	"time"
 
+	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 	"github.com/oapi-codegen/runtime"
 )
 
@@ -80,7 +81,7 @@ type Card struct {
 	CreatedAt             time.Time       `json:"created_at,omitempty"`
 	Creator               Person          `json:"creator,omitempty"`
 	Description           string          `json:"description,omitempty"`
-	DueOn                 time.Time       `json:"due_on,omitempty"`
+	DueOn                 types.Date      `json:"due_on,omitempty"`
 	Id                    *int64          `json:"id,omitempty"`
 	InheritsStatus        bool            `json:"inherits_status,omitempty"`
 	Parent                RecordingParent `json:"parent,omitempty"`
@@ -132,7 +133,7 @@ type CardStep struct {
 	CompletionUrl    string          `json:"completion_url,omitempty"`
 	CreatedAt        time.Time       `json:"created_at,omitempty"`
 	Creator          Person          `json:"creator,omitempty"`
-	DueOn            time.Time       `json:"due_on,omitempty"`
+	DueOn            types.Date      `json:"due_on,omitempty"`
 	Id               *int64          `json:"id,omitempty"`
 	InheritsStatus   bool            `json:"inherits_status,omitempty"`
 	Parent           RecordingParent `json:"parent,omitempty"`
@@ -187,7 +188,7 @@ type ClientApproval struct {
 	Content          string                   `json:"content,omitempty"`
 	CreatedAt        time.Time                `json:"created_at,omitempty"`
 	Creator          Person                   `json:"creator,omitempty"`
-	DueOn            time.Time                `json:"due_on,omitempty"`
+	DueOn            types.Date               `json:"due_on,omitempty"`
 	Id               *int64                   `json:"id,omitempty"`
 	InheritsStatus   bool                     `json:"inherits_status,omitempty"`
 	Parent           RecordingParent          `json:"parent,omitempty"`
@@ -342,10 +343,10 @@ type CreateCardColumnResponseContent struct {
 
 // CreateCardRequestContent defines model for CreateCardRequestContent.
 type CreateCardRequestContent struct {
-	Content string    `json:"content,omitempty"`
-	DueOn   time.Time `json:"due_on,omitempty"`
-	Notify  bool      `json:"notify,omitempty"`
-	Title   string    `json:"title"`
+	Content string     `json:"content,omitempty"`
+	DueOn   types.Date `json:"due_on,omitempty"`
+	Notify  bool       `json:"notify,omitempty"`
+	Title   string     `json:"title"`
 }
 
 // CreateCardResponseContent defines model for CreateCardResponseContent.
@@ -355,9 +356,9 @@ type CreateCardResponseContent struct {
 
 // CreateCardStepRequestContent defines model for CreateCardStepRequestContent.
 type CreateCardStepRequestContent struct {
-	Assignees []int64   `json:"assignees,omitempty"`
-	DueOn     time.Time `json:"due_on,omitempty"`
-	Title     string    `json:"title"`
+	Assignees []int64    `json:"assignees,omitempty"`
+	DueOn     types.Date `json:"due_on,omitempty"`
+	Title     string     `json:"title"`
 }
 
 // CreateCardStepResponseContent defines model for CreateCardStepResponseContent.
@@ -412,11 +413,11 @@ type CreateForwardReplyResponseContent struct {
 
 // CreateLineupMarkerRequestContent defines model for CreateLineupMarkerRequestContent.
 type CreateLineupMarkerRequestContent struct {
-	Color       string    `json:"color,omitempty"`
-	Description string    `json:"description,omitempty"`
-	EndsOn      time.Time `json:"ends_on"`
-	StartsOn    time.Time `json:"starts_on"`
-	Title       string    `json:"title"`
+	Color       string     `json:"color,omitempty"`
+	Description string     `json:"description,omitempty"`
+	EndsOn      types.Date `json:"ends_on"`
+	StartsOn    types.Date `json:"starts_on"`
+	Title       string     `json:"title"`
 }
 
 // CreateLineupMarkerResponseContent defines model for CreateLineupMarkerResponseContent.
@@ -520,13 +521,13 @@ type CreateTemplateResponseContent struct {
 
 // CreateTodoRequestContent defines model for CreateTodoRequestContent.
 type CreateTodoRequestContent struct {
-	AssigneeIds             []int64   `json:"assignee_ids,omitempty"`
-	CompletionSubscriberIds []int64   `json:"completion_subscriber_ids,omitempty"`
-	Content                 string    `json:"content"`
-	Description             string    `json:"description,omitempty"`
-	DueOn                   time.Time `json:"due_on,omitempty"`
-	Notify                  bool      `json:"notify,omitempty"`
-	StartsOn                time.Time `json:"starts_on,omitempty"`
+	AssigneeIds             []int64    `json:"assignee_ids,omitempty"`
+	CompletionSubscriberIds []int64    `json:"completion_subscriber_ids,omitempty"`
+	Content                 string     `json:"content"`
+	Description             string     `json:"description,omitempty"`
+	DueOn                   types.Date `json:"due_on,omitempty"`
+	Notify                  bool       `json:"notify,omitempty"`
+	StartsOn                types.Date `json:"starts_on,omitempty"`
 }
 
 // CreateTodoResponseContent defines model for CreateTodoResponseContent.
@@ -939,10 +940,10 @@ type LineupMarker struct {
 	CreatedAt   time.Time       `json:"created_at,omitempty"`
 	Creator     Person          `json:"creator,omitempty"`
 	Description string          `json:"description,omitempty"`
-	EndsOn      time.Time       `json:"ends_on,omitempty"`
+	EndsOn      types.Date      `json:"ends_on,omitempty"`
 	Id          *int64          `json:"id,omitempty"`
 	Parent      RecordingParent `json:"parent,omitempty"`
-	StartsOn    time.Time       `json:"starts_on,omitempty"`
+	StartsOn    types.Date      `json:"starts_on,omitempty"`
 	Status      string          `json:"status,omitempty"`
 	Title       string          `json:"title,omitempty"`
 	Type        string          `json:"type,omitempty"`
@@ -1272,7 +1273,7 @@ type QuestionAnswer struct {
 	Content          string          `json:"content,omitempty"`
 	CreatedAt        time.Time       `json:"created_at,omitempty"`
 	Creator          Person          `json:"creator,omitempty"`
-	GroupOn          time.Time       `json:"group_on,omitempty"`
+	GroupOn          types.Date      `json:"group_on,omitempty"`
 	Id               *int64          `json:"id,omitempty"`
 	InheritsStatus   bool            `json:"inherits_status,omitempty"`
 	Parent           RecordingParent `json:"parent,omitempty"`
@@ -1287,8 +1288,8 @@ type QuestionAnswer struct {
 
 // QuestionAnswerPayload defines model for QuestionAnswerPayload.
 type QuestionAnswerPayload struct {
-	Content string    `json:"content"`
-	GroupOn time.Time `json:"group_on,omitempty"`
+	Content string     `json:"content"`
+	GroupOn types.Date `json:"group_on,omitempty"`
 }
 
 // QuestionAnswerUpdatePayload defines model for QuestionAnswerUpdatePayload.
@@ -1566,12 +1567,12 @@ type Todo struct {
 	CreatedAt             time.Time  `json:"created_at,omitempty"`
 	Creator               Person     `json:"creator,omitempty"`
 	Description           string     `json:"description,omitempty"`
-	DueOn                 time.Time  `json:"due_on,omitempty"`
+	DueOn                 types.Date `json:"due_on,omitempty"`
 	Id                    *int64     `json:"id,omitempty"`
 	InheritsStatus        bool       `json:"inherits_status,omitempty"`
 	Parent                TodoParent `json:"parent,omitempty"`
 	Position              int32      `json:"position,omitempty"`
-	StartsOn              time.Time  `json:"starts_on,omitempty"`
+	StartsOn              types.Date `json:"starts_on,omitempty"`
 
 	// Status active|archived|trashed
 	Status           string    `json:"status,omitempty"`
@@ -1743,10 +1744,10 @@ type UpdateCardColumnResponseContent struct {
 
 // UpdateCardRequestContent defines model for UpdateCardRequestContent.
 type UpdateCardRequestContent struct {
-	AssigneeIds []int64   `json:"assignee_ids,omitempty"`
-	Content     string    `json:"content,omitempty"`
-	DueOn       time.Time `json:"due_on,omitempty"`
-	Title       string    `json:"title,omitempty"`
+	AssigneeIds []int64    `json:"assignee_ids,omitempty"`
+	Content     string     `json:"content,omitempty"`
+	DueOn       types.Date `json:"due_on,omitempty"`
+	Title       string     `json:"title,omitempty"`
 }
 
 // UpdateCardResponseContent defines model for UpdateCardResponseContent.
@@ -1756,9 +1757,9 @@ type UpdateCardResponseContent struct {
 
 // UpdateCardStepRequestContent defines model for UpdateCardStepRequestContent.
 type UpdateCardStepRequestContent struct {
-	Assignees []int64   `json:"assignees,omitempty"`
-	DueOn     time.Time `json:"due_on,omitempty"`
-	Title     string    `json:"title,omitempty"`
+	Assignees []int64    `json:"assignees,omitempty"`
+	DueOn     types.Date `json:"due_on,omitempty"`
+	Title     string     `json:"title,omitempty"`
 }
 
 // UpdateCardStepResponseContent defines model for UpdateCardStepResponseContent.
@@ -1800,11 +1801,11 @@ type UpdateDocumentResponseContent struct {
 
 // UpdateLineupMarkerRequestContent defines model for UpdateLineupMarkerRequestContent.
 type UpdateLineupMarkerRequestContent struct {
-	Color       string    `json:"color,omitempty"`
-	Description string    `json:"description,omitempty"`
-	EndsOn      time.Time `json:"ends_on,omitempty"`
-	StartsOn    time.Time `json:"starts_on,omitempty"`
-	Title       string    `json:"title,omitempty"`
+	Color       string     `json:"color,omitempty"`
+	Description string     `json:"description,omitempty"`
+	EndsOn      types.Date `json:"ends_on,omitempty"`
+	StartsOn    types.Date `json:"starts_on,omitempty"`
+	Title       string     `json:"title,omitempty"`
 }
 
 // UpdateLineupMarkerResponseContent defines model for UpdateLineupMarkerResponseContent.
@@ -1926,13 +1927,13 @@ type UpdateTemplateResponseContent struct {
 
 // UpdateTodoRequestContent defines model for UpdateTodoRequestContent.
 type UpdateTodoRequestContent struct {
-	AssigneeIds             []int64   `json:"assignee_ids,omitempty"`
-	CompletionSubscriberIds []int64   `json:"completion_subscriber_ids,omitempty"`
-	Content                 string    `json:"content,omitempty"`
-	Description             string    `json:"description,omitempty"`
-	DueOn                   time.Time `json:"due_on,omitempty"`
-	Notify                  bool      `json:"notify,omitempty"`
-	StartsOn                time.Time `json:"starts_on,omitempty"`
+	AssigneeIds             []int64    `json:"assignee_ids,omitempty"`
+	CompletionSubscriberIds []int64    `json:"completion_subscriber_ids,omitempty"`
+	Content                 string     `json:"content,omitempty"`
+	Description             string     `json:"description,omitempty"`
+	DueOn                   types.Date `json:"due_on,omitempty"`
+	Notify                  bool       `json:"notify,omitempty"`
+	StartsOn                types.Date `json:"starts_on,omitempty"`
 }
 
 // UpdateTodoResponseContent defines model for UpdateTodoResponseContent.
