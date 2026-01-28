@@ -1593,7 +1593,7 @@ type TimelineEvent struct {
 	Action            string     `json:"action,omitempty"`
 	AppUrl            string     `json:"app_url,omitempty"`
 	Bucket            TodoBucket `json:"bucket,omitempty"`
-	CreatedAt         float64    `json:"created_at,omitempty"`
+	CreatedAt         time.Time  `json:"created_at,omitempty"`
 	Creator           Person     `json:"creator,omitempty"`
 	Id                *int64     `json:"id,omitempty"`
 	Kind              string     `json:"kind,omitempty"`

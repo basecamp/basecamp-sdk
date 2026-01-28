@@ -19726,8 +19726,12 @@
             "x-go-type-skip-optional-pointer": false
           },
           "created_at": {
-            "type": "number",
-            "format": "double"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "kind": {
             "type": "string"
