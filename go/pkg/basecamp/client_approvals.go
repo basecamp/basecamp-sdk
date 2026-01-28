@@ -138,7 +138,7 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 	}
 
 	if !ga.DueOn.IsZero() {
-		dueOn := ga.DueOn.Format("2006-01-02")
+		dueOn := ga.DueOn.String()
 		a.DueOn = &dueOn
 	}
 

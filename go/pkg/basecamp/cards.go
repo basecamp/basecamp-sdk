@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
+	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
 
 // CardTable represents a Basecamp card table (kanban board).
@@ -301,11 +302,11 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 		body.Content = req.Content
 	}
 	if req.DueOn != "" {
-		t, err := time.Parse("2006-01-02", req.DueOn)
+		d, err := types.ParseDate(req.DueOn)
 		if err != nil {
 			return nil, ErrUsage("card due_on must be in YYYY-MM-DD format")
 		}
-		body.DueOn = t
+		body.DueOn = d
 	}
 	if req.Notify {
 		body.Notify = req.Notify
@@ -346,11 +347,11 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 		body.Content = req.Content
 	}
 	if req.DueOn != "" {
-		t, err := time.Parse("2006-01-02", req.DueOn)
+		d, err := types.ParseDate(req.DueOn)
 		if err != nil {
 			return nil, ErrUsage("card due_on must be in YYYY-MM-DD format")
 		}
-		body.DueOn = t
+		body.DueOn = d
 	}
 	if len(req.AssigneeIDs) > 0 {
 		body.AssigneeIds = req.AssigneeIDs
@@ -667,11 +668,11 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 		Assignees: req.Assignees,
 	}
 	if req.DueOn != "" {
-		t, err := time.Parse("2006-01-02", req.DueOn)
+		d, err := types.ParseDate(req.DueOn)
 		if err != nil {
 			return nil, ErrUsage("step due_on must be in YYYY-MM-DD format")
 		}
-		body.DueOn = t
+		body.DueOn = d
 	}
 
 	resp, err := s.client.gen.CreateCardStepWithResponse(ctx, bucketID, cardID, body)
@@ -706,11 +707,11 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 		Assignees: req.Assignees,
 	}
 	if req.DueOn != "" {
-		t, err := time.Parse("2006-01-02", req.DueOn)
+		d, err := types.ParseDate(req.DueOn)
 		if err != nil {
 			return nil, ErrUsage("step due_on must be in YYYY-MM-DD format")
 		}
-		body.DueOn = t
+		body.DueOn = d
 	}
 
 	resp, err := s.client.gen.UpdateCardStepWithResponse(ctx, bucketID, stepID, body)
@@ -959,9 +960,9 @@ func cardFromGenerated(gc generated.Card) Card {
 		c.ID = *gc.Id
 	}
 
-	// Handle due_on - it's a time.Time in generated but string in SDK
+	// Handle due_on - it's types.Date in generated, string in SDK
 	if !gc.DueOn.IsZero() {
-		c.DueOn = gc.DueOn.Format("2006-01-02")
+		c.DueOn = gc.DueOn.String()
 	}
 
 	// Handle completed_at
@@ -1054,9 +1055,9 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		s.ID = *gs.Id
 	}
 
-	// Handle due_on - it's a time.Time in generated but string in SDK
+	// Handle due_on - it's types.Date in generated, string in SDK
 	if !gs.DueOn.IsZero() {
-		s.DueOn = gs.DueOn.Format("2006-01-02")
+		s.DueOn = gs.DueOn.String()
 	}
 
 	// Handle completed_at

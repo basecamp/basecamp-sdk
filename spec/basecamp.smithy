@@ -201,7 +201,16 @@ service Basecamp {
     RepositionTool,
     CreateLineupMarker,
     UpdateLineupMarker,
-    DeleteLineupMarker
+    DeleteLineupMarker,
+
+    // Batch 11 - Timeline, Reports (Activity & Reports)
+    GetProgressReport,
+    GetProjectTimeline,
+    GetPersonProgress,
+    ListAssignablePeople,
+    GetAssignedTodos,
+    GetOverdueTodos,
+    GetUpcomingSchedule
   ]
 }
 
@@ -5641,6 +5650,195 @@ structure DeleteLineupMarkerInput {
 }
 
 structure DeleteLineupMarkerOutput {}
+
+// ===== Timeline Operations =====
+
+/// Get account-wide activity feed (progress report)
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link_header", maxPageSize: 50)
+@http(method: "GET", uri: "/reports/progress.json")
+operation GetProgressReport {
+  input: GetProgressReportInput
+  output: GetProgressReportOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetProgressReportInput {}
+
+structure GetProgressReportOutput {
+  events: TimelineEventList
+}
+
+/// Get project timeline
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link_header", maxPageSize: 50)
+@http(method: "GET", uri: "/buckets/{projectId}/timeline.json")
+operation GetProjectTimeline {
+  input: GetProjectTimelineInput
+  output: GetProjectTimelineOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetProjectTimelineInput {
+  @required
+  @httpLabel
+  projectId: ProjectId
+}
+
+structure GetProjectTimelineOutput {
+  events: TimelineEventList
+}
+
+/// Get a person's activity timeline
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link_header", maxPageSize: 50)
+@http(method: "GET", uri: "/reports/users/progress/{personId}")
+operation GetPersonProgress {
+  input: GetPersonProgressInput
+  output: GetPersonProgressOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetPersonProgressInput {
+  @required
+  @httpLabel
+  personId: PersonId
+}
+
+structure GetPersonProgressOutput {
+  person: Person
+  events: TimelineEventList
+}
+
+// ===== Reports Operations =====
+
+/// List people who can be assigned todos
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/reports/todos/assigned.json")
+operation ListAssignablePeople {
+  input: ListAssignablePeopleInput
+  output: ListAssignablePeopleOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListAssignablePeopleInput {}
+
+structure ListAssignablePeopleOutput {
+  people: PersonList
+}
+
+/// Get todos assigned to a specific person
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/reports/todos/assigned/{personId}")
+operation GetAssignedTodos {
+  input: GetAssignedTodosInput
+  output: GetAssignedTodosOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetAssignedTodosInput {
+  @required
+  @httpLabel
+  personId: PersonId
+
+  /// Group by "bucket" or "date"
+  @httpQuery("group_by")
+  group_by: String
+}
+
+structure GetAssignedTodosOutput {
+  person: Person
+  grouped_by: String
+  todos: TodoItems
+}
+
+/// Get overdue todos grouped by lateness
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/reports/todos/overdue.json")
+operation GetOverdueTodos {
+  input: GetOverdueTodosInput
+  output: GetOverdueTodosOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetOverdueTodosInput {}
+
+structure GetOverdueTodosOutput {
+  under_a_week_late: TodoItems
+  over_a_week_late: TodoItems
+  over_a_month_late: TodoItems
+  over_three_months_late: TodoItems
+}
+
+/// Get upcoming schedule entries within a date window
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/reports/schedules/upcoming.json")
+operation GetUpcomingSchedule {
+  input: GetUpcomingScheduleInput
+  output: GetUpcomingScheduleOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetUpcomingScheduleInput {
+  @httpQuery("window_starts_on")
+  window_starts_on: ISO8601Date
+
+  @httpQuery("window_ends_on")
+  window_ends_on: ISO8601Date
+}
+
+structure GetUpcomingScheduleOutput {
+  schedule_entries: ScheduleEntryList
+  recurring_schedule_entry_occurrences: ScheduleEntryList
+  assignables: AssignableList
+}
+
+// ===== Timeline Shapes =====
+
+list TimelineEventList {
+  member: TimelineEvent
+}
+
+structure TimelineEvent {
+  id: Long
+  created_at: ISO8601Timestamp
+  kind: String
+  parent_recording_id: Long
+  url: String
+  app_url: String
+  creator: Person
+  action: String
+  target: String
+  title: String
+  summary_excerpt: String
+  bucket: TodoBucket
+}
+
+// ===== Reports Shapes =====
+
+list AssignableList {
+  member: Assignable
+}
+
+structure Assignable {
+  id: Long
+  title: String
+  type: String
+  url: String
+  app_url: String
+  bucket: TodoBucket
+  parent: TodoParent
+  due_on: ISO8601Date
+  starts_on: ISO8601Date
+  assignees: PersonList
+}
 
 // ===== Search Shapes =====
 

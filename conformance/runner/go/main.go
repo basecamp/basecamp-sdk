@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
+	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
 
 // TestCase represents a single conformance test.
@@ -211,8 +212,8 @@ func runTest(tc TestCase) TestResult {
 			Content: getStringParam(tc.RequestBody, "content"),
 		}
 		if dueOn, ok := tc.RequestBody["due_on"].(string); ok {
-			if t, err := time.Parse("2006-01-02", dueOn); err == nil {
-				body.DueOn = t
+			if d, err := types.ParseDate(dueOn); err == nil {
+				body.DueOn = d
 			}
 		}
 		sdkResp, sdkErr = client.CreateTodo(ctx, projectId, todolistId, body)

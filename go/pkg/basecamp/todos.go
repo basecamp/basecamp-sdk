@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
+	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
 
 // Todo represents a Basecamp todo item.
@@ -208,20 +209,20 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 		CompletionSubscriberIds: req.CompletionSubscriberIDs,
 		Notify:                  req.Notify,
 	}
-	// Parse date strings to time.Time for the generated client
+	// Parse date strings to types.Date for the generated client
 	if req.DueOn != "" {
-		t, err := time.Parse("2006-01-02", req.DueOn)
+		d, err := types.ParseDate(req.DueOn)
 		if err != nil {
 			return nil, ErrUsage("todo due_on must be in YYYY-MM-DD format")
 		}
-		body.DueOn = t
+		body.DueOn = d
 	}
 	if req.StartsOn != "" {
-		t, err := time.Parse("2006-01-02", req.StartsOn)
+		d, err := types.ParseDate(req.StartsOn)
 		if err != nil {
 			return nil, ErrUsage("todo starts_on must be in YYYY-MM-DD format")
 		}
-		body.StartsOn = t
+		body.StartsOn = d
 	}
 
 	resp, err := s.client.gen.CreateTodoWithResponse(ctx, bucketID, todolistID, body)
@@ -254,20 +255,20 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 		CompletionSubscriberIds: req.CompletionSubscriberIDs,
 		Notify:                  req.Notify,
 	}
-	// Parse date strings to time.Time for the generated client
+	// Parse date strings to types.Date for the generated client
 	if req.DueOn != "" {
-		t, err := time.Parse("2006-01-02", req.DueOn)
+		d, err := types.ParseDate(req.DueOn)
 		if err != nil {
 			return nil, ErrUsage("todo due_on must be in YYYY-MM-DD format")
 		}
-		body.DueOn = t
+		body.DueOn = d
 	}
 	if req.StartsOn != "" {
-		t, err := time.Parse("2006-01-02", req.StartsOn)
+		d, err := types.ParseDate(req.StartsOn)
 		if err != nil {
 			return nil, ErrUsage("todo starts_on must be in YYYY-MM-DD format")
 		}
-		body.StartsOn = t
+		body.StartsOn = d
 	}
 
 	resp, err := s.client.gen.UpdateTodoWithResponse(ctx, bucketID, todoID, body)
@@ -374,10 +375,10 @@ func todoFromGenerated(gt generated.Todo) Todo {
 
 	// Convert date fields to strings
 	if !gt.StartsOn.IsZero() {
-		t.StartsOn = gt.StartsOn.Format("2006-01-02")
+		t.StartsOn = gt.StartsOn.String()
 	}
 	if !gt.DueOn.IsZero() {
-		t.DueOn = gt.DueOn.Format("2006-01-02")
+		t.DueOn = gt.DueOn.String()
 	}
 
 	// Convert nested types

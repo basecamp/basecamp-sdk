@@ -2,8 +2,10 @@
 #
 # Enhance OpenAPI spec with Go-specific type extensions for oapi-codegen.
 #
-# Adds x-go-type: "time.Time" to all timestamp fields (those ending in _at or _on)
-# so oapi-codegen generates time.Time instead of string.
+# Type mappings:
+#   - _at fields (created_at, updated_at, etc.) → time.Time (full timestamps)
+#   - _on fields (due_on, starts_on, etc.) → types.Date (date-only)
+#   - id fields → keep as pointers to distinguish nil from zero
 #
 # Usage: ./enhance-openapi-go-types.sh [input.json] [output.json]
 #        ./enhance-openapi-go-types.sh               # defaults to openapi.json in-place
@@ -25,11 +27,18 @@ jq '
 walk(
   if type == "object" then
     to_entries | map(
-      # Timestamp fields: use time.Time and skip optional pointer
-      if (.key | test("_(at|on)$")) and (.value | type == "object") and (.value.type == "string") then
+      # Timestamp fields (_at): use time.Time
+      if (.key | test("_at$")) and (.value | type == "object") and (.value.type == "string") then
         .value += {
           "x-go-type": "time.Time",
           "x-go-type-import": {"path": "time"},
+          "x-go-type-skip-optional-pointer": true
+        }
+      # Date-only fields (_on): use types.Date
+      elif (.key | test("_on$")) and (.value | type == "object") and (.value.type == "string") then
+        .value += {
+          "x-go-type": "types.Date",
+          "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
           "x-go-type-skip-optional-pointer": true
         }
       # Id fields: keep as pointers (to distinguish nil from zero)
@@ -52,8 +61,10 @@ mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 
 # Count enhancements
 timestamp_count=$(jq '[.. | objects | select(.["x-go-type"] == "time.Time")] | length' "$OUTPUT_FILE")
+date_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.Date")] | length' "$OUTPUT_FILE")
 id_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
 
-echo "Added x-go-type extensions for timestamp fields"
-echo "  Timestamp fields enhanced: $timestamp_count"
+echo "Enhanced OpenAPI spec with Go type extensions:"
+echo "  Timestamp fields (time.Time): $timestamp_count"
+echo "  Date fields (types.Date): $date_count"
 echo "  Id fields (keeping pointers): $id_count"

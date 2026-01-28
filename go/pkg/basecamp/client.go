@@ -66,6 +66,8 @@ type Client struct {
 	clientApprovals       *ClientApprovalsService
 	clientCorrespondences *ClientCorrespondencesService
 	clientReplies         *ClientRepliesService
+	timeline              *TimelineService
+	reports               *ReportsService
 }
 
 // Response wraps an API response.
@@ -842,4 +844,20 @@ func (c *Client) ClientReplies() *ClientRepliesService {
 		c.clientReplies = NewClientRepliesService(c)
 	}
 	return c.clientReplies
+}
+
+// Timeline returns the TimelineService for timeline and progress operations.
+func (c *Client) Timeline() *TimelineService {
+	if c.timeline == nil {
+		c.timeline = NewTimelineService(c)
+	}
+	return c.timeline
+}
+
+// Reports returns the ReportsService for reports operations.
+func (c *Client) Reports() *ReportsService {
+	if c.reports == nil {
+		c.reports = NewReportsService(c)
+	}
+	return c.reports
 }
