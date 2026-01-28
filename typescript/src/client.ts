@@ -373,10 +373,16 @@ function createHooksMiddleware(hooks: BasecampHooks): Middleware {
         attempt,
       };
 
+      // Check for cache hit via header set by cache middleware
+      const fromCacheHeader = response.headers.get("X-From-Cache");
+      const fromCache =
+        fromCacheHeader === "1" ||
+        response.status === 304;
+
       const result: RequestResult = {
         statusCode: response.status,
         durationMs,
-        fromCache: response.status === 304,
+        fromCache,
       };
 
       try {
@@ -432,13 +438,15 @@ function createCacheMiddleware(): Middleware {
 
       const cacheKey = getCacheKey(request.url);
 
-      // Handle 304 Not Modified - return cached body
+      // Handle 304 Not Modified - return cached body with cache indicator
       if (response.status === 304) {
         const entry = cache.get(cacheKey);
         if (entry) {
+          const headers = new Headers(response.headers);
+          headers.set("X-From-Cache", "1");
           return new Response(entry.body, {
             status: 200,
-            headers: response.headers,
+            headers,
           });
         }
       }

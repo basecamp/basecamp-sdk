@@ -105,14 +105,19 @@ const DEFAULT_AUTHORIZATION_ENDPOINT = "https://launchpad.37signals.com/authoriz
  *
  * @example
  * ```ts
- * const authService = new AuthorizationService(client, hooks);
+ * import { createBasecampClient } from "@basecamp/sdk";
+ *
+ * const client = createBasecampClient({
+ *   accountId: "12345",
+ *   accessToken: "your-token",
+ * });
  *
  * // Get all accounts
- * const info = await authService.getInfo();
+ * const info = await client.authorization.getInfo();
  * console.log(`Logged in as ${info.identity.firstName}`);
  *
  * // Filter to only Basecamp 3 accounts
- * const bc3Info = await authService.getInfo({ filterProduct: "bc3" });
+ * const bc3Info = await client.authorization.getInfo({ filterProduct: "bc3" });
  * for (const account of bc3Info.accounts) {
  *   console.log(account.name);
  * }
