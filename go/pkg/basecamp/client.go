@@ -69,6 +69,7 @@ type Client struct {
 	clientReplies         *ClientRepliesService
 	timeline              *TimelineService
 	reports               *ReportsService
+	authorization         *AuthorizationService
 }
 
 // Response wraps an API response.
@@ -871,4 +872,12 @@ func (c *Client) Reports() *ReportsService {
 		c.reports = NewReportsService(c)
 	}
 	return c.reports
+}
+
+// Authorization returns the AuthorizationService for authorization operations.
+func (c *Client) Authorization() *AuthorizationService {
+	if c.authorization == nil {
+		c.authorization = NewAuthorizationService(c)
+	}
+	return c.authorization
 }
