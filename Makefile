@@ -25,6 +25,8 @@ smithy-build: behavior-model
 	cp spec/build/smithy/openapi/openapi/Basecamp.openapi.json openapi.json
 	@echo "==> Post-processing OpenAPI for Go types..."
 	./scripts/enhance-openapi-go-types.sh
+	@echo "==> Fixing List response schemas to match BC3 API..."
+	./scripts/fix-list-response-schemas.sh
 	@echo "Updated openapi.json"
 
 # Check that openapi.json is up to date
@@ -34,6 +36,7 @@ smithy-check: smithy-validate
 	@TMPFILE=$$(mktemp) && \
 		cp spec/build/smithy/openapi/openapi/Basecamp.openapi.json "$$TMPFILE" && \
 		./scripts/enhance-openapi-go-types.sh "$$TMPFILE" "$$TMPFILE" > /dev/null 2>&1 && \
+		./scripts/fix-list-response-schemas.sh "$$TMPFILE" "$$TMPFILE" > /dev/null 2>&1 && \
 		(diff -q openapi.json "$$TMPFILE" > /dev/null 2>&1 || \
 			(rm -f "$$TMPFILE" && echo "ERROR: openapi.json is out of date. Run 'make smithy-build'" && exit 1)) && \
 		rm -f "$$TMPFILE"
