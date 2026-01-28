@@ -64,6 +64,11 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 		Service: "Search", Operation: "Search",
 		ResourceType: "search", IsMutation: false,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -109,6 +114,11 @@ func (s *SearchService) Metadata(ctx context.Context) (result *SearchMetadata, e
 	op := OperationInfo{
 		Service: "Search", Operation: "Metadata",
 		ResourceType: "search", IsMutation: false,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

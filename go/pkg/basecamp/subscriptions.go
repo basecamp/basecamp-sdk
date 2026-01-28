@@ -42,6 +42,11 @@ func (s *SubscriptionsService) Get(ctx context.Context, bucketID, recordingID in
 		ResourceType: "subscription", IsMutation: false,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -74,6 +79,11 @@ func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordin
 		Service: "Subscriptions", Operation: "Subscribe",
 		ResourceType: "subscription", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -108,6 +118,11 @@ func (s *SubscriptionsService) Unsubscribe(ctx context.Context, bucketID, record
 		ResourceType: "subscription", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -131,6 +146,11 @@ func (s *SubscriptionsService) Update(ctx context.Context, bucketID, recordingID
 		Service: "Subscriptions", Operation: "Update",
 		ResourceType: "subscription", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

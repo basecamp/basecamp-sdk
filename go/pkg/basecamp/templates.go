@@ -66,6 +66,11 @@ func (s *TemplatesService) List(ctx context.Context) (result []Template, err err
 		Service: "Templates", Operation: "List",
 		ResourceType: "template", IsMutation: false,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -100,6 +105,11 @@ func (s *TemplatesService) Get(ctx context.Context, templateID int64) (result *T
 		ResourceType: "template", IsMutation: false,
 		ResourceID: templateID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -130,6 +140,11 @@ func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateReques
 	op := OperationInfo{
 		Service: "Templates", Operation: "Create",
 		ResourceType: "template", IsMutation: true,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -173,6 +188,11 @@ func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *Up
 		ResourceType: "template", IsMutation: true,
 		ResourceID: templateID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -214,6 +234,11 @@ func (s *TemplatesService) Delete(ctx context.Context, templateID int64) (err er
 		ResourceType: "template", IsMutation: true,
 		ResourceID: templateID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -236,6 +261,11 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 		Service: "Templates", Operation: "CreateProject",
 		ResourceType: "project_construction", IsMutation: true,
 		ResourceID: templateID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -277,6 +307,11 @@ func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, cons
 		Service: "Templates", Operation: "GetConstruction",
 		ResourceType: "project_construction", IsMutation: false,
 		ResourceID: constructionID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

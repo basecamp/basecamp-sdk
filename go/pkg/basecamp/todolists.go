@@ -78,6 +78,11 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 		ResourceType: "todolist", IsMutation: false,
 		BucketID: bucketID, ResourceID: todosetID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -118,6 +123,11 @@ func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) 
 		ResourceType: "todolist", IsMutation: false,
 		BucketID: bucketID, ResourceID: todolistID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -157,6 +167,11 @@ func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64
 		Service: "Todolists", Operation: "Create",
 		ResourceType: "todolist", IsMutation: true,
 		BucketID: bucketID, ResourceID: todosetID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -200,6 +215,11 @@ func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int6
 		Service: "Todolists", Operation: "Update",
 		ResourceType: "todolist", IsMutation: true,
 		BucketID: bucketID, ResourceID: todolistID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -245,6 +265,11 @@ func (s *TodolistsService) Trash(ctx context.Context, bucketID, todolistID int64
 		Service: "Todolists", Operation: "Trash",
 		ResourceType: "todolist", IsMutation: true,
 		BucketID: bucketID, ResourceID: todolistID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

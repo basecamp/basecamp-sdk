@@ -6,6 +6,16 @@ import (
 	"fmt"
 )
 
+// Resilience errors for circuit breaker, bulkhead, and rate limiting.
+var (
+	// ErrCircuitOpen is returned when the circuit breaker is open.
+	ErrCircuitOpen = errors.New("circuit breaker is open")
+	// ErrBulkheadFull is returned when the bulkhead has no available slots.
+	ErrBulkheadFull = errors.New("bulkhead is full")
+	// ErrRateLimited is returned when the rate limiter rejects a request.
+	ErrRateLimited = errors.New("rate limit exceeded")
+)
+
 // Error codes for API responses.
 const (
 	CodeUsage     = "usage"

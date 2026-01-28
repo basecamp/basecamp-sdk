@@ -24,6 +24,11 @@ func (s *ReportsService) AssignablePeople(ctx context.Context) (result []Person,
 		Service: "Reports", Operation: "AssignablePeople",
 		ResourceType: "person", IsMutation: false,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -70,6 +75,11 @@ func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts
 		Service: "Reports", Operation: "AssignedTodos",
 		ResourceType: "todo", IsMutation: false,
 		ResourceID: personID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -131,6 +141,11 @@ func (s *ReportsService) OverdueTodos(ctx context.Context) (result *OverdueTodos
 	op := OperationInfo{
 		Service: "Reports", Operation: "OverdueTodos",
 		ResourceType: "todo", IsMutation: false,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -196,6 +211,11 @@ func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDat
 	op := OperationInfo{
 		Service: "Reports", Operation: "UpcomingSchedule",
 		ResourceType: "schedule_entry", IsMutation: false,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

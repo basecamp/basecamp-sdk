@@ -78,6 +78,11 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 		ResourceType: "inbox", IsMutation: false,
 		BucketID: bucketID, ResourceID: inboxID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -109,6 +114,11 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) (re
 		Service: "Forwards", Operation: "List",
 		ResourceType: "forward", IsMutation: false,
 		BucketID: bucketID, ResourceID: inboxID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -145,6 +155,11 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (r
 		ResourceType: "forward", IsMutation: false,
 		BucketID: bucketID, ResourceID: forwardID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -176,6 +191,11 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 		Service: "Forwards", Operation: "ListReplies",
 		ResourceType: "forward_reply", IsMutation: false,
 		BucketID: bucketID, ResourceID: forwardID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -212,6 +232,11 @@ func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, rep
 		ResourceType: "forward_reply", IsMutation: false,
 		BucketID: bucketID, ResourceID: replyID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -244,6 +269,11 @@ func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID i
 		Service: "Forwards", Operation: "CreateReply",
 		ResourceType: "forward_reply", IsMutation: true,
 		BucketID: bucketID, ResourceID: forwardID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

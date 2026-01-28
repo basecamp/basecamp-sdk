@@ -152,6 +152,11 @@ func (s *VaultsService) Get(ctx context.Context, bucketID, vaultID int64) (resul
 		ResourceType: "vault", IsMutation: false,
 		BucketID: bucketID, ResourceID: vaultID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -183,6 +188,11 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64) (resu
 		Service: "Vaults", Operation: "List",
 		ResourceType: "vault", IsMutation: false,
 		BucketID: bucketID, ResourceID: vaultID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -218,6 +228,11 @@ func (s *VaultsService) Create(ctx context.Context, bucketID, vaultID int64, req
 		Service: "Vaults", Operation: "Create",
 		ResourceType: "vault", IsMutation: true,
 		BucketID: bucketID, ResourceID: vaultID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -260,6 +275,11 @@ func (s *VaultsService) Update(ctx context.Context, bucketID, vaultID int64, req
 		Service: "Vaults", Operation: "Update",
 		ResourceType: "vault", IsMutation: true,
 		BucketID: bucketID, ResourceID: vaultID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -312,6 +332,11 @@ func (s *DocumentsService) Get(ctx context.Context, bucketID, documentID int64) 
 		ResourceType: "document", IsMutation: false,
 		BucketID: bucketID, ResourceID: documentID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -343,6 +368,11 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64) (r
 		Service: "Documents", Operation: "List",
 		ResourceType: "document", IsMutation: false,
 		BucketID: bucketID, ResourceID: vaultID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -378,6 +408,11 @@ func (s *DocumentsService) Create(ctx context.Context, bucketID, vaultID int64, 
 		Service: "Documents", Operation: "Create",
 		ResourceType: "document", IsMutation: true,
 		BucketID: bucketID, ResourceID: vaultID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -423,6 +458,11 @@ func (s *DocumentsService) Update(ctx context.Context, bucketID, documentID int6
 		ResourceType: "document", IsMutation: true,
 		BucketID: bucketID, ResourceID: documentID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -466,6 +506,11 @@ func (s *DocumentsService) Trash(ctx context.Context, bucketID, documentID int64
 		ResourceType: "document", IsMutation: true,
 		BucketID: bucketID, ResourceID: documentID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -499,6 +544,11 @@ func (s *UploadsService) Get(ctx context.Context, bucketID, uploadID int64) (res
 		ResourceType: "upload", IsMutation: false,
 		BucketID: bucketID, ResourceID: uploadID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -530,6 +580,11 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64) (res
 		Service: "Uploads", Operation: "List",
 		ResourceType: "upload", IsMutation: false,
 		BucketID: bucketID, ResourceID: vaultID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -565,6 +620,11 @@ func (s *UploadsService) Update(ctx context.Context, bucketID, uploadID int64, r
 		Service: "Uploads", Operation: "Update",
 		ResourceType: "upload", IsMutation: true,
 		BucketID: bucketID, ResourceID: uploadID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -610,6 +670,11 @@ func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, re
 		ResourceType: "upload", IsMutation: true,
 		BucketID: bucketID, ResourceID: vaultID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -654,6 +719,11 @@ func (s *UploadsService) Trash(ctx context.Context, bucketID, uploadID int64) (e
 		ResourceType: "upload", IsMutation: true,
 		BucketID: bucketID, ResourceID: uploadID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -676,6 +746,11 @@ func (s *UploadsService) ListVersions(ctx context.Context, bucketID, uploadID in
 		Service: "Uploads", Operation: "ListVersions",
 		ResourceType: "upload", IsMutation: false,
 		BucketID: bucketID, ResourceID: uploadID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

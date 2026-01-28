@@ -116,6 +116,11 @@ func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) 
 		ResourceType: "schedule", IsMutation: false,
 		BucketID: bucketID, ResourceID: scheduleID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -147,6 +152,11 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 		Service: "Schedules", Operation: "ListEntries",
 		ResourceType: "schedule_entry", IsMutation: false,
 		BucketID: bucketID, ResourceID: scheduleID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -183,6 +193,11 @@ func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64
 		ResourceType: "schedule_entry", IsMutation: false,
 		BucketID: bucketID, ResourceID: entryID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -215,6 +230,11 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 		Service: "Schedules", Operation: "CreateEntry",
 		ResourceType: "schedule_entry", IsMutation: true,
 		BucketID: bucketID, ResourceID: scheduleID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -283,6 +303,11 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 		ResourceType: "schedule_entry", IsMutation: true,
 		BucketID: bucketID, ResourceID: entryID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -344,6 +369,11 @@ func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, ent
 		ResourceType: "schedule_entry", IsMutation: false,
 		BucketID: bucketID, ResourceID: entryID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -381,6 +411,11 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, schedul
 		Service: "Schedules", Operation: "UpdateSettings",
 		ResourceType: "schedule", IsMutation: true,
 		BucketID: bucketID, ResourceID: scheduleID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -423,6 +458,11 @@ func (s *SchedulesService) TrashEntry(ctx context.Context, bucketID, entryID int
 		Service: "Schedules", Operation: "TrashEntry",
 		ResourceType: "schedule_entry", IsMutation: true,
 		BucketID: bucketID, ResourceID: entryID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

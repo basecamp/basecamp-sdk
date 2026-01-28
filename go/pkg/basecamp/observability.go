@@ -37,6 +37,19 @@ type Hooks interface {
 	OnRetry(ctx context.Context, info RequestInfo, attempt int, err error)
 }
 
+// GatingHooks extends Hooks with request gating capability.
+// Implementations can reject operations before they execute,
+// enabling patterns like circuit breakers, bulkheads, and rate limiters.
+type GatingHooks interface {
+	Hooks
+	// OnOperationGate is called before OnOperationStart.
+	// Returns a new context (which may contain cleanup functions like bulkhead
+	// release) and an error. Return non-nil error to reject the operation.
+	// The returned context should be used for the operation and passed to
+	// OnOperationEnd for proper cleanup.
+	OnOperationGate(ctx context.Context, op OperationInfo) (context.Context, error)
+}
+
 // RequestInfo contains information about an HTTP request.
 type RequestInfo struct {
 	Method string
@@ -75,6 +88,9 @@ type RequestResult struct {
 	FromCache bool
 	// Retryable indicates whether this error will be retried.
 	Retryable bool
+	// RetryAfter is the Retry-After header value in seconds (0 if not present).
+	// Used by resilience hooks to respect server-requested backoff on 429/503.
+	RetryAfter int
 }
 
 // NoopHooks is a no-op implementation of Hooks.
@@ -163,6 +179,20 @@ func (c *ChainHooks) OnRetry(ctx context.Context, info RequestInfo, attempt int,
 	for _, h := range c.hooks {
 		h.OnRetry(ctx, info, attempt, err)
 	}
+}
+
+// OnOperationGate calls the first GatingHooks implementation in the chain.
+// Only ONE gater should exist in a chain (typically resilienceHooks which
+// internally manages circuit breaker, bulkhead, and rate limiter).
+// Returns the context from the gater (which may contain cleanup functions)
+// and any error.
+func (c *ChainHooks) OnOperationGate(ctx context.Context, op OperationInfo) (context.Context, error) {
+	for _, h := range c.hooks {
+		if gater, ok := h.(GatingHooks); ok {
+			return gater.OnOperationGate(ctx, op)
+		}
+	}
+	return ctx, nil
 }
 
 // WithHooks sets the observability hooks for the client.

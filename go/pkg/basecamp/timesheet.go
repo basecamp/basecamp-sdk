@@ -67,6 +67,11 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 		Service: "Timesheet", Operation: "Report",
 		ResourceType: "timesheet_entry", IsMutation: false,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -103,6 +108,11 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 		Service: "Timesheet", Operation: "ProjectReport",
 		ResourceType: "timesheet_entry", IsMutation: false,
 		BucketID: projectID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -147,6 +157,11 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recor
 		Service: "Timesheet", Operation: "RecordingReport",
 		ResourceType: "timesheet_entry", IsMutation: false,
 		BucketID: projectID, ResourceID: recordingID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

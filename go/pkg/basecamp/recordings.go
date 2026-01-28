@@ -90,6 +90,11 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		Service: "Recordings", Operation: "List",
 		ResourceType: "recording", IsMutation: false,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -155,6 +160,11 @@ func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64
 		ResourceType: "recording", IsMutation: false,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -188,6 +198,11 @@ func (s *RecordingsService) Trash(ctx context.Context, bucketID, recordingID int
 		ResourceType: "recording", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -212,6 +227,11 @@ func (s *RecordingsService) Archive(ctx context.Context, bucketID, recordingID i
 		ResourceType: "recording", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -234,6 +254,11 @@ func (s *RecordingsService) Unarchive(ctx context.Context, bucketID, recordingID
 		Service: "Recordings", Operation: "Unarchive",
 		ResourceType: "recording", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -260,6 +285,11 @@ func (s *RecordingsService) SetClientVisibility(ctx context.Context, bucketID, r
 		Service: "Recordings", Operation: "SetClientVisibility",
 		ResourceType: "recording", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

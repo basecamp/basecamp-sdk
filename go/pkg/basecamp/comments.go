@@ -53,6 +53,11 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64)
 		ResourceType: "comment", IsMutation: false,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -88,6 +93,11 @@ func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (r
 		ResourceType: "comment", IsMutation: false,
 		BucketID: bucketID, ResourceID: commentID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -120,6 +130,11 @@ func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int6
 		Service: "Comments", Operation: "Create",
 		ResourceType: "comment", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -163,6 +178,11 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 		ResourceType: "comment", IsMutation: true,
 		BucketID: bucketID, ResourceID: commentID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -204,6 +224,11 @@ func (s *CommentsService) Trash(ctx context.Context, bucketID, commentID int64) 
 		Service: "Comments", Operation: "Trash",
 		ResourceType: "comment", IsMutation: true,
 		BucketID: bucketID, ResourceID: commentID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

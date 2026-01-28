@@ -162,6 +162,140 @@ func TestChainHooks_OperationLevel(t *testing.T) {
 	}
 }
 
+func TestChainHooks_OnOperationGate(t *testing.T) {
+	ctx := context.Background()
+	op := OperationInfo{
+		Service:      "Todos",
+		Operation:    "List",
+		ResourceType: "todo",
+	}
+
+	t.Run("no gating hooks", func(t *testing.T) {
+		// Chain with regular hooks (non-gating) should pass through
+		recorder := &recordingHooks{id: "1"}
+		hooks := NewChainHooks(recorder)
+
+		chain, ok := hooks.(*ChainHooks)
+		if !ok {
+			// Single hook, test that we can cast and call OnOperationGate
+			// For single hooks, we need to wrap in chain to test
+			chain = &ChainHooks{hooks: []Hooks{recorder}}
+		}
+
+		resultCtx, err := chain.OnOperationGate(ctx, op)
+		if err != nil {
+			t.Errorf("OnOperationGate should return nil for non-gating hooks: %v", err)
+		}
+		if resultCtx != ctx {
+			t.Error("OnOperationGate should return original context when no gater")
+		}
+	})
+
+	t.Run("gating hook allows", func(t *testing.T) {
+		gater := &gatingHooks{allowAll: true}
+		hooks := NewChainHooks(gater)
+
+		chain, ok := hooks.(*ChainHooks)
+		if !ok {
+			chain = &ChainHooks{hooks: []Hooks{gater}}
+		}
+
+		_, err := chain.OnOperationGate(ctx, op)
+		if err != nil {
+			t.Errorf("OnOperationGate should return nil when gater allows: %v", err)
+		}
+		if gater.gateCalls != 1 {
+			t.Errorf("OnOperationGate should call gater once: got %d", gater.gateCalls)
+		}
+	})
+
+	t.Run("gating hook rejects", func(t *testing.T) {
+		gater := &gatingHooks{allowAll: false, rejectErr: ErrCircuitOpen}
+		hooks := NewChainHooks(gater)
+
+		chain, ok := hooks.(*ChainHooks)
+		if !ok {
+			chain = &ChainHooks{hooks: []Hooks{gater}}
+		}
+
+		_, err := chain.OnOperationGate(ctx, op)
+		if err != ErrCircuitOpen {
+			t.Errorf("OnOperationGate should return ErrCircuitOpen: got %v", err)
+		}
+	})
+
+	t.Run("mixed hooks with gater first rejecting", func(t *testing.T) {
+		gater := &gatingHooks{allowAll: false, rejectErr: ErrBulkheadFull}
+		recorder := &recordingHooks{id: "1"}
+
+		chain := &ChainHooks{hooks: []Hooks{gater, recorder}}
+
+		_, err := chain.OnOperationGate(ctx, op)
+		if err != ErrBulkheadFull {
+			t.Errorf("OnOperationGate should return ErrBulkheadFull: got %v", err)
+		}
+	})
+
+	t.Run("only first gater is called", func(t *testing.T) {
+		// ChainHooks should only call the FIRST gater, not all of them
+		gater1 := &gatingHooks{allowAll: true}
+		gater2 := &gatingHooks{allowAll: true}
+
+		chain := &ChainHooks{hooks: []Hooks{gater1, gater2}}
+
+		_, err := chain.OnOperationGate(ctx, op)
+		if err != nil {
+			t.Errorf("OnOperationGate should succeed: %v", err)
+		}
+		if gater1.gateCalls != 1 {
+			t.Errorf("First gater should be called: got %d", gater1.gateCalls)
+		}
+		if gater2.gateCalls != 0 {
+			t.Errorf("Second gater should NOT be called (only first gater): got %d", gater2.gateCalls)
+		}
+	})
+
+	t.Run("gater returns modified context", func(t *testing.T) {
+		type ctxKey string
+		key := ctxKey("test-key")
+		gater := &gatingHooks{allowAll: true, ctxKey: key, ctxValue: "test-value"}
+
+		chain := &ChainHooks{hooks: []Hooks{gater}}
+
+		resultCtx, err := chain.OnOperationGate(ctx, op)
+		if err != nil {
+			t.Errorf("OnOperationGate should succeed: %v", err)
+		}
+		if resultCtx.Value(key) != "test-value" {
+			t.Errorf("OnOperationGate should return context with gater's value")
+		}
+	})
+}
+
+// gatingHooks is a test implementation of GatingHooks
+type gatingHooks struct {
+	NoopHooks
+	allowAll  bool
+	rejectErr error
+	gateCalls int
+	ctxKey    any
+	ctxValue  any
+}
+
+var _ GatingHooks = (*gatingHooks)(nil)
+
+func (h *gatingHooks) OnOperationGate(ctx context.Context, op OperationInfo) (context.Context, error) {
+	h.gateCalls++
+	if !h.allowAll {
+		return ctx, h.rejectErr
+	}
+	// Add value to context if configured
+	if h.ctxKey != nil {
+		ctx = context.WithValue(ctx, h.ctxKey, h.ctxValue)
+	}
+	return ctx, nil
+}
+
 // recordingHooks records all hook calls for testing
 type recordingHooks struct {
 	id           string

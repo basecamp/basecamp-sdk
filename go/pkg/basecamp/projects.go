@@ -111,6 +111,11 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 		Service: "Projects", Operation: "List",
 		ResourceType: "project", IsMutation: false,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -150,6 +155,11 @@ func (s *ProjectsService) Get(ctx context.Context, id int64) (result *Project, e
 		ResourceType: "project", IsMutation: false,
 		ResourceID: id,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -180,6 +190,11 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 	op := OperationInfo{
 		Service: "Projects", Operation: "Create",
 		ResourceType: "project", IsMutation: true,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -222,6 +237,11 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 		Service: "Projects", Operation: "Update",
 		ResourceType: "project", IsMutation: true,
 		ResourceID: id,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -271,6 +291,11 @@ func (s *ProjectsService) Trash(ctx context.Context, id int64) (err error) {
 		Service: "Projects", Operation: "Trash",
 		ResourceType: "project", IsMutation: true,
 		ResourceID: id,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

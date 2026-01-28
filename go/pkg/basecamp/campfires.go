@@ -95,6 +95,11 @@ func (s *CampfiresService) List(ctx context.Context) (result []Campfire, err err
 		Service: "Campfires", Operation: "List",
 		ResourceType: "campfire", IsMutation: false,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -129,6 +134,11 @@ func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) 
 		ResourceType: "campfire", IsMutation: false,
 		BucketID: bucketID, ResourceID: campfireID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -160,6 +170,11 @@ func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID i
 		Service: "Campfires", Operation: "ListLines",
 		ResourceType: "campfire_line", IsMutation: false,
 		BucketID: bucketID, ResourceID: campfireID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -195,6 +210,11 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 		ResourceType: "campfire_line", IsMutation: false,
 		BucketID: bucketID, ResourceID: lineID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -227,6 +247,11 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 		Service: "Campfires", Operation: "CreateLine",
 		ResourceType: "campfire_line", IsMutation: true,
 		BucketID: bucketID, ResourceID: campfireID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -269,6 +294,11 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID,
 		ResourceType: "campfire_line", IsMutation: true,
 		BucketID: bucketID, ResourceID: lineID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -292,6 +322,11 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireI
 		Service: "Campfires", Operation: "ListChatbots",
 		ResourceType: "chatbot", IsMutation: false,
 		BucketID: bucketID, ResourceID: campfireID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -327,6 +362,11 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID,
 		ResourceType: "chatbot", IsMutation: false,
 		BucketID: bucketID, ResourceID: chatbotID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -360,6 +400,11 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfire
 		Service: "Campfires", Operation: "CreateChatbot",
 		ResourceType: "chatbot", IsMutation: true,
 		BucketID: bucketID, ResourceID: campfireID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -407,6 +452,11 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfire
 		ResourceType: "chatbot", IsMutation: true,
 		BucketID: bucketID, ResourceID: chatbotID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -451,6 +501,11 @@ func (s *CampfiresService) DeleteChatbot(ctx context.Context, bucketID, campfire
 		Service: "Campfires", Operation: "DeleteChatbot",
 		ResourceType: "chatbot", IsMutation: true,
 		BucketID: bucketID, ResourceID: chatbotID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

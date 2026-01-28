@@ -47,6 +47,11 @@ func (s *ToolsService) Get(ctx context.Context, bucketID, toolID int64) (result 
 		ResourceType: "tool", IsMutation: false,
 		BucketID: bucketID, ResourceID: toolID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -80,6 +85,11 @@ func (s *ToolsService) Create(ctx context.Context, bucketID, sourceToolID int64)
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: sourceToolID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -112,6 +122,11 @@ func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, title
 		Service: "Tools", Operation: "Update",
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: toolID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -155,6 +170,11 @@ func (s *ToolsService) Delete(ctx context.Context, bucketID, toolID int64) (err 
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: toolID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -178,6 +198,11 @@ func (s *ToolsService) Enable(ctx context.Context, bucketID, toolID int64) (err 
 		Service: "Tools", Operation: "Enable",
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: toolID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -203,6 +228,11 @@ func (s *ToolsService) Disable(ctx context.Context, bucketID, toolID int64) (err
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: toolID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -226,6 +256,11 @@ func (s *ToolsService) Reposition(ctx context.Context, bucketID, toolID int64, p
 		Service: "Tools", Operation: "Reposition",
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: toolID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
