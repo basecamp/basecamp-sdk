@@ -6,7 +6,6 @@ package com.basecamp.smithy;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import software.amazon.smithy.model.node.Node;
 import software.amazon.smithy.model.node.ObjectNode;
 
 import static org.junit.jupiter.api.Assertions.*;

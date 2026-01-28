@@ -42,8 +42,13 @@ func main() {
     token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
     client := basecamp.NewClient(cfg, token)
 
-    // Create an account-scoped client
-    account := client.ForAccount(os.Getenv("BASECAMP_ACCOUNT_ID"))
+    // Get account ID (ForAccount validates it's numeric)
+    accountID := os.Getenv("BASECAMP_ACCOUNT_ID")
+    if accountID == "" {
+        fmt.Fprintln(os.Stderr, "BASECAMP_ACCOUNT_ID is required")
+        os.Exit(1)
+    }
+    account := client.ForAccount(accountID)
 
     projects, err := account.Projects().List(context.Background(), nil)
     if err != nil {

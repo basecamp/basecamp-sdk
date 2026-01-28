@@ -52,8 +52,11 @@ func main() {
 
     client := basecamp.NewClient(cfg, token)
 
-    // Create an account-scoped client for API operations
+    // Get account ID from environment (ForAccount validates it's numeric)
     accountID := os.Getenv("BASECAMP_ACCOUNT_ID")
+    if accountID == "" {
+        log.Fatal("BASECAMP_ACCOUNT_ID environment variable is required")
+    }
     account := client.ForAccount(accountID)
 
     // List all projects
