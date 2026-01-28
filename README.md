@@ -36,11 +36,16 @@ import (
 )
 
 func main() {
-    cfg := basecamp.ConfigFromEnv()
-    ts := basecamp.NewEnvTokenSource()
-    client := basecamp.NewClient(cfg, ts)
+    cfg := basecamp.DefaultConfig()
+    cfg.LoadConfigFromEnv()
 
-    projects, err := client.Projects().List(context.Background(), nil)
+    token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+    client := basecamp.NewClient(cfg, token)
+
+    // Create an account-scoped client
+    account := client.ForAccount(os.Getenv("BASECAMP_ACCOUNT_ID"))
+
+    projects, err := account.Projects().List(context.Background(), nil)
     if err != nil {
         fmt.Fprintf(os.Stderr, "Error: %v\n", err)
         os.Exit(1)
@@ -55,7 +60,7 @@ func main() {
 ### Environment Variables
 
 - `BASECAMP_TOKEN` - OAuth access token
-- `BASECAMP_ACCOUNT_ID` - Default account ID
+- `BASECAMP_ACCOUNT_ID` - Account ID (used with ForAccount)
 - `BASECAMP_PROJECT_ID` - Default project ID (optional)
 - `BASECAMP_BASE_URL` - API base URL (default: `https://3.basecampapi.com`)
 
