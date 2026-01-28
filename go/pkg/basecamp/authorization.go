@@ -43,7 +43,7 @@ type GetInfoOptions struct {
 	Endpoint string
 
 	// FilterProduct filters accounts to only those matching this product.
-	// Common values: "bc3" (Basecamp 4), "bcx" (Basecamp 2), "hey" (HEY).
+	// Common values: "bc3" (Basecamp), "bcx" (Basecamp 2), "hey" (HEY).
 	// If empty, all accounts are returned.
 	FilterProduct string
 }
