@@ -15,7 +15,6 @@ import (
 func ExampleNewClient_staticToken() {
 	// Create a client with a static token (simplest authentication method)
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
@@ -29,7 +28,6 @@ func ExampleNewClient_staticToken() {
 func ExampleNewClient_oauth() {
 	// Create a client with OAuth authentication
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 
 	authMgr := basecamp.NewAuthManager(cfg, http.DefaultClient)
 	client := basecamp.NewClient(cfg, authMgr)
@@ -43,7 +41,6 @@ func ExampleNewClient_oauth() {
 func ExampleNewClient_options() {
 	// Create a client with custom options
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token,
@@ -64,7 +61,6 @@ func ExampleDefaultConfig() {
 	cfg.LoadConfigFromEnv()
 
 	// Or set values programmatically
-	cfg.AccountID = "12345"
 	cfg.ProjectID = "67890"
 	cfg.CacheEnabled = true
 
@@ -74,14 +70,13 @@ func ExampleDefaultConfig() {
 
 func ExampleProjectsService_List() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
 
 	// List all active projects
-	projects, err := client.Projects().List(ctx, nil)
+	projects, err := client.ForAccount("12345").Projects().List(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -93,14 +88,13 @@ func ExampleProjectsService_List() {
 
 func ExampleProjectsService_List_archived() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
 
 	// List archived projects
-	projects, err := client.Projects().List(ctx, &basecamp.ProjectListOptions{
+	projects, err := client.ForAccount("12345").Projects().List(ctx, &basecamp.ProjectListOptions{
 		Status: basecamp.ProjectStatusArchived,
 	})
 	if err != nil {
@@ -114,14 +108,13 @@ func ExampleProjectsService_List_archived() {
 
 func ExampleProjectsService_Create() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
 
 	// Create a new project
-	project, err := client.Projects().Create(ctx, &basecamp.CreateProjectRequest{
+	project, err := client.ForAccount("12345").Projects().Create(ctx, &basecamp.CreateProjectRequest{
 		Name:        "Q1 Planning",
 		Description: "Planning for the first quarter",
 	})
@@ -134,7 +127,6 @@ func ExampleProjectsService_Create() {
 
 func ExampleTodosService_List() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
@@ -143,7 +135,7 @@ func ExampleTodosService_List() {
 	todolistID := int64(789012)
 
 	// List all todos in a todolist
-	todos, err := client.Todos().List(ctx, projectID, todolistID, nil)
+	todos, err := client.ForAccount("12345").Todos().List(ctx, projectID, todolistID, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -159,7 +151,6 @@ func ExampleTodosService_List() {
 
 func ExampleTodosService_Create() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
@@ -168,7 +159,7 @@ func ExampleTodosService_Create() {
 	todolistID := int64(789012)
 
 	// Create a new todo with assignees and due date
-	todo, err := client.Todos().Create(ctx, projectID, todolistID, &basecamp.CreateTodoRequest{
+	todo, err := client.ForAccount("12345").Todos().Create(ctx, projectID, todolistID, &basecamp.CreateTodoRequest{
 		Content:     "Review pull request",
 		Description: "<strong>Priority:</strong> High",
 		DueOn:       "2024-12-31",
@@ -184,7 +175,6 @@ func ExampleTodosService_Create() {
 
 func ExampleTodosService_Complete() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
@@ -193,7 +183,7 @@ func ExampleTodosService_Complete() {
 	todoID := int64(789012)
 
 	// Mark a todo as complete
-	err := client.Todos().Complete(ctx, projectID, todoID)
+	err := client.ForAccount("12345").Todos().Complete(ctx, projectID, todoID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -203,14 +193,13 @@ func ExampleTodosService_Complete() {
 
 func ExampleSearchService_Search() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
 
 	// Search across the account
-	results, err := client.Search().Search(ctx, "quarterly report", nil)
+	results, err := client.ForAccount("12345").Search().Search(ctx, "quarterly report", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -222,14 +211,13 @@ func ExampleSearchService_Search() {
 
 func ExampleSearchService_Search_sorted() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
 
 	// Search with results sorted by creation date
-	results, err := client.Search().Search(ctx, "meeting notes", &basecamp.SearchOptions{
+	results, err := client.ForAccount("12345").Search().Search(ctx, "meeting notes", &basecamp.SearchOptions{
 		Sort: "created_at",
 	})
 	if err != nil {
@@ -243,7 +231,6 @@ func ExampleSearchService_Search_sorted() {
 
 func ExampleMessagesService_Create() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
@@ -252,7 +239,7 @@ func ExampleMessagesService_Create() {
 	boardID := int64(789012)
 
 	// Create a message on a message board
-	message, err := client.Messages().Create(ctx, projectID, boardID, &basecamp.CreateMessageRequest{
+	message, err := client.ForAccount("12345").Messages().Create(ctx, projectID, boardID, &basecamp.CreateMessageRequest{
 		Subject: "Weekly Update",
 		Content: "<p>Here's what we accomplished this week...</p>",
 	})
@@ -265,14 +252,13 @@ func ExampleMessagesService_Create() {
 
 func ExamplePeopleService_List() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
 
 	// List all people in the account
-	people, err := client.People().List(ctx)
+	people, err := client.ForAccount("12345").People().List(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -282,16 +268,16 @@ func ExamplePeopleService_List() {
 	}
 }
 
-func ExampleClient_GetAll() {
+func ExampleAccountClient_GetAll() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
+	account := client.ForAccount("12345")
 
-	// GetAll automatically handles pagination
-	results, err := client.GetAll(ctx, "/projects.json")
+	// GetAll automatically handles pagination for account-scoped resources
+	results, err := account.GetAll(ctx, "/projects.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -301,14 +287,13 @@ func ExampleClient_GetAll() {
 
 func Example_errorHandling() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
 
 	// Get a project that may not exist
-	project, err := client.Projects().Get(ctx, 999999999)
+	project, err := client.ForAccount("12345").Projects().Get(ctx, 999999999)
 	if err != nil {
 		var apiErr *basecamp.Error
 		if errors.As(err, &apiErr) {
@@ -335,7 +320,6 @@ func Example_errorHandling() {
 
 func ExampleWebhooksService_Create() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
@@ -343,7 +327,7 @@ func ExampleWebhooksService_Create() {
 	projectID := int64(123456)
 
 	// Create a webhook to receive notifications
-	webhook, err := client.Webhooks().Create(ctx, projectID, &basecamp.CreateWebhookRequest{
+	webhook, err := client.ForAccount("12345").Webhooks().Create(ctx, projectID, &basecamp.CreateWebhookRequest{
 		PayloadURL: "https://example.com/webhooks/basecamp",
 		Types:      []string{"Todo", "Comment"},
 	})
@@ -356,7 +340,6 @@ func ExampleWebhooksService_Create() {
 
 func ExampleCommentsService_Create() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
@@ -365,7 +348,7 @@ func ExampleCommentsService_Create() {
 	recordingID := int64(789012) // Can be a todo, message, etc.
 
 	// Add a comment to any recording
-	comment, err := client.Comments().Create(ctx, projectID, recordingID, &basecamp.CreateCommentRequest{
+	comment, err := client.ForAccount("12345").Comments().Create(ctx, projectID, recordingID, &basecamp.CreateCommentRequest{
 		Content: "<p>Looks good to me!</p>",
 	})
 	if err != nil {
@@ -377,7 +360,6 @@ func ExampleCommentsService_Create() {
 
 func ExampleCampfiresService_CreateLine() {
 	cfg := basecamp.DefaultConfig()
-	cfg.AccountID = "12345"
 	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 	client := basecamp.NewClient(cfg, token)
 
@@ -386,7 +368,7 @@ func ExampleCampfiresService_CreateLine() {
 	campfireID := int64(789012)
 
 	// Post a message to a campfire (chat)
-	line, err := client.Campfires().CreateLine(ctx, projectID, campfireID, "Hello team!")
+	line, err := client.ForAccount("12345").Campfires().CreateLine(ctx, projectID, campfireID, "Hello team!")
 	if err != nil {
 		log.Fatal(err)
 	}

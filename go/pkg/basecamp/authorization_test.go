@@ -87,7 +87,6 @@ func TestAuthorizationService_GetInfo(t *testing.T) {
 
 			cfg := DefaultConfig()
 			cfg.BaseURL = server.URL
-			cfg.AccountID = "123"
 			token := &StaticTokenProvider{Token: "test-token"}
 			client := NewClient(cfg, token, WithHTTPClient(server.Client()))
 

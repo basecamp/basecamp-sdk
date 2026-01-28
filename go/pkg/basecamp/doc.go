@@ -16,28 +16,30 @@
 // Static Token Authentication (simplest):
 //
 //	cfg := basecamp.DefaultConfig()
-//	cfg.AccountID = "12345"
-//
 //	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
 //	client := basecamp.NewClient(cfg, token)
+//
+//	// Create an account-scoped client for API operations
+//	account := client.ForAccount("12345")
 //
 // OAuth 2.0 Authentication (for user-facing apps):
 //
 //	cfg := basecamp.DefaultConfig()
-//	cfg.AccountID = "12345"
-//
 //	authMgr := basecamp.NewAuthManager(cfg, http.DefaultClient)
 //	client := basecamp.NewClient(cfg, authMgr)
+//
+//	// Discover available accounts
+//	info, _ := client.Authorization().GetInfo(ctx, nil)
+//	account := client.ForAccount(fmt.Sprint(info.Accounts[0].ID))
 //
 // # Configuration
 //
 // Configuration can be loaded from environment variables or set programmatically:
 //
 //	cfg := basecamp.DefaultConfig()
-//	cfg.LoadConfigFromEnv()  // Loads BASECAMP_ACCOUNT_ID, BASECAMP_PROJECT_ID, etc.
+//	cfg.LoadConfigFromEnv()  // Loads BASECAMP_PROJECT_ID, etc.
 //
 // Environment variables:
-//   - BASECAMP_ACCOUNT_ID: Your Basecamp account ID (required)
 //   - BASECAMP_PROJECT_ID: Default project/bucket ID
 //   - BASECAMP_TOKEN: Static API token for authentication
 //   - BASECAMP_CACHE_ENABLED: Enable HTTP caching (default: true)
@@ -46,28 +48,30 @@
 //
 // The SDK provides typed services for each Basecamp resource:
 //
-//   - [Client.Projects] - Project management
-//   - [Client.Todos] - Todo items
-//   - [Client.Todolists] - Todo lists
-//   - [Client.Todosets] - Todo sets (containers for lists)
-//   - [Client.Messages] - Message board posts
-//   - [Client.MessageBoards] - Message boards
-//   - [Client.Comments] - Comments on any recording
-//   - [Client.People] - User and people management
-//   - [Client.Campfires] - Chat rooms
-//   - [Client.Schedules] - Calendar schedules
-//   - [Client.Vaults] - Document folders
-//   - [Client.Search] - Full-text search
-//   - [Client.Webhooks] - Webhook management
-//   - [Client.Events] - Activity events
-//   - [Client.Cards] - Card table cards
-//   - [Client.Attachments] - File attachments
+//   - [AccountClient.Projects] - Project management
+//   - [AccountClient.Todos] - Todo items
+//   - [AccountClient.Todolists] - Todo lists
+//   - [AccountClient.Todosets] - Todo sets (containers for lists)
+//   - [AccountClient.Messages] - Message board posts
+//   - [AccountClient.MessageBoards] - Message boards
+//   - [AccountClient.Comments] - Comments on any recording
+//   - [AccountClient.People] - User and people management
+//   - [AccountClient.Campfires] - Chat rooms
+//   - [AccountClient.Schedules] - Calendar schedules
+//   - [AccountClient.Vaults] - Document folders
+//   - [AccountClient.Search] - Full-text search
+//   - [AccountClient.Webhooks] - Webhook management
+//   - [AccountClient.Events] - Activity events
+//   - [AccountClient.Cards] - Card table cards
+//   - [AccountClient.Attachments] - File attachments
+//   - [Client.Authorization] - Account-agnostic authorization info
 //
 // # Working with Projects
 //
 // List all projects:
 //
-//	projects, err := client.Projects().List(ctx, nil)
+//	account := client.ForAccount("12345")
+//	projects, err := account.Projects().List(ctx, nil)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
@@ -77,7 +81,7 @@
 //
 // Create a project:
 //
-//	project, err := client.Projects().Create(ctx, &basecamp.CreateProjectRequest{
+//	project, err := account.Projects().Create(ctx, &basecamp.CreateProjectRequest{
 //	    Name:        "New Project",
 //	    Description: "Project description",
 //	})
@@ -86,24 +90,24 @@
 //
 // List todos in a todolist:
 //
-//	todos, err := client.Todos().List(ctx, projectID, todolistID, nil)
+//	todos, err := account.Todos().List(ctx, projectID, todolistID, nil)
 //
 // Create a todo:
 //
-//	todo, err := client.Todos().Create(ctx, projectID, todolistID, &basecamp.CreateTodoRequest{
+//	todo, err := account.Todos().Create(ctx, projectID, todolistID, &basecamp.CreateTodoRequest{
 //	    Content: "Ship the feature",
 //	    DueOn:   "2024-12-31",
 //	})
 //
 // Complete a todo:
 //
-//	err := client.Todos().Complete(ctx, projectID, todoID)
+//	err := account.Todos().Complete(ctx, projectID, todoID)
 //
 // # Searching
 //
 // Search across your Basecamp account:
 //
-//	results, err := client.Search().Search(ctx, "quarterly report", nil)
+//	results, err := account.Search().Search(ctx, "quarterly report", nil)
 //	for _, r := range results {
 //	    fmt.Printf("%s: %s\n", r.Type, r.Title)
 //	}
@@ -113,7 +117,8 @@
 // The SDK handles pagination automatically via GetAll:
 //
 //	// GetAll fetches all pages automatically
-//	results, err := client.GetAll(ctx, "/projects.json")
+//	account := client.ForAccount("12345")
+//	results, err := account.GetAll(ctx, "/projects.json")
 //
 // For fine-grained control, use Get with Link headers:
 //
@@ -161,9 +166,17 @@
 //
 // # Thread Safety
 //
-// API operations on the Client and its services are safe for concurrent use
-// by multiple goroutines. However, service accessors (e.g., client.Projects())
-// use lazy initialization without synchronization. For concurrent use, either
-// access each service once before sharing the client across goroutines, or
-// call service methods directly (e.g., client.Projects().List()) which is safe.
+// The Client is safe for concurrent use. The ForAccount method may be called
+// concurrently from multiple goroutines to create AccountClient instances.
+//
+// Each AccountClient is also safe for concurrent use. Service accessors
+// (e.g., account.Projects()) use mutex-protected lazy initialization.
+//
+// Example of concurrent multi-account usage:
+//
+//	acme := client.ForAccount("12345")
+//	initech := client.ForAccount("67890")
+//
+//	go func() { acme.Todos().List(ctx, projectID, todolistID, nil) }()
+//	go func() { initech.Projects().List(ctx, nil) }()
 package basecamp

@@ -411,7 +411,6 @@ func TestResilienceHooks_DelegatesTo_InnerHooks(t *testing.T) {
 
 func TestWithResilience_NilConfig_UsesDefaults(t *testing.T) {
 	cfg := DefaultConfig()
-	cfg.AccountID = "12345"
 
 	// This should not panic
 	_ = NewClient(cfg, &StaticTokenProvider{Token: "test"},
@@ -421,7 +420,6 @@ func TestWithResilience_NilConfig_UsesDefaults(t *testing.T) {
 
 func TestWithCircuitBreaker(t *testing.T) {
 	cfg := DefaultConfig()
-	cfg.AccountID = "12345"
 
 	client := NewClient(cfg, &StaticTokenProvider{Token: "test"},
 		WithCircuitBreaker(&CircuitBreakerConfig{FailureThreshold: 3}),
@@ -445,7 +443,6 @@ func TestWithCircuitBreaker(t *testing.T) {
 
 func TestWithBulkhead(t *testing.T) {
 	cfg := DefaultConfig()
-	cfg.AccountID = "12345"
 
 	client := NewClient(cfg, &StaticTokenProvider{Token: "test"},
 		WithBulkhead(&BulkheadConfig{MaxConcurrent: 5}),
@@ -465,7 +462,6 @@ func TestWithBulkhead(t *testing.T) {
 
 func TestWithRateLimit(t *testing.T) {
 	cfg := DefaultConfig()
-	cfg.AccountID = "12345"
 
 	client := NewClient(cfg, &StaticTokenProvider{Token: "test"},
 		WithRateLimit(&RateLimitConfig{RequestsPerSecond: 10}),

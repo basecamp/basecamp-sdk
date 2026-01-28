@@ -93,13 +93,12 @@ func TestAttachmentsService_Create_ContentType(t *testing.T) {
 
 			// Create a client pointing to the test server
 			cfg := DefaultConfig()
-			cfg.AccountID = "12345"
 			cfg.BaseURL = server.URL
 			token := &StaticTokenProvider{Token: "test-token"}
 			client := NewClient(cfg, token)
 
 			// Create an attachment with the test content type
-			_, err := client.Attachments().Create(
+			_, err := client.ForAccount("12345").Attachments().Create(
 				context.Background(),
 				"test.file",
 				tt.contentType,

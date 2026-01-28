@@ -120,6 +120,9 @@ func loadTests(filename string) ([]TestCase, error) {
 	return tests, nil
 }
 
+// Default account ID for conformance tests
+const testAccountID = "999"
+
 func runTest(tc TestCase) TestResult {
 	// Track request count and timing with mutex protection for thread safety
 	var mu sync.Mutex
@@ -182,28 +185,28 @@ func runTest(tc TestCase) TestResult {
 
 	switch tc.Operation {
 	case "ListProjects":
-		sdkResp, sdkErr = client.ListProjects(ctx, nil)
+		sdkResp, sdkErr = client.ListProjects(ctx, testAccountID, nil)
 
 	case "GetProject":
 		projectId := getInt64Param(tc.PathParams, "projectId")
-		sdkResp, sdkErr = client.GetProject(ctx, projectId)
+		sdkResp, sdkErr = client.GetProject(ctx, testAccountID, projectId)
 
 	case "UpdateProject":
 		projectId := getInt64Param(tc.PathParams, "projectId")
 		body := generated.UpdateProjectJSONRequestBody{
 			Name: getStringParam(tc.RequestBody, "name"),
 		}
-		sdkResp, sdkErr = client.UpdateProject(ctx, projectId, body)
+		sdkResp, sdkErr = client.UpdateProject(ctx, testAccountID, projectId, body)
 
 	case "CreateProject":
 		body := generated.CreateProjectJSONRequestBody{
 			Name: getStringParam(tc.RequestBody, "name"),
 		}
-		sdkResp, sdkErr = client.CreateProject(ctx, body)
+		sdkResp, sdkErr = client.CreateProject(ctx, testAccountID, body)
 
 	case "TrashProject":
 		projectId := getInt64Param(tc.PathParams, "projectId")
-		sdkResp, sdkErr = client.TrashProject(ctx, projectId)
+		sdkResp, sdkErr = client.TrashProject(ctx, testAccountID, projectId)
 
 	case "CreateTodo":
 		projectId := getInt64Param(tc.PathParams, "projectId")
@@ -216,12 +219,12 @@ func runTest(tc TestCase) TestResult {
 				body.DueOn = d
 			}
 		}
-		sdkResp, sdkErr = client.CreateTodo(ctx, projectId, todolistId, body)
+		sdkResp, sdkErr = client.CreateTodo(ctx, testAccountID, projectId, todolistId, body)
 
 	case "ListTodos":
 		projectId := getInt64Param(tc.PathParams, "projectId")
 		todolistId := getInt64Param(tc.PathParams, "todolistId")
-		sdkResp, sdkErr = client.ListTodos(ctx, projectId, todolistId, nil)
+		sdkResp, sdkErr = client.ListTodos(ctx, testAccountID, projectId, todolistId, nil)
 
 	default:
 		return TestResult{
