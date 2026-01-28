@@ -1985,10 +1985,6 @@ structure CreateAttachmentInput {
   name: AttachmentFilename
 
   @required
-  @httpHeader("Content-Type")
-  contentType: String
-
-  @required
   @httpPayload
   data: Blob
 }
