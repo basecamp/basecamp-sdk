@@ -547,12 +547,22 @@ func parseNextLink(linkHeader string) string {
 }
 
 // parseRetryAfter parses the Retry-After header value.
+// It handles both seconds (integer) and HTTP-date formats.
+// Returns 0 if the header is empty or cannot be parsed.
 func parseRetryAfter(header string) int {
 	if header == "" {
 		return 0
 	}
-	if seconds, err := strconv.Atoi(header); err == nil {
+	// Try parsing as seconds (integer)
+	if seconds, err := strconv.Atoi(header); err == nil && seconds > 0 {
 		return seconds
+	}
+	// Try parsing as HTTP-date (e.g., "Wed, 21 Oct 2015 07:28:00 GMT")
+	if t, err := http.ParseTime(header); err == nil {
+		seconds := int(time.Until(t).Seconds())
+		if seconds > 0 {
+			return seconds
+		}
 	}
 	return 0
 }

@@ -88,6 +88,9 @@ type RequestResult struct {
 	FromCache bool
 	// Retryable indicates whether this error will be retried.
 	Retryable bool
+	// RetryAfter is the Retry-After header value in seconds (0 if not present).
+	// Used by resilience hooks to respect server-requested backoff on 429/503.
+	RetryAfter int
 }
 
 // NoopHooks is a no-op implementation of Hooks.

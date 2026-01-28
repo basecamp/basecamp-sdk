@@ -2,7 +2,10 @@ package basecamp
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
 	"time"
+	"unsafe"
 )
 
 // ResilienceConfig combines all resilience settings.
@@ -34,13 +37,35 @@ type resilienceHooks struct {
 	circuitBreakers *circuitBreakerRegistry
 	bulkheads       *bulkheadRegistry
 	rateLimiter     *rateLimiter
+
+	// Bulkhead release tracking uses a two-phase approach for robustness:
+	// 1. OnOperationGate stores release in pendingReleases (keyed by temp ID)
+	// 2. OnOperationStart moves it to activeReleases (keyed by final context pointer)
+	// This ensures the release survives even if inner hooks replace the context.
+	releaseCounter  atomic.Uint64
+	pendingReleases sync.Map // map[uint64]func() - releases awaiting OnOperationStart
+	activeReleases  sync.Map // map[uintptr]func() - releases keyed by final context
 }
 
 // Ensure resilienceHooks implements GatingHooks at compile time.
 var _ GatingHooks = (*resilienceHooks)(nil)
 
-// bulkheadReleaseKey is the context key for storing bulkhead release functions.
-type bulkheadReleaseKey struct{}
+// bulkheadPendingKey is the context key for the pending release ID.
+// This ID is used to transfer the release from pending to active in OnOperationStart.
+type bulkheadPendingKey struct{}
+
+// contextPointer returns a unique identifier for a context value.
+// This is used to key bulkhead releases by context identity.
+// We use unsafe to extract the data pointer from the interface.
+func contextPointer(ctx context.Context) uintptr {
+	// Interface values are (type, data) pairs. We extract the data pointer.
+	// This is safe because we only use it as a map key, not to dereference.
+	type iface struct {
+		typ  uintptr
+		data uintptr
+	}
+	return (*iface)(unsafe.Pointer(&ctx)).data
+}
 
 // shouldTripCircuit returns true if the error should count as a circuit breaker failure.
 // Only server-side errors (5xx, network) trip the circuit. Client-side errors (4xx,
@@ -89,7 +114,10 @@ func (h *resilienceHooks) OnOperationGate(ctx context.Context, op OperationInfo)
 		}
 	}
 
-	// Acquire bulkhead slot and store release function in context
+	// Acquire bulkhead slot and store pending release ID in context.
+	// The release is moved to activeReleases in OnOperationStart, keyed by
+	// the final context pointer. This ensures proper cleanup even if inner
+	// hooks replace the context entirely.
 	if h.bulkheads != nil {
 		bh := h.bulkheads.get(scope)
 		release, err := bh.Acquire(ctx)
@@ -100,16 +128,20 @@ func (h *resilienceHooks) OnOperationGate(ctx context.Context, op OperationInfo)
 			}
 			return ctx, ErrBulkheadFull
 		}
-		// Store release function in context for OnOperationEnd to call
-		ctx = context.WithValue(ctx, bulkheadReleaseKey{}, release)
+		// Store release in pending map with unique ID
+		pendingID := h.releaseCounter.Add(1)
+		h.pendingReleases.Store(pendingID, release)
+		ctx = context.WithValue(ctx, bulkheadPendingKey{}, pendingID)
 	}
 
 	// Rate limit (fail fast if no tokens available)
 	if h.rateLimiter != nil {
 		if !h.rateLimiter.Allow() {
-			// Release bulkhead if we acquired one
-			if release, ok := ctx.Value(bulkheadReleaseKey{}).(func()); ok && release != nil {
-				release()
+			// Release bulkhead if we acquired one (still in pending)
+			if pendingID, ok := ctx.Value(bulkheadPendingKey{}).(uint64); ok {
+				if release, loaded := h.pendingReleases.LoadAndDelete(pendingID); loaded {
+					release.(func())()
+				}
 			}
 			return ctx, ErrRateLimited
 		}
@@ -118,18 +150,33 @@ func (h *resilienceHooks) OnOperationGate(ctx context.Context, op OperationInfo)
 	return ctx, nil
 }
 
-// OnOperationStart delegates to the inner hooks.
+// OnOperationStart delegates to the inner hooks and finalizes bulkhead tracking.
+// After inner hooks run (which may replace the context), we anchor the bulkhead
+// release to the FINAL context pointer, ensuring proper cleanup in OnOperationEnd.
 func (h *resilienceHooks) OnOperationStart(ctx context.Context, op OperationInfo) context.Context {
-	return h.inner.OnOperationStart(ctx, op)
+	// First, let inner hooks process (they may replace ctx)
+	resultCtx := h.inner.OnOperationStart(ctx, op)
+
+	// Move bulkhead release from pending to active, keyed by final context pointer.
+	// This survives context replacement because we key by the returned context.
+	if pendingID, ok := ctx.Value(bulkheadPendingKey{}).(uint64); ok {
+		if release, loaded := h.pendingReleases.LoadAndDelete(pendingID); loaded {
+			ctxPtr := contextPointer(resultCtx)
+			h.activeReleases.Store(ctxPtr, release)
+		}
+	}
+
+	return resultCtx
 }
 
 // OnOperationEnd updates circuit breaker state, releases bulkhead, and delegates to inner hooks.
 func (h *resilienceHooks) OnOperationEnd(ctx context.Context, op OperationInfo, err error, duration time.Duration) {
 	scope := op.Service + "." + op.Operation
 
-	// Release bulkhead slot if one was acquired
-	if release, ok := ctx.Value(bulkheadReleaseKey{}).(func()); ok && release != nil {
-		release()
+	// Release bulkhead slot if one was acquired (keyed by context pointer)
+	ctxPtr := contextPointer(ctx)
+	if release, loaded := h.activeReleases.LoadAndDelete(ctxPtr); loaded {
+		release.(func())()
 	}
 
 	// Update circuit breaker state based on result
@@ -154,11 +201,14 @@ func (h *resilienceHooks) OnRequestStart(ctx context.Context, info RequestInfo) 
 
 // OnRequestEnd delegates to the inner hooks and handles Retry-After.
 func (h *resilienceHooks) OnRequestEnd(ctx context.Context, info RequestInfo, result RequestResult) {
-	// Handle 429 Retry-After headers
-	if h.rateLimiter != nil && result.StatusCode == 429 {
-		// The Retry-After header would be parsed by the HTTP layer
-		// For now, we use a default backoff of 60 seconds for 429s
-		h.rateLimiter.SetRetryAfterDuration(60 * time.Second)
+	// Handle 429/503 Retry-After headers
+	if h.rateLimiter != nil && (result.StatusCode == 429 || result.StatusCode == 503) {
+		retryAfter := result.RetryAfter
+		if retryAfter <= 0 {
+			// Default to 60 seconds if no Retry-After header provided
+			retryAfter = 60
+		}
+		h.rateLimiter.SetRetryAfterDuration(time.Duration(retryAfter) * time.Second)
 	}
 
 	h.inner.OnRequestEnd(ctx, info, result)

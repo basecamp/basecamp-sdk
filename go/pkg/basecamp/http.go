@@ -179,6 +179,10 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		result.Error = err
 	} else {
 		result.StatusCode = resp.StatusCode
+		// Parse Retry-After header for 429/503 responses
+		if resp.StatusCode == 429 || resp.StatusCode == 503 {
+			result.RetryAfter = parseRetryAfter(resp.Header.Get("Retry-After"))
+		}
 		// Log response if logger is enabled
 		if t.client.logger != nil {
 			t.client.logger.Debug("http response",
