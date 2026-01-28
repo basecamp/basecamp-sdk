@@ -1,0 +1,181 @@
+name: Release TypeScript SDK
+
+on:
+  push:
+    tags:
+      - 'ts/v*'
+  workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
+
+permissions:
+  contents: write
+
+jobs:
+  smithy:
+    name: Verify Smithy spec
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spec
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Smithy CLI
+        run: |
+          curl -L -o smithy-cli.zip https://github.com/smithy-lang/smithy/releases/download/1.66.0/smithy-cli-linux-x86_64.zip
+          unzip -q smithy-cli.zip
+          echo "$PWD/smithy-cli-1.66.0/bin" >> $GITHUB_PATH
+
+      - name: Validate Smithy spec
+        run: smithy validate
+
+      - name: Verify OpenAPI is up to date
+        run: |
+          smithy build
+          diff -q ../openapi.json build/smithy/openapi/openapi/Basecamp.openapi.json || \
+            (echo "::error::openapi.json is stale" && exit 1)
+
+  test:
+    name: Test TypeScript SDK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: typescript/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  publish:
+    name: Publish to npm
+    needs: [smithy, test]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Smithy CLI
+        run: |
+          curl -L -o smithy-cli.zip https://github.com/smithy-lang/smithy/releases/download/1.66.0/smithy-cli-linux-x86_64.zip
+          unzip -q smithy-cli.zip
+          echo "$PWD/smithy-cli-1.66.0/bin" >> $GITHUB_PATH
+
+      - name: Build OpenAPI spec
+        working-directory: spec
+        run: smithy build
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: typescript/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger (dry-run): read from package.json
+            VERSION=$(node -p "require('./package.json').version")
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Rehearsal for version: $VERSION"
+          else
+            # Tag trigger: extract from tag and verify match
+            VERSION="${GITHUB_REF#refs/tags/ts/v}"
+            PKG_VERSION=$(node -p "require('./package.json').version")
+            if [ "$PKG_VERSION" != "$VERSION" ]; then
+              echo "::error::Package version ($PKG_VERSION) does not match tag version ($VERSION)"
+              exit 1
+            fi
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Releasing version: $VERSION"
+          fi
+
+      - name: Determine npm tag
+        id: npm-tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "tag=next" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to npm
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
+          else
+            echo "::notice::Dry run mode - not actually publishing"
+            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --dry-run
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Generate changelog
+        if: github.event_name == 'push'
+        id: changelog
+        run: |
+          cd ..
+          # Get the previous tag for this module
+          PREV_TAG=$(git describe --tags --match 'ts/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -z "$PREV_TAG" ]; then
+            # First release, get all commits affecting typescript/
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -- typescript/)
+          else
+            # Get commits since previous tag
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- typescript/)
+          fi
+
+          # Write to file for multiline output
+          echo "## Changes" > changelog.md
+          echo "" >> changelog.md
+          if [ -z "$COMMITS" ]; then
+            echo "- Initial release" >> changelog.md
+          else
+            echo "$COMMITS" >> changelog.md
+          fi
+          echo "" >> changelog.md
+          echo "## Installation" >> changelog.md
+          echo "" >> changelog.md
+          echo '```' >> changelog.md
+          echo "npm install @basecamp/sdk@${{ steps.version.outputs.version }}" >> changelog.md
+          echo '```' >> changelog.md
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: TypeScript SDK v${{ steps.version.outputs.version }}
+          body_path: changelog.md
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
