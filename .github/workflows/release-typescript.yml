@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'ts/v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run without publishing (rehearsal mode)'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -97,23 +103,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Extract version from tag
+      - name: Extract version
         id: version
         run: |
-          # Tag is in format ts/v1.2.3, extract just 1.2.3
-          VERSION="${GITHUB_REF#refs/tags/ts/v}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Releasing version: $VERSION"
-
-      - name: Verify package version matches tag
-        run: |
-          PKG_VERSION=$(node -p "require('./package.json').version")
-          TAG_VERSION="${{ steps.version.outputs.version }}"
-          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
-            echo "::error::Package version ($PKG_VERSION) does not match tag version ($TAG_VERSION)"
-            exit 1
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger: read from package.json
+            VERSION=$(node -p "require('./package.json').version")
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Dry run for version: $VERSION"
+          else
+            # Tag trigger: extract from tag and verify match
+            VERSION="${GITHUB_REF#refs/tags/ts/v}"
+            PKG_VERSION=$(node -p "require('./package.json').version")
+            if [ "$PKG_VERSION" != "$VERSION" ]; then
+              echo "::error::Package version ($PKG_VERSION) does not match tag version ($VERSION)"
+              exit 1
+            fi
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Releasing version: $VERSION"
           fi
-          echo "Version verification passed: $PKG_VERSION"
 
       - name: Determine npm tag
         id: npm-tag
@@ -126,11 +134,18 @@ jobs:
           fi
 
       - name: Publish to npm
-        run: npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
+        run: |
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            echo "::notice::Dry run mode - not actually publishing"
+            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --dry-run
+          else
+            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Generate changelog
+        if: inputs.dry_run != true
         id: changelog
         run: |
           cd ..
@@ -160,6 +175,7 @@ jobs:
           echo '```' >> changelog.md
 
       - name: Create GitHub Release
+        if: inputs.dry_run != true
         uses: softprops/action-gh-release@v2
         with:
           name: TypeScript SDK v${{ steps.version.outputs.version }}
