@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
 func TestHooksImplementsInterface(t *testing.T) {
@@ -240,9 +241,9 @@ func TestClassifyError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
-			result := classifyError(errors.New("test"), tt.statusCode)
+			result := classifyError(tt.statusCode)
 			if result != tt.expected {
-				t.Errorf("classifyError(_, %d) = %q, want %q", tt.statusCode, result, tt.expected)
+				t.Errorf("classifyError(%d) = %q, want %q", tt.statusCode, result, tt.expected)
 			}
 		})
 	}

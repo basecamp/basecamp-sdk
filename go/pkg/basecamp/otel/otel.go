@@ -18,12 +18,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
 const (
