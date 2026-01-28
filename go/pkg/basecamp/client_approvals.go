@@ -56,11 +56,11 @@ type ClientApprovalResponse struct {
 
 // ClientApprovalsService handles client approval operations.
 type ClientApprovalsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewClientApprovalsService creates a new ClientApprovalsService.
-func NewClientApprovalsService(client *Client) *ClientApprovalsService {
+func NewClientApprovalsService(client *AccountClient) *ClientApprovalsService {
 	return &ClientApprovalsService{client: client}
 }
 
@@ -72,20 +72,16 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (resu
 		ResourceType: "client_approval", IsMutation: false,
 		BucketID: bucketID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListClientApprovalsWithResponse(ctx, bucketID)
+	resp, err := s.client.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID, bucketID)
 	if err != nil {
 		return nil, err
 	}
@@ -112,20 +108,16 @@ func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID i
 		ResourceType: "client_approval", IsMutation: false,
 		BucketID: bucketID, ResourceID: approvalID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetClientApprovalWithResponse(ctx, bucketID, approvalID)
+	resp, err := s.client.gen.GetClientApprovalWithResponse(ctx, s.client.accountID, bucketID, approvalID)
 	if err != nil {
 		return nil, err
 	}

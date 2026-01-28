@@ -81,11 +81,11 @@ type UpdateChatbotRequest struct {
 
 // CampfiresService handles campfire operations.
 type CampfiresService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewCampfiresService creates a new CampfiresService.
-func NewCampfiresService(client *Client) *CampfiresService {
+func NewCampfiresService(client *AccountClient) *CampfiresService {
 	return &CampfiresService{client: client}
 }
 
@@ -95,20 +95,16 @@ func (s *CampfiresService) List(ctx context.Context) (result []Campfire, err err
 		Service: "Campfires", Operation: "List",
 		ResourceType: "campfire", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListCampfiresWithResponse(ctx)
+	resp, err := s.client.gen.ListCampfiresWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -134,20 +130,16 @@ func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) 
 		ResourceType: "campfire", IsMutation: false,
 		BucketID: bucketID, ResourceID: campfireID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetCampfireWithResponse(ctx, bucketID, campfireID)
+	resp, err := s.client.gen.GetCampfireWithResponse(ctx, s.client.accountID, bucketID, campfireID)
 	if err != nil {
 		return nil, err
 	}
@@ -171,20 +163,16 @@ func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID i
 		ResourceType: "campfire_line", IsMutation: false,
 		BucketID: bucketID, ResourceID: campfireID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListCampfireLinesWithResponse(ctx, bucketID, campfireID)
+	resp, err := s.client.gen.ListCampfireLinesWithResponse(ctx, s.client.accountID, bucketID, campfireID)
 	if err != nil {
 		return nil, err
 	}
@@ -210,20 +198,16 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 		ResourceType: "campfire_line", IsMutation: false,
 		BucketID: bucketID, ResourceID: lineID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetCampfireLineWithResponse(ctx, bucketID, campfireID, lineID)
+	resp, err := s.client.gen.GetCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, lineID)
 	if err != nil {
 		return nil, err
 	}
@@ -248,18 +232,14 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 		ResourceType: "campfire_line", IsMutation: true,
 		BucketID: bucketID, ResourceID: campfireID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if content == "" {
 		err = ErrUsage("campfire line content is required")
@@ -270,7 +250,7 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 		Content: content,
 	}
 
-	resp, err := s.client.gen.CreateCampfireLineWithResponse(ctx, bucketID, campfireID, body)
+	resp, err := s.client.gen.CreateCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -294,20 +274,16 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID,
 		ResourceType: "campfire_line", IsMutation: true,
 		BucketID: bucketID, ResourceID: lineID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.DeleteCampfireLineWithResponse(ctx, bucketID, campfireID, lineID)
+	resp, err := s.client.gen.DeleteCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, lineID)
 	if err != nil {
 		return err
 	}
@@ -323,20 +299,16 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireI
 		ResourceType: "chatbot", IsMutation: false,
 		BucketID: bucketID, ResourceID: campfireID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListChatbotsWithResponse(ctx, bucketID, campfireID)
+	resp, err := s.client.gen.ListChatbotsWithResponse(ctx, s.client.accountID, bucketID, campfireID)
 	if err != nil {
 		return nil, err
 	}
@@ -362,20 +334,16 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID,
 		ResourceType: "chatbot", IsMutation: false,
 		BucketID: bucketID, ResourceID: chatbotID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetChatbotWithResponse(ctx, bucketID, campfireID, chatbotID)
+	resp, err := s.client.gen.GetChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID)
 	if err != nil {
 		return nil, err
 	}
@@ -401,18 +369,14 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfire
 		ResourceType: "chatbot", IsMutation: true,
 		BucketID: bucketID, ResourceID: campfireID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.ServiceName == "" {
 		err = ErrUsage("chatbot service_name is required")
@@ -426,7 +390,7 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfire
 		body.CommandUrl = req.CommandURL
 	}
 
-	resp, err := s.client.gen.CreateChatbotWithResponse(ctx, bucketID, campfireID, body)
+	resp, err := s.client.gen.CreateChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -452,18 +416,14 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfire
 		ResourceType: "chatbot", IsMutation: true,
 		BucketID: bucketID, ResourceID: chatbotID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.ServiceName == "" {
 		err = ErrUsage("chatbot service_name is required")
@@ -477,7 +437,7 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfire
 		body.CommandUrl = req.CommandURL
 	}
 
-	resp, err := s.client.gen.UpdateChatbotWithResponse(ctx, bucketID, campfireID, chatbotID, body)
+	resp, err := s.client.gen.UpdateChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -502,20 +462,16 @@ func (s *CampfiresService) DeleteChatbot(ctx context.Context, bucketID, campfire
 		ResourceType: "chatbot", IsMutation: true,
 		BucketID: bucketID, ResourceID: chatbotID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.DeleteChatbotWithResponse(ctx, bucketID, campfireID, chatbotID)
+	resp, err := s.client.gen.DeleteChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID)
 	if err != nil {
 		return err
 	}

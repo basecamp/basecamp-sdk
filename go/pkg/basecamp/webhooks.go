@@ -43,11 +43,11 @@ type UpdateWebhookRequest struct {
 
 // WebhooksService handles webhook operations.
 type WebhooksService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewWebhooksService creates a new WebhooksService.
-func NewWebhooksService(client *Client) *WebhooksService {
+func NewWebhooksService(client *AccountClient) *WebhooksService {
 	return &WebhooksService{client: client}
 }
 
@@ -59,20 +59,16 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result []We
 		ResourceType: "webhook", IsMutation: false,
 		BucketID: bucketID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListWebhooksWithResponse(ctx, bucketID)
+	resp, err := s.client.gen.ListWebhooksWithResponse(ctx, s.client.accountID, bucketID)
 	if err != nil {
 		return nil, err
 	}
@@ -99,20 +95,16 @@ func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (r
 		ResourceType: "webhook", IsMutation: false,
 		BucketID: bucketID, ResourceID: webhookID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetWebhookWithResponse(ctx, bucketID, webhookID)
+	resp, err := s.client.gen.GetWebhookWithResponse(ctx, s.client.accountID, bucketID, webhookID)
 	if err != nil {
 		return nil, err
 	}
@@ -137,21 +129,17 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 		ResourceType: "webhook", IsMutation: true,
 		BucketID: bucketID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("webhook request is required")
-		return nil, err
-	}
-
-	if err = s.client.RequireAccount(); err != nil {
 		return nil, err
 	}
 
@@ -170,7 +158,7 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 		Active:     req.Active != nil && *req.Active,
 	}
 
-	resp, err := s.client.gen.CreateWebhookWithResponse(ctx, bucketID, body)
+	resp, err := s.client.gen.CreateWebhookWithResponse(ctx, s.client.accountID, bucketID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -195,18 +183,14 @@ func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64,
 		ResourceType: "webhook", IsMutation: true,
 		BucketID: bucketID, ResourceID: webhookID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	body := generated.UpdateWebhookJSONRequestBody{
 		PayloadUrl: req.PayloadURL,
@@ -214,7 +198,7 @@ func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64,
 		Active:     req.Active != nil && *req.Active,
 	}
 
-	resp, err := s.client.gen.UpdateWebhookWithResponse(ctx, bucketID, webhookID, body)
+	resp, err := s.client.gen.UpdateWebhookWithResponse(ctx, s.client.accountID, bucketID, webhookID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -238,20 +222,16 @@ func (s *WebhooksService) Delete(ctx context.Context, bucketID, webhookID int64)
 		ResourceType: "webhook", IsMutation: true,
 		BucketID: bucketID, ResourceID: webhookID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.DeleteWebhookWithResponse(ctx, bucketID, webhookID)
+	resp, err := s.client.gen.DeleteWebhookWithResponse(ctx, s.client.accountID, bucketID, webhookID)
 	if err != nil {
 		return err
 	}

@@ -134,11 +134,11 @@ type updateAnswerRequestWrapper struct {
 
 // CheckinsService handles automatic check-in operations.
 type CheckinsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewCheckinsService creates a new CheckinsService.
-func NewCheckinsService(client *Client) *CheckinsService {
+func NewCheckinsService(client *AccountClient) *CheckinsService {
 	return &CheckinsService{client: client}
 }
 
@@ -150,20 +150,16 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questi
 		ResourceType: "questionnaire", IsMutation: false,
 		BucketID: bucketID, ResourceID: questionnaireID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetQuestionnaireWithResponse(ctx, bucketID, questionnaireID)
+	resp, err := s.client.gen.GetQuestionnaireWithResponse(ctx, s.client.accountID, bucketID, questionnaireID)
 	if err != nil {
 		return nil, err
 	}
@@ -187,20 +183,16 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 		ResourceType: "question", IsMutation: false,
 		BucketID: bucketID, ResourceID: questionnaireID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListQuestionsWithResponse(ctx, bucketID, questionnaireID)
+	resp, err := s.client.gen.ListQuestionsWithResponse(ctx, s.client.accountID, bucketID, questionnaireID)
 	if err != nil {
 		return nil, err
 	}
@@ -227,20 +219,16 @@ func (s *CheckinsService) GetQuestion(ctx context.Context, bucketID, questionID 
 		ResourceType: "question", IsMutation: false,
 		BucketID: bucketID, ResourceID: questionID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetQuestionWithResponse(ctx, bucketID, questionID)
+	resp, err := s.client.gen.GetQuestionWithResponse(ctx, s.client.accountID, bucketID, questionID)
 	if err != nil {
 		return nil, err
 	}
@@ -265,18 +253,14 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, question
 		ResourceType: "question", IsMutation: true,
 		BucketID: bucketID, ResourceID: questionnaireID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Title == "" {
 		err = ErrUsage("question title is required")
@@ -292,7 +276,7 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, question
 		Schedule: questionScheduleToGenerated(req.Schedule),
 	}
 
-	resp, err := s.client.gen.CreateQuestionWithResponse(ctx, bucketID, questionnaireID, body)
+	resp, err := s.client.gen.CreateQuestionWithResponse(ctx, s.client.accountID, bucketID, questionnaireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -317,18 +301,14 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 		ResourceType: "question", IsMutation: true,
 		BucketID: bucketID, ResourceID: questionID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update request is required")
@@ -346,7 +326,7 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 		body.Paused = *req.Paused
 	}
 
-	resp, err := s.client.gen.UpdateQuestionWithResponse(ctx, bucketID, questionID, body)
+	resp, err := s.client.gen.UpdateQuestionWithResponse(ctx, s.client.accountID, bucketID, questionID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -370,20 +350,16 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 		ResourceType: "answer", IsMutation: false,
 		BucketID: bucketID, ResourceID: questionID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListAnswersWithResponse(ctx, bucketID, questionID)
+	resp, err := s.client.gen.ListAnswersWithResponse(ctx, s.client.accountID, bucketID, questionID)
 	if err != nil {
 		return nil, err
 	}
@@ -410,20 +386,16 @@ func (s *CheckinsService) GetAnswer(ctx context.Context, bucketID, answerID int6
 		ResourceType: "answer", IsMutation: false,
 		BucketID: bucketID, ResourceID: answerID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetAnswerWithResponse(ctx, bucketID, answerID)
+	resp, err := s.client.gen.GetAnswerWithResponse(ctx, s.client.accountID, bucketID, answerID)
 	if err != nil {
 		return nil, err
 	}
@@ -448,18 +420,14 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 		ResourceType: "answer", IsMutation: true,
 		BucketID: bucketID, ResourceID: questionID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Content == "" {
 		err = ErrUsage("answer content is required")
@@ -475,7 +443,7 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 		}
 	}
 
-	resp, err := s.client.gen.CreateAnswerWithResponse(ctx, bucketID, questionID, body)
+	resp, err := s.client.gen.CreateAnswerWithResponse(ctx, s.client.accountID, bucketID, questionID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -500,18 +468,14 @@ func (s *CheckinsService) UpdateAnswer(ctx context.Context, bucketID, answerID i
 		ResourceType: "answer", IsMutation: true,
 		BucketID: bucketID, ResourceID: answerID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Content == "" {
 		err = ErrUsage("answer content is required")
@@ -522,7 +486,7 @@ func (s *CheckinsService) UpdateAnswer(ctx context.Context, bucketID, answerID i
 		Content: req.Content,
 	}
 
-	resp, err := s.client.gen.UpdateAnswerWithResponse(ctx, bucketID, answerID, body)
+	resp, err := s.client.gen.UpdateAnswerWithResponse(ctx, s.client.accountID, bucketID, answerID, body)
 	if err != nil {
 		return err
 	}

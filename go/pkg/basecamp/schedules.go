@@ -100,11 +100,11 @@ type UpdateScheduleSettingsRequest struct {
 
 // SchedulesService handles schedule operations.
 type SchedulesService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewSchedulesService creates a new SchedulesService.
-func NewSchedulesService(client *Client) *SchedulesService {
+func NewSchedulesService(client *AccountClient) *SchedulesService {
 	return &SchedulesService{client: client}
 }
 
@@ -116,20 +116,16 @@ func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) 
 		ResourceType: "schedule", IsMutation: false,
 		BucketID: bucketID, ResourceID: scheduleID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetScheduleWithResponse(ctx, bucketID, scheduleID)
+	resp, err := s.client.gen.GetScheduleWithResponse(ctx, s.client.accountID, bucketID, scheduleID)
 	if err != nil {
 		return nil, err
 	}
@@ -153,20 +149,16 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 		ResourceType: "schedule_entry", IsMutation: false,
 		BucketID: bucketID, ResourceID: scheduleID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListScheduleEntriesWithResponse(ctx, bucketID, scheduleID, nil)
+	resp, err := s.client.gen.ListScheduleEntriesWithResponse(ctx, s.client.accountID, bucketID, scheduleID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -193,20 +185,16 @@ func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64
 		ResourceType: "schedule_entry", IsMutation: false,
 		BucketID: bucketID, ResourceID: entryID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetScheduleEntryWithResponse(ctx, bucketID, entryID)
+	resp, err := s.client.gen.GetScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, entryID)
 	if err != nil {
 		return nil, err
 	}
@@ -231,18 +219,14 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 		ResourceType: "schedule_entry", IsMutation: true,
 		BucketID: bucketID, ResourceID: scheduleID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Summary == "" {
 		err = ErrUsage("schedule entry summary is required")
@@ -278,7 +262,7 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 		Notify:         req.Notify,
 	}
 
-	resp, err := s.client.gen.CreateScheduleEntryWithResponse(ctx, bucketID, scheduleID, body)
+	resp, err := s.client.gen.CreateScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, scheduleID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -303,18 +287,14 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 		ResourceType: "schedule_entry", IsMutation: true,
 		BucketID: bucketID, ResourceID: entryID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update request is required")
@@ -345,7 +325,7 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 		body.EndsAt = endsAt
 	}
 
-	resp, err := s.client.gen.UpdateScheduleEntryWithResponse(ctx, bucketID, entryID, body)
+	resp, err := s.client.gen.UpdateScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, entryID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -369,25 +349,21 @@ func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, ent
 		ResourceType: "schedule_entry", IsMutation: false,
 		BucketID: bucketID, ResourceID: entryID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if date == "" {
 		err = ErrUsage("occurrence date is required")
 		return nil, err
 	}
 
-	resp, err := s.client.gen.GetScheduleEntryOccurrenceWithResponse(ctx, bucketID, entryID, date)
+	resp, err := s.client.gen.GetScheduleEntryOccurrenceWithResponse(ctx, s.client.accountID, bucketID, entryID, date)
 	if err != nil {
 		return nil, err
 	}
@@ -412,18 +388,14 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, schedul
 		ResourceType: "schedule", IsMutation: true,
 		BucketID: bucketID, ResourceID: scheduleID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update settings request is required")
@@ -434,7 +406,7 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, schedul
 		IncludeDueAssignments: req.IncludeDueAssignments,
 	}
 
-	resp, err := s.client.gen.UpdateScheduleSettingsWithResponse(ctx, bucketID, scheduleID, body)
+	resp, err := s.client.gen.UpdateScheduleSettingsWithResponse(ctx, s.client.accountID, bucketID, scheduleID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -459,20 +431,16 @@ func (s *SchedulesService) TrashEntry(ctx context.Context, bucketID, entryID int
 		ResourceType: "schedule_entry", IsMutation: true,
 		BucketID: bucketID, ResourceID: entryID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, entryID)
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, entryID)
 	if err != nil {
 		return err
 	}

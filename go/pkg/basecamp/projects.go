@@ -96,11 +96,11 @@ type ScheduleAttributes struct {
 
 // ProjectsService handles project operations.
 type ProjectsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewProjectsService creates a new ProjectsService.
-func NewProjectsService(client *Client) *ProjectsService {
+func NewProjectsService(client *AccountClient) *ProjectsService {
 	return &ProjectsService{client: client}
 }
 
@@ -111,25 +111,21 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 		Service: "Projects", Operation: "List",
 		ResourceType: "project", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	params := &generated.ListProjectsParams{}
 	if opts != nil && opts.Status != "" {
 		params.Status = string(opts.Status)
 	}
 
-	resp, err := s.client.gen.ListProjectsWithResponse(ctx, params)
+	resp, err := s.client.gen.ListProjectsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -155,20 +151,16 @@ func (s *ProjectsService) Get(ctx context.Context, id int64) (result *Project, e
 		ResourceType: "project", IsMutation: false,
 		ResourceID: id,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetProjectWithResponse(ctx, id)
+	resp, err := s.client.gen.GetProjectWithResponse(ctx, s.client.accountID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -191,18 +183,14 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 		Service: "Projects", Operation: "Create",
 		ResourceType: "project", IsMutation: true,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req.Name == "" {
 		err = ErrUsage("project name is required")
@@ -214,7 +202,7 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.CreateProjectWithResponse(ctx, body)
+	resp, err := s.client.gen.CreateProjectWithResponse(ctx, s.client.accountID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -238,18 +226,14 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 		ResourceType: "project", IsMutation: true,
 		ResourceID: id,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req.Name == "" {
 		err = ErrUsage("project name is required")
@@ -268,7 +252,7 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 		}
 	}
 
-	resp, err := s.client.gen.UpdateProjectWithResponse(ctx, id, body)
+	resp, err := s.client.gen.UpdateProjectWithResponse(ctx, s.client.accountID, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -292,20 +276,16 @@ func (s *ProjectsService) Trash(ctx context.Context, id int64) (err error) {
 		ResourceType: "project", IsMutation: true,
 		ResourceID: id,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.TrashProjectWithResponse(ctx, id)
+	resp, err := s.client.gen.TrashProjectWithResponse(ctx, s.client.accountID, id)
 	if err != nil {
 		return err
 	}

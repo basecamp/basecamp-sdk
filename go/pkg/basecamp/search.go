@@ -48,11 +48,11 @@ type SearchOptions struct {
 
 // SearchService handles search operations.
 type SearchService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewSearchService creates a new SearchService.
-func NewSearchService(client *Client) *SearchService {
+func NewSearchService(client *AccountClient) *SearchService {
 	return &SearchService{client: client}
 }
 
@@ -64,18 +64,14 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 		Service: "Search", Operation: "Search",
 		ResourceType: "search", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if query == "" {
 		err = ErrUsage("search query is required")
@@ -89,7 +85,7 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 		params.Sort = opts.Sort
 	}
 
-	resp, err := s.client.gen.SearchWithResponse(ctx, params)
+	resp, err := s.client.gen.SearchWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -115,20 +111,16 @@ func (s *SearchService) Metadata(ctx context.Context) (result *SearchMetadata, e
 		Service: "Search", Operation: "Metadata",
 		ResourceType: "search", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetSearchMetadataWithResponse(ctx)
+	resp, err := s.client.gen.GetSearchMetadataWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}

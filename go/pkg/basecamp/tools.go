@@ -31,11 +31,11 @@ type UpdateToolRequest struct {
 
 // ToolsService handles dock tool operations.
 type ToolsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewToolsService creates a new ToolsService.
-func NewToolsService(client *Client) *ToolsService {
+func NewToolsService(client *AccountClient) *ToolsService {
 	return &ToolsService{client: client}
 }
 
@@ -47,20 +47,16 @@ func (s *ToolsService) Get(ctx context.Context, bucketID, toolID int64) (result 
 		ResourceType: "tool", IsMutation: false,
 		BucketID: bucketID, ResourceID: toolID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetToolWithResponse(ctx, bucketID, toolID)
+	resp, err := s.client.gen.GetToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
 	if err != nil {
 		return nil, err
 	}
@@ -85,20 +81,16 @@ func (s *ToolsService) Create(ctx context.Context, bucketID, sourceToolID int64)
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: sourceToolID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.CloneToolWithResponse(ctx, bucketID, sourceToolID)
+	resp, err := s.client.gen.CloneToolWithResponse(ctx, s.client.accountID, bucketID, sourceToolID)
 	if err != nil {
 		return nil, err
 	}
@@ -123,18 +115,14 @@ func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, title
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: toolID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if title == "" {
 		err = ErrUsage("tool title is required")
@@ -145,7 +133,7 @@ func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, title
 		Title: title,
 	}
 
-	resp, err := s.client.gen.UpdateToolWithResponse(ctx, bucketID, toolID, body)
+	resp, err := s.client.gen.UpdateToolWithResponse(ctx, s.client.accountID, bucketID, toolID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -170,20 +158,16 @@ func (s *ToolsService) Delete(ctx context.Context, bucketID, toolID int64) (err 
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: toolID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.DeleteToolWithResponse(ctx, bucketID, toolID)
+	resp, err := s.client.gen.DeleteToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
 	if err != nil {
 		return err
 	}
@@ -199,20 +183,16 @@ func (s *ToolsService) Enable(ctx context.Context, bucketID, toolID int64) (err 
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: toolID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.EnableToolWithResponse(ctx, bucketID, toolID)
+	resp, err := s.client.gen.EnableToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
 	if err != nil {
 		return err
 	}
@@ -228,20 +208,16 @@ func (s *ToolsService) Disable(ctx context.Context, bucketID, toolID int64) (err
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: toolID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.DisableToolWithResponse(ctx, bucketID, toolID)
+	resp, err := s.client.gen.DisableToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
 	if err != nil {
 		return err
 	}
@@ -257,18 +233,14 @@ func (s *ToolsService) Reposition(ctx context.Context, bucketID, toolID int64, p
 		ResourceType: "tool", IsMutation: true,
 		BucketID: bucketID, ResourceID: toolID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if position < 1 {
 		err = ErrUsage("position must be at least 1")
@@ -279,7 +251,7 @@ func (s *ToolsService) Reposition(ctx context.Context, bucketID, toolID int64, p
 		Position: int32(position),
 	}
 
-	resp, err := s.client.gen.RepositionToolWithResponse(ctx, bucketID, toolID, body)
+	resp, err := s.client.gen.RepositionToolWithResponse(ctx, s.client.accountID, bucketID, toolID, body)
 	if err != nil {
 		return err
 	}

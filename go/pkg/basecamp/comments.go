@@ -37,11 +37,11 @@ type UpdateCommentRequest struct {
 
 // CommentsService handles comment operations.
 type CommentsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewCommentsService creates a new CommentsService.
-func NewCommentsService(client *Client) *CommentsService {
+func NewCommentsService(client *AccountClient) *CommentsService {
 	return &CommentsService{client: client}
 }
 
@@ -53,20 +53,16 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64)
 		ResourceType: "comment", IsMutation: false,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListCommentsWithResponse(ctx, bucketID, recordingID)
+	resp, err := s.client.gen.ListCommentsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -93,20 +89,16 @@ func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (r
 		ResourceType: "comment", IsMutation: false,
 		BucketID: bucketID, ResourceID: commentID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetCommentWithResponse(ctx, bucketID, commentID)
+	resp, err := s.client.gen.GetCommentWithResponse(ctx, s.client.accountID, bucketID, commentID)
 	if err != nil {
 		return nil, err
 	}
@@ -131,18 +123,14 @@ func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int6
 		ResourceType: "comment", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Content == "" {
 		err = ErrUsage("comment content is required")
@@ -153,7 +141,7 @@ func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int6
 		Content: req.Content,
 	}
 
-	resp, err := s.client.gen.CreateCommentWithResponse(ctx, bucketID, recordingID, body)
+	resp, err := s.client.gen.CreateCommentWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -178,18 +166,14 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 		ResourceType: "comment", IsMutation: true,
 		BucketID: bucketID, ResourceID: commentID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Content == "" {
 		err = ErrUsage("comment content is required")
@@ -200,7 +184,7 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 		Content: req.Content,
 	}
 
-	resp, err := s.client.gen.UpdateCommentWithResponse(ctx, bucketID, commentID, body)
+	resp, err := s.client.gen.UpdateCommentWithResponse(ctx, s.client.accountID, bucketID, commentID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -225,20 +209,16 @@ func (s *CommentsService) Trash(ctx context.Context, bucketID, commentID int64) 
 		ResourceType: "comment", IsMutation: true,
 		BucketID: bucketID, ResourceID: commentID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, commentID)
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, commentID)
 	if err != nil {
 		return err
 	}

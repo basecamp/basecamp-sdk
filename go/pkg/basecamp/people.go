@@ -40,11 +40,11 @@ type UpdateProjectAccessResponse struct {
 
 // PeopleService handles people operations.
 type PeopleService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewPeopleService creates a new PeopleService.
-func NewPeopleService(client *Client) *PeopleService {
+func NewPeopleService(client *AccountClient) *PeopleService {
 	return &PeopleService{client: client}
 }
 
@@ -54,20 +54,16 @@ func (s *PeopleService) List(ctx context.Context) (result []Person, err error) {
 		Service: "People", Operation: "List",
 		ResourceType: "person", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListPeopleWithResponse(ctx)
+	resp, err := s.client.gen.ListPeopleWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -93,20 +89,16 @@ func (s *PeopleService) Get(ctx context.Context, personID int64) (result *Person
 		ResourceType: "person", IsMutation: false,
 		ResourceID: personID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetPersonWithResponse(ctx, personID)
+	resp, err := s.client.gen.GetPersonWithResponse(ctx, s.client.accountID, personID)
 	if err != nil {
 		return nil, err
 	}
@@ -128,20 +120,16 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 		Service: "People", Operation: "Me",
 		ResourceType: "person", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetMyProfileWithResponse(ctx)
+	resp, err := s.client.gen.GetMyProfileWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -165,20 +153,16 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (
 		ResourceType: "person", IsMutation: false,
 		BucketID: bucketID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListProjectPeopleWithResponse(ctx, bucketID)
+	resp, err := s.client.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, bucketID)
 	if err != nil {
 		return nil, err
 	}
@@ -204,20 +188,16 @@ func (s *PeopleService) Pingable(ctx context.Context) (result []Person, err erro
 		Service: "People", Operation: "Pingable",
 		ResourceType: "person", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListPingablePeopleWithResponse(ctx)
+	resp, err := s.client.gen.ListPingablePeopleWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -245,18 +225,14 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, bucketID int64,
 		ResourceType: "person", IsMutation: true,
 		BucketID: bucketID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || (len(req.Grant) == 0 && len(req.Revoke) == 0 && len(req.Create) == 0) {
 		err = ErrUsage("at least one of grant, revoke, or create must be specified")
@@ -279,7 +255,7 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, bucketID int64,
 		}
 	}
 
-	resp, err := s.client.gen.UpdateProjectAccessWithResponse(ctx, bucketID, body)
+	resp, err := s.client.gen.UpdateProjectAccessWithResponse(ctx, s.client.accountID, bucketID, body)
 	if err != nil {
 		return nil, err
 	}

@@ -51,11 +51,11 @@ type UpdateMessageRequest struct {
 
 // MessagesService handles message operations.
 type MessagesService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewMessagesService creates a new MessagesService.
-func NewMessagesService(client *Client) *MessagesService {
+func NewMessagesService(client *AccountClient) *MessagesService {
 	return &MessagesService{client: client}
 }
 
@@ -67,20 +67,16 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) (re
 		ResourceType: "message", IsMutation: false,
 		BucketID: bucketID, ResourceID: boardID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListMessagesWithResponse(ctx, bucketID, boardID)
+	resp, err := s.client.gen.ListMessagesWithResponse(ctx, s.client.accountID, bucketID, boardID)
 	if err != nil {
 		return nil, err
 	}
@@ -106,20 +102,16 @@ func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (r
 		ResourceType: "message", IsMutation: false,
 		BucketID: bucketID, ResourceID: messageID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetMessageWithResponse(ctx, bucketID, messageID)
+	resp, err := s.client.gen.GetMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return nil, err
 	}
@@ -144,18 +136,14 @@ func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, r
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: boardID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || req.Subject == "" {
 		err = ErrUsage("message subject is required")
@@ -171,7 +159,7 @@ func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, r
 		body.CategoryId = &req.CategoryID
 	}
 
-	resp, err := s.client.gen.CreateMessageWithResponse(ctx, bucketID, boardID, body)
+	resp, err := s.client.gen.CreateMessageWithResponse(ctx, s.client.accountID, bucketID, boardID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -196,18 +184,14 @@ func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64,
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil {
 		err = ErrUsage("update request is required")
@@ -223,7 +207,7 @@ func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64,
 		body.CategoryId = &req.CategoryID
 	}
 
-	resp, err := s.client.gen.UpdateMessageWithResponse(ctx, bucketID, messageID, body)
+	resp, err := s.client.gen.UpdateMessageWithResponse(ctx, s.client.accountID, bucketID, messageID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -247,20 +231,16 @@ func (s *MessagesService) Pin(ctx context.Context, bucketID, messageID int64) (e
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.PinMessageWithResponse(ctx, bucketID, messageID)
+	resp, err := s.client.gen.PinMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return err
 	}
@@ -275,20 +255,16 @@ func (s *MessagesService) Unpin(ctx context.Context, bucketID, messageID int64) 
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.UnpinMessageWithResponse(ctx, bucketID, messageID)
+	resp, err := s.client.gen.UnpinMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return err
 	}
@@ -304,20 +280,16 @@ func (s *MessagesService) Trash(ctx context.Context, bucketID, messageID int64) 
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, bucketID, messageID)
+	resp, err := s.client.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return err
 	}
@@ -333,20 +305,16 @@ func (s *MessagesService) Archive(ctx context.Context, bucketID, messageID int64
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.ArchiveRecordingWithResponse(ctx, bucketID, messageID)
+	resp, err := s.client.gen.ArchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return err
 	}
@@ -361,20 +329,16 @@ func (s *MessagesService) Unarchive(ctx context.Context, bucketID, messageID int
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.UnarchiveRecordingWithResponse(ctx, bucketID, messageID)
+	resp, err := s.client.gen.UnarchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
 	if err != nil {
 		return err
 	}

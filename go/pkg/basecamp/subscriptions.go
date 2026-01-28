@@ -26,11 +26,11 @@ type UpdateSubscriptionRequest struct {
 
 // SubscriptionsService handles subscription operations on recordings.
 type SubscriptionsService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewSubscriptionsService creates a new SubscriptionsService.
-func NewSubscriptionsService(client *Client) *SubscriptionsService {
+func NewSubscriptionsService(client *AccountClient) *SubscriptionsService {
 	return &SubscriptionsService{client: client}
 }
 
@@ -42,20 +42,16 @@ func (s *SubscriptionsService) Get(ctx context.Context, bucketID, recordingID in
 		ResourceType: "subscription", IsMutation: false,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetSubscriptionWithResponse(ctx, bucketID, recordingID)
+	resp, err := s.client.gen.GetSubscriptionWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -80,20 +76,16 @@ func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordin
 		ResourceType: "subscription", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.SubscribeWithResponse(ctx, bucketID, recordingID)
+	resp, err := s.client.gen.SubscribeWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -118,20 +110,16 @@ func (s *SubscriptionsService) Unsubscribe(ctx context.Context, bucketID, record
 		ResourceType: "subscription", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.UnsubscribeWithResponse(ctx, bucketID, recordingID)
+	resp, err := s.client.gen.UnsubscribeWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -147,18 +135,14 @@ func (s *SubscriptionsService) Update(ctx context.Context, bucketID, recordingID
 		ResourceType: "subscription", IsMutation: true,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req == nil || (len(req.Subscriptions) == 0 && len(req.Unsubscriptions) == 0) {
 		err = ErrUsage("at least one of subscriptions or unsubscriptions must be specified")
@@ -170,7 +154,7 @@ func (s *SubscriptionsService) Update(ctx context.Context, bucketID, recordingID
 		Unsubscriptions: req.Unsubscriptions,
 	}
 
-	resp, err := s.client.gen.UpdateSubscriptionWithResponse(ctx, bucketID, recordingID, body)
+	resp, err := s.client.gen.UpdateSubscriptionWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}

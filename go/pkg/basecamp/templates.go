@@ -52,11 +52,11 @@ type CreateProjectFromTemplateRequest struct {
 
 // TemplatesService handles template operations.
 type TemplatesService struct {
-	client *Client
+	client *AccountClient
 }
 
 // NewTemplatesService creates a new TemplatesService.
-func NewTemplatesService(client *Client) *TemplatesService {
+func NewTemplatesService(client *AccountClient) *TemplatesService {
 	return &TemplatesService{client: client}
 }
 
@@ -66,20 +66,16 @@ func (s *TemplatesService) List(ctx context.Context) (result []Template, err err
 		Service: "Templates", Operation: "List",
 		ResourceType: "template", IsMutation: false,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.ListTemplatesWithResponse(ctx, nil)
+	resp, err := s.client.gen.ListTemplatesWithResponse(ctx, s.client.accountID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -105,20 +101,16 @@ func (s *TemplatesService) Get(ctx context.Context, templateID int64) (result *T
 		ResourceType: "template", IsMutation: false,
 		ResourceID: templateID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetTemplateWithResponse(ctx, templateID)
+	resp, err := s.client.gen.GetTemplateWithResponse(ctx, s.client.accountID, templateID)
 	if err != nil {
 		return nil, err
 	}
@@ -141,18 +133,14 @@ func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateReques
 		Service: "Templates", Operation: "Create",
 		ResourceType: "template", IsMutation: true,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req.Name == "" {
 		err = ErrUsage("template name is required")
@@ -164,7 +152,7 @@ func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateReques
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.CreateTemplateWithResponse(ctx, body)
+	resp, err := s.client.gen.CreateTemplateWithResponse(ctx, s.client.accountID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -188,18 +176,14 @@ func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *Up
 		ResourceType: "template", IsMutation: true,
 		ResourceID: templateID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if req.Name == "" {
 		err = ErrUsage("template name is required")
@@ -211,7 +195,7 @@ func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *Up
 		Description: req.Description,
 	}
 
-	resp, err := s.client.gen.UpdateTemplateWithResponse(ctx, templateID, body)
+	resp, err := s.client.gen.UpdateTemplateWithResponse(ctx, s.client.accountID, templateID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -234,20 +218,16 @@ func (s *TemplatesService) Delete(ctx context.Context, templateID int64) (err er
 		ResourceType: "template", IsMutation: true,
 		ResourceID: templateID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return err
-	}
-
-	resp, err := s.client.gen.DeleteTemplateWithResponse(ctx, templateID)
+	resp, err := s.client.gen.DeleteTemplateWithResponse(ctx, s.client.accountID, templateID)
 	if err != nil {
 		return err
 	}
@@ -262,18 +242,14 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 		ResourceType: "project_construction", IsMutation: true,
 		ResourceID: templateID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	if name == "" {
 		err = ErrUsage("project name is required")
@@ -285,7 +261,7 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 		Description: description,
 	}
 
-	resp, err := s.client.gen.CreateProjectFromTemplateWithResponse(ctx, templateID, body)
+	resp, err := s.client.gen.CreateProjectFromTemplateWithResponse(ctx, s.client.accountID, templateID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -308,20 +284,16 @@ func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, cons
 		ResourceType: "project_construction", IsMutation: false,
 		ResourceID: constructionID,
 	}
-	if gater, ok := s.client.hooks.(GatingHooks); ok {
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return
 		}
 	}
 	start := time.Now()
-	ctx = s.client.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if err = s.client.RequireAccount(); err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.gen.GetProjectConstructionWithResponse(ctx, templateID, constructionID)
+	resp, err := s.client.gen.GetProjectConstructionWithResponse(ctx, s.client.accountID, templateID, constructionID)
 	if err != nil {
 		return nil, err
 	}
