@@ -1,6 +1,7 @@
 package basecamp
 
 import (
+	"context"
 	"net/http"
 	"time"
 )
@@ -117,15 +118,53 @@ func newDefaultTransport() http.RoundTripper {
 	return t
 }
 
-// loggingTransport wraps an http.RoundTripper to log requests and responses.
-// It holds a pointer to the client so it can access the current logger.
+// attemptKey is the context key for tracking request attempt number.
+type attemptKey struct{}
+
+// contextWithAttempt adds the request attempt number to the context.
+func contextWithAttempt(ctx context.Context, attempt int) context.Context {
+	return context.WithValue(ctx, attemptKey{}, attempt)
+}
+
+// attemptFromContext extracts the attempt number from context (defaults to 1).
+func attemptFromContext(ctx context.Context) int {
+	if v := ctx.Value(attemptKey{}); v != nil {
+		if attempt, ok := v.(int); ok {
+			return attempt
+		}
+	}
+	return 1
+}
+
+// loggingTransport wraps an http.RoundTripper to log requests and responses,
+// and calls observability hooks for all HTTP requests (including generated client).
+// It holds a pointer to the client so it can access the current logger and hooks.
 type loggingTransport struct {
 	inner  http.RoundTripper
 	client *Client
 }
 
-// RoundTrip implements http.RoundTripper with logging.
+// RoundTrip implements http.RoundTripper with logging and hooks.
 func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Call hooks before request
+	info := RequestInfo{
+		Method:  req.Method,
+		URL:     req.URL.String(),
+		Attempt: attemptFromContext(req.Context()),
+	}
+	hookCtx := t.client.hooks.OnRequestStart(req.Context(), info)
+	startTime := time.Now()
+
+	// Update request context with hook context for trace propagation
+	req = req.WithContext(hookCtx)
+
+	// Track result for hooks
+	var result RequestResult
+	defer func() {
+		result.Duration = time.Since(startTime)
+		t.client.hooks.OnRequestEnd(hookCtx, info, result)
+	}()
+
 	// Log request if logger is enabled
 	if t.client.logger != nil {
 		t.client.logger.Debug("http request",
@@ -135,10 +174,16 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 
 	resp, err := t.inner.RoundTrip(req)
 
-	// Log response if logger is enabled
-	if err == nil && t.client.logger != nil {
-		t.client.logger.Debug("http response",
-			"status", resp.StatusCode)
+	// Record result
+	if err != nil {
+		result.Error = err
+	} else {
+		result.StatusCode = resp.StatusCode
+		// Log response if logger is enabled
+		if t.client.logger != nil {
+			t.client.logger.Debug("http response",
+				"status", resp.StatusCode)
+		}
 	}
 
 	return resp, err

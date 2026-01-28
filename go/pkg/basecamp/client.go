@@ -29,6 +29,7 @@ type Client struct {
 	userAgent     string
 	logger        *slog.Logger
 	httpOpts      HTTPOptions
+	hooks         Hooks
 	gen           *generated.ClientWithResponses
 
 	// Services
@@ -139,6 +140,7 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 		cfg:           cfg,
 		userAgent:     DefaultUserAgent,
 		logger:        slog.New(discardHandler{}),
+		hooks:         NoopHooks{},
 		httpOpts:      DefaultHTTPOptions(),
 	}
 
@@ -278,6 +280,8 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 		// Only retry if this was a 401 that triggered successful token refresh
 		if apiErr, ok := err.(*Error); ok && apiErr.Retryable && apiErr.Code == CodeAuth {
 			c.logger.Debug("token refreshed, retrying mutation", "method", method)
+			info := RequestInfo{Method: method, URL: url, Attempt: 1}
+			c.hooks.OnRetry(ctx, info, 2, err)
 			return c.singleRequest(ctx, method, url, body, 2)
 		}
 		return nil, err
@@ -315,6 +319,10 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 
 		c.logger.Debug("retrying request", "attempt", attempt, "maxRetries", c.httpOpts.MaxRetries, "delay", delay, "error", lastErr)
 
+		// Notify hooks about the retry
+		info := RequestInfo{Method: method, URL: url, Attempt: attempt}
+		c.hooks.OnRetry(ctx, info, attempt+1, lastErr)
+
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -327,6 +335,9 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 }
 
 func (c *Client) singleRequest(ctx context.Context, method, url string, body any, attempt int) (*Response, error) {
+	// Add attempt number to context for hooks in transport layer
+	ctx = contextWithAttempt(ctx, attempt)
+
 	// Get access token
 	token, err := c.tokenProvider.AccessToken(ctx)
 	if err != nil {
@@ -343,7 +354,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		bodyReader = strings.NewReader(string(bodyBytes))
 	}
 
-	// Create request
+	// Create request - hooks are called in transport layer (loggingTransport)
 	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
 	if err != nil {
 		return nil, err
@@ -366,7 +377,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 
 	c.logger.Debug("http request", "method", method, "url", url, "attempt", attempt)
 
-	// Execute request
+	// Execute request (hooks are called in transport layer)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, ErrNetwork(err)
