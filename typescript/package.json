@@ -47,16 +47,16 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "openapi-fetch": "^0.13.0"
+    "openapi-fetch": "^0.15.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.1.0",
     "msw": "^2.7.0",
     "openapi-typescript": "^7.5.0",
     "oxlint": "^1.42.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "vitest": "^4.0.18"
   },
   "peerDependencies": {
     "typescript": ">=5.0.0"
