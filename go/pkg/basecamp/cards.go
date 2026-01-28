@@ -212,6 +212,11 @@ func (s *CardTablesService) Get(ctx context.Context, bucketID, cardTableID int64
 		ResourceType: "card_table", IsMutation: false,
 		BucketID: bucketID, ResourceID: cardTableID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -254,6 +259,11 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64) (resu
 		ResourceType: "card", IsMutation: false,
 		BucketID: bucketID, ResourceID: columnID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -288,6 +298,11 @@ func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (result 
 		ResourceType: "card", IsMutation: false,
 		BucketID: bucketID, ResourceID: cardID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -320,6 +335,11 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 		Service: "Cards", Operation: "Create",
 		ResourceType: "card", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -377,6 +397,11 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 		ResourceType: "card", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -433,6 +458,11 @@ func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int6
 		ResourceType: "card", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -460,6 +490,11 @@ func (s *CardsService) Trash(ctx context.Context, bucketID, cardID int64) (err e
 		Service: "Cards", Operation: "Trash",
 		ResourceType: "card", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -494,6 +529,11 @@ func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) 
 		ResourceType: "card_column", IsMutation: false,
 		BucketID: bucketID, ResourceID: columnID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -526,6 +566,11 @@ func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID i
 		Service: "CardColumns", Operation: "Create",
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardTableID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -570,6 +615,11 @@ func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int6
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -612,6 +662,11 @@ func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardTableID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -647,6 +702,11 @@ func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID in
 		Service: "CardColumns", Operation: "SetColor",
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -690,6 +750,11 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnI
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -722,6 +787,11 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, column
 		Service: "CardColumns", Operation: "DisableOnHold",
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -756,6 +826,11 @@ func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -788,6 +863,11 @@ func (s *CardColumnsService) Unwatch(ctx context.Context, bucketID, columnID int
 		Service: "CardColumns", Operation: "Unwatch",
 		ResourceType: "card_column", IsMutation: true,
 		BucketID: bucketID, ResourceID: columnID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -822,6 +902,11 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 		Service: "CardSteps", Operation: "Create",
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: cardID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -874,6 +959,11 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: stepID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -925,6 +1015,11 @@ func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64)
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: stepID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -957,6 +1052,11 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int6
 		Service: "CardSteps", Operation: "Uncomplete",
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: stepID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -991,6 +1091,11 @@ func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, ste
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: stepID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -1023,6 +1128,11 @@ func (s *CardStepsService) Delete(ctx context.Context, bucketID, stepID int64) (
 		Service: "CardSteps", Operation: "Delete",
 		ResourceType: "card_step", IsMutation: true,
 		BucketID: bucketID, ResourceID: stepID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

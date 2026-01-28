@@ -72,6 +72,11 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (resu
 		ResourceType: "client_approval", IsMutation: false,
 		BucketID: bucketID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -106,6 +111,11 @@ func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID i
 		Service: "ClientApprovals", Operation: "Get",
 		ResourceType: "client_approval", IsMutation: false,
 		BucketID: bucketID, ResourceID: approvalID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

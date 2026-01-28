@@ -40,6 +40,11 @@ func (s *TimelineService) Progress(ctx context.Context) (result []TimelineEvent,
 		Service: "Timeline", Operation: "Progress",
 		ResourceType: "timeline_event", IsMutation: false,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -73,6 +78,11 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64) 
 		Service: "Timeline", Operation: "ProjectTimeline",
 		ResourceType: "timeline_event", IsMutation: false,
 		BucketID: projectID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -113,6 +123,11 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64) (r
 		Service: "Timeline", Operation: "PersonProgress",
 		ResourceType: "timeline_event", IsMutation: false,
 		ResourceID: personID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

@@ -65,6 +65,11 @@ func (s *AuthorizationService) GetInfo(ctx context.Context, opts *GetInfoOptions
 		Service: "Authorization", Operation: "GetInfo",
 		ResourceType: "authorization", IsMutation: false,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()

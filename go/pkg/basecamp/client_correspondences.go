@@ -49,6 +49,11 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64)
 		ResourceType: "client_correspondence", IsMutation: false,
 		BucketID: bucketID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -83,6 +88,11 @@ func (s *ClientCorrespondencesService) Get(ctx context.Context, bucketID, corres
 		Service: "ClientCorrespondences", Operation: "Get",
 		ResourceType: "client_correspondence", IsMutation: false,
 		BucketID: bucketID, ResourceID: correspondenceID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

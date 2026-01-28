@@ -54,6 +54,11 @@ func (s *PeopleService) List(ctx context.Context) (result []Person, err error) {
 		Service: "People", Operation: "List",
 		ResourceType: "person", IsMutation: false,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -88,6 +93,11 @@ func (s *PeopleService) Get(ctx context.Context, personID int64) (result *Person
 		ResourceType: "person", IsMutation: false,
 		ResourceID: personID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -117,6 +127,11 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "Me",
 		ResourceType: "person", IsMutation: false,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -149,6 +164,11 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (
 		Service: "People", Operation: "ListProjectPeople",
 		ResourceType: "person", IsMutation: false,
 		BucketID: bucketID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -183,6 +203,11 @@ func (s *PeopleService) Pingable(ctx context.Context) (result []Person, err erro
 	op := OperationInfo{
 		Service: "People", Operation: "Pingable",
 		ResourceType: "person", IsMutation: false,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -219,6 +244,11 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, bucketID int64,
 		Service: "People", Operation: "UpdateProjectAccess",
 		ResourceType: "person", IsMutation: true,
 		BucketID: bucketID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

@@ -59,6 +59,11 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result []We
 		ResourceType: "webhook", IsMutation: false,
 		BucketID: bucketID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -94,6 +99,11 @@ func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (r
 		ResourceType: "webhook", IsMutation: false,
 		BucketID: bucketID, ResourceID: webhookID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -126,6 +136,11 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 		Service: "Webhooks", Operation: "Create",
 		ResourceType: "webhook", IsMutation: true,
 		BucketID: bucketID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -180,6 +195,11 @@ func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64,
 		ResourceType: "webhook", IsMutation: true,
 		BucketID: bucketID, ResourceID: webhookID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -217,6 +237,11 @@ func (s *WebhooksService) Delete(ctx context.Context, bucketID, webhookID int64)
 		Service: "Webhooks", Operation: "Delete",
 		ResourceType: "webhook", IsMutation: true,
 		BucketID: bucketID, ResourceID: webhookID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

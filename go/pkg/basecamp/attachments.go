@@ -33,6 +33,11 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 		Service: "Attachments", Operation: "Create",
 		ResourceType: "attachment", IsMutation: true,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()

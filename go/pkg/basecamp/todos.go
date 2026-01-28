@@ -144,6 +144,11 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 		ResourceType: "todo", IsMutation: false,
 		BucketID: bucketID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -185,6 +190,11 @@ func (s *TodosService) Get(ctx context.Context, bucketID, todoID int64) (result 
 		ResourceType: "todo", IsMutation: false,
 		BucketID: bucketID, ResourceID: todoID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -217,6 +227,11 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 		Service: "Todos", Operation: "Create",
 		ResourceType: "todo", IsMutation: true,
 		BucketID: bucketID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -281,6 +296,11 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 		ResourceType: "todo", IsMutation: true,
 		BucketID: bucketID, ResourceID: todoID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -339,6 +359,11 @@ func (s *TodosService) Trash(ctx context.Context, bucketID, todoID int64) (err e
 		ResourceType: "todo", IsMutation: true,
 		BucketID: bucketID, ResourceID: todoID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -361,6 +386,11 @@ func (s *TodosService) Complete(ctx context.Context, bucketID, todoID int64) (er
 		Service: "Todos", Operation: "Complete",
 		ResourceType: "todo", IsMutation: true,
 		BucketID: bucketID, ResourceID: todoID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -385,6 +415,11 @@ func (s *TodosService) Uncomplete(ctx context.Context, bucketID, todoID int64) (
 		ResourceType: "todo", IsMutation: true,
 		BucketID: bucketID, ResourceID: todoID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -408,6 +443,11 @@ func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, p
 		Service: "Todos", Operation: "Reposition",
 		ResourceType: "todo", IsMutation: true,
 		BucketID: bucketID, ResourceID: todoID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

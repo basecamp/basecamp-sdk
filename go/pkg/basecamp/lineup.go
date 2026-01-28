@@ -73,6 +73,11 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 		Service: "Lineup", Operation: "CreateMarker",
 		ResourceType: "lineup_marker", IsMutation: true,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -138,6 +143,11 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 		ResourceType: "lineup_marker", IsMutation: true,
 		ResourceID: markerID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -196,6 +206,11 @@ func (s *LineupService) DeleteMarker(ctx context.Context, markerID int64) (err e
 		Service: "Lineup", Operation: "DeleteMarker",
 		ResourceType: "lineup_marker", IsMutation: true,
 		ResourceID: markerID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

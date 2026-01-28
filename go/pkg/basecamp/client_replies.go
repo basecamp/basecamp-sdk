@@ -45,6 +45,11 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 		ResourceType: "client_reply", IsMutation: false,
 		BucketID: bucketID, ResourceID: recordingID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -80,6 +85,11 @@ func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, r
 		Service: "ClientReplies", Operation: "Get",
 		ResourceType: "client_reply", IsMutation: false,
 		BucketID: bucketID, ResourceID: replyID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

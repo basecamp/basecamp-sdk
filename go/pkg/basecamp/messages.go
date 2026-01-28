@@ -67,6 +67,11 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) (re
 		ResourceType: "message", IsMutation: false,
 		BucketID: bucketID, ResourceID: boardID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -101,6 +106,11 @@ func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (r
 		ResourceType: "message", IsMutation: false,
 		BucketID: bucketID, ResourceID: messageID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -133,6 +143,11 @@ func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, r
 		Service: "Messages", Operation: "Create",
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: boardID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -181,6 +196,11 @@ func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64,
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -227,6 +247,11 @@ func (s *MessagesService) Pin(ctx context.Context, bucketID, messageID int64) (e
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -249,6 +274,11 @@ func (s *MessagesService) Unpin(ctx context.Context, bucketID, messageID int64) 
 		Service: "Messages", Operation: "Unpin",
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -274,6 +304,11 @@ func (s *MessagesService) Trash(ctx context.Context, bucketID, messageID int64) 
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -298,6 +333,11 @@ func (s *MessagesService) Archive(ctx context.Context, bucketID, messageID int64
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -320,6 +360,11 @@ func (s *MessagesService) Unarchive(ctx context.Context, bucketID, messageID int
 		Service: "Messages", Operation: "Unarchive",
 		ResourceType: "message", IsMutation: true,
 		BucketID: bucketID, ResourceID: messageID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)

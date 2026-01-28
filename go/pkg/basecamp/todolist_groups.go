@@ -65,6 +65,11 @@ func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID i
 		ResourceType: "todolist_group", IsMutation: false,
 		BucketID: bucketID, ResourceID: todolistID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -99,6 +104,11 @@ func (s *TodolistGroupsService) Get(ctx context.Context, bucketID, groupID int64
 		Service: "TodolistGroups", Operation: "Get",
 		ResourceType: "todolist_group", IsMutation: false,
 		BucketID: bucketID, ResourceID: groupID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -141,6 +151,11 @@ func (s *TodolistGroupsService) Create(ctx context.Context, bucketID, todolistID
 		ResourceType: "todolist_group", IsMutation: true,
 		BucketID: bucketID, ResourceID: todolistID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -182,6 +197,11 @@ func (s *TodolistGroupsService) Update(ctx context.Context, bucketID, groupID in
 		Service: "TodolistGroups", Operation: "Update",
 		ResourceType: "todolist_group", IsMutation: true,
 		BucketID: bucketID, ResourceID: groupID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
@@ -228,6 +248,11 @@ func (s *TodolistGroupsService) Reposition(ctx context.Context, bucketID, groupI
 		ResourceType: "todolist_group", IsMutation: true,
 		BucketID: bucketID, ResourceID: groupID,
 	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
@@ -260,6 +285,11 @@ func (s *TodolistGroupsService) Trash(ctx context.Context, bucketID, groupID int
 		Service: "TodolistGroups", Operation: "Trash",
 		ResourceType: "todolist_group", IsMutation: true,
 		BucketID: bucketID, ResourceID: groupID,
+	}
+	if gater, ok := s.client.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
 	}
 	start := time.Now()
 	ctx = s.client.hooks.OnOperationStart(ctx, op)
