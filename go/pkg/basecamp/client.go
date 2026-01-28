@@ -151,6 +151,9 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 		transport = newDefaultTransport()
 	}
 
+	// Wrap transport with logging transport
+	transport = &loggingTransport{inner: transport, client: c}
+
 	c.httpClient = &http.Client{
 		Timeout:   c.httpOpts.Timeout,
 		Transport: transport,

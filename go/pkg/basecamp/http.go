@@ -116,3 +116,30 @@ func newDefaultTransport() http.RoundTripper {
 	t.IdleConnTimeout = 90 * time.Second
 	return t
 }
+
+// loggingTransport wraps an http.RoundTripper to log requests and responses.
+// It holds a pointer to the client so it can access the current logger.
+type loggingTransport struct {
+	inner  http.RoundTripper
+	client *Client
+}
+
+// RoundTrip implements http.RoundTripper with logging.
+func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Log request if logger is enabled
+	if t.client.logger != nil {
+		t.client.logger.Debug("http request",
+			"method", req.Method,
+			"url", req.URL.String())
+	}
+
+	resp, err := t.inner.RoundTrip(req)
+
+	// Log response if logger is enabled
+	if err == nil && t.client.logger != nil {
+		t.client.logger.Debug("http response",
+			"status", resp.StatusCode)
+	}
+
+	return resp, err
+}
