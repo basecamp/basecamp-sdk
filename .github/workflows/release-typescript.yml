@@ -16,7 +16,7 @@ jobs:
       run:
         working-directory: spec
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install Smithy CLI
         run: |
@@ -40,7 +40,7 @@ jobs:
       run:
         working-directory: typescript
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -72,9 +72,19 @@ jobs:
       run:
         working-directory: typescript
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Install Smithy CLI
+        run: |
+          curl -L -o smithy-cli.zip https://github.com/smithy-lang/smithy/releases/download/1.66.0/smithy-cli-linux-x86_64.zip
+          unzip -q smithy-cli.zip
+          echo "$PWD/smithy-cli-1.66.0/bin" >> $GITHUB_PATH
+
+      - name: Build OpenAPI spec
+        working-directory: spec
+        run: smithy build
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -105,8 +115,18 @@ jobs:
           fi
           echo "Version verification passed: $PKG_VERSION"
 
+      - name: Determine npm tag
+        id: npm-tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "tag=next" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish to npm
-        run: npm publish --access public
+        run: npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
