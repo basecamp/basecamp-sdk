@@ -1,9 +1,13 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -52,5 +56,63 @@ func TestAttachmentResponse_Marshal(t *testing.T) {
 
 	if data["attachable_sgid"] != "test-sgid-12345" {
 		t.Errorf("unexpected attachable_sgid: %v", data["attachable_sgid"])
+	}
+}
+
+func TestAttachmentsService_Create_ContentType(t *testing.T) {
+	// Test that the Content-Type header is set correctly when creating attachments.
+	// This verifies that the passed contentType parameter is used as the request's
+	// Content-Type header, not overwritten by any other value.
+	tests := []struct {
+		name        string
+		contentType string
+	}{
+		{"image/png", "image/png"},
+		{"image/jpeg", "image/jpeg"},
+		{"application/pdf", "application/pdf"},
+		{"text/plain", "text/plain"},
+		{"application/octet-stream", "application/octet-stream"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var capturedContentType string
+
+			// Create a test server that captures the Content-Type header
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				capturedContentType = r.Header.Get("Content-Type")
+
+				// Return a successful attachment response
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]string{
+					"attachable_sgid": "test-sgid-123",
+				})
+			}))
+			defer server.Close()
+
+			// Create a client pointing to the test server
+			cfg := DefaultConfig()
+			cfg.AccountID = "12345"
+			cfg.BaseURL = server.URL
+			token := &StaticTokenProvider{Token: "test-token"}
+			client := NewClient(cfg, token)
+
+			// Create an attachment with the test content type
+			_, err := client.Attachments().Create(
+				context.Background(),
+				"test.file",
+				tt.contentType,
+				strings.NewReader("test file content"),
+			)
+			if err != nil {
+				t.Fatalf("Create failed: %v", err)
+			}
+
+			// Verify the Content-Type header matches what we passed
+			if capturedContentType != tt.contentType {
+				t.Errorf("Content-Type header mismatch: expected %q, got %q", tt.contentType, capturedContentType)
+			}
+		})
 	}
 }
