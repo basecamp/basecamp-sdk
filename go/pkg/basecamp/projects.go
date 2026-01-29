@@ -119,7 +119,7 @@ func NewProjectsService(client *AccountClient) *ProjectsService {
 //
 // Pagination options:
 //   - Limit: maximum number of projects to return (0 = all)
-//   - Page: fetch a specific page only (1-indexed, 0 = all pages)
+//   - Page: if non-zero, disables pagination and returns first page only
 func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (result []Project, err error) {
 	op := OperationInfo{
 		Service: "Projects", Operation: "List",

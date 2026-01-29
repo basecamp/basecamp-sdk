@@ -68,7 +68,7 @@ func NewCommentsService(client *AccountClient) *CommentsService {
 //
 // Pagination options:
 //   - Limit: maximum number of comments to return (0 = 100, -1 = unlimited)
-//   - Page: fetch a specific page only (1-indexed, 0 = all pages)
+//   - Page: if non-zero, disables pagination and returns first page only
 func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64, opts *CommentListOptions) (result []Comment, err error) {
 	op := OperationInfo{
 		Service: "Comments", Operation: "List",

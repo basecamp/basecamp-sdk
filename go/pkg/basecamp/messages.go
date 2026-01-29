@@ -82,7 +82,7 @@ func NewMessagesService(client *AccountClient) *MessagesService {
 //
 // Pagination options:
 //   - Limit: maximum number of messages to return (0 = 100, -1 = unlimited)
-//   - Page: fetch a specific page only (1-indexed, 0 = all pages)
+//   - Page: if non-zero, disables pagination and returns first page only
 func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opts *MessageListOptions) (result []Message, err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "List",

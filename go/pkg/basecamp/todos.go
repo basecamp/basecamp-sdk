@@ -156,7 +156,7 @@ func NewTodosService(client *AccountClient) *TodosService {
 //
 // Pagination options:
 //   - Limit: maximum number of todos to return (0 = 100, -1 = unlimited)
-//   - Page: fetch a specific page only (1-indexed, 0 = all pages)
+//   - Page: if non-zero, disables pagination and returns first page only
 func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opts *TodoListOptions) (result []Todo, err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "List",

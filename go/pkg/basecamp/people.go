@@ -65,7 +65,7 @@ func NewPeopleService(client *AccountClient) *PeopleService {
 //
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
-//   - Page: fetch a specific page only (1-indexed, 0 = all pages)
+//   - Page: if non-zero, disables pagination and returns first page only
 func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (result []Person, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "List",
@@ -189,7 +189,7 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 //
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
-//   - Page: fetch a specific page only (1-indexed, 0 = all pages)
+//   - Page: if non-zero, disables pagination and returns first page only
 func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, opts *PeopleListOptions) (result []Person, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "ListProjectPeople",
