@@ -2,11 +2,48 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// VaultListOptions specifies options for listing vaults.
+type VaultListOptions struct {
+	// Limit is the maximum number of vaults to return.
+	// If 0 (default), returns all vaults. Use a positive value to cap results.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
+
+// DocumentListOptions specifies options for listing documents.
+type DocumentListOptions struct {
+	// Limit is the maximum number of documents to return.
+	// If 0 (default), returns all documents. Use a positive value to cap results.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
+
+// UploadListOptions specifies options for listing uploads.
+type UploadListOptions struct {
+	// Limit is the maximum number of uploads to return.
+	// If 0 (default), returns all uploads. Use a positive value to cap results.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
 
 // Vault represents a Basecamp vault (folder) in the Files tool.
 type Vault struct {
@@ -179,7 +216,13 @@ func (s *VaultsService) Get(ctx context.Context, bucketID, vaultID int64) (resul
 
 // List returns all subfolders (child vaults) in a vault.
 // bucketID is the project ID, vaultID is the parent vault ID.
-func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64) (result []Vault, err error) {
+//
+// By default, returns all vaults (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of vaults to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64, opts *VaultListOptions) (result []Vault, err error) {
 	op := OperationInfo{
 		Service: "Vaults", Operation: "List",
 		ResourceType: "vault", IsMutation: false,
@@ -194,19 +237,43 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64) (resu
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListVaultsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+	// Handle single page fetch
+	if opts != nil && opts.Page > 0 {
+		resp, err := s.client.parent.gen.ListVaultsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+		if err != nil {
+			return nil, err
+		}
+		if err = checkResponse(resp.HTTPResponse); err != nil {
+			return nil, err
+		}
+		if resp.JSON200 == nil {
+			return nil, nil
+		}
+		vaults := make([]Vault, 0, len(*resp.JSON200))
+		for _, gv := range *resp.JSON200 {
+			vaults = append(vaults, vaultFromGenerated(gv))
+		}
+		return vaults, nil
+	}
+
+	// Determine limit: 0 = all (default for vaults), >0 = specific limit
+	limit := 0 // default to all for vaults (structural index)
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	path := fmt.Sprintf("/buckets/%d/vaults/%d/vaults.json", bucketID, vaultID)
+	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
 
-	vaults := make([]Vault, 0, len(*resp.JSON200))
-	for _, gv := range *resp.JSON200 {
+	vaults := make([]Vault, 0, len(rawResults))
+	for _, raw := range rawResults {
+		var gv generated.Vault
+		if err := json.Unmarshal(raw, &gv); err != nil {
+			return nil, fmt.Errorf("failed to parse vault: %w", err)
+		}
 		vaults = append(vaults, vaultFromGenerated(gv))
 	}
 	return vaults, nil
@@ -343,7 +410,13 @@ func (s *DocumentsService) Get(ctx context.Context, bucketID, documentID int64) 
 
 // List returns all documents in a vault.
 // bucketID is the project ID, vaultID is the vault ID.
-func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64) (result []Document, err error) {
+//
+// By default, returns all documents (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of documents to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64, opts *DocumentListOptions) (result []Document, err error) {
 	op := OperationInfo{
 		Service: "Documents", Operation: "List",
 		ResourceType: "document", IsMutation: false,
@@ -358,19 +431,43 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListDocumentsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+	// Handle single page fetch
+	if opts != nil && opts.Page > 0 {
+		resp, err := s.client.parent.gen.ListDocumentsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+		if err != nil {
+			return nil, err
+		}
+		if err = checkResponse(resp.HTTPResponse); err != nil {
+			return nil, err
+		}
+		if resp.JSON200 == nil {
+			return nil, nil
+		}
+		documents := make([]Document, 0, len(*resp.JSON200))
+		for _, gd := range *resp.JSON200 {
+			documents = append(documents, documentFromGenerated(gd))
+		}
+		return documents, nil
+	}
+
+	// Determine limit: 0 = all (default for documents), >0 = specific limit
+	limit := 0 // default to all for documents
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	path := fmt.Sprintf("/buckets/%d/vaults/%d/documents.json", bucketID, vaultID)
+	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
 
-	documents := make([]Document, 0, len(*resp.JSON200))
-	for _, gd := range *resp.JSON200 {
+	documents := make([]Document, 0, len(rawResults))
+	for _, raw := range rawResults {
+		var gd generated.Document
+		if err := json.Unmarshal(raw, &gd); err != nil {
+			return nil, fmt.Errorf("failed to parse document: %w", err)
+		}
 		documents = append(documents, documentFromGenerated(gd))
 	}
 	return documents, nil
@@ -535,7 +632,13 @@ func (s *UploadsService) Get(ctx context.Context, bucketID, uploadID int64) (res
 
 // List returns all uploads in a vault.
 // bucketID is the project ID, vaultID is the vault ID.
-func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64) (result []Upload, err error) {
+//
+// By default, returns all uploads (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of uploads to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64, opts *UploadListOptions) (result []Upload, err error) {
 	op := OperationInfo{
 		Service: "Uploads", Operation: "List",
 		ResourceType: "upload", IsMutation: false,
@@ -550,19 +653,43 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64) (res
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListUploadsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+	// Handle single page fetch
+	if opts != nil && opts.Page > 0 {
+		resp, err := s.client.parent.gen.ListUploadsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+		if err != nil {
+			return nil, err
+		}
+		if err = checkResponse(resp.HTTPResponse); err != nil {
+			return nil, err
+		}
+		if resp.JSON200 == nil {
+			return nil, nil
+		}
+		uploads := make([]Upload, 0, len(*resp.JSON200))
+		for _, gu := range *resp.JSON200 {
+			uploads = append(uploads, uploadFromGenerated(gu))
+		}
+		return uploads, nil
+	}
+
+	// Determine limit: 0 = all (default for uploads), >0 = specific limit
+	limit := 0 // default to all for uploads
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	path := fmt.Sprintf("/buckets/%d/vaults/%d/uploads.json", bucketID, vaultID)
+	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
 
-	uploads := make([]Upload, 0, len(*resp.JSON200))
-	for _, gu := range *resp.JSON200 {
+	uploads := make([]Upload, 0, len(rawResults))
+	for _, raw := range rawResults {
+		var gu generated.Upload
+		if err := json.Unmarshal(raw, &gu); err != nil {
+			return nil, fmt.Errorf("failed to parse upload: %w", err)
+		}
 		uploads = append(uploads, uploadFromGenerated(gu))
 	}
 	return uploads, nil

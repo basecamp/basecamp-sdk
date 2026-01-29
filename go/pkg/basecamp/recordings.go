@@ -2,6 +2,7 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -47,6 +48,9 @@ type Recording struct {
 	Creator          *Person   `json:"creator,omitempty"`
 }
 
+// DefaultRecordingLimit is the default number of recordings to return when no limit is specified.
+const DefaultRecordingLimit = 100
+
 // RecordingsListOptions specifies options for listing recordings.
 type RecordingsListOptions struct {
 	// Bucket filters by project IDs (comma-separated or slice).
@@ -64,6 +68,15 @@ type RecordingsListOptions struct {
 	// Direction specifies the sort direction: "desc" or "asc".
 	// Defaults to "desc".
 	Direction string
+
+	// Limit is the maximum number of recordings to return.
+	// If 0, uses DefaultRecordingLimit (100). Use -1 for unlimited.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
 }
 
 // SetClientVisibilityRequest specifies the parameters for setting client visibility.
@@ -85,6 +98,12 @@ func NewRecordingsService(client *AccountClient) *RecordingsService {
 // List returns all recordings of a given type across projects.
 // recordingType is required and specifies what type of recordings to list.
 // Use the RecordingType constants (e.g., RecordingTypeTodo, RecordingTypeMessage).
+//
+// By default, returns up to 100 recordings. Use Limit: -1 for unlimited.
+//
+// Pagination options:
+//   - Limit: maximum number of recordings to return (0 = 100, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
 func (s *RecordingsService) List(ctx context.Context, recordingType RecordingType, opts *RecordingsListOptions) (result []Recording, err error) {
 	op := OperationInfo{
 		Service: "Recordings", Operation: "List",
@@ -104,14 +123,13 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		return nil, err
 	}
 
-	typeStr := string(recordingType)
-	params := &generated.ListRecordingsParams{
-		Type: typeStr,
-	}
-
-	if opts != nil {
+	// Handle single page fetch
+	if opts != nil && opts.Page > 0 {
+		typeStr := string(recordingType)
+		params := &generated.ListRecordingsParams{
+			Type: typeStr,
+		}
 		if len(opts.Bucket) > 0 {
-			// Convert []int64 to comma-separated string
 			bucketStrs := make([]string, len(opts.Bucket))
 			for i, b := range opts.Bucket {
 				bucketStrs[i] = fmt.Sprintf("%d", b)
@@ -127,21 +145,66 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		if opts.Direction != "" {
 			params.Direction = opts.Direction
 		}
+
+		resp, err := s.client.parent.gen.ListRecordingsWithResponse(ctx, s.client.accountID, params)
+		if err != nil {
+			return nil, err
+		}
+		if err = checkResponse(resp.HTTPResponse); err != nil {
+			return nil, err
+		}
+		if resp.JSON200 == nil {
+			return nil, nil
+		}
+		recordings := make([]Recording, 0, len(*resp.JSON200))
+		for _, gr := range *resp.JSON200 {
+			recordings = append(recordings, recordingFromGenerated(gr))
+		}
+		return recordings, nil
 	}
 
-	resp, err := s.client.parent.gen.ListRecordingsWithResponse(ctx, s.client.accountID, params)
+	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
+	limit := DefaultRecordingLimit
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Build path with query parameters
+	path := fmt.Sprintf("/projects/recordings.json?type=%s", recordingType)
+	if opts != nil {
+		if len(opts.Bucket) > 0 {
+			bucketStrs := make([]string, len(opts.Bucket))
+			for i, b := range opts.Bucket {
+				bucketStrs[i] = fmt.Sprintf("%d", b)
+			}
+			path += "&bucket=" + strings.Join(bucketStrs, ",")
+		}
+		if opts.Status != "" {
+			path += "&status=" + opts.Status
+		}
+		if opts.Sort != "" {
+			path += "&sort=" + opts.Sort
+		}
+		if opts.Direction != "" {
+			path += "&direction=" + opts.Direction
+		}
+	}
+
+	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
 
-	recordings := make([]Recording, 0, len(*resp.JSON200))
-	for _, gr := range *resp.JSON200 {
+	recordings := make([]Recording, 0, len(rawResults))
+	for _, raw := range rawResults {
+		var gr generated.Recording
+		if err := json.Unmarshal(raw, &gr); err != nil {
+			return nil, fmt.Errorf("failed to parse recording: %w", err)
+		}
 		recordings = append(recordings, recordingFromGenerated(gr))
 	}
 

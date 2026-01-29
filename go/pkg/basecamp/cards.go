@@ -2,6 +2,7 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -141,6 +142,18 @@ type MoveCardRequest struct {
 	ColumnID int64 `json:"column_id"`
 }
 
+// CardListOptions specifies options for listing cards.
+type CardListOptions struct {
+	// Limit is the maximum number of cards to return.
+	// If 0 (default), returns all cards. Use a positive value to cap results.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
+
 // CreateColumnRequest specifies the parameters for creating a column.
 type CreateColumnRequest struct {
 	// Title is the column title (required).
@@ -249,7 +262,13 @@ func NewCardsService(client *AccountClient) *CardsService {
 
 // List returns all cards in a column.
 // bucketID is the project ID, columnID is the column ID.
-func (s *CardsService) List(ctx context.Context, bucketID, columnID int64) (result []Card, err error) {
+//
+// By default, returns all cards (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of cards to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts *CardListOptions) (result []Card, err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "List",
 		ResourceType: "card", IsMutation: false,
@@ -264,19 +283,43 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64) (resu
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListCardsWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	// Handle single page fetch
+	if opts != nil && opts.Page > 0 {
+		resp, err := s.client.parent.gen.ListCardsWithResponse(ctx, s.client.accountID, bucketID, columnID)
+		if err != nil {
+			return nil, err
+		}
+		if err = checkResponse(resp.HTTPResponse); err != nil {
+			return nil, err
+		}
+		if resp.JSON200 == nil {
+			return nil, nil
+		}
+		cards := make([]Card, 0, len(*resp.JSON200))
+		for _, gc := range *resp.JSON200 {
+			cards = append(cards, cardFromGenerated(gc))
+		}
+		return cards, nil
+	}
+
+	// Determine limit: 0 = all (default for cards), >0 = specific limit
+	limit := 0 // default to all for cards (per-column, typically small)
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	path := fmt.Sprintf("/buckets/%d/card_tables/lists/%d/cards.json", bucketID, columnID)
+	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
 
-	cards := make([]Card, 0, len(*resp.JSON200))
-	for _, gc := range *resp.JSON200 {
+	cards := make([]Card, 0, len(rawResults))
+	for _, raw := range rawResults {
+		var gc generated.Card
+		if err := json.Unmarshal(raw, &gc); err != nil {
+			return nil, fmt.Errorf("failed to parse card: %w", err)
+		}
 		cards = append(cards, cardFromGenerated(gc))
 	}
 	return cards, nil
