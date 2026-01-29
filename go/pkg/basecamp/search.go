@@ -134,9 +134,9 @@ func (s *SearchService) Metadata(ctx context.Context) (result *SearchMetadata, e
 
 	// Convert metadata
 	metadata := &SearchMetadata{
-		Projects: make([]SearchProject, 0, len(resp.JSON200.Metadata.Projects)),
+		Projects: make([]SearchProject, 0, len(resp.JSON200.Projects)),
 	}
-	for _, gsp := range resp.JSON200.Metadata.Projects {
+	for _, gsp := range resp.JSON200.Projects {
 		metadata.Projects = append(metadata.Projects, SearchProject{
 			ID:   derefInt64(gsp.Id),
 			Name: gsp.Name,

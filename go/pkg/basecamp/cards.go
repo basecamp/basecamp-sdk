@@ -233,7 +233,7 @@ func (s *CardTablesService) Get(ctx context.Context, bucketID, cardTableID int64
 		return nil, err
 	}
 
-	cardTable := cardTableFromGenerated(resp.JSON200.CardTable)
+	cardTable := cardTableFromGenerated(*resp.JSON200)
 	return &cardTable, nil
 }
 
@@ -311,7 +311,7 @@ func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (result 
 		return nil, err
 	}
 
-	card := cardFromGenerated(resp.JSON200.Card)
+	card := cardFromGenerated(*resp.JSON200)
 	return &card, nil
 }
 
@@ -522,7 +522,7 @@ func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) 
 		return nil, err
 	}
 
-	column := cardColumnFromGenerated(resp.JSON200.Column)
+	column := cardColumnFromGenerated(*resp.JSON200)
 	return &column, nil
 }
 

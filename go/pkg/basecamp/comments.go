@@ -110,7 +110,7 @@ func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (r
 		return nil, err
 	}
 
-	comment := commentFromGenerated(resp.JSON200.Comment)
+	comment := commentFromGenerated(*resp.JSON200)
 	return &comment, nil
 }
 

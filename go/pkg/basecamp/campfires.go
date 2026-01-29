@@ -151,7 +151,7 @@ func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) 
 		return nil, err
 	}
 
-	campfire := campfireFromGenerated(resp.JSON200.Campfire)
+	campfire := campfireFromGenerated(*resp.JSON200)
 	return &campfire, nil
 }
 
@@ -219,7 +219,7 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 		return nil, err
 	}
 
-	line := campfireLineFromGenerated(resp.JSON200.Line)
+	line := campfireLineFromGenerated(*resp.JSON200)
 	return &line, nil
 }
 
@@ -355,7 +355,7 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID,
 		return nil, err
 	}
 
-	chatbot := chatbotFromGenerated(resp.JSON200.Chatbot)
+	chatbot := chatbotFromGenerated(*resp.JSON200)
 	return &chatbot, nil
 }
 

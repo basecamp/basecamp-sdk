@@ -715,9 +715,7 @@ type ForwardReply struct {
 }
 
 // GetAnswerResponseContent defines model for GetAnswerResponseContent.
-type GetAnswerResponseContent struct {
-	Answer QuestionAnswer `json:"answer,omitempty"`
-}
+type GetAnswerResponseContent = QuestionAnswer
 
 // GetAssignedTodosResponseContent defines model for GetAssignedTodosResponseContent.
 type GetAssignedTodosResponseContent struct {
@@ -727,94 +725,58 @@ type GetAssignedTodosResponseContent struct {
 }
 
 // GetCampfireLineResponseContent defines model for GetCampfireLineResponseContent.
-type GetCampfireLineResponseContent struct {
-	Line CampfireLine `json:"line,omitempty"`
-}
+type GetCampfireLineResponseContent = CampfireLine
 
 // GetCampfireResponseContent defines model for GetCampfireResponseContent.
-type GetCampfireResponseContent struct {
-	Campfire Campfire `json:"campfire,omitempty"`
-}
+type GetCampfireResponseContent = Campfire
 
 // GetCardColumnResponseContent defines model for GetCardColumnResponseContent.
-type GetCardColumnResponseContent struct {
-	Column CardColumn `json:"column,omitempty"`
-}
+type GetCardColumnResponseContent = CardColumn
 
 // GetCardResponseContent defines model for GetCardResponseContent.
-type GetCardResponseContent struct {
-	Card Card `json:"card,omitempty"`
-}
+type GetCardResponseContent = Card
 
 // GetCardTableResponseContent defines model for GetCardTableResponseContent.
-type GetCardTableResponseContent struct {
-	CardTable CardTable `json:"card_table,omitempty"`
-}
+type GetCardTableResponseContent = CardTable
 
 // GetChatbotResponseContent defines model for GetChatbotResponseContent.
-type GetChatbotResponseContent struct {
-	Chatbot Chatbot `json:"chatbot,omitempty"`
-}
+type GetChatbotResponseContent = Chatbot
 
 // GetClientApprovalResponseContent defines model for GetClientApprovalResponseContent.
-type GetClientApprovalResponseContent struct {
-	Approval ClientApproval `json:"approval,omitempty"`
-}
+type GetClientApprovalResponseContent = ClientApproval
 
 // GetClientCorrespondenceResponseContent defines model for GetClientCorrespondenceResponseContent.
-type GetClientCorrespondenceResponseContent struct {
-	Correspondence ClientCorrespondence `json:"correspondence,omitempty"`
-}
+type GetClientCorrespondenceResponseContent = ClientCorrespondence
 
 // GetClientReplyResponseContent defines model for GetClientReplyResponseContent.
-type GetClientReplyResponseContent struct {
-	Reply ClientReply `json:"reply,omitempty"`
-}
+type GetClientReplyResponseContent = ClientReply
 
 // GetCommentResponseContent defines model for GetCommentResponseContent.
-type GetCommentResponseContent struct {
-	Comment Comment `json:"comment,omitempty"`
-}
+type GetCommentResponseContent = Comment
 
 // GetDocumentResponseContent defines model for GetDocumentResponseContent.
-type GetDocumentResponseContent struct {
-	Document Document `json:"document,omitempty"`
-}
+type GetDocumentResponseContent = Document
 
 // GetForwardReplyResponseContent defines model for GetForwardReplyResponseContent.
-type GetForwardReplyResponseContent struct {
-	Reply ForwardReply `json:"reply,omitempty"`
-}
+type GetForwardReplyResponseContent = ForwardReply
 
 // GetForwardResponseContent defines model for GetForwardResponseContent.
-type GetForwardResponseContent struct {
-	Forward Forward `json:"forward,omitempty"`
-}
+type GetForwardResponseContent = Forward
 
 // GetInboxResponseContent defines model for GetInboxResponseContent.
-type GetInboxResponseContent struct {
-	Inbox Inbox `json:"inbox,omitempty"`
-}
+type GetInboxResponseContent = Inbox
 
 // GetMessageBoardResponseContent defines model for GetMessageBoardResponseContent.
-type GetMessageBoardResponseContent struct {
-	MessageBoard MessageBoard `json:"message_board,omitempty"`
-}
+type GetMessageBoardResponseContent = MessageBoard
 
 // GetMessageResponseContent defines model for GetMessageResponseContent.
-type GetMessageResponseContent struct {
-	Message Message `json:"message,omitempty"`
-}
+type GetMessageResponseContent = Message
 
 // GetMessageTypeResponseContent defines model for GetMessageTypeResponseContent.
-type GetMessageTypeResponseContent struct {
-	MessageType MessageType `json:"message_type,omitempty"`
-}
+type GetMessageTypeResponseContent = MessageType
 
 // GetMyProfileResponseContent defines model for GetMyProfileResponseContent.
-type GetMyProfileResponseContent struct {
-	Person Person `json:"person,omitempty"`
-}
+type GetMyProfileResponseContent = Person
 
 // GetOverdueTodosResponseContent defines model for GetOverdueTodosResponseContent.
 type GetOverdueTodosResponseContent struct {
@@ -831,9 +793,7 @@ type GetPersonProgressResponseContent struct {
 }
 
 // GetPersonResponseContent defines model for GetPersonResponseContent.
-type GetPersonResponseContent struct {
-	Person Person `json:"person,omitempty"`
-}
+type GetPersonResponseContent = Person
 
 // GetProgressReportResponseContent defines model for GetProgressReportResponseContent.
 type GetProgressReportResponseContent struct {
@@ -841,14 +801,10 @@ type GetProgressReportResponseContent struct {
 }
 
 // GetProjectConstructionResponseContent defines model for GetProjectConstructionResponseContent.
-type GetProjectConstructionResponseContent struct {
-	Construction ProjectConstruction `json:"construction,omitempty"`
-}
+type GetProjectConstructionResponseContent = ProjectConstruction
 
 // GetProjectResponseContent defines model for GetProjectResponseContent.
-type GetProjectResponseContent struct {
-	Project Project `json:"project,omitempty"`
-}
+type GetProjectResponseContent = Project
 
 // GetProjectTimelineResponseContent defines model for GetProjectTimelineResponseContent.
 type GetProjectTimelineResponseContent struct {
@@ -861,19 +817,13 @@ type GetProjectTimesheetResponseContent struct {
 }
 
 // GetQuestionResponseContent defines model for GetQuestionResponseContent.
-type GetQuestionResponseContent struct {
-	Question Question `json:"question,omitempty"`
-}
+type GetQuestionResponseContent = Question
 
 // GetQuestionnaireResponseContent defines model for GetQuestionnaireResponseContent.
-type GetQuestionnaireResponseContent struct {
-	Questionnaire Questionnaire `json:"questionnaire,omitempty"`
-}
+type GetQuestionnaireResponseContent = Questionnaire
 
 // GetRecordingResponseContent defines model for GetRecordingResponseContent.
-type GetRecordingResponseContent struct {
-	Recording Recording `json:"recording,omitempty"`
-}
+type GetRecordingResponseContent = Recording
 
 // GetRecordingTimesheetResponseContent defines model for GetRecordingTimesheetResponseContent.
 type GetRecordingTimesheetResponseContent struct {
@@ -881,34 +831,22 @@ type GetRecordingTimesheetResponseContent struct {
 }
 
 // GetScheduleEntryOccurrenceResponseContent defines model for GetScheduleEntryOccurrenceResponseContent.
-type GetScheduleEntryOccurrenceResponseContent struct {
-	Entry ScheduleEntry `json:"entry,omitempty"`
-}
+type GetScheduleEntryOccurrenceResponseContent = ScheduleEntry
 
 // GetScheduleEntryResponseContent defines model for GetScheduleEntryResponseContent.
-type GetScheduleEntryResponseContent struct {
-	Entry ScheduleEntry `json:"entry,omitempty"`
-}
+type GetScheduleEntryResponseContent = ScheduleEntry
 
 // GetScheduleResponseContent defines model for GetScheduleResponseContent.
-type GetScheduleResponseContent struct {
-	Schedule Schedule `json:"schedule,omitempty"`
-}
+type GetScheduleResponseContent = Schedule
 
 // GetSearchMetadataResponseContent defines model for GetSearchMetadataResponseContent.
-type GetSearchMetadataResponseContent struct {
-	Metadata SearchMetadata `json:"metadata,omitempty"`
-}
+type GetSearchMetadataResponseContent = SearchMetadata
 
 // GetSubscriptionResponseContent defines model for GetSubscriptionResponseContent.
-type GetSubscriptionResponseContent struct {
-	Subscription Subscription `json:"subscription,omitempty"`
-}
+type GetSubscriptionResponseContent = Subscription
 
 // GetTemplateResponseContent defines model for GetTemplateResponseContent.
-type GetTemplateResponseContent struct {
-	Template Template `json:"template,omitempty"`
-}
+type GetTemplateResponseContent = Template
 
 // GetTimesheetReportResponseContent defines model for GetTimesheetReportResponseContent.
 type GetTimesheetReportResponseContent struct {
@@ -916,25 +854,16 @@ type GetTimesheetReportResponseContent struct {
 }
 
 // GetTodoResponseContent defines model for GetTodoResponseContent.
-type GetTodoResponseContent struct {
-	Todo Todo `json:"todo,omitempty"`
-}
+type GetTodoResponseContent = Todo
 
-// GetTodolistOrGroupResponseContent defines model for GetTodolistOrGroupResponseContent.
-type GetTodolistOrGroupResponseContent struct {
-	// Result Union type for polymorphic todolist endpoint
-	Result TodolistOrGroup `json:"result,omitempty"`
-}
+// GetTodolistOrGroupResponseContent Union type for polymorphic todolist endpoint
+type GetTodolistOrGroupResponseContent = TodolistOrGroup
 
 // GetTodosetResponseContent defines model for GetTodosetResponseContent.
-type GetTodosetResponseContent struct {
-	Todoset Todoset `json:"todoset,omitempty"`
-}
+type GetTodosetResponseContent = Todoset
 
 // GetToolResponseContent defines model for GetToolResponseContent.
-type GetToolResponseContent struct {
-	Tool Tool `json:"tool,omitempty"`
-}
+type GetToolResponseContent = Tool
 
 // GetUpcomingScheduleResponseContent defines model for GetUpcomingScheduleResponseContent.
 type GetUpcomingScheduleResponseContent struct {
@@ -944,19 +873,13 @@ type GetUpcomingScheduleResponseContent struct {
 }
 
 // GetUploadResponseContent defines model for GetUploadResponseContent.
-type GetUploadResponseContent struct {
-	Upload Upload `json:"upload,omitempty"`
-}
+type GetUploadResponseContent = Upload
 
 // GetVaultResponseContent defines model for GetVaultResponseContent.
-type GetVaultResponseContent struct {
-	Vault Vault `json:"vault,omitempty"`
-}
+type GetVaultResponseContent = Vault
 
 // GetWebhookResponseContent defines model for GetWebhookResponseContent.
-type GetWebhookResponseContent struct {
-	Webhook Webhook `json:"webhook,omitempty"`
-}
+type GetWebhookResponseContent = Webhook
 
 // Inbox defines model for Inbox.
 type Inbox struct {

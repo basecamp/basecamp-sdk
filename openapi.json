@@ -19298,12 +19298,7 @@
         }
       },
       "GetAnswerResponseContent": {
-        "type": "object",
-        "properties": {
-          "answer": {
-            "$ref": "#/components/schemas/QuestionAnswer"
-          }
-        }
+        "$ref": "#/components/schemas/QuestionAnswer"
       },
       "GetAssignedTodosResponseContent": {
         "type": "object",
@@ -19323,148 +19318,58 @@
         }
       },
       "GetCampfireLineResponseContent": {
-        "type": "object",
-        "properties": {
-          "line": {
-            "$ref": "#/components/schemas/CampfireLine"
-          }
-        }
+        "$ref": "#/components/schemas/CampfireLine"
       },
       "GetCampfireResponseContent": {
-        "type": "object",
-        "properties": {
-          "campfire": {
-            "$ref": "#/components/schemas/Campfire"
-          }
-        }
+        "$ref": "#/components/schemas/Campfire"
       },
       "GetCardColumnResponseContent": {
-        "type": "object",
-        "properties": {
-          "column": {
-            "$ref": "#/components/schemas/CardColumn"
-          }
-        }
+        "$ref": "#/components/schemas/CardColumn"
       },
       "GetCardResponseContent": {
-        "type": "object",
-        "properties": {
-          "card": {
-            "$ref": "#/components/schemas/Card"
-          }
-        }
+        "$ref": "#/components/schemas/Card"
       },
       "GetCardTableResponseContent": {
-        "type": "object",
-        "properties": {
-          "card_table": {
-            "$ref": "#/components/schemas/CardTable"
-          }
-        }
+        "$ref": "#/components/schemas/CardTable"
       },
       "GetChatbotResponseContent": {
-        "type": "object",
-        "properties": {
-          "chatbot": {
-            "$ref": "#/components/schemas/Chatbot"
-          }
-        }
+        "$ref": "#/components/schemas/Chatbot"
       },
       "GetClientApprovalResponseContent": {
-        "type": "object",
-        "properties": {
-          "approval": {
-            "$ref": "#/components/schemas/ClientApproval"
-          }
-        }
+        "$ref": "#/components/schemas/ClientApproval"
       },
       "GetClientCorrespondenceResponseContent": {
-        "type": "object",
-        "properties": {
-          "correspondence": {
-            "$ref": "#/components/schemas/ClientCorrespondence"
-          }
-        }
+        "$ref": "#/components/schemas/ClientCorrespondence"
       },
       "GetClientReplyResponseContent": {
-        "type": "object",
-        "properties": {
-          "reply": {
-            "$ref": "#/components/schemas/ClientReply"
-          }
-        }
+        "$ref": "#/components/schemas/ClientReply"
       },
       "GetCommentResponseContent": {
-        "type": "object",
-        "properties": {
-          "comment": {
-            "$ref": "#/components/schemas/Comment"
-          }
-        }
+        "$ref": "#/components/schemas/Comment"
       },
       "GetDocumentResponseContent": {
-        "type": "object",
-        "properties": {
-          "document": {
-            "$ref": "#/components/schemas/Document"
-          }
-        }
+        "$ref": "#/components/schemas/Document"
       },
       "GetForwardReplyResponseContent": {
-        "type": "object",
-        "properties": {
-          "reply": {
-            "$ref": "#/components/schemas/ForwardReply"
-          }
-        }
+        "$ref": "#/components/schemas/ForwardReply"
       },
       "GetForwardResponseContent": {
-        "type": "object",
-        "properties": {
-          "forward": {
-            "$ref": "#/components/schemas/Forward"
-          }
-        }
+        "$ref": "#/components/schemas/Forward"
       },
       "GetInboxResponseContent": {
-        "type": "object",
-        "properties": {
-          "inbox": {
-            "$ref": "#/components/schemas/Inbox"
-          }
-        }
+        "$ref": "#/components/schemas/Inbox"
       },
       "GetMessageBoardResponseContent": {
-        "type": "object",
-        "properties": {
-          "message_board": {
-            "$ref": "#/components/schemas/MessageBoard"
-          }
-        }
+        "$ref": "#/components/schemas/MessageBoard"
       },
       "GetMessageResponseContent": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "$ref": "#/components/schemas/Message"
-          }
-        }
+        "$ref": "#/components/schemas/Message"
       },
       "GetMessageTypeResponseContent": {
-        "type": "object",
-        "properties": {
-          "message_type": {
-            "$ref": "#/components/schemas/MessageType"
-          }
-        }
+        "$ref": "#/components/schemas/MessageType"
       },
       "GetMyProfileResponseContent": {
-        "type": "object",
-        "properties": {
-          "person": {
-            "$ref": "#/components/schemas/Person"
-          }
-        }
+        "$ref": "#/components/schemas/Person"
       },
       "GetOverdueTodosResponseContent": {
         "type": "object",
@@ -19510,12 +19415,7 @@
         }
       },
       "GetPersonResponseContent": {
-        "type": "object",
-        "properties": {
-          "person": {
-            "$ref": "#/components/schemas/Person"
-          }
-        }
+        "$ref": "#/components/schemas/Person"
       },
       "GetProgressReportResponseContent": {
         "type": "object",
@@ -19529,20 +19429,10 @@
         }
       },
       "GetProjectConstructionResponseContent": {
-        "type": "object",
-        "properties": {
-          "construction": {
-            "$ref": "#/components/schemas/ProjectConstruction"
-          }
-        }
+        "$ref": "#/components/schemas/ProjectConstruction"
       },
       "GetProjectResponseContent": {
-        "type": "object",
-        "properties": {
-          "project": {
-            "$ref": "#/components/schemas/Project"
-          }
-        }
+        "$ref": "#/components/schemas/Project"
       },
       "GetProjectTimelineResponseContent": {
         "type": "object",
@@ -19567,28 +19457,13 @@
         }
       },
       "GetQuestionResponseContent": {
-        "type": "object",
-        "properties": {
-          "question": {
-            "$ref": "#/components/schemas/Question"
-          }
-        }
+        "$ref": "#/components/schemas/Question"
       },
       "GetQuestionnaireResponseContent": {
-        "type": "object",
-        "properties": {
-          "questionnaire": {
-            "$ref": "#/components/schemas/Questionnaire"
-          }
-        }
+        "$ref": "#/components/schemas/Questionnaire"
       },
       "GetRecordingResponseContent": {
-        "type": "object",
-        "properties": {
-          "recording": {
-            "$ref": "#/components/schemas/Recording"
-          }
-        }
+        "$ref": "#/components/schemas/Recording"
       },
       "GetRecordingTimesheetResponseContent": {
         "type": "object",
@@ -19602,52 +19477,22 @@
         }
       },
       "GetScheduleEntryOccurrenceResponseContent": {
-        "type": "object",
-        "properties": {
-          "entry": {
-            "$ref": "#/components/schemas/ScheduleEntry"
-          }
-        }
+        "$ref": "#/components/schemas/ScheduleEntry"
       },
       "GetScheduleEntryResponseContent": {
-        "type": "object",
-        "properties": {
-          "entry": {
-            "$ref": "#/components/schemas/ScheduleEntry"
-          }
-        }
+        "$ref": "#/components/schemas/ScheduleEntry"
       },
       "GetScheduleResponseContent": {
-        "type": "object",
-        "properties": {
-          "schedule": {
-            "$ref": "#/components/schemas/Schedule"
-          }
-        }
+        "$ref": "#/components/schemas/Schedule"
       },
       "GetSearchMetadataResponseContent": {
-        "type": "object",
-        "properties": {
-          "metadata": {
-            "$ref": "#/components/schemas/SearchMetadata"
-          }
-        }
+        "$ref": "#/components/schemas/SearchMetadata"
       },
       "GetSubscriptionResponseContent": {
-        "type": "object",
-        "properties": {
-          "subscription": {
-            "$ref": "#/components/schemas/Subscription"
-          }
-        }
+        "$ref": "#/components/schemas/Subscription"
       },
       "GetTemplateResponseContent": {
-        "type": "object",
-        "properties": {
-          "template": {
-            "$ref": "#/components/schemas/Template"
-          }
-        }
+        "$ref": "#/components/schemas/Template"
       },
       "GetTimesheetReportResponseContent": {
         "type": "object",
@@ -19661,36 +19506,16 @@
         }
       },
       "GetTodoResponseContent": {
-        "type": "object",
-        "properties": {
-          "todo": {
-            "$ref": "#/components/schemas/Todo"
-          }
-        }
+        "$ref": "#/components/schemas/Todo"
       },
       "GetTodolistOrGroupResponseContent": {
-        "type": "object",
-        "properties": {
-          "result": {
-            "$ref": "#/components/schemas/TodolistOrGroup"
-          }
-        }
+        "$ref": "#/components/schemas/TodolistOrGroup"
       },
       "GetTodosetResponseContent": {
-        "type": "object",
-        "properties": {
-          "todoset": {
-            "$ref": "#/components/schemas/Todoset"
-          }
-        }
+        "$ref": "#/components/schemas/Todoset"
       },
       "GetToolResponseContent": {
-        "type": "object",
-        "properties": {
-          "tool": {
-            "$ref": "#/components/schemas/Tool"
-          }
-        }
+        "$ref": "#/components/schemas/Tool"
       },
       "GetUpcomingScheduleResponseContent": {
         "type": "object",
@@ -19716,28 +19541,13 @@
         }
       },
       "GetUploadResponseContent": {
-        "type": "object",
-        "properties": {
-          "upload": {
-            "$ref": "#/components/schemas/Upload"
-          }
-        }
+        "$ref": "#/components/schemas/Upload"
       },
       "GetVaultResponseContent": {
-        "type": "object",
-        "properties": {
-          "vault": {
-            "$ref": "#/components/schemas/Vault"
-          }
-        }
+        "$ref": "#/components/schemas/Vault"
       },
       "GetWebhookResponseContent": {
-        "type": "object",
-        "properties": {
-          "webhook": {
-            "$ref": "#/components/schemas/Webhook"
-          }
-        }
+        "$ref": "#/components/schemas/Webhook"
       },
       "Inbox": {
         "type": "object",

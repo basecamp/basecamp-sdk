@@ -141,7 +141,7 @@ func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) 
 	}
 
 	// The response is a union type, try to extract as Todolist
-	tl, err := resp.JSON200.Result.AsTodolistOrGroup0()
+	tl, err := resp.JSON200.AsTodolistOrGroup0()
 	if err != nil {
 		err = fmt.Errorf("response is not a todolist: %w", err)
 		return nil, err

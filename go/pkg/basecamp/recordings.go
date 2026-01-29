@@ -177,7 +177,7 @@ func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64
 		return nil, err
 	}
 
-	recording := recordingFromGenerated(resp.JSON200.Recording)
+	recording := recordingFromGenerated(*resp.JSON200)
 	return &recording, nil
 }
 

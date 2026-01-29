@@ -110,7 +110,7 @@ func (s *PeopleService) Get(ctx context.Context, personID int64) (result *Person
 		return nil, err
 	}
 
-	person := personFromGenerated(resp.JSON200.Person)
+	person := personFromGenerated(*resp.JSON200)
 	return &person, nil
 }
 
@@ -141,7 +141,7 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 		return nil, err
 	}
 
-	person := personFromGenerated(resp.JSON200.Person)
+	person := personFromGenerated(*resp.JSON200)
 	return &person, nil
 }
 

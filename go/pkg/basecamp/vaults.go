@@ -173,7 +173,7 @@ func (s *VaultsService) Get(ctx context.Context, bucketID, vaultID int64) (resul
 		return nil, err
 	}
 
-	vault := vaultFromGenerated(resp.JSON200.Vault)
+	vault := vaultFromGenerated(*resp.JSON200)
 	return &vault, nil
 }
 
@@ -337,7 +337,7 @@ func (s *DocumentsService) Get(ctx context.Context, bucketID, documentID int64) 
 		return nil, err
 	}
 
-	document := documentFromGenerated(resp.JSON200.Document)
+	document := documentFromGenerated(*resp.JSON200)
 	return &document, nil
 }
 
@@ -529,7 +529,7 @@ func (s *UploadsService) Get(ctx context.Context, bucketID, uploadID int64) (res
 		return nil, err
 	}
 
-	upload := uploadFromGenerated(resp.JSON200.Upload)
+	upload := uploadFromGenerated(*resp.JSON200)
 	return &upload, nil
 }
 

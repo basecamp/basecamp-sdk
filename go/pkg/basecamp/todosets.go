@@ -75,7 +75,7 @@ func (s *TodosetsService) Get(ctx context.Context, bucketID, todosetID int64) (r
 		return nil, err
 	}
 
-	todoset := todosetFromGenerated(resp.JSON200.Todoset)
+	todoset := todosetFromGenerated(*resp.JSON200)
 	return &todoset, nil
 }
 

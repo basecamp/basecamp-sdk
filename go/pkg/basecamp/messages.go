@@ -123,7 +123,7 @@ func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (r
 		return nil, err
 	}
 
-	message := messageFromGenerated(resp.JSON200.Message)
+	message := messageFromGenerated(*resp.JSON200)
 	return &message, nil
 }
 
