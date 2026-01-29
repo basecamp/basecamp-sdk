@@ -13,8 +13,8 @@ import (
 	"testing"
 )
 
-// paginationHandler creates a handler that serves paginated responses.
-// It returns the handler and a function to get the server URL (set after server creation).
+// paginationHandler serves paginated responses for testing.
+// Set serverURL after creating the test server.
 type paginationHandler struct {
 	pageSize   int
 	totalItems int
