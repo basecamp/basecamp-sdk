@@ -229,7 +229,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, o
 	if opts != nil {
 		limit = opts.Limit
 	}
-	path := fmt.Sprintf("/buckets/%d/people.json", bucketID)
+	path := fmt.Sprintf("/projects/%d/people.json", bucketID)
 	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
 	if err != nil {
 		return nil, err
