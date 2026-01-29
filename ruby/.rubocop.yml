@@ -1,0 +1,16 @@
+# Inherit from Rails/37signals omakase style
+inherit_gem:
+  rubocop-rails-omakase: rubocop.yml
+
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - "vendor/**/*"
+    - "lib/basecamp/generated/**/*"
+
+# Documentation not required for tests
+Style/Documentation:
+  Exclude:
+    - "test/**/*"

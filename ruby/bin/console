@@ -1,0 +1,31 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "bundler/setup"
+require "basecamp"
+
+# Load credentials from environment if available
+if ENV["BASECAMP_ACCESS_TOKEN"] && ENV["BASECAMP_ACCOUNT_ID"]
+  @client = Basecamp.client(access_token: ENV["BASECAMP_ACCESS_TOKEN"])
+  @account = @client.for_account(ENV["BASECAMP_ACCOUNT_ID"])
+  puts "Basecamp SDK Console"
+  puts "===================="
+  puts "Client available as @client"
+  puts "Account client available as @account (account: #{ENV['BASECAMP_ACCOUNT_ID']})"
+  puts ""
+  puts "Try: @account.projects.list.first(5).each { |p| puts p['name'] }"
+  puts ""
+else
+  puts "Basecamp SDK Console"
+  puts "===================="
+  puts "Set BASECAMP_ACCESS_TOKEN and BASECAMP_ACCOUNT_ID to auto-configure client"
+  puts ""
+  puts "Example:"
+  puts "  client = Basecamp.client(access_token: 'your-token')"
+  puts "  account = client.for_account('12345')"
+  puts "  account.projects.list.each { |p| puts p['name'] }"
+  puts ""
+end
+
+require "irb"
+IRB.start(__FILE__)
