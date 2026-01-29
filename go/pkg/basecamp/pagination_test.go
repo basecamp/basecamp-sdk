@@ -337,6 +337,276 @@ func TestGetAll_UsesGetAllWithLimit(t *testing.T) {
 	}
 }
 
+// FollowPagination tests
+
+// followPaginationHandler serves paginated responses for FollowPagination tests.
+// It skips page 1 (simulating that the generated client already fetched it).
+type followPaginationHandler struct {
+	pageSize   int
+	totalItems int
+	pageCount  int32
+	serverURL  string
+}
+
+func (h *followPaginationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	atomic.AddInt32(&h.pageCount, 1)
+	page := 2 // FollowPagination starts at page 2
+	if p := r.URL.Query().Get("page"); p != "" {
+		page, _ = strconv.Atoi(p)
+	}
+
+	// Calculate items for this page
+	start := (page - 1) * h.pageSize
+	remaining := h.totalItems - start
+	if remaining <= 0 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]map[string]int{})
+		return
+	}
+
+	count := h.pageSize
+	if remaining < h.pageSize {
+		count = remaining
+	}
+
+	items := make([]map[string]int, count)
+	for i := 0; i < count; i++ {
+		items[i] = map[string]int{"id": start + i + 1}
+	}
+
+	// Set next link if there are more items
+	if start+count < h.totalItems {
+		nextURL := fmt.Sprintf("%s%s?page=%d", h.serverURL, r.URL.Path, page+1)
+		w.Header().Set("Link", fmt.Sprintf(`<%s>; rel="next"`, nextURL))
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(items)
+}
+
+func (h *followPaginationHandler) getPageCount() int {
+	return int(atomic.LoadInt32(&h.pageCount))
+}
+
+// makeFirstPageResponse creates a mock HTTP response simulating the generated client's first page.
+func makeFirstPageResponse(serverURL, path string, pageSize, totalItems int) *http.Response {
+	resp := &http.Response{
+		StatusCode: 200,
+		Header:     make(http.Header),
+	}
+
+	// Set Link header if there are more pages
+	if totalItems > pageSize {
+		nextURL := fmt.Sprintf("%s%s?page=2", serverURL, path)
+		resp.Header.Set("Link", fmt.Sprintf(`<%s>; rel="next"`, nextURL))
+	}
+
+	return resp
+}
+
+// TestFollowPagination_NilResponse tests that nil httpResp returns nil.
+func TestFollowPagination_NilResponse(t *testing.T) {
+	cfg := &Config{BaseURL: "https://example.com", CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	results, err := client.FollowPagination(ctx, nil, 5, 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if results != nil {
+		t.Errorf("expected nil results, got %v", results)
+	}
+}
+
+// TestFollowPagination_AlreadyHaveEnough tests early return when firstPageCount >= limit.
+func TestFollowPagination_AlreadyHaveEnough(t *testing.T) {
+	h := &followPaginationHandler{pageSize: 5, totalItems: 100}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// First page has 5 items, limit is 5 - should not fetch more
+	resp := makeFirstPageResponse(server.URL, "/items.json", 5, 100)
+	results, err := client.FollowPagination(ctx, resp, 5, 5)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if results != nil {
+		t.Errorf("expected nil results (no more needed), got %d items", len(results))
+	}
+
+	// No additional pages should have been fetched
+	if h.getPageCount() != 0 {
+		t.Errorf("expected 0 page requests, got %d", h.getPageCount())
+	}
+}
+
+// TestFollowPagination_NoLinkHeader tests early return when no Link header present.
+func TestFollowPagination_NoLinkHeader(t *testing.T) {
+	cfg := &Config{BaseURL: "https://example.com", CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	resp := &http.Response{
+		StatusCode: 200,
+		Header:     make(http.Header), // No Link header
+	}
+
+	results, err := client.FollowPagination(ctx, resp, 5, 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if results != nil {
+		t.Errorf("expected nil results, got %v", results)
+	}
+}
+
+// TestFollowPagination_FetchesRemainingPages tests fetching additional pages.
+func TestFollowPagination_FetchesRemainingPages(t *testing.T) {
+	h := &followPaginationHandler{pageSize: 5, totalItems: 15}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// Simulate first page already fetched (5 items), request all
+	resp := makeFirstPageResponse(server.URL, "/items.json", 5, 15)
+	results, err := client.FollowPagination(ctx, resp, 5, 0) // limit=0 means fetch all
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have fetched 10 more items (pages 2 and 3)
+	if len(results) != 10 {
+		t.Errorf("expected 10 items from additional pages, got %d", len(results))
+	}
+
+	// Should have fetched 2 additional pages
+	if h.getPageCount() != 2 {
+		t.Errorf("expected 2 page requests, got %d", h.getPageCount())
+	}
+
+	// Verify item IDs are 6-15 (from pages 2 and 3)
+	for i, raw := range results {
+		var item map[string]int
+		if err := json.Unmarshal(raw, &item); err != nil {
+			t.Fatalf("failed to unmarshal item %d: %v", i, err)
+		}
+		expectedID := i + 6 // Items 6-15
+		if item["id"] != expectedID {
+			t.Errorf("item %d: expected id %d, got %d", i, expectedID, item["id"])
+		}
+	}
+}
+
+// TestFollowPagination_RespectsLimit tests that limit caps results from additional pages.
+func TestFollowPagination_RespectsLimit(t *testing.T) {
+	h := &followPaginationHandler{pageSize: 5, totalItems: 100}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// First page has 5 items, want total of 8 (need 3 more from page 2)
+	resp := makeFirstPageResponse(server.URL, "/items.json", 5, 100)
+	results, err := client.FollowPagination(ctx, resp, 5, 8)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should return exactly 3 items (8 total - 5 from first page)
+	if len(results) != 3 {
+		t.Errorf("expected 3 items, got %d", len(results))
+	}
+
+	// Should have fetched only 1 additional page
+	if h.getPageCount() != 1 {
+		t.Errorf("expected 1 page request, got %d", h.getPageCount())
+	}
+
+	// Verify item IDs are 6-8
+	for i, raw := range results {
+		var item map[string]int
+		if err := json.Unmarshal(raw, &item); err != nil {
+			t.Fatalf("failed to unmarshal item %d: %v", i, err)
+		}
+		expectedID := i + 6
+		if item["id"] != expectedID {
+			t.Errorf("item %d: expected id %d, got %d", i, expectedID, item["id"])
+		}
+	}
+}
+
+// TestFollowPagination_LimitZeroFetchesAll tests that limit=0 fetches all remaining pages.
+func TestFollowPagination_LimitZeroFetchesAll(t *testing.T) {
+	h := &followPaginationHandler{pageSize: 3, totalItems: 10}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// First page has 3 items, want all remaining (7 more across pages 2, 3, 4)
+	resp := makeFirstPageResponse(server.URL, "/items.json", 3, 10)
+	results, err := client.FollowPagination(ctx, resp, 3, 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should return 7 items (10 total - 3 from first page)
+	if len(results) != 7 {
+		t.Errorf("expected 7 items, got %d", len(results))
+	}
+
+	// Should have fetched 3 additional pages (page 2: 3 items, page 3: 3 items, page 4: 1 item)
+	if h.getPageCount() != 3 {
+		t.Errorf("expected 3 page requests, got %d", h.getPageCount())
+	}
+}
+
+// TestFollowPagination_StopsAtLastPage tests correct handling when reaching end of data.
+func TestFollowPagination_StopsAtLastPage(t *testing.T) {
+	// Total items exactly fills 2 pages
+	h := &followPaginationHandler{pageSize: 5, totalItems: 10}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// First page has 5 items, request 100 but only 5 more exist
+	resp := makeFirstPageResponse(server.URL, "/items.json", 5, 10)
+	results, err := client.FollowPagination(ctx, resp, 5, 100)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should return only 5 items (all that's available after first page)
+	if len(results) != 5 {
+		t.Errorf("expected 5 items, got %d", len(results))
+	}
+
+	// Should have fetched only 1 additional page (no next link after page 2)
+	if h.getPageCount() != 1 {
+		t.Errorf("expected 1 page request, got %d", h.getPageCount())
+	}
+}
+
 // TestParseNextLink tests the Link header parser.
 func TestParseNextLink(t *testing.T) {
 	tests := []struct {
