@@ -45,8 +45,9 @@ type CommentListOptions struct {
 	// If 0, uses DefaultCommentLimit (100). Use -1 for unlimited.
 	Limit int
 
-	// Page fetches a specific page only (1-indexed).
-	// If 0 (default), fetches all pages up to Limit.
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
