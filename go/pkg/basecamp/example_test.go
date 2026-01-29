@@ -258,7 +258,7 @@ func ExamplePeopleService_List() {
 	ctx := context.Background()
 
 	// List all people in the account
-	people, err := client.ForAccount("12345").People().List(ctx)
+	people, err := client.ForAccount("12345").People().List(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

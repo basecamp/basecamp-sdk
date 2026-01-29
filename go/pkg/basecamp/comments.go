@@ -2,11 +2,15 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// DefaultCommentLimit is the default number of comments to return when no limit is specified.
+const DefaultCommentLimit = 100
 
 // Comment represents a Basecamp comment on a recording.
 type Comment struct {
@@ -35,6 +39,17 @@ type UpdateCommentRequest struct {
 	Content string `json:"content"`
 }
 
+// CommentListOptions specifies options for listing comments.
+type CommentListOptions struct {
+	// Limit is the maximum number of comments to return.
+	// If 0, uses DefaultCommentLimit (100). Use -1 for unlimited.
+	Limit int
+
+	// Page fetches a specific page only (1-indexed).
+	// If 0 (default), fetches all pages up to Limit.
+	Page int
+}
+
 // CommentsService handles comment operations.
 type CommentsService struct {
 	client *AccountClient
@@ -45,9 +60,15 @@ func NewCommentsService(client *AccountClient) *CommentsService {
 	return &CommentsService{client: client}
 }
 
-// List returns all comments on a recording.
+// List returns comments on a recording.
 // bucketID is the project ID, recordingID is the ID of the recording (todo, message, etc.).
-func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64) (result []Comment, err error) {
+//
+// By default, returns up to 100 comments. Use Limit: -1 for unlimited.
+//
+// Pagination options:
+//   - Limit: maximum number of comments to return (0 = 100, -1 = unlimited)
+//   - Page: fetch a specific page only (1-indexed, 0 = all pages)
+func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64, opts *CommentListOptions) (result []Comment, err error) {
 	op := OperationInfo{
 		Service: "Comments", Operation: "List",
 		ResourceType: "comment", IsMutation: false,
@@ -62,20 +83,48 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListCommentsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	// Handle single page fetch
+	if opts != nil && opts.Page > 0 {
+		resp, err := s.client.parent.gen.ListCommentsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+		if err != nil {
+			return nil, err
+		}
+		if err = checkResponse(resp.HTTPResponse); err != nil {
+			return nil, err
+		}
+		if resp.JSON200 == nil {
+			return nil, nil
+		}
+		comments := make([]Comment, 0, len(*resp.JSON200))
+		for _, gc := range *resp.JSON200 {
+			comments = append(comments, commentFromGenerated(gc))
+		}
+		return comments, nil
+	}
+
+	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
+	limit := DefaultCommentLimit
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	path := fmt.Sprintf("/buckets/%d/recordings/%d/comments.json", bucketID, recordingID)
+	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
 
 	// Convert generated types to our clean types
-	comments := make([]Comment, 0, len(*resp.JSON200))
-	for _, gc := range *resp.JSON200 {
+	comments := make([]Comment, 0, len(rawResults))
+	for _, raw := range rawResults {
+		var gc generated.Comment
+		if err := json.Unmarshal(raw, &gc); err != nil {
+			return nil, fmt.Errorf("failed to parse comment: %w", err)
+		}
 		comments = append(comments, commentFromGenerated(gc))
 	}
 	return comments, nil

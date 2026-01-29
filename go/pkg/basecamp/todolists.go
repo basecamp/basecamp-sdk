@@ -2,11 +2,15 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// Note: Todolists default to fetching all (no limit) since they are structural
+// indices, not high-volume content. Use Limit to cap results if needed.
 
 // Todolist represents a Basecamp todolist.
 type Todolist struct {
@@ -42,6 +46,14 @@ type TodolistListOptions struct {
 	// Status filters by status: "archived" or "trashed".
 	// Empty returns active todolists.
 	Status string
+
+	// Limit is the maximum number of todolists to return.
+	// If 0 (default), returns all todolists. Use a positive value to cap results.
+	Limit int
+
+	// Page fetches a specific page only (1-indexed).
+	// If 0 (default), fetches all pages up to Limit.
+	Page int
 }
 
 // CreateTodolistRequest specifies the parameters for creating a todolist.
@@ -70,8 +82,14 @@ func NewTodolistsService(client *AccountClient) *TodolistsService {
 	return &TodolistsService{client: client}
 }
 
-// List returns all todolists in a todoset.
+// List returns todolists in a todoset.
 // bucketID is the project ID, todosetID is the todoset ID.
+//
+// By default, returns all todolists (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of todolists to return (0 = all)
+//   - Page: fetch a specific page only (1-indexed, 0 = all pages)
 func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, opts *TodolistListOptions) (result []Todolist, err error) {
 	op := OperationInfo{
 		Service: "Todolists", Operation: "List",
@@ -87,24 +105,52 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	params := &generated.ListTodolistsParams{}
+	// Build path with query parameters
+	path := fmt.Sprintf("/buckets/%d/todosets/%d/todolists.json", bucketID, todosetID)
 	if opts != nil && opts.Status != "" {
-		params.Status = opts.Status
+		path += "?status=" + opts.Status
 	}
 
-	resp, err := s.client.parent.gen.ListTodolistsWithResponse(ctx, s.client.accountID, bucketID, todosetID, params)
+	// Handle single page fetch
+	if opts != nil && opts.Page > 0 {
+		params := &generated.ListTodolistsParams{}
+		if opts.Status != "" {
+			params.Status = opts.Status
+		}
+		resp, err := s.client.parent.gen.ListTodolistsWithResponse(ctx, s.client.accountID, bucketID, todosetID, params)
+		if err != nil {
+			return nil, err
+		}
+		if err = checkResponse(resp.HTTPResponse); err != nil {
+			return nil, err
+		}
+		if resp.JSON200 == nil {
+			return nil, nil
+		}
+		todolists := make([]Todolist, 0, len(*resp.JSON200))
+		for _, gtl := range *resp.JSON200 {
+			todolists = append(todolists, todolistFromGenerated(gtl))
+		}
+		return todolists, nil
+	}
+
+	// Determine limit: 0 = all (default for todolists), >0 = specific limit
+	limit := 0 // default to all for todolists (structural index, not high-volume)
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
 
-	todolists := make([]Todolist, 0, len(*resp.JSON200))
-	for _, gtl := range *resp.JSON200 {
+	todolists := make([]Todolist, 0, len(rawResults))
+	for _, raw := range rawResults {
+		var gtl generated.Todolist
+		if err := json.Unmarshal(raw, &gtl); err != nil {
+			return nil, fmt.Errorf("failed to parse todolist: %w", err)
+		}
 		todolists = append(todolists, todolistFromGenerated(gtl))
 	}
 

@@ -2,12 +2,16 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
+
+// DefaultTodoLimit is the default number of todos to return when no limit is specified.
+const DefaultTodoLimit = 100
 
 // Todo represents a Basecamp todo item.
 type Todo struct {
@@ -83,11 +87,20 @@ type Bucket struct {
 }
 
 // TodoListOptions specifies options for listing todos.
+// TodoListOptions specifies options for listing todos.
 type TodoListOptions struct {
 	// Status filters by completion status.
 	// "completed" returns completed todos, "pending" returns pending todos.
 	// Empty returns all todos.
 	Status string
+
+	// Limit is the maximum number of todos to return.
+	// If 0, uses DefaultTodoLimit (100). Use -1 for unlimited.
+	Limit int
+
+	// Page fetches a specific page only (1-indexed).
+	// If 0 (default), fetches all pages up to Limit.
+	Page int
 }
 
 // CreateTodoRequest specifies the parameters for creating a todo.
@@ -136,8 +149,14 @@ func NewTodosService(client *AccountClient) *TodosService {
 	return &TodosService{client: client}
 }
 
-// List returns all todos in a todolist.
+// List returns todos in a todolist.
 // bucketID is the project ID, todolistID is the todolist ID.
+//
+// By default, returns up to 100 todos. Use Limit: -1 for unlimited.
+//
+// Pagination options:
+//   - Limit: maximum number of todos to return (0 = 100, -1 = unlimited)
+//   - Page: fetch a specific page only (1-indexed, 0 = all pages)
 func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opts *TodoListOptions) (result []Todo, err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "List",
@@ -153,25 +172,56 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Only pass params when there are actual filters to avoid serializing zero values
-	var params *generated.ListTodosParams
+	// Build path with query parameters
+	path := fmt.Sprintf("/buckets/%d/todolists/%d/todos.json", bucketID, todolistID)
 	if opts != nil && opts.Status != "" {
-		params = &generated.ListTodosParams{Status: opts.Status}
+		path += "?status=" + opts.Status
 	}
 
-	resp, err := s.client.parent.gen.ListTodosWithResponse(ctx, s.client.accountID, bucketID, todolistID, params)
+	// Handle single page fetch
+	if opts != nil && opts.Page > 0 {
+		var params *generated.ListTodosParams
+		if opts.Status != "" {
+			params = &generated.ListTodosParams{Status: opts.Status}
+		}
+		resp, err := s.client.parent.gen.ListTodosWithResponse(ctx, s.client.accountID, bucketID, todolistID, params)
+		if err != nil {
+			return nil, err
+		}
+		if err = checkResponse(resp.HTTPResponse); err != nil {
+			return nil, err
+		}
+		if resp.JSON200 == nil {
+			return nil, nil
+		}
+		todos := make([]Todo, 0, len(*resp.JSON200))
+		for _, gt := range *resp.JSON200 {
+			todos = append(todos, todoFromGenerated(gt))
+		}
+		return todos, nil
+	}
+
+	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
+	limit := DefaultTodoLimit
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
 
-	todos := make([]Todo, 0, len(*resp.JSON200))
-	for _, gt := range *resp.JSON200 {
+	todos := make([]Todo, 0, len(rawResults))
+	for _, raw := range rawResults {
+		var gt generated.Todo
+		if err := json.Unmarshal(raw, &gt); err != nil {
+			return nil, fmt.Errorf("failed to parse todo: %w", err)
+		}
 		todos = append(todos, todoFromGenerated(gt))
 	}
 

@@ -259,7 +259,14 @@ func (ac *AccountClient) Delete(ctx context.Context, path string) (*Response, er
 
 // GetAll fetches all pages for an account-scoped paginated resource.
 func (ac *AccountClient) GetAll(ctx context.Context, path string) ([]json.RawMessage, error) {
-	return ac.parent.GetAll(ctx, ac.accountPath(path))
+	return ac.parent.GetAllWithLimit(ctx, ac.accountPath(path), 0)
+}
+
+// GetAllWithLimit fetches pages for an account-scoped paginated resource up to a limit.
+// If limit is 0, it fetches all pages (same as GetAll).
+// If limit > 0, it stops after collecting at least limit items.
+func (ac *AccountClient) GetAllWithLimit(ctx context.Context, path string, limit int) ([]json.RawMessage, error) {
+	return ac.parent.GetAllWithLimit(ctx, ac.accountPath(path), limit)
 }
 
 // accountPath prepends the account ID to the path.
@@ -348,6 +355,13 @@ func (c *Client) Delete(ctx context.Context, path string) (*Response, error) {
 
 // GetAll fetches all pages for a paginated resource.
 func (c *Client) GetAll(ctx context.Context, path string) ([]json.RawMessage, error) {
+	return c.GetAllWithLimit(ctx, path, 0)
+}
+
+// GetAllWithLimit fetches pages for a paginated resource up to a limit.
+// If limit is 0, it fetches all pages (same as GetAll).
+// If limit > 0, it stops after collecting at least limit items.
+func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([]json.RawMessage, error) {
 	var allResults []json.RawMessage
 	url := c.buildURL(path)
 	var page int
@@ -364,6 +378,13 @@ func (c *Client) GetAll(ctx context.Context, path string) ([]json.RawMessage, er
 			return nil, fmt.Errorf("failed to parse response: %w", err)
 		}
 		allResults = append(allResults, items...)
+
+		// Check if we've reached the limit
+		if limit > 0 && len(allResults) >= limit {
+			// Trim to exactly the limit
+			allResults = allResults[:limit]
+			break
+		}
 
 		// Check for next page
 		nextURL := parseNextLink(resp.Headers.Get("Link"))

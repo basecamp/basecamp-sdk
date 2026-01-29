@@ -2,6 +2,7 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -38,6 +39,17 @@ type UpdateProjectAccessResponse struct {
 	Revoked []Person `json:"revoked"`
 }
 
+// PeopleListOptions specifies options for listing people.
+type PeopleListOptions struct {
+	// Limit is the maximum number of people to return.
+	// If 0 (default), returns all people.
+	Limit int
+
+	// Page fetches a specific page only (1-indexed).
+	// If 0 (default), fetches all pages up to Limit.
+	Page int
+}
+
 // PeopleService handles people operations.
 type PeopleService struct {
 	client *AccountClient
@@ -49,7 +61,11 @@ func NewPeopleService(client *AccountClient) *PeopleService {
 }
 
 // List returns all people visible to the current user in the account.
-func (s *PeopleService) List(ctx context.Context) (result []Person, err error) {
+//
+// Pagination options:
+//   - Limit: maximum number of people to return (0 = all)
+//   - Page: fetch a specific page only (1-indexed, 0 = all pages)
+func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (result []Person, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "List",
 		ResourceType: "person", IsMutation: false,
@@ -63,19 +79,41 @@ func (s *PeopleService) List(ctx context.Context) (result []Person, err error) {
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListPeopleWithResponse(ctx, s.client.accountID)
+	// Handle single page fetch
+	if opts != nil && opts.Page > 0 {
+		resp, err := s.client.parent.gen.ListPeopleWithResponse(ctx, s.client.accountID)
+		if err != nil {
+			return nil, err
+		}
+		if err = checkResponse(resp.HTTPResponse); err != nil {
+			return nil, err
+		}
+		if resp.JSON200 == nil {
+			return nil, nil
+		}
+		people := make([]Person, 0, len(*resp.JSON200))
+		for _, gp := range *resp.JSON200 {
+			people = append(people, personFromGenerated(gp))
+		}
+		return people, nil
+	}
+
+	// Fetch with pagination support
+	limit := 0
+	if opts != nil {
+		limit = opts.Limit
+	}
+	rawResults, err := s.client.GetAllWithLimit(ctx, "/people.json", limit)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
 
-	people := make([]Person, 0, len(*resp.JSON200))
-	for _, gp := range *resp.JSON200 {
+	people := make([]Person, 0, len(rawResults))
+	for _, raw := range rawResults {
+		var gp generated.Person
+		if err := json.Unmarshal(raw, &gp); err != nil {
+			return nil, fmt.Errorf("failed to parse person: %w", err)
+		}
 		people = append(people, personFromGenerated(gp))
 	}
 
@@ -147,7 +185,11 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 
 // ListProjectPeople returns all active people on a project.
 // bucketID is the project ID.
-func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (result []Person, err error) {
+//
+// Pagination options:
+//   - Limit: maximum number of people to return (0 = all)
+//   - Page: fetch a specific page only (1-indexed, 0 = all pages)
+func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, opts *PeopleListOptions) (result []Person, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "ListProjectPeople",
 		ResourceType: "person", IsMutation: false,
@@ -162,19 +204,42 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, bucketID)
+	// Handle single page fetch
+	if opts != nil && opts.Page > 0 {
+		resp, err := s.client.parent.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, bucketID)
+		if err != nil {
+			return nil, err
+		}
+		if err = checkResponse(resp.HTTPResponse); err != nil {
+			return nil, err
+		}
+		if resp.JSON200 == nil {
+			return nil, nil
+		}
+		people := make([]Person, 0, len(*resp.JSON200))
+		for _, gp := range *resp.JSON200 {
+			people = append(people, personFromGenerated(gp))
+		}
+		return people, nil
+	}
+
+	// Fetch with pagination support
+	limit := 0
+	if opts != nil {
+		limit = opts.Limit
+	}
+	path := fmt.Sprintf("/buckets/%d/people.json", bucketID)
+	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
 
-	people := make([]Person, 0, len(*resp.JSON200))
-	for _, gp := range *resp.JSON200 {
+	people := make([]Person, 0, len(rawResults))
+	for _, raw := range rawResults {
+		var gp generated.Person
+		if err := json.Unmarshal(raw, &gp); err != nil {
+			return nil, fmt.Errorf("failed to parse person: %w", err)
+		}
 		people = append(people, personFromGenerated(gp))
 	}
 
