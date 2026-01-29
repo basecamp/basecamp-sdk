@@ -19,6 +19,10 @@ type ScheduleEntryListOptions struct {
 	// NOTE: The page number itself is not yet honored due to OpenAPI client
 	// limitations. Use 0 to paginate through all results up to Limit.
 	Page int
+
+	// Status filters entries by status: "active", "archived", or "trashed".
+	// If empty, returns active entries (API default).
+	Status string
 }
 
 // Schedule represents a Basecamp schedule (calendar) within a project.
@@ -177,8 +181,16 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Build params for generated client
+	var params *generated.ListScheduleEntriesParams
+	if opts != nil && opts.Status != "" {
+		params = &generated.ListScheduleEntriesParams{
+			Status: opts.Status,
+		}
+	}
+
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListScheduleEntriesWithResponse(ctx, s.client.accountID, bucketID, scheduleID, nil)
+	resp, err := s.client.parent.gen.ListScheduleEntriesWithResponse(ctx, s.client.accountID, bucketID, scheduleID, params)
 	if err != nil {
 		return nil, err
 	}
