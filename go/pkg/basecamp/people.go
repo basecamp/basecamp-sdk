@@ -80,37 +80,47 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListPeopleWithResponse(ctx, s.client.accountID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		people := make([]Person, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListPeopleWithResponse(ctx, s.client.accountID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var people []Person
+	if resp.JSON200 != nil {
 		for _, gp := range *resp.JSON200 {
 			people = append(people, personFromGenerated(gp))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return people, nil
 	}
 
-	// Fetch with pagination support
+	// Determine limit: 0 = all (default for people)
 	limit := 0
 	if opts != nil {
 		limit = opts.Limit
 	}
-	rawResults, err := s.client.GetAllWithLimit(ctx, "/people.json", limit)
+
+	// Check if we already have enough items
+	if limit > 0 && len(people) >= limit {
+		return people[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(people), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	people := make([]Person, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gp generated.Person
 		if err := json.Unmarshal(raw, &gp); err != nil {
 			return nil, fmt.Errorf("failed to parse person: %w", err)
@@ -205,38 +215,47 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, o
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, bucketID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		people := make([]Person, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, bucketID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var people []Person
+	if resp.JSON200 != nil {
 		for _, gp := range *resp.JSON200 {
 			people = append(people, personFromGenerated(gp))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return people, nil
 	}
 
-	// Fetch with pagination support
+	// Determine limit: 0 = all (default for people)
 	limit := 0
 	if opts != nil {
 		limit = opts.Limit
 	}
-	path := fmt.Sprintf("/projects/%d/people.json", bucketID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+
+	// Check if we already have enough items
+	if limit > 0 && len(people) >= limit {
+		return people[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(people), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	people := make([]Person, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gp generated.Person
 		if err := json.Unmarshal(raw, &gp); err != nil {
 			return nil, fmt.Errorf("failed to parse person: %w", err)

@@ -172,32 +172,31 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Build path with query parameters
-	path := fmt.Sprintf("/buckets/%d/todolists/%d/todos.json", bucketID, todolistID)
+	// Build params for generated client
+	var params *generated.ListTodosParams
 	if opts != nil && opts.Status != "" {
-		path += "?status=" + opts.Status
+		params = &generated.ListTodosParams{Status: opts.Status}
 	}
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		var params *generated.ListTodosParams
-		if opts.Status != "" {
-			params = &generated.ListTodosParams{Status: opts.Status}
-		}
-		resp, err := s.client.parent.gen.ListTodosWithResponse(ctx, s.client.accountID, bucketID, todolistID, params)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		todos := make([]Todo, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListTodosWithResponse(ctx, s.client.accountID, bucketID, todolistID, params)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var todos []Todo
+	if resp.JSON200 != nil {
 		for _, gt := range *resp.JSON200 {
 			todos = append(todos, todoFromGenerated(gt))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return todos, nil
 	}
 
@@ -211,13 +210,19 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 		}
 	}
 
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(todos) >= limit {
+		return todos[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(todos), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	todos := make([]Todo, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gt generated.Todo
 		if err := json.Unmarshal(raw, &gt); err != nil {
 			return nil, fmt.Errorf("failed to parse todo: %w", err)

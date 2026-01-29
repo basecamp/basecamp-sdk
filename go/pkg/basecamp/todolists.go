@@ -106,32 +106,31 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Build path with query parameters
-	path := fmt.Sprintf("/buckets/%d/todosets/%d/todolists.json", bucketID, todosetID)
+	// Build params for generated client
+	params := &generated.ListTodolistsParams{}
 	if opts != nil && opts.Status != "" {
-		path += "?status=" + opts.Status
+		params.Status = opts.Status
 	}
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		params := &generated.ListTodolistsParams{}
-		if opts.Status != "" {
-			params.Status = opts.Status
-		}
-		resp, err := s.client.parent.gen.ListTodolistsWithResponse(ctx, s.client.accountID, bucketID, todosetID, params)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		todolists := make([]Todolist, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListTodolistsWithResponse(ctx, s.client.accountID, bucketID, todosetID, params)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var todolists []Todolist
+	if resp.JSON200 != nil {
 		for _, gtl := range *resp.JSON200 {
 			todolists = append(todolists, todolistFromGenerated(gtl))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return todolists, nil
 	}
 
@@ -141,13 +140,19 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 		limit = opts.Limit
 	}
 
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(todolists) >= limit {
+		return todolists[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(todolists), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	todolists := make([]Todolist, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gtl generated.Todolist
 		if err := json.Unmarshal(raw, &gtl); err != nil {
 			return nil, fmt.Errorf("failed to parse todolist: %w", err)

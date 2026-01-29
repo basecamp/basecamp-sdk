@@ -223,22 +223,25 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListQuestionsWithResponse(ctx, s.client.accountID, bucketID, questionnaireID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		questions := make([]Question, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListQuestionsWithResponse(ctx, s.client.accountID, bucketID, questionnaireID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var questions []Question
+	if resp.JSON200 != nil {
 		for _, gq := range *resp.JSON200 {
 			questions = append(questions, questionFromGenerated(gq))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return questions, nil
 	}
 
@@ -248,14 +251,19 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 		limit = opts.Limit
 	}
 
-	path := fmt.Sprintf("/buckets/%d/questionnaires/%d/questions.json", bucketID, questionnaireID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(questions) >= limit {
+		return questions[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(questions), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	questions := make([]Question, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gq generated.Question
 		if err := json.Unmarshal(raw, &gq); err != nil {
 			return nil, fmt.Errorf("failed to parse question: %w", err)
@@ -420,22 +428,25 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListAnswersWithResponse(ctx, s.client.accountID, bucketID, questionID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		answers := make([]QuestionAnswer, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListAnswersWithResponse(ctx, s.client.accountID, bucketID, questionID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var answers []QuestionAnswer
+	if resp.JSON200 != nil {
 		for _, ga := range *resp.JSON200 {
 			answers = append(answers, questionAnswerFromGenerated(ga))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return answers, nil
 	}
 
@@ -445,14 +456,19 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 		limit = opts.Limit
 	}
 
-	path := fmt.Sprintf("/buckets/%d/questions/%d/answers.json", bucketID, questionID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(answers) >= limit {
+		return answers[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(answers), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	answers := make([]QuestionAnswer, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var ga generated.QuestionAnswer
 		if err := json.Unmarshal(raw, &ga); err != nil {
 			return nil, fmt.Errorf("failed to parse answer: %w", err)

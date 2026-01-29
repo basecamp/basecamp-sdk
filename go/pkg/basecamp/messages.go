@@ -98,22 +98,25 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opt
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListMessagesWithResponse(ctx, s.client.accountID, bucketID, boardID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		messages := make([]Message, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListMessagesWithResponse(ctx, s.client.accountID, bucketID, boardID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var messages []Message
+	if resp.JSON200 != nil {
 		for _, gm := range *resp.JSON200 {
 			messages = append(messages, messageFromGenerated(gm))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return messages, nil
 	}
 
@@ -127,20 +130,26 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opt
 		}
 	}
 
-	path := fmt.Sprintf("/buckets/%d/message_boards/%d/messages.json", bucketID, boardID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(messages) >= limit {
+		return messages[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(messages), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	messages := make([]Message, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gm generated.Message
 		if err := json.Unmarshal(raw, &gm); err != nil {
 			return nil, fmt.Errorf("failed to parse message: %w", err)
 		}
 		messages = append(messages, messageFromGenerated(gm))
 	}
+
 	return messages, nil
 }
 

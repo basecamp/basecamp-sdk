@@ -283,22 +283,25 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListCardsWithResponse(ctx, s.client.accountID, bucketID, columnID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		cards := make([]Card, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListCardsWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var cards []Card
+	if resp.JSON200 != nil {
 		for _, gc := range *resp.JSON200 {
 			cards = append(cards, cardFromGenerated(gc))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return cards, nil
 	}
 
@@ -308,20 +311,26 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts 
 		limit = opts.Limit
 	}
 
-	path := fmt.Sprintf("/buckets/%d/card_tables/lists/%d/cards.json", bucketID, columnID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(cards) >= limit {
+		return cards[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(cards), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	cards := make([]Card, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gc generated.Card
 		if err := json.Unmarshal(raw, &gc); err != nil {
 			return nil, fmt.Errorf("failed to parse card: %w", err)
 		}
 		cards = append(cards, cardFromGenerated(gc))
 	}
+
 	return cards, nil
 }
 

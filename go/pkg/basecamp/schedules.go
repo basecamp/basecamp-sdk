@@ -177,22 +177,25 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListScheduleEntriesWithResponse(ctx, s.client.accountID, bucketID, scheduleID, nil)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		entries := make([]ScheduleEntry, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListScheduleEntriesWithResponse(ctx, s.client.accountID, bucketID, scheduleID, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var entries []ScheduleEntry
+	if resp.JSON200 != nil {
 		for _, ge := range *resp.JSON200 {
 			entries = append(entries, scheduleEntryFromGenerated(ge))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return entries, nil
 	}
 
@@ -202,14 +205,19 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 		limit = opts.Limit
 	}
 
-	path := fmt.Sprintf("/buckets/%d/schedules/%d/entries.json", bucketID, scheduleID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(entries) >= limit {
+		return entries[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(entries), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	entries := make([]ScheduleEntry, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var ge generated.ScheduleEntry
 		if err := json.Unmarshal(raw, &ge); err != nil {
 			return nil, fmt.Errorf("failed to parse schedule entry: %w", err)

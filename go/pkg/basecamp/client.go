@@ -401,6 +401,67 @@ func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([
 	return allResults, nil
 }
 
+// FollowPagination fetches additional pages following Link headers from an HTTP response.
+// This is used after calling the generated client for the first page.
+// The httpResp should be from the generated client's *WithResponse method.
+// firstPageCount is the number of items already collected from the first page.
+// limit is the maximum total items to return (0 = unlimited).
+// Returns raw JSON items from subsequent pages only (first page items are handled by caller).
+func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, firstPageCount, limit int) ([]json.RawMessage, error) {
+	if httpResp == nil {
+		return nil, nil
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && firstPageCount >= limit {
+		return nil, nil
+	}
+
+	// Get next page URL from Link header
+	nextURL := parseNextLink(httpResp.Header.Get("Link"))
+	if nextURL == "" {
+		return nil, nil
+	}
+
+	var allResults []json.RawMessage
+	currentCount := firstPageCount
+	var page int
+
+	for page = 2; page <= c.httpOpts.MaxPages && nextURL != ""; page++ {
+		resp, err := c.doRequestURL(ctx, "GET", nextURL, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse response as array
+		var items []json.RawMessage
+		if err := json.Unmarshal(resp.Data, &items); err != nil {
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
+		allResults = append(allResults, items...)
+		currentCount += len(items)
+
+		// Check if we've reached the limit
+		if limit > 0 && currentCount >= limit {
+			// Trim to exactly the limit (accounting for first page)
+			excess := currentCount - limit
+			if excess > 0 && len(allResults) > excess {
+				allResults = allResults[:len(allResults)-excess]
+			}
+			break
+		}
+
+		// Get next page URL
+		nextURL = parseNextLink(resp.Headers.Get("Link"))
+	}
+
+	if page > c.httpOpts.MaxPages {
+		c.logger.Warn("pagination capped", "maxPages", c.httpOpts.MaxPages)
+	}
+
+	return allResults, nil
+}
+
 func (c *Client) doRequest(ctx context.Context, method, path string, body any) (*Response, error) {
 	url := c.buildURL(path)
 	return c.doRequestURL(ctx, method, url, body)

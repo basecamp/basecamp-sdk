@@ -123,12 +123,12 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		return nil, err
 	}
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		typeStr := string(recordingType)
-		params := &generated.ListRecordingsParams{
-			Type: typeStr,
-		}
+	// Build params for generated client
+	typeStr := string(recordingType)
+	params := &generated.ListRecordingsParams{
+		Type: typeStr,
+	}
+	if opts != nil {
 		if len(opts.Bucket) > 0 {
 			bucketStrs := make([]string, len(opts.Bucket))
 			for i, b := range opts.Bucket {
@@ -145,21 +145,27 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		if opts.Direction != "" {
 			params.Direction = opts.Direction
 		}
+	}
 
-		resp, err := s.client.parent.gen.ListRecordingsWithResponse(ctx, s.client.accountID, params)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		recordings := make([]Recording, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListRecordingsWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var recordings []Recording
+	if resp.JSON200 != nil {
 		for _, gr := range *resp.JSON200 {
 			recordings = append(recordings, recordingFromGenerated(gr))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return recordings, nil
 	}
 
@@ -173,34 +179,19 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		}
 	}
 
-	// Build path with query parameters
-	path := fmt.Sprintf("/projects/recordings.json?type=%s", recordingType)
-	if opts != nil {
-		if len(opts.Bucket) > 0 {
-			bucketStrs := make([]string, len(opts.Bucket))
-			for i, b := range opts.Bucket {
-				bucketStrs[i] = fmt.Sprintf("%d", b)
-			}
-			path += "&bucket=" + strings.Join(bucketStrs, ",")
-		}
-		if opts.Status != "" {
-			path += "&status=" + opts.Status
-		}
-		if opts.Sort != "" {
-			path += "&sort=" + opts.Sort
-		}
-		if opts.Direction != "" {
-			path += "&direction=" + opts.Direction
-		}
+	// Check if we already have enough items
+	if limit > 0 && len(recordings) >= limit {
+		return recordings[:limit], nil
 	}
 
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(recordings), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	recordings := make([]Recording, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gr generated.Recording
 		if err := json.Unmarshal(raw, &gr); err != nil {
 			return nil, fmt.Errorf("failed to parse recording: %w", err)

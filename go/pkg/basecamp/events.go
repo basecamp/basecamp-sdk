@@ -78,22 +78,25 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, o
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListEventsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		events := make([]Event, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListEventsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var events []Event
+	if resp.JSON200 != nil {
 		for _, ge := range *resp.JSON200 {
 			events = append(events, eventFromGenerated(ge))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return events, nil
 	}
 
@@ -107,14 +110,19 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, o
 		}
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/events.json", bucketID, recordingID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(events) >= limit {
+		return events[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(events), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	events := make([]Event, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var ge generated.Event
 		if err := json.Unmarshal(raw, &ge); err != nil {
 			return nil, fmt.Errorf("failed to parse event: %w", err)

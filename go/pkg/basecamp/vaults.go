@@ -237,22 +237,25 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64, opts 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListVaultsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		vaults := make([]Vault, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListVaultsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var vaults []Vault
+	if resp.JSON200 != nil {
 		for _, gv := range *resp.JSON200 {
 			vaults = append(vaults, vaultFromGenerated(gv))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return vaults, nil
 	}
 
@@ -262,20 +265,26 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64, opts 
 		limit = opts.Limit
 	}
 
-	path := fmt.Sprintf("/buckets/%d/vaults/%d/vaults.json", bucketID, vaultID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(vaults) >= limit {
+		return vaults[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(vaults), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	vaults := make([]Vault, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gv generated.Vault
 		if err := json.Unmarshal(raw, &gv); err != nil {
 			return nil, fmt.Errorf("failed to parse vault: %w", err)
 		}
 		vaults = append(vaults, vaultFromGenerated(gv))
 	}
+
 	return vaults, nil
 }
 
@@ -431,22 +440,25 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64, op
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListDocumentsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		documents := make([]Document, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListDocumentsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var documents []Document
+	if resp.JSON200 != nil {
 		for _, gd := range *resp.JSON200 {
 			documents = append(documents, documentFromGenerated(gd))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return documents, nil
 	}
 
@@ -456,20 +468,26 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64, op
 		limit = opts.Limit
 	}
 
-	path := fmt.Sprintf("/buckets/%d/vaults/%d/documents.json", bucketID, vaultID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(documents) >= limit {
+		return documents[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(documents), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	documents := make([]Document, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gd generated.Document
 		if err := json.Unmarshal(raw, &gd); err != nil {
 			return nil, fmt.Errorf("failed to parse document: %w", err)
 		}
 		documents = append(documents, documentFromGenerated(gd))
 	}
+
 	return documents, nil
 }
 
@@ -653,22 +671,25 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64, opts
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListUploadsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		uploads := make([]Upload, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListUploadsWithResponse(ctx, s.client.accountID, bucketID, vaultID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var uploads []Upload
+	if resp.JSON200 != nil {
 		for _, gu := range *resp.JSON200 {
 			uploads = append(uploads, uploadFromGenerated(gu))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return uploads, nil
 	}
 
@@ -678,20 +699,26 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64, opts
 		limit = opts.Limit
 	}
 
-	path := fmt.Sprintf("/buckets/%d/vaults/%d/uploads.json", bucketID, vaultID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(uploads) >= limit {
+		return uploads[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(uploads), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	uploads := make([]Upload, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gu generated.Upload
 		if err := json.Unmarshal(raw, &gu); err != nil {
 			return nil, fmt.Errorf("failed to parse upload: %w", err)
 		}
 		uploads = append(uploads, uploadFromGenerated(gu))
 	}
+
 	return uploads, nil
 }
 

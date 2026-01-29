@@ -151,22 +151,25 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opt
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, bucketID, inboxID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		forwards := make([]Forward, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, bucketID, inboxID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var forwards []Forward
+	if resp.JSON200 != nil {
 		for _, gf := range *resp.JSON200 {
 			forwards = append(forwards, forwardFromGenerated(gf))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return forwards, nil
 	}
 
@@ -176,14 +179,19 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opt
 		limit = opts.Limit
 	}
 
-	path := fmt.Sprintf("/buckets/%d/inboxes/%d/forwards.json", bucketID, inboxID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(forwards) >= limit {
+		return forwards[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(forwards), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	forwards := make([]Forward, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gf generated.Forward
 		if err := json.Unmarshal(raw, &gf); err != nil {
 			return nil, fmt.Errorf("failed to parse forward: %w", err)
@@ -250,22 +258,25 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListForwardRepliesWithResponse(ctx, s.client.accountID, bucketID, forwardID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		replies := make([]ForwardReply, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListForwardRepliesWithResponse(ctx, s.client.accountID, bucketID, forwardID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var replies []ForwardReply
+	if resp.JSON200 != nil {
 		for _, gr := range *resp.JSON200 {
 			replies = append(replies, forwardReplyFromGenerated(gr))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return replies, nil
 	}
 
@@ -275,14 +286,19 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 		limit = opts.Limit
 	}
 
-	path := fmt.Sprintf("/buckets/%d/inbox_forwards/%d/replies.json", bucketID, forwardID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(replies) >= limit {
+		return replies[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(replies), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	replies := make([]ForwardReply, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gr generated.ForwardReply
 		if err := json.Unmarshal(raw, &gr); err != nil {
 			return nil, fmt.Errorf("failed to parse forward reply: %w", err)

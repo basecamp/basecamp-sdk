@@ -84,22 +84,25 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64,
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Handle single page fetch
-	if opts != nil && opts.Page > 0 {
-		resp, err := s.client.parent.gen.ListCommentsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
-		if err != nil {
-			return nil, err
-		}
-		if err = checkResponse(resp.HTTPResponse); err != nil {
-			return nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil
-		}
-		comments := make([]Comment, 0, len(*resp.JSON200))
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListCommentsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	// Parse first page
+	var comments []Comment
+	if resp.JSON200 != nil {
 		for _, gc := range *resp.JSON200 {
 			comments = append(comments, commentFromGenerated(gc))
 		}
+	}
+
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
 		return comments, nil
 	}
 
@@ -113,21 +116,26 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64,
 		}
 	}
 
-	path := fmt.Sprintf("/buckets/%d/recordings/%d/comments.json", bucketID, recordingID)
-	rawResults, err := s.client.GetAllWithLimit(ctx, path, limit)
+	// Check if we already have enough items
+	if limit > 0 && len(comments) >= limit {
+		return comments[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(comments), limit)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert generated types to our clean types
-	comments := make([]Comment, 0, len(rawResults))
-	for _, raw := range rawResults {
+	// Parse additional pages
+	for _, raw := range rawMore {
 		var gc generated.Comment
 		if err := json.Unmarshal(raw, &gc); err != nil {
 			return nil, fmt.Errorf("failed to parse comment: %w", err)
 		}
 		comments = append(comments, commentFromGenerated(gc))
 	}
+
 	return comments, nil
 }
 
