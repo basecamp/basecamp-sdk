@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 )
@@ -389,15 +391,17 @@ func (h *followPaginationHandler) getPageCount() int {
 }
 
 // makeFirstPageResponse creates a mock HTTP response simulating the generated client's first page.
-func makeFirstPageResponse(serverURL, path string, pageSize, totalItems int) *http.Response {
+// The path is always /items.json for these tests.
+func makeFirstPageResponse(serverURL string, pageSize, totalItems int) *http.Response {
 	resp := &http.Response{
 		StatusCode: 200,
 		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader("[]")), // Empty array body for bodyclose linter
 	}
 
 	// Set Link header if there are more pages
 	if totalItems > pageSize {
-		nextURL := fmt.Sprintf("%s%s?page=2", serverURL, path)
+		nextURL := fmt.Sprintf("%s/items.json?page=2", serverURL)
 		resp.Header.Set("Link", fmt.Sprintf(`<%s>; rel="next"`, nextURL))
 	}
 
@@ -431,7 +435,8 @@ func TestFollowPagination_AlreadyHaveEnough(t *testing.T) {
 	ctx := context.Background()
 
 	// First page has 5 items, limit is 5 - should not fetch more
-	resp := makeFirstPageResponse(server.URL, "/items.json", 5, 100)
+	resp := makeFirstPageResponse(server.URL, 5, 100)
+	defer resp.Body.Close()
 	results, err := client.FollowPagination(ctx, resp, 5, 5)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -478,7 +483,8 @@ func TestFollowPagination_FetchesRemainingPages(t *testing.T) {
 	ctx := context.Background()
 
 	// Simulate first page already fetched (5 items), request all
-	resp := makeFirstPageResponse(server.URL, "/items.json", 5, 15)
+	resp := makeFirstPageResponse(server.URL, 5, 15)
+	defer resp.Body.Close()
 	results, err := client.FollowPagination(ctx, resp, 5, 0) // limit=0 means fetch all
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -519,7 +525,8 @@ func TestFollowPagination_RespectsLimit(t *testing.T) {
 	ctx := context.Background()
 
 	// First page has 5 items, want total of 8 (need 3 more from page 2)
-	resp := makeFirstPageResponse(server.URL, "/items.json", 5, 100)
+	resp := makeFirstPageResponse(server.URL, 5, 100)
+	defer resp.Body.Close()
 	results, err := client.FollowPagination(ctx, resp, 5, 8)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -560,7 +567,8 @@ func TestFollowPagination_LimitZeroFetchesAll(t *testing.T) {
 	ctx := context.Background()
 
 	// First page has 3 items, want all remaining (7 more across pages 2, 3, 4)
-	resp := makeFirstPageResponse(server.URL, "/items.json", 3, 10)
+	resp := makeFirstPageResponse(server.URL, 3, 10)
+	defer resp.Body.Close()
 	results, err := client.FollowPagination(ctx, resp, 3, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -590,7 +598,8 @@ func TestFollowPagination_StopsAtLastPage(t *testing.T) {
 	ctx := context.Background()
 
 	// First page has 5 items, request 100 but only 5 more exist
-	resp := makeFirstPageResponse(server.URL, "/items.json", 5, 10)
+	resp := makeFirstPageResponse(server.URL, 5, 10)
+	defer resp.Body.Close()
 	results, err := client.FollowPagination(ctx, resp, 5, 100)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
