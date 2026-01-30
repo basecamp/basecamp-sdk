@@ -2,13 +2,13 @@
 
 module Basecamp
   module Oauth
-    # OAuth 2.0 server configuration from discovery endpoint.
+    # OAuth 2 server configuration from discovery endpoint.
     #
     # @attr issuer [String] The authorization server's issuer identifier
     # @attr authorization_endpoint [String] URL of the authorization endpoint
     # @attr token_endpoint [String] URL of the token endpoint
     # @attr registration_endpoint [String, nil] URL of the dynamic client registration endpoint
-    # @attr scopes_supported [Array<String>, nil] List of OAuth 2.0 scopes supported
+    # @attr scopes_supported [Array<String>, nil] List of OAuth 2 scopes supported
     Config = Data.define(
       :issuer,
       :authorization_endpoint,
@@ -27,7 +27,7 @@ module Basecamp
       end
     end
 
-    # OAuth 2.0 access token response.
+    # OAuth 2 access token response.
     #
     # @attr access_token [String] The access token string
     # @attr token_type [String] Token type (usually "Bearer")

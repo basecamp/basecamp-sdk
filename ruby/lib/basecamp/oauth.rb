@@ -6,10 +6,10 @@ require_relative "oauth/discovery"
 require_relative "oauth/exchange"
 
 module Basecamp
-  # OAuth 2.0 module for Basecamp SDK.
+  # OAuth 2 module for Basecamp SDK.
   #
   # Provides OAuth discovery, token exchange, and token refresh functionality.
-  # Supports both standard OAuth 2.0 and Basecamp's Launchpad legacy format.
+  # Supports both standard OAuth 2 and Basecamp's Launchpad legacy format.
   #
   # @example Complete OAuth flow
   #   # 1. Discover OAuth configuration

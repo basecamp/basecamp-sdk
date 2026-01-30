@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# Error types and codes for the Basecamp SDK.
 module Basecamp
   # Error codes for API responses
   module ErrorCode

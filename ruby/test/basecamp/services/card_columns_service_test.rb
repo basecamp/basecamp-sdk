@@ -100,6 +100,6 @@ class CardColumnsServiceTest < Minitest::Test
 
     column = @account.card_columns.disable_on_hold(project_id: 100, column_id: 200)
 
-    refute column["on_hold"]
+    assert_not column["on_hold"]
   end
 end

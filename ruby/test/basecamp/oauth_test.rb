@@ -158,7 +158,7 @@ class OAuthTest < Minitest::Test
       expires_at: Time.now + 3600 # Expires in 1 hour
     )
 
-    refute token.expired?
+    assert_not token.expired?
   end
 
   def test_config_struct

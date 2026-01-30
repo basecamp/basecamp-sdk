@@ -21,38 +21,37 @@ rescue LoadError
   # Generated types not available yet
 end
 
+# Main entry point for the Basecamp SDK.
+#
+# The SDK follows a Client -> AccountClient pattern:
+# - Client: Holds shared resources (HTTP client, token provider, hooks)
+# - AccountClient: Bound to a specific account ID, provides service accessors
+#
+# @example Basic usage
+#   config = Basecamp::Config.new(base_url: "https://3.basecampapi.com")
+#   token = Basecamp::StaticTokenProvider.new(ENV["BASECAMP_TOKEN"])
+#
+#   client = Basecamp::Client.new(config: config, token_provider: token)
+#   account = client.for_account("12345")
+#
+#   # Use services (returns lazy Enumerator)
+#   projects = account.projects.list.to_a
+#
+# @example With hooks for logging
+#   class MyHooks
+#     include Basecamp::Hooks
+#
+#     def on_request_start(info)
+#       puts "Starting #{info.method} #{info.url}"
+#     end
+#
+#     def on_request_end(info, result)
+#       puts "Completed in #{result.duration}s"
+#     end
+#   end
+#
+#   client = Basecamp::Client.new(config: config, token_provider: token, hooks: MyHooks.new)
 module Basecamp
-  # Main entry point for the Basecamp SDK.
-  #
-  # The SDK follows a Client -> AccountClient pattern:
-  # - Client: Holds shared resources (HTTP client, token provider, hooks)
-  # - AccountClient: Bound to a specific account ID, provides service accessors
-  #
-  # @example Basic usage
-  #   config = Basecamp::Config.new(base_url: "https://3.basecampapi.com")
-  #   token = Basecamp::StaticTokenProvider.new(ENV["BASECAMP_TOKEN"])
-  #
-  #   client = Basecamp::Client.new(config: config, token_provider: token)
-  #   account = client.for_account("12345")
-  #
-  #   # Use services (returns lazy Enumerator)
-  #   projects = account.projects.list.to_a
-  #
-  # @example With hooks for logging
-  #   class MyHooks
-  #     include Basecamp::Hooks
-  #
-  #     def on_request_start(info)
-  #       puts "Starting #{info.method} #{info.url}"
-  #     end
-  #
-  #     def on_request_end(info, result)
-  #       puts "Completed in #{result.duration}s"
-  #     end
-  #   end
-  #
-  #   client = Basecamp::Client.new(config: config, token_provider: token, hooks: MyHooks.new)
-
   # Creates a new Basecamp client.
   #
   # This is a convenience method that creates a Client with the given options.

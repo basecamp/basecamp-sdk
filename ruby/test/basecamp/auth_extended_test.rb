@@ -31,7 +31,7 @@ class OAuthAutoRefreshTest < Minitest::Test
 
     assert result
     assert_equal "new-token", provider.access_token
-    refute provider.expired?
+    assert_not provider.expired?
   end
 
   def test_on_refresh_callback_receives_all_parameters
@@ -63,7 +63,7 @@ class OAuthAutoRefreshTest < Minitest::Test
     assert_equal "new-access", received_access
     # Implementation passes original refresh_token to callback, not the new one from response
     assert_equal "old-refresh", received_refresh
-    refute_nil received_expires
+    assert_not_nil received_expires
   end
 
   def test_refresh_preserves_refresh_token_if_not_returned
@@ -142,7 +142,7 @@ class OAuthAutoRefreshTest < Minitest::Test
     # With default 60 second buffer, this should be considered expired
     # Note: depends on implementation - if buffer is 60s, token expiring in 30s is expired
     # This tests that near-expiry is handled appropriately
-    refute_nil provider.expires_at
+    assert_not_nil provider.expires_at
   end
 end
 
@@ -167,9 +167,9 @@ class StaticTokenProviderExtendedTest < Minitest::Test
   def test_refresh_always_returns_false
     provider = Basecamp::StaticTokenProvider.new("token")
 
-    refute provider.refresh
-    refute provider.refresh
-    refute provider.refresh
+    assert_not provider.refresh
+    assert_not provider.refresh
+    assert_not provider.refresh
   end
 end
 
