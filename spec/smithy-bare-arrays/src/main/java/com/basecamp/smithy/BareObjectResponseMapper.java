@@ -2,9 +2,14 @@
  * Copyright Basecamp, LLC
  * SPDX-License-Identifier: Apache-2.0
  *
- * Transforms Get*ResponseContent schemas from wrapped objects to bare $ref.
+ * Transforms *ResponseContent schemas from wrapped objects to bare $ref.
  * This bridges the gap between Smithy's protocol constraints (which require
  * wrapped structures) and the BC3 API's actual wire format (bare objects).
+ *
+ * The BC3 API returns bare objects for all single-resource responses, whether
+ * from GET, POST (create), PUT (update), or action operations (complete, move,
+ * etc.). This mapper transforms all *ResponseContent schemas that have exactly
+ * one property with a $ref, converting them to direct references.
  */
 package com.basecamp.smithy;
 
@@ -19,28 +24,34 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * An OpenAPI mapper that transforms Get response schemas from wrapped objects
+ * An OpenAPI mapper that transforms response schemas from wrapped objects
  * to bare {@code $ref}, matching the BC3 API's actual response format.
  *
  * <p>Smithy's AWS restJson1 protocol requires outputs to be modeled as
  * wrapped structures (e.g., {@code GetProjectOutput { project: Project }})
  * because {@code @httpPayload} only supports structures, not bare references.
  *
- * <p>However, the BC3 API returns bare objects: {@code GET /projects/123.json}
- * returns a project object directly, not {@code {"project": {...}}}.
+ * <p>However, the BC3 API returns bare objects for all single-resource responses,
+ * including GET, POST (create), PUT (update), and action operations (complete,
+ * move, enable/disable, etc.).
  *
- * <p>This mapper runs after core OpenAPI generation and transforms schemas
- * matching the pattern {@code Get*ResponseContent} from:
+ * <p>This mapper runs after core OpenAPI generation and transforms ALL
+ * {@code *ResponseContent} schemas that have exactly one property with a
+ * {@code $ref}. For example:
  * <pre>{@code
  * {"type": "object", "properties": {"project": {"$ref": "#/components/schemas/Project"}}}
  * }</pre>
- * to:
+ * becomes:
  * <pre>{@code
  * {"$ref": "#/components/schemas/Project"}
  * }</pre>
  *
- * <p>Only schemas with exactly one property that is NOT an array are transformed.
- * Multi-field responses (e.g., GetAssignedTodosResponseContent) are left as-is.
+ * <p>Schemas are NOT transformed if they:
+ * <ul>
+ *   <li>Have multiple properties</li>
+ *   <li>Have a single property that is an array (handled by BareArrayResponseMapper)</li>
+ *   <li>Don't end in {@code ResponseContent}</li>
+ * </ul>
  */
 public final class BareObjectResponseMapper implements OpenApiMapper {
 
@@ -80,7 +91,7 @@ public final class BareObjectResponseMapper implements OpenApiMapper {
         }
 
         if (transformedCount > 0) {
-            LOGGER.info("Transformed " + transformedCount + " Get*ResponseContent schemas to bare $ref");
+            LOGGER.info("Transformed " + transformedCount + " *ResponseContent schemas to bare $ref");
         }
 
         // Rebuild the node with updated schemas
@@ -101,8 +112,8 @@ public final class BareObjectResponseMapper implements OpenApiMapper {
      * @return true if the schema matches the criteria for transformation
      */
     boolean shouldTransform(String name, Node schema) {
-        // Must match Get*ResponseContent pattern
-        if (!name.startsWith("Get") || !name.endsWith("ResponseContent")) {
+        // Must be a *ResponseContent schema
+        if (!name.endsWith("ResponseContent")) {
             return false;
         }
 
@@ -136,17 +147,10 @@ public final class BareObjectResponseMapper implements OpenApiMapper {
 
         ObjectNode propObj = propValue.expectObjectNode();
 
-        // If it has a $ref, it's a reference — transform it
-        if (propObj.getMember("$ref").isPresent()) {
-            return true;
-        }
-
-        // If it's type: "array", skip (handled by BareArrayResponseMapper)
-        boolean isArray = propObj.getStringMember("type")
-                .map(n -> n.getValue().equals("array"))
-                .orElse(false);
-
-        return !isArray;
+        // Only transform if the single property has a $ref to a named schema.
+        // DO NOT transform inline primitives like { type: "string" } because
+        // that would lose the property name (e.g., attachable_sgid).
+        return propObj.getMember("$ref").isPresent();
     }
 
     /**
