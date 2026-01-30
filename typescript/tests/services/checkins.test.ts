@@ -2,7 +2,7 @@
  * Tests for the CheckinsService (generated from OpenAPI spec)
  *
  * Note: Generated services are spec-conformant:
- * - No client-side validation (API validates) class
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
