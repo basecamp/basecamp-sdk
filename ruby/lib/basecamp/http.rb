@@ -86,7 +86,8 @@ module Basecamp
     def paginate(path, params: {}, &block)
       return to_enum(:paginate, path, params: params) unless block
 
-      url = build_url(path)
+      base_url = build_url(path)
+      url = base_url
       page = 0
 
       loop do
@@ -96,11 +97,25 @@ module Basecamp
         @hooks.on_paginate(url, page)
         response = get(url, params: page == 1 ? params : {})
 
-        items = JSON.parse(response.body)
+        Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
+
+        begin
+          items = JSON.parse(response.body)
+        rescue JSON::ParserError => e
+          raise Basecamp::APIError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
+        end
         items.each(&block)
 
         next_url = parse_next_link(response.headers["Link"])
         break if next_url.nil?
+
+        next_url = Security.resolve_url(url, next_url)
+
+        unless Security.same_origin?(next_url, base_url)
+          raise Basecamp::APIError.new(
+            "Pagination Link header points to different origin: #{Security.truncate(next_url)}"
+          )
+        end
 
         url = next_url
       end
@@ -116,7 +131,8 @@ module Basecamp
     def paginate_key(path, key:, params: {}, &block)
       return to_enum(:paginate_key, path, key: key, params: params) unless block
 
-      url = build_url(path)
+      base_url = build_url(path)
+      url = base_url
       page = 0
 
       loop do
@@ -126,7 +142,13 @@ module Basecamp
         @hooks.on_paginate(url, page)
         response = get(url, params: page == 1 ? params : {})
 
-        data = JSON.parse(response.body)
+        Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
+
+        begin
+          data = JSON.parse(response.body)
+        rescue JSON::ParserError => e
+          raise Basecamp::APIError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
+        end
         unless data.key?(key)
           warn "[Basecamp SDK] paginate_key: expected key '#{key}' not found in response (page #{page})"
         end
@@ -135,6 +157,14 @@ module Basecamp
 
         next_url = parse_next_link(response.headers["Link"])
         break if next_url.nil?
+
+        next_url = Security.resolve_url(url, next_url)
+
+        unless Security.same_origin?(next_url, base_url)
+          raise Basecamp::APIError.new(
+            "Pagination Link header points to different origin: #{Security.truncate(next_url)}"
+          )
+        end
 
         url = next_url
       end
@@ -301,20 +331,24 @@ module Basecamp
       when 429
         Basecamp::RateLimitError.new(retry_after: retry_after)
       when 400, 422
-        message = Basecamp.parse_error_message(body) || "Validation failed"
+        message = Security.truncate(Basecamp.parse_error_message(body) || "Validation failed")
         Basecamp::ValidationError.new(message)
       when 500
         Basecamp::APIError.new("Server error (500)", http_status: 500)
       when 502, 503, 504
         Basecamp::APIError.new("Gateway error (#{status})", http_status: status, retryable: true)
       else
-        message = Basecamp.parse_error_message(body) || "Request failed (HTTP #{status})"
+        message = Security.truncate(Basecamp.parse_error_message(body) || "Request failed (HTTP #{status})")
         Basecamp::APIError.from_status(status || 0, message)
       end
     end
 
     def build_url(path)
-      return path if path.start_with?("http://", "https://")
+      if path.start_with?("https://")
+        return path
+      elsif path.start_with?("http://")
+        raise Basecamp::UsageError.new("URL must use HTTPS: #{path}")
+      end
 
       path = "/#{path}" unless path.start_with?("/")
       "#{@config.base_url}#{path}"
@@ -383,7 +417,10 @@ module Basecamp
     # Parses the response body as JSON.
     # @return [Hash, Array]
     def json
-      @json ||= JSON.parse(@body)
+      @json ||= begin
+        Security.check_body_size!(@body, Security::MAX_RESPONSE_BODY_BYTES)
+        JSON.parse(@body)
+      end
     end
 
     # Returns whether the response was successful (2xx).
