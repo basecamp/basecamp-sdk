@@ -21,12 +21,10 @@ describe("MessageTypesService", () => {
 
   describe("list", () => {
     it("should list all message types in a project", async () => {
-      const mockTypes = {
-        message_types: [
-          { id: 1, name: "Announcement", icon: "📢", created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
-          { id: 2, name: "Question", icon: "❓", created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
-        ],
-      };
+      const mockTypes = [
+        { id: 1, name: "Announcement", icon: "📢", created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
+        { id: 2, name: "Question", icon: "❓", created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
+      ];
 
       server.use(
         http.get(`${BASE_URL}/buckets/1/categories.json`, () => {
@@ -45,7 +43,7 @@ describe("MessageTypesService", () => {
     it("should return empty array when no types exist", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/1/categories.json`, () => {
-          return HttpResponse.json({ message_types: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -57,13 +55,11 @@ describe("MessageTypesService", () => {
   describe("get", () => {
     it("should get a message type by ID", async () => {
       const mockType = {
-        message_type: {
-          id: 1,
-          name: "Announcement",
-          icon: "📢",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z",
-        },
+        id: 1,
+        name: "Announcement",
+        icon: "📢",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       };
 
       server.use(
@@ -83,13 +79,11 @@ describe("MessageTypesService", () => {
   describe("create", () => {
     it("should create a new message type", async () => {
       const mockType = {
-        message_type: {
-          id: 3,
-          name: "Update",
-          icon: "🔄",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z",
-        },
+        id: 3,
+        name: "Update",
+        icon: "🔄",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       };
 
       server.use(
@@ -134,13 +128,11 @@ describe("MessageTypesService", () => {
   describe("update", () => {
     it("should update an existing message type", async () => {
       const mockType = {
-        message_type: {
-          id: 1,
-          name: "Updated Name",
-          icon: "🎉",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-02T00:00:00Z",
-        },
+        id: 1,
+        name: "Updated Name",
+        icon: "🎉",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-02T00:00:00Z",
       };
 
       server.use(

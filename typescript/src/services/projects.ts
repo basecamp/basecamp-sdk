@@ -110,7 +110,7 @@ export class ProjectsService extends BaseService {
         })
     );
 
-    return response?.projects ?? [];
+    return response ?? [];
   }
 
   /**
@@ -141,7 +141,7 @@ export class ProjectsService extends BaseService {
         })
     );
 
-    return response.project!;
+    return response;
   }
 
   /**
@@ -180,7 +180,7 @@ export class ProjectsService extends BaseService {
         })
     );
 
-    return response.project!;
+    return response;
   }
 
   /**
@@ -237,7 +237,7 @@ export class ProjectsService extends BaseService {
         })
     );
 
-    return response.project!;
+    return response;
   }
 
   /**

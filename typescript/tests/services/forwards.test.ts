@@ -22,17 +22,15 @@ describe("ForwardsService", () => {
   describe("getInbox", () => {
     it("should get an inbox by ID", async () => {
       const mockInbox = {
-        inbox: {
-          id: 100,
-          status: "active",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z",
-          title: "Inbox",
-          type: "Inbox",
-          url: "https://3.basecampapi.com/12345/buckets/1/inboxes/100.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/inboxes/100",
-          bucket: { id: 1, name: "Test Project", type: "Project" },
-        },
+        id: 100,
+        status: "active",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+        title: "Inbox",
+        type: "Inbox",
+        url: "https://3.basecampapi.com/12345/buckets/1/inboxes/100.json",
+        app_url: "https://3.basecamp.com/12345/buckets/1/inboxes/100",
+        bucket: { id: 1, name: "Test Project", type: "Project" },
       };
 
       server.use(
@@ -51,34 +49,32 @@ describe("ForwardsService", () => {
 
   describe("list", () => {
     it("should list all forwards in an inbox", async () => {
-      const mockForwards = {
-        forwards: [
-          {
-            id: 1,
-            status: "active",
-            created_at: "2024-01-01T00:00:00Z",
-            updated_at: "2024-01-01T00:00:00Z",
-            subject: "Re: Project Update",
-            content: "<p>Email content here</p>",
-            from: "sender@example.com",
-            type: "Inbox::Forward",
-            url: "https://3.basecampapi.com/12345/buckets/1/inbox_forwards/1.json",
-            app_url: "https://3.basecamp.com/12345/buckets/1/inbox_forwards/1",
-          },
-          {
-            id: 2,
-            status: "active",
-            created_at: "2024-01-02T00:00:00Z",
-            updated_at: "2024-01-02T00:00:00Z",
-            subject: "Meeting Notes",
-            content: "<p>Another email</p>",
-            from: "other@example.com",
-            type: "Inbox::Forward",
-            url: "https://3.basecampapi.com/12345/buckets/1/inbox_forwards/2.json",
-            app_url: "https://3.basecamp.com/12345/buckets/1/inbox_forwards/2",
-          },
-        ],
-      };
+      const mockForwards = [
+        {
+          id: 1,
+          status: "active",
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+          subject: "Re: Project Update",
+          content: "<p>Email content here</p>",
+          from: "sender@example.com",
+          type: "Inbox::Forward",
+          url: "https://3.basecampapi.com/12345/buckets/1/inbox_forwards/1.json",
+          app_url: "https://3.basecamp.com/12345/buckets/1/inbox_forwards/1",
+        },
+        {
+          id: 2,
+          status: "active",
+          created_at: "2024-01-02T00:00:00Z",
+          updated_at: "2024-01-02T00:00:00Z",
+          subject: "Meeting Notes",
+          content: "<p>Another email</p>",
+          from: "other@example.com",
+          type: "Inbox::Forward",
+          url: "https://3.basecampapi.com/12345/buckets/1/inbox_forwards/2.json",
+          app_url: "https://3.basecamp.com/12345/buckets/1/inbox_forwards/2",
+        },
+      ];
 
       server.use(
         http.get(`${BASE_URL}/buckets/1/inboxes/100/forwards.json`, () => {
@@ -98,18 +94,16 @@ describe("ForwardsService", () => {
   describe("get", () => {
     it("should get a forward by ID", async () => {
       const mockForward = {
-        forward: {
-          id: 1,
-          status: "active",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z",
-          subject: "Re: Project Update",
-          content: "<p>Email content here</p>",
-          from: "sender@example.com",
-          type: "Inbox::Forward",
-          url: "https://3.basecampapi.com/12345/buckets/1/inbox_forwards/1.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/inbox_forwards/1",
-        },
+        id: 1,
+        status: "active",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+        subject: "Re: Project Update",
+        content: "<p>Email content here</p>",
+        from: "sender@example.com",
+        type: "Inbox::Forward",
+        url: "https://3.basecampapi.com/12345/buckets/1/inbox_forwards/1.json",
+        app_url: "https://3.basecamp.com/12345/buckets/1/inbox_forwards/1",
       };
 
       server.use(
@@ -128,20 +122,18 @@ describe("ForwardsService", () => {
 
   describe("listReplies", () => {
     it("should list all replies to a forward", async () => {
-      const mockReplies = {
-        replies: [
-          {
-            id: 10,
-            status: "active",
-            created_at: "2024-01-01T00:00:00Z",
-            updated_at: "2024-01-01T00:00:00Z",
-            content: "<p>Thanks for the update!</p>",
-            type: "Inbox::Reply",
-            url: "https://3.basecampapi.com/12345/buckets/1/inbox_replies/10.json",
-            app_url: "https://3.basecamp.com/12345/buckets/1/inbox_replies/10",
-          },
-        ],
-      };
+      const mockReplies = [
+        {
+          id: 10,
+          status: "active",
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+          content: "<p>Thanks for the update!</p>",
+          type: "Inbox::Reply",
+          url: "https://3.basecampapi.com/12345/buckets/1/inbox_replies/10.json",
+          app_url: "https://3.basecamp.com/12345/buckets/1/inbox_replies/10",
+        },
+      ];
 
       server.use(
         http.get(`${BASE_URL}/buckets/1/inbox_forwards/1/replies.json`, () => {
@@ -159,16 +151,14 @@ describe("ForwardsService", () => {
   describe("getReply", () => {
     it("should get a forward reply by ID", async () => {
       const mockReply = {
-        reply: {
-          id: 10,
-          status: "active",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z",
-          content: "<p>Thanks for the update!</p>",
-          type: "Inbox::Reply",
-          url: "https://3.basecampapi.com/12345/buckets/1/inbox_replies/10.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/inbox_replies/10",
-        },
+        id: 10,
+        status: "active",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+        content: "<p>Thanks for the update!</p>",
+        type: "Inbox::Reply",
+        url: "https://3.basecampapi.com/12345/buckets/1/inbox_replies/10.json",
+        app_url: "https://3.basecamp.com/12345/buckets/1/inbox_replies/10",
       };
 
       server.use(
@@ -187,16 +177,14 @@ describe("ForwardsService", () => {
   describe("createReply", () => {
     it("should create a reply to a forward", async () => {
       const mockReply = {
-        reply: {
-          id: 11,
-          status: "active",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z",
-          content: "<p>New reply content</p>",
-          type: "Inbox::Reply",
-          url: "https://3.basecampapi.com/12345/buckets/1/inbox_replies/11.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/inbox_replies/11",
-        },
+        id: 11,
+        status: "active",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+        content: "<p>New reply content</p>",
+        type: "Inbox::Reply",
+        url: "https://3.basecampapi.com/12345/buckets/1/inbox_replies/11.json",
+        app_url: "https://3.basecamp.com/12345/buckets/1/inbox_replies/11",
       };
 
       server.use(

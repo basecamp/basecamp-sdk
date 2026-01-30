@@ -21,42 +21,40 @@ describe("ClientRepliesService", () => {
 
   describe("list", () => {
     it("should list all replies for a client recording", async () => {
-      const mockReplies = {
-        replies: [
-          {
-            id: 10,
-            status: "active",
-            visible_to_clients: true,
-            created_at: "2024-01-02T00:00:00Z",
-            updated_at: "2024-01-02T00:00:00Z",
-            title: "",
-            inherits_status: true,
-            type: "Client::Reply",
-            url: "https://3.basecampapi.com/12345/buckets/1/client/replies/10.json",
-            app_url: "https://3.basecamp.com/12345/buckets/1/client/replies/10",
-            bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-            content: "<p>Thanks for the update!</p>",
-            bucket: { id: 1, name: "Test Project", type: "Project" },
-            creator: { id: 888, name: "Client User" },
-          },
-          {
-            id: 11,
-            status: "active",
-            visible_to_clients: true,
-            created_at: "2024-01-03T00:00:00Z",
-            updated_at: "2024-01-03T00:00:00Z",
-            title: "",
-            inherits_status: true,
-            type: "Client::Reply",
-            url: "https://3.basecampapi.com/12345/buckets/1/client/replies/11.json",
-            app_url: "https://3.basecamp.com/12345/buckets/1/client/replies/11",
-            bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-            content: "<p>Looking forward to the next milestone.</p>",
-            bucket: { id: 1, name: "Test Project", type: "Project" },
-            creator: { id: 888, name: "Client User" },
-          },
-        ],
-      };
+      const mockReplies = [
+        {
+          id: 10,
+          status: "active",
+          visible_to_clients: true,
+          created_at: "2024-01-02T00:00:00Z",
+          updated_at: "2024-01-02T00:00:00Z",
+          title: "",
+          inherits_status: true,
+          type: "Client::Reply",
+          url: "https://3.basecampapi.com/12345/buckets/1/client/replies/10.json",
+          app_url: "https://3.basecamp.com/12345/buckets/1/client/replies/10",
+          bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
+          content: "<p>Thanks for the update!</p>",
+          bucket: { id: 1, name: "Test Project", type: "Project" },
+          creator: { id: 888, name: "Client User" },
+        },
+        {
+          id: 11,
+          status: "active",
+          visible_to_clients: true,
+          created_at: "2024-01-03T00:00:00Z",
+          updated_at: "2024-01-03T00:00:00Z",
+          title: "",
+          inherits_status: true,
+          type: "Client::Reply",
+          url: "https://3.basecampapi.com/12345/buckets/1/client/replies/11.json",
+          app_url: "https://3.basecamp.com/12345/buckets/1/client/replies/11",
+          bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
+          content: "<p>Looking forward to the next milestone.</p>",
+          bucket: { id: 1, name: "Test Project", type: "Project" },
+          creator: { id: 888, name: "Client User" },
+        },
+      ];
 
       server.use(
         http.get(`${BASE_URL}/buckets/1/client/recordings/100/replies.json`, () => {
@@ -75,7 +73,7 @@ describe("ClientRepliesService", () => {
     it("should return empty array when no replies exist", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/1/client/recordings/100/replies.json`, () => {
-          return HttpResponse.json({ replies: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -87,29 +85,27 @@ describe("ClientRepliesService", () => {
   describe("get", () => {
     it("should get a client reply by ID", async () => {
       const mockReply = {
-        reply: {
-          id: 10,
-          status: "active",
-          visible_to_clients: true,
-          created_at: "2024-01-02T00:00:00Z",
-          updated_at: "2024-01-02T00:00:00Z",
-          title: "",
-          inherits_status: true,
-          type: "Client::Reply",
-          url: "https://3.basecampapi.com/12345/buckets/1/client/replies/10.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/client/replies/10",
-          bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-          content: "<p>Thanks for the update! This looks great.</p>",
-          parent: {
-            id: 100,
-            title: "Project Kickoff",
-            type: "Client::Correspondence",
-            url: "https://3.basecampapi.com/12345/buckets/1/client/correspondences/100.json",
-            app_url: "https://3.basecamp.com/12345/buckets/1/client/correspondences/100",
-          },
-          bucket: { id: 1, name: "Test Project", type: "Project" },
-          creator: { id: 888, name: "Client User", email_address: "client@example.com" },
+        id: 10,
+        status: "active",
+        visible_to_clients: true,
+        created_at: "2024-01-02T00:00:00Z",
+        updated_at: "2024-01-02T00:00:00Z",
+        title: "",
+        inherits_status: true,
+        type: "Client::Reply",
+        url: "https://3.basecampapi.com/12345/buckets/1/client/replies/10.json",
+        app_url: "https://3.basecamp.com/12345/buckets/1/client/replies/10",
+        bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
+        content: "<p>Thanks for the update! This looks great.</p>",
+        parent: {
+          id: 100,
+          title: "Project Kickoff",
+          type: "Client::Correspondence",
+          url: "https://3.basecampapi.com/12345/buckets/1/client/correspondences/100.json",
+          app_url: "https://3.basecamp.com/12345/buckets/1/client/correspondences/100",
         },
+        bucket: { id: 1, name: "Test Project", type: "Project" },
+        creator: { id: 888, name: "Client User", email_address: "client@example.com" },
       };
 
       server.use(

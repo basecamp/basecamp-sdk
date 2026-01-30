@@ -184,7 +184,7 @@ export class CardTablesService extends BaseService {
         })
     );
 
-    return response.card_table!;
+    return response;
   }
 }
 
@@ -224,7 +224,7 @@ export class CardsService extends BaseService {
         })
     );
 
-    return response?.cards ?? [];
+    return response ?? [];
   }
 
   /**
@@ -257,7 +257,7 @@ export class CardsService extends BaseService {
         })
     );
 
-    return response.card!;
+    return response;
   }
 
   /**
@@ -308,7 +308,7 @@ export class CardsService extends BaseService {
         })
     );
 
-    return response.card!;
+    return response;
   }
 
   /**
@@ -353,7 +353,7 @@ export class CardsService extends BaseService {
         })
     );
 
-    return response.card!;
+    return response;
   }
 
   /**
@@ -455,7 +455,7 @@ export class CardColumnsService extends BaseService {
         })
     );
 
-    return response.column!;
+    return response;
   }
 
   /**
@@ -503,7 +503,7 @@ export class CardColumnsService extends BaseService {
         })
     );
 
-    return response.column!;
+    return response;
   }
 
   /**
@@ -545,7 +545,7 @@ export class CardColumnsService extends BaseService {
         })
     );
 
-    return response.column!;
+    return response;
   }
 
   /**
@@ -621,7 +621,7 @@ export class CardColumnsService extends BaseService {
         })
     );
 
-    return response.column!;
+    return response;
   }
 
   /**
@@ -652,7 +652,7 @@ export class CardColumnsService extends BaseService {
         })
     );
 
-    return response.column!;
+    return response;
   }
 
   /**
@@ -683,7 +683,7 @@ export class CardColumnsService extends BaseService {
         })
     );
 
-    return response.column!;
+    return response;
   }
 }
 
@@ -742,7 +742,7 @@ export class CardStepsService extends BaseService {
         })
     );
 
-    return response.step!;
+    return response;
   }
 
   /**
@@ -785,7 +785,7 @@ export class CardStepsService extends BaseService {
         })
     );
 
-    return response.step!;
+    return response;
   }
 
   /**
@@ -816,7 +816,7 @@ export class CardStepsService extends BaseService {
         })
     );
 
-    return response.step!;
+    return response;
   }
 
   /**
@@ -847,7 +847,7 @@ export class CardStepsService extends BaseService {
         })
     );
 
-    return response.step!;
+    return response;
   }
 
   /**

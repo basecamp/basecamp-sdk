@@ -94,7 +94,7 @@ export class MessagesService extends BaseService {
         })
     );
 
-    return response?.messages ?? [];
+    return response ?? [];
   }
 
   /**
@@ -127,7 +127,7 @@ export class MessagesService extends BaseService {
         })
     );
 
-    return response.message!;
+    return response;
   }
 
   /**
@@ -173,7 +173,7 @@ export class MessagesService extends BaseService {
         })
     );
 
-    return response.message!;
+    return response;
   }
 
   /**
@@ -213,7 +213,7 @@ export class MessagesService extends BaseService {
         })
     );
 
-    return response.message!;
+    return response;
   }
 
   /**

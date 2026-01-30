@@ -36,7 +36,7 @@ describe("UploadsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/uploads/7001`, () => {
-          return HttpResponse.json({ upload });
+          return HttpResponse.json(upload);
         })
       );
 
@@ -73,7 +73,7 @@ describe("UploadsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, () => {
-          return HttpResponse.json({ uploads });
+          return HttpResponse.json(uploads);
         })
       );
 
@@ -87,7 +87,7 @@ describe("UploadsService", () => {
     it("should return empty array when no uploads", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, () => {
-          return HttpResponse.json({ uploads: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -109,7 +109,7 @@ describe("UploadsService", () => {
 
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, () => {
-          return HttpResponse.json({ upload: newUpload });
+          return HttpResponse.json(newUpload);
         })
       );
 
@@ -128,7 +128,7 @@ describe("UploadsService", () => {
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, async ({ request }) => {
           capturedBody = (await request.json()) as { attachable_sgid?: string; description?: string; base_name?: string };
-          return HttpResponse.json({ upload: { id: 1, title: "Test" } });
+          return HttpResponse.json({ id: 1, title: "Test" });
         })
       );
 
@@ -168,7 +168,7 @@ describe("UploadsService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/uploads/7001`, () => {
-          return HttpResponse.json({ upload: updatedUpload });
+          return HttpResponse.json(updatedUpload);
         })
       );
 
@@ -186,7 +186,7 @@ describe("UploadsService", () => {
       server.use(
         http.put(`${BASE_URL}/buckets/123/uploads/7001`, async ({ request }) => {
           capturedBody = (await request.json()) as { description?: string; base_name?: string };
-          return HttpResponse.json({ upload: { id: 7001, title: "Test" } });
+          return HttpResponse.json({ id: 7001, title: "Test" });
         })
       );
 
@@ -210,7 +210,7 @@ describe("UploadsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/uploads/7001/versions.json`, () => {
-          return HttpResponse.json({ uploads });
+          return HttpResponse.json(uploads);
         })
       );
 
@@ -222,7 +222,7 @@ describe("UploadsService", () => {
     it("should return empty array when no versions", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/123/uploads/7001/versions.json`, () => {
-          return HttpResponse.json({ uploads: [] });
+          return HttpResponse.json([]);
         })
       );
 

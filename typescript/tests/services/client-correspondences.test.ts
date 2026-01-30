@@ -21,50 +21,48 @@ describe("ClientCorrespondencesService", () => {
 
   describe("list", () => {
     it("should list all client correspondences in a project", async () => {
-      const mockCorrespondences = {
-        correspondences: [
-          {
-            id: 1,
-            status: "active",
-            visible_to_clients: true,
-            created_at: "2024-01-01T00:00:00Z",
-            updated_at: "2024-01-01T00:00:00Z",
-            title: "Project Kickoff",
-            inherits_status: true,
-            type: "Client::Correspondence",
-            url: "https://3.basecampapi.com/12345/buckets/1/client/correspondences/1.json",
-            app_url: "https://3.basecamp.com/12345/buckets/1/client/correspondences/1",
-            bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-            subscription_url: "https://3.basecampapi.com/12345/buckets/1/recordings/1/subscription.json",
-            content: "<p>Welcome to the project!</p>",
-            subject: "Project Kickoff",
-            replies_count: 3,
-            replies_url: "https://3.basecampapi.com/12345/buckets/1/client/recordings/1/replies.json",
-            bucket: { id: 1, name: "Test Project", type: "Project" },
-            creator: { id: 999, name: "Test User" },
-          },
-          {
-            id: 2,
-            status: "active",
-            visible_to_clients: true,
-            created_at: "2024-01-05T00:00:00Z",
-            updated_at: "2024-01-05T00:00:00Z",
-            title: "Weekly Update",
-            inherits_status: true,
-            type: "Client::Correspondence",
-            url: "https://3.basecampapi.com/12345/buckets/1/client/correspondences/2.json",
-            app_url: "https://3.basecamp.com/12345/buckets/1/client/correspondences/2",
-            bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-            subscription_url: "https://3.basecampapi.com/12345/buckets/1/recordings/2/subscription.json",
-            content: "<p>Here's the weekly progress update</p>",
-            subject: "Weekly Update",
-            replies_count: 1,
-            replies_url: "https://3.basecampapi.com/12345/buckets/1/client/recordings/2/replies.json",
-            bucket: { id: 1, name: "Test Project", type: "Project" },
-            creator: { id: 999, name: "Test User" },
-          },
-        ],
-      };
+      const mockCorrespondences = [
+        {
+          id: 1,
+          status: "active",
+          visible_to_clients: true,
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+          title: "Project Kickoff",
+          inherits_status: true,
+          type: "Client::Correspondence",
+          url: "https://3.basecampapi.com/12345/buckets/1/client/correspondences/1.json",
+          app_url: "https://3.basecamp.com/12345/buckets/1/client/correspondences/1",
+          bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
+          subscription_url: "https://3.basecampapi.com/12345/buckets/1/recordings/1/subscription.json",
+          content: "<p>Welcome to the project!</p>",
+          subject: "Project Kickoff",
+          replies_count: 3,
+          replies_url: "https://3.basecampapi.com/12345/buckets/1/client/recordings/1/replies.json",
+          bucket: { id: 1, name: "Test Project", type: "Project" },
+          creator: { id: 999, name: "Test User" },
+        },
+        {
+          id: 2,
+          status: "active",
+          visible_to_clients: true,
+          created_at: "2024-01-05T00:00:00Z",
+          updated_at: "2024-01-05T00:00:00Z",
+          title: "Weekly Update",
+          inherits_status: true,
+          type: "Client::Correspondence",
+          url: "https://3.basecampapi.com/12345/buckets/1/client/correspondences/2.json",
+          app_url: "https://3.basecamp.com/12345/buckets/1/client/correspondences/2",
+          bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
+          subscription_url: "https://3.basecampapi.com/12345/buckets/1/recordings/2/subscription.json",
+          content: "<p>Here's the weekly progress update</p>",
+          subject: "Weekly Update",
+          replies_count: 1,
+          replies_url: "https://3.basecampapi.com/12345/buckets/1/client/recordings/2/replies.json",
+          bucket: { id: 1, name: "Test Project", type: "Project" },
+          creator: { id: 999, name: "Test User" },
+        },
+      ];
 
       server.use(
         http.get(`${BASE_URL}/buckets/1/client/correspondences.json`, () => {
@@ -83,7 +81,7 @@ describe("ClientCorrespondencesService", () => {
     it("should return empty array when no correspondences exist", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/1/client/correspondences.json`, () => {
-          return HttpResponse.json({ correspondences: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -95,26 +93,24 @@ describe("ClientCorrespondencesService", () => {
   describe("get", () => {
     it("should get a client correspondence by ID", async () => {
       const mockCorrespondence = {
-        correspondence: {
-          id: 1,
-          status: "active",
-          visible_to_clients: true,
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z",
-          title: "Project Kickoff",
-          inherits_status: true,
-          type: "Client::Correspondence",
-          url: "https://3.basecampapi.com/12345/buckets/1/client/correspondences/1.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/client/correspondences/1",
-          bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-          subscription_url: "https://3.basecampapi.com/12345/buckets/1/recordings/1/subscription.json",
-          content: "<p>Welcome to the project! We're excited to get started.</p>",
-          subject: "Project Kickoff",
-          replies_count: 3,
-          replies_url: "https://3.basecampapi.com/12345/buckets/1/client/recordings/1/replies.json",
-          bucket: { id: 1, name: "Test Project", type: "Project" },
-          creator: { id: 999, name: "Test User", email_address: "test@example.com" },
-        },
+        id: 1,
+        status: "active",
+        visible_to_clients: true,
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+        title: "Project Kickoff",
+        inherits_status: true,
+        type: "Client::Correspondence",
+        url: "https://3.basecampapi.com/12345/buckets/1/client/correspondences/1.json",
+        app_url: "https://3.basecamp.com/12345/buckets/1/client/correspondences/1",
+        bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
+        subscription_url: "https://3.basecampapi.com/12345/buckets/1/recordings/1/subscription.json",
+        content: "<p>Welcome to the project! We're excited to get started.</p>",
+        subject: "Project Kickoff",
+        replies_count: 3,
+        replies_url: "https://3.basecampapi.com/12345/buckets/1/client/recordings/1/replies.json",
+        bucket: { id: 1, name: "Test Project", type: "Project" },
+        creator: { id: 999, name: "Test User", email_address: "test@example.com" },
       };
 
       server.use(

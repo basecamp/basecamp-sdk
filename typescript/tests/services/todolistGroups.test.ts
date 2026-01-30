@@ -33,7 +33,7 @@ describe("TodolistGroupsService", () => {
         http.get(
           `${BASE_URL}/buckets/${projectId}/todolists/${todolistId}/groups.json`,
           () => {
-            return HttpResponse.json({ groups: mockGroups });
+            return HttpResponse.json(mockGroups);
           }
         )
       );
@@ -52,7 +52,7 @@ describe("TodolistGroupsService", () => {
         http.get(
           `${BASE_URL}/buckets/${projectId}/todolists/${todolistId}/groups.json`,
           () => {
-            return HttpResponse.json({ groups: [] });
+            return HttpResponse.json([]);
           }
         )
       );
@@ -123,7 +123,7 @@ describe("TodolistGroupsService", () => {
           async ({ request }) => {
             const body = await request.json() as { name: string };
             expect(body.name).toBe("New Phase");
-            return HttpResponse.json({ group: mockGroup });
+            return HttpResponse.json(mockGroup);
           }
         )
       );

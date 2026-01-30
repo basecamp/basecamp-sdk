@@ -107,7 +107,7 @@ export class ClientRepliesService extends BaseService {
         })
     );
 
-    return (response?.replies ?? []) as unknown as ClientReply[];
+    return (response ?? []) as ClientReply[];
   }
 
   /**
@@ -141,6 +141,6 @@ export class ClientRepliesService extends BaseService {
         })
     );
 
-    return response.reply as unknown as ClientReply;
+    return response as unknown as ClientReply;
   }
 }

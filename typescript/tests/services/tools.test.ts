@@ -35,7 +35,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/${projectId}/dock/tools/${toolId}`, () => {
-          return HttpResponse.json({ tool: mockTool });
+          return HttpResponse.json(mockTool);
         })
       );
 
@@ -74,7 +74,7 @@ describe("ToolsService", () => {
         http.post(
           `${BASE_URL}/buckets/${projectId}/dock/tools/${sourceToolId}/clone.json`,
           () => {
-            return HttpResponse.json({ tool: mockTool });
+            return HttpResponse.json(mockTool);
           }
         )
       );
@@ -102,7 +102,7 @@ describe("ToolsService", () => {
           async ({ request }) => {
             const body = await request.json() as { title: string };
             expect(body.title).toBe("Sprint Backlog");
-            return HttpResponse.json({ tool: mockTool });
+            return HttpResponse.json(mockTool);
           }
         )
       );

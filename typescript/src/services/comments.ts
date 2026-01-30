@@ -77,7 +77,7 @@ export class CommentsService extends BaseService {
         })
     );
 
-    return response?.comments ?? [];
+    return response ?? [];
   }
 
   /**
@@ -110,7 +110,7 @@ export class CommentsService extends BaseService {
         })
     );
 
-    return response.comment!;
+    return response;
   }
 
   /**
@@ -156,7 +156,7 @@ export class CommentsService extends BaseService {
         })
     );
 
-    return response.comment!;
+    return response;
   }
 
   /**
@@ -202,7 +202,7 @@ export class CommentsService extends BaseService {
         })
     );
 
-    return response.comment!;
+    return response;
   }
 
   /**

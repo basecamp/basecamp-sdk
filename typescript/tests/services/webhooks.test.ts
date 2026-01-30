@@ -21,30 +21,28 @@ describe("WebhooksService", () => {
 
   describe("list", () => {
     it("should list all webhooks for a project", async () => {
-      const mockWebhooks = {
-        webhooks: [
-          {
-            id: 1,
-            active: true,
-            created_at: "2024-01-01T00:00:00Z",
-            updated_at: "2024-01-01T00:00:00Z",
-            payload_url: "https://example.com/webhook1",
-            types: ["Todo", "Comment"],
-            url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
-            app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
-          },
-          {
-            id: 2,
-            active: false,
-            created_at: "2024-01-02T00:00:00Z",
-            updated_at: "2024-01-02T00:00:00Z",
-            payload_url: "https://example.com/webhook2",
-            types: ["Message"],
-            url: "https://3.basecampapi.com/12345/buckets/1/webhooks/2.json",
-            app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/2",
-          },
-        ],
-      };
+      const mockWebhooks = [
+        {
+          id: 1,
+          active: true,
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+          payload_url: "https://example.com/webhook1",
+          types: ["Todo", "Comment"],
+          url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
+          app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
+        },
+        {
+          id: 2,
+          active: false,
+          created_at: "2024-01-02T00:00:00Z",
+          updated_at: "2024-01-02T00:00:00Z",
+          payload_url: "https://example.com/webhook2",
+          types: ["Message"],
+          url: "https://3.basecampapi.com/12345/buckets/1/webhooks/2.json",
+          app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/2",
+        },
+      ];
 
       server.use(
         http.get(`${BASE_URL}/buckets/1/webhooks.json`, () => {
@@ -64,7 +62,7 @@ describe("WebhooksService", () => {
     it("should return empty array when no webhooks exist", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/1/webhooks.json`, () => {
-          return HttpResponse.json({ webhooks: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -76,16 +74,14 @@ describe("WebhooksService", () => {
   describe("get", () => {
     it("should get a webhook by ID", async () => {
       const mockWebhook = {
-        webhook: {
-          id: 1,
-          active: true,
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z",
-          payload_url: "https://example.com/webhook1",
-          types: ["Todo", "Comment", "Todolist"],
-          url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
-        },
+        id: 1,
+        active: true,
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+        payload_url: "https://example.com/webhook1",
+        types: ["Todo", "Comment", "Todolist"],
+        url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
+        app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
       };
 
       server.use(
@@ -122,21 +118,23 @@ describe("WebhooksService", () => {
   describe("create", () => {
     it("should create a new webhook", async () => {
       const mockWebhook = {
-        webhook: {
-          id: 3,
-          active: true,
-          created_at: "2024-01-03T00:00:00Z",
-          updated_at: "2024-01-03T00:00:00Z",
-          payload_url: "https://example.com/new-webhook",
-          types: ["Todo", "Message"],
-          url: "https://3.basecampapi.com/12345/buckets/1/webhooks/3.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/3",
-        },
+        id: 3,
+        active: true,
+        created_at: "2024-01-03T00:00:00Z",
+        updated_at: "2024-01-03T00:00:00Z",
+        payload_url: "https://example.com/new-webhook",
+        types: ["Todo", "Message"],
+        url: "https://3.basecampapi.com/12345/buckets/1/webhooks/3.json",
+        app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/3",
       };
 
       server.use(
         http.post(`${BASE_URL}/buckets/1/webhooks.json`, async ({ request }) => {
-          const body = await request.json() as { payload_url: string; types: string[]; active: boolean };
+          const body = (await request.json()) as {
+            payload_url: string;
+            types: string[];
+            active: boolean;
+          };
           expect(body.payload_url).toBe("https://example.com/new-webhook");
           expect(body.types).toEqual(["Todo", "Message"]);
           expect(body.active).toBe(true);
@@ -166,7 +164,10 @@ describe("WebhooksService", () => {
 
     it("should throw validation error when types is empty", async () => {
       try {
-        await client.webhooks.create(1, { payloadUrl: "https://example.com/webhook", types: [] });
+        await client.webhooks.create(1, {
+          payloadUrl: "https://example.com/webhook",
+          types: [],
+        });
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).toBeInstanceOf(BasecampError);
@@ -178,16 +179,14 @@ describe("WebhooksService", () => {
   describe("update", () => {
     it("should update an existing webhook", async () => {
       const mockWebhook = {
-        webhook: {
-          id: 1,
-          active: false,
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-04T00:00:00Z",
-          payload_url: "https://example.com/webhook1",
-          types: ["Todo", "Comment"],
-          url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
-        },
+        id: 1,
+        active: false,
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-04T00:00:00Z",
+        payload_url: "https://example.com/webhook1",
+        types: ["Todo", "Comment"],
+        url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
+        app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
       };
 
       server.use(
@@ -205,21 +204,22 @@ describe("WebhooksService", () => {
 
     it("should update webhook URL and types", async () => {
       const mockWebhook = {
-        webhook: {
-          id: 1,
-          active: true,
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-04T00:00:00Z",
-          payload_url: "https://new-example.com/webhook",
-          types: ["Message", "Document"],
-          url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
-        },
+        id: 1,
+        active: true,
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-04T00:00:00Z",
+        payload_url: "https://new-example.com/webhook",
+        types: ["Message", "Document"],
+        url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
+        app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
       };
 
       server.use(
         http.put(`${BASE_URL}/buckets/1/webhooks/1`, async ({ request }) => {
-          const body = await request.json() as { payload_url: string; types: string[] };
+          const body = (await request.json()) as {
+            payload_url: string;
+            types: string[];
+          };
           expect(body.payload_url).toBe("https://new-example.com/webhook");
           expect(body.types).toEqual(["Message", "Document"]);
           return HttpResponse.json(mockWebhook);

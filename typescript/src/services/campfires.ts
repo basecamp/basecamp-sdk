@@ -90,7 +90,7 @@ export class CampfiresService extends BaseService {
       () => this.client.GET("/chats.json", {})
     );
 
-    return response?.campfires ?? [];
+    return response ?? [];
   }
 
   /**
@@ -123,7 +123,7 @@ export class CampfiresService extends BaseService {
         })
     );
 
-    return response.campfire!;
+    return response;
   }
 
   /**
@@ -154,7 +154,7 @@ export class CampfiresService extends BaseService {
         })
     );
 
-    return response?.lines ?? [];
+    return response ?? [];
   }
 
   /**
@@ -188,7 +188,7 @@ export class CampfiresService extends BaseService {
         })
     );
 
-    return response.line!;
+    return response;
   }
 
   /**
@@ -226,7 +226,7 @@ export class CampfiresService extends BaseService {
         })
     );
 
-    return response.line!;
+    return response;
   }
 
   /**
@@ -288,7 +288,7 @@ export class CampfiresService extends BaseService {
         })
     );
 
-    return response?.chatbots ?? [];
+    return response ?? [];
   }
 
   /**
@@ -322,7 +322,7 @@ export class CampfiresService extends BaseService {
         })
     );
 
-    return response.chatbot!;
+    return response;
   }
 
   /**
@@ -372,7 +372,7 @@ export class CampfiresService extends BaseService {
         })
     );
 
-    return response.chatbot!;
+    return response;
   }
 
   /**
@@ -423,7 +423,7 @@ export class CampfiresService extends BaseService {
         })
     );
 
-    return response.chatbot!;
+    return response;
   }
 
   /**

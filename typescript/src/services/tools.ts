@@ -63,7 +63,7 @@ export class ToolsService extends BaseService {
         })
     );
 
-    return response.tool!;
+    return response;
   }
 
   /**
@@ -96,7 +96,7 @@ export class ToolsService extends BaseService {
         })
     );
 
-    return response.tool!;
+    return response;
   }
 
   /**
@@ -136,7 +136,7 @@ export class ToolsService extends BaseService {
         })
     );
 
-    return response.tool!;
+    return response;
   }
 
   /**

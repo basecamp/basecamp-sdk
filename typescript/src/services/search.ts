@@ -94,7 +94,7 @@ export class SearchService extends BaseService {
         })
     );
 
-    return response?.results ?? [];
+    return response ?? [];
   }
 
   /**
@@ -120,6 +120,6 @@ export class SearchService extends BaseService {
       () => this.client.GET("/searches/metadata.json")
     );
 
-    return response?.metadata ?? { projects: [] };
+    return response ?? { projects: [] };
   }
 }

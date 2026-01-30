@@ -36,7 +36,7 @@ describe("VaultsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001`, () => {
-          return HttpResponse.json({ vault });
+          return HttpResponse.json(vault);
         })
       );
 
@@ -73,7 +73,7 @@ describe("VaultsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, () => {
-          return HttpResponse.json({ vaults });
+          return HttpResponse.json(vaults);
         })
       );
 
@@ -87,7 +87,7 @@ describe("VaultsService", () => {
     it("should return empty array when no child vaults", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, () => {
-          return HttpResponse.json({ vaults: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -107,7 +107,7 @@ describe("VaultsService", () => {
 
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, () => {
-          return HttpResponse.json({ vault: newVault });
+          return HttpResponse.json(newVault);
         })
       );
 
@@ -123,7 +123,7 @@ describe("VaultsService", () => {
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string };
-          return HttpResponse.json({ vault: { id: 1, title: "Test" } });
+          return HttpResponse.json({ id: 1, title: "Test" });
         })
       );
 
@@ -154,7 +154,7 @@ describe("VaultsService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/vaults/1001`, () => {
-          return HttpResponse.json({ vault: updatedVault });
+          return HttpResponse.json(updatedVault);
         })
       );
 
@@ -169,7 +169,7 @@ describe("VaultsService", () => {
       server.use(
         http.put(`${BASE_URL}/buckets/123/vaults/1001`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string };
-          return HttpResponse.json({ vault: { id: 1001, title: "Updated" } });
+          return HttpResponse.json({ id: 1001, title: "Updated" });
         })
       );
 

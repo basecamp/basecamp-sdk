@@ -91,7 +91,7 @@ export class VaultsService extends BaseService {
         })
     );
 
-    return response.vault!;
+    return response;
   }
 
   /**
@@ -125,7 +125,7 @@ export class VaultsService extends BaseService {
         })
     );
 
-    return response?.vaults ?? [];
+    return response ?? [];
   }
 
   /**
@@ -167,7 +167,7 @@ export class VaultsService extends BaseService {
         })
     );
 
-    return response.vault!;
+    return response;
   }
 
   /**
@@ -204,6 +204,6 @@ export class VaultsService extends BaseService {
         })
     );
 
-    return response.vault!;
+    return response;
   }
 }

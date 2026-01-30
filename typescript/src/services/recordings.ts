@@ -174,7 +174,7 @@ export class RecordingsService extends BaseService {
         })
     );
 
-    return response?.recordings ?? [];
+    return response ?? [];
   }
 
   /**
@@ -207,7 +207,7 @@ export class RecordingsService extends BaseService {
         })
     );
 
-    return response.recording!;
+    return response;
   }
 
   /**
@@ -342,6 +342,6 @@ export class RecordingsService extends BaseService {
         })
     );
 
-    return response.recording!;
+    return response;
   }
 }

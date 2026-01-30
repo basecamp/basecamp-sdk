@@ -41,7 +41,7 @@ describe("ReportsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/reports/timesheet.json`, () => {
-          return HttpResponse.json({ entries: mockEntries });
+          return HttpResponse.json(mockEntries);
         })
       );
 
@@ -57,7 +57,7 @@ describe("ReportsService", () => {
           const url = new URL(request.url);
           expect(url.searchParams.get("from")).toBe("2024-01-01");
           expect(url.searchParams.get("to")).toBe("2024-01-31");
-          return HttpResponse.json({ entries: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -73,7 +73,7 @@ describe("ReportsService", () => {
         http.get(`${BASE_URL}/reports/timesheet.json`, ({ request }) => {
           const url = new URL(request.url);
           expect(url.searchParams.get("person_id")).toBe("12345");
-          return HttpResponse.json({ entries: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -96,7 +96,7 @@ describe("ReportsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/${projectId}/timesheet.json`, () => {
-          return HttpResponse.json({ entries: mockEntries });
+          return HttpResponse.json(mockEntries);
         })
       );
 
@@ -113,7 +113,7 @@ describe("ReportsService", () => {
           const url = new URL(request.url);
           expect(url.searchParams.get("from")).toBe("2024-02-01");
           expect(url.searchParams.get("person_id")).toBe("999");
-          return HttpResponse.json({ entries: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -142,7 +142,7 @@ describe("ReportsService", () => {
         http.get(
           `${BASE_URL}/buckets/${projectId}/recordings/${recordingId}/timesheet.json`,
           () => {
-            return HttpResponse.json({ entries: mockEntries });
+            return HttpResponse.json(mockEntries);
           }
         )
       );

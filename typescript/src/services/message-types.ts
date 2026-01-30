@@ -87,7 +87,7 @@ export class MessageTypesService extends BaseService {
         })
     );
 
-    return (response?.message_types ?? []) as unknown as MessageType[];
+    return (response ?? []) as MessageType[];
   }
 
   /**
@@ -120,7 +120,7 @@ export class MessageTypesService extends BaseService {
         })
     );
 
-    return response.message_type as unknown as MessageType;
+    return response as unknown as MessageType;
   }
 
   /**
@@ -165,7 +165,7 @@ export class MessageTypesService extends BaseService {
         })
     );
 
-    return response.message_type as unknown as MessageType;
+    return response as unknown as MessageType;
   }
 
   /**
@@ -208,7 +208,7 @@ export class MessageTypesService extends BaseService {
         })
     );
 
-    return response.message_type as unknown as MessageType;
+    return response as unknown as MessageType;
   }
 
   /**

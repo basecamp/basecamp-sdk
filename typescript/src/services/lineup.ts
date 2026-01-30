@@ -149,7 +149,7 @@ export class LineupService extends BaseService {
         })
     );
 
-    return response.marker!;
+    return response;
   }
 
   /**
@@ -197,7 +197,7 @@ export class LineupService extends BaseService {
         })
     );
 
-    return response.marker!;
+    return response;
   }
 
   /**

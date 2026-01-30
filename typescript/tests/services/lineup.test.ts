@@ -44,7 +44,7 @@ describe("LineupService", () => {
           expect(body.starts_on).toBe("2024-03-01");
           expect(body.ends_on).toBe("2024-03-15");
           expect(body.color).toBe("green");
-          return HttpResponse.json({ marker: mockMarker });
+          return HttpResponse.json(mockMarker);
         })
       );
 
@@ -127,7 +127,7 @@ describe("LineupService", () => {
           expect(body.title).toBe("Updated Launch");
           expect(body.ends_on).toBe("2024-03-20");
           expect(body.color).toBe("blue");
-          return HttpResponse.json({ marker: mockMarker });
+          return HttpResponse.json(mockMarker);
         })
       );
 
@@ -152,7 +152,7 @@ describe("LineupService", () => {
         http.put(`${BASE_URL}/lineup/markers/${markerId}`, async ({ request }) => {
           const body = await request.json() as { color?: string };
           expect(body.color).toBe("red");
-          return HttpResponse.json({ marker: mockMarker });
+          return HttpResponse.json(mockMarker);
         })
       );
 

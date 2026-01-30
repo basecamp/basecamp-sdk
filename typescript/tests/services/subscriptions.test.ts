@@ -22,16 +22,14 @@ describe("SubscriptionsService", () => {
   describe("get", () => {
     it("should get subscription information for a recording", async () => {
       const mockSubscription = {
-        subscription: {
-          subscribed: true,
-          count: 3,
-          url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
-          subscribers: [
-            { id: 1, name: "User One", email_address: "one@example.com" },
-            { id: 2, name: "User Two", email_address: "two@example.com" },
-            { id: 3, name: "User Three", email_address: "three@example.com" },
-          ],
-        },
+        subscribed: true,
+        count: 3,
+        url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
+        subscribers: [
+          { id: 1, name: "User One", email_address: "one@example.com" },
+          { id: 2, name: "User Two", email_address: "two@example.com" },
+          { id: 3, name: "User Three", email_address: "three@example.com" },
+        ],
       };
 
       server.use(
@@ -52,17 +50,15 @@ describe("SubscriptionsService", () => {
   describe("subscribe", () => {
     it("should subscribe the current user to a recording", async () => {
       const mockSubscription = {
-        subscription: {
-          subscribed: true,
-          count: 4,
-          url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
-          subscribers: [
-            { id: 1, name: "User One" },
-            { id: 2, name: "User Two" },
-            { id: 3, name: "User Three" },
-            { id: 999, name: "Current User" },
-          ],
-        },
+        subscribed: true,
+        count: 4,
+        url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
+        subscribers: [
+          { id: 1, name: "User One" },
+          { id: 2, name: "User Two" },
+          { id: 3, name: "User Three" },
+          { id: 999, name: "Current User" },
+        ],
       };
 
       server.use(
@@ -94,17 +90,15 @@ describe("SubscriptionsService", () => {
   describe("update", () => {
     it("should batch update subscriptions", async () => {
       const mockSubscription = {
-        subscription: {
-          subscribed: true,
-          count: 4,
-          url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
-          subscribers: [
-            { id: 1, name: "User One" },
-            { id: 2, name: "User Two" },
-            { id: 4, name: "User Four" },
-            { id: 5, name: "User Five" },
-          ],
-        },
+        subscribed: true,
+        count: 4,
+        url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
+        subscribers: [
+          { id: 1, name: "User One" },
+          { id: 2, name: "User Two" },
+          { id: 4, name: "User Four" },
+          { id: 5, name: "User Five" },
+        ],
       };
 
       server.use(
@@ -129,12 +123,10 @@ describe("SubscriptionsService", () => {
 
     it("should work with only subscriptions", async () => {
       const mockSubscription = {
-        subscription: {
-          subscribed: true,
-          count: 5,
-          url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
-          subscribers: [],
-        },
+        subscribed: true,
+        count: 5,
+        url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
+        subscribers: [],
       };
 
       server.use(
@@ -154,12 +146,10 @@ describe("SubscriptionsService", () => {
 
     it("should work with only unsubscriptions", async () => {
       const mockSubscription = {
-        subscription: {
-          subscribed: true,
-          count: 2,
-          url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
-          subscribers: [],
-        },
+        subscribed: true,
+        count: 2,
+        url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
+        subscribers: [],
       };
 
       server.use(

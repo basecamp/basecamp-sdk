@@ -134,7 +134,7 @@ export class ClientApprovalsService extends BaseService {
         })
     );
 
-    return (response?.approvals ?? []) as unknown as ClientApproval[];
+    return (response ?? []) as ClientApproval[];
   }
 
   /**
@@ -168,6 +168,6 @@ export class ClientApprovalsService extends BaseService {
         })
     );
 
-    return response.approval as unknown as ClientApproval;
+    return response as unknown as ClientApproval;
   }
 }

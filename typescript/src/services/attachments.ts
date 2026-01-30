@@ -113,11 +113,8 @@ export class AttachmentsService extends BaseService {
         this.client.POST("/attachments.json", {
           params: {
             query: { name: req.filename },
-            // Type assertion needed: path-level types say `header?: never` but
-            // operation-level types correctly require Content-Type header.
-            // TODO: Revisit if openapi-typescript generator is updated to fix
-            // the path/operation parameter merge conflict.
-            header: { "Content-Type": req.contentType } as { "Content-Type": string },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            header: { "Content-Type": req.contentType } as any,
           },
           body: req.data as unknown as string,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,8 +122,9 @@ export class AttachmentsService extends BaseService {
         })
     );
 
+    // Response now correctly returns { attachable_sgid: string }
     return {
-      attachableSgid: response.attachable_sgid ?? "",
+      attachableSgid: response?.attachable_sgid ?? "",
     };
   }
 }

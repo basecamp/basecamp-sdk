@@ -33,7 +33,7 @@ describe("RecordingsService", () => {
         http.get(`${BASE_URL}/projects/recordings.json`, ({ request }) => {
           const url = new URL(request.url);
           expect(url.searchParams.get("type")).toBe("Todo");
-          return HttpResponse.json({ recordings });
+          return HttpResponse.json(recordings);
         })
       );
 
@@ -49,7 +49,7 @@ describe("RecordingsService", () => {
       server.use(
         http.get(`${BASE_URL}/projects/recordings.json`, ({ request }) => {
           capturedUrl = new URL(request.url);
-          return HttpResponse.json({ recordings: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -70,7 +70,7 @@ describe("RecordingsService", () => {
     it("should return empty array when no recordings", async () => {
       server.use(
         http.get(`${BASE_URL}/projects/recordings.json`, () => {
-          return HttpResponse.json({ recordings: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -104,7 +104,7 @@ describe("RecordingsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/recordings/3001`, () => {
-          return HttpResponse.json({ recording });
+          return HttpResponse.json(recording);
         })
       );
 
@@ -209,7 +209,7 @@ describe("RecordingsService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/recordings/3001/client_visibility.json`, () => {
-          return HttpResponse.json({ recording });
+          return HttpResponse.json(recording);
         })
       );
 
@@ -228,7 +228,7 @@ describe("RecordingsService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/recordings/3001/client_visibility.json`, () => {
-          return HttpResponse.json({ recording });
+          return HttpResponse.json(recording);
         })
       );
 
@@ -243,7 +243,7 @@ describe("RecordingsService", () => {
       server.use(
         http.put(`${BASE_URL}/buckets/123/recordings/3001/client_visibility.json`, async ({ request }) => {
           capturedBody = (await request.json()) as { visible_to_clients?: boolean };
-          return HttpResponse.json({ recording: { id: 3001, visible_to_clients: true } });
+          return HttpResponse.json({ id: 3001, visible_to_clients: true });
         })
       );
 

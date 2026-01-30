@@ -34,7 +34,7 @@ describe("DocumentsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/documents/5001`, () => {
-          return HttpResponse.json({ document });
+          return HttpResponse.json(document);
         })
       );
 
@@ -71,7 +71,7 @@ describe("DocumentsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, () => {
-          return HttpResponse.json({ documents });
+          return HttpResponse.json(documents);
         })
       );
 
@@ -85,7 +85,7 @@ describe("DocumentsService", () => {
     it("should return empty array when no documents", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, () => {
-          return HttpResponse.json({ documents: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -106,7 +106,7 @@ describe("DocumentsService", () => {
 
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, () => {
-          return HttpResponse.json({ document: newDocument });
+          return HttpResponse.json(newDocument);
         })
       );
 
@@ -125,7 +125,7 @@ describe("DocumentsService", () => {
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string; content?: string; status?: string };
-          return HttpResponse.json({ document: { id: 1, title: "Test" } });
+          return HttpResponse.json({ id: 1, title: "Test" });
         })
       );
 
@@ -165,7 +165,7 @@ describe("DocumentsService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/documents/5001`, () => {
-          return HttpResponse.json({ document: updatedDocument });
+          return HttpResponse.json(updatedDocument);
         })
       );
 
@@ -184,7 +184,7 @@ describe("DocumentsService", () => {
       server.use(
         http.put(`${BASE_URL}/buckets/123/documents/5001`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string; content?: string };
-          return HttpResponse.json({ document: { id: 5001, title: "Updated" } });
+          return HttpResponse.json({ id: 5001, title: "Updated" });
         })
       );
 

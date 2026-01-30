@@ -34,7 +34,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/schedules/4001`, () => {
-          return HttpResponse.json({ schedule });
+          return HttpResponse.json(schedule);
         })
       );
 
@@ -71,7 +71,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, () => {
-          return HttpResponse.json({ entries });
+          return HttpResponse.json(entries);
         })
       );
 
@@ -85,7 +85,7 @@ describe("SchedulesService", () => {
     it("should return empty array when no entries", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, () => {
-          return HttpResponse.json({ entries: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -108,7 +108,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/schedule_entries/4101`, () => {
-          return HttpResponse.json({ entry });
+          return HttpResponse.json(entry);
         })
       );
 
@@ -132,7 +132,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.post(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, () => {
-          return HttpResponse.json({ entry: newEntry });
+          return HttpResponse.json(newEntry);
         })
       );
 
@@ -152,7 +152,7 @@ describe("SchedulesService", () => {
       server.use(
         http.post(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, async ({ request }) => {
           capturedBody = (await request.json()) as Record<string, unknown>;
-          return HttpResponse.json({ entry: { id: 1, summary: "Test" } });
+          return HttpResponse.json({ id: 1, summary: "Test" });
         })
       );
 
@@ -271,7 +271,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/schedule_entries/4101`, () => {
-          return HttpResponse.json({ entry: updatedEntry });
+          return HttpResponse.json(updatedEntry);
         })
       );
 
@@ -313,7 +313,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/schedule_entries/4101/occurrences/2024-12-22`, () => {
-          return HttpResponse.json({ entry });
+          return HttpResponse.json(entry);
         })
       );
 
@@ -357,7 +357,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/schedules/4001`, () => {
-          return HttpResponse.json({ schedule });
+          return HttpResponse.json(schedule);
         })
       );
 
@@ -374,7 +374,7 @@ describe("SchedulesService", () => {
       server.use(
         http.put(`${BASE_URL}/buckets/123/schedules/4001`, async ({ request }) => {
           capturedBody = (await request.json()) as { include_due_assignments?: boolean };
-          return HttpResponse.json({ schedule: { id: 4001, title: "Schedule" } });
+          return HttpResponse.json({ id: 4001, title: "Schedule" });
         })
       );
 

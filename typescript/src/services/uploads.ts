@@ -104,7 +104,7 @@ export class UploadsService extends BaseService {
         })
     );
 
-    return response.upload!;
+    return response;
   }
 
   /**
@@ -138,7 +138,7 @@ export class UploadsService extends BaseService {
         })
     );
 
-    return response?.uploads ?? [];
+    return response ?? [];
   }
 
   /**
@@ -192,7 +192,7 @@ export class UploadsService extends BaseService {
         })
     );
 
-    return response.upload!;
+    return response;
   }
 
   /**
@@ -231,7 +231,7 @@ export class UploadsService extends BaseService {
         })
     );
 
-    return response.upload!;
+    return response;
   }
 
   /**
@@ -265,7 +265,7 @@ export class UploadsService extends BaseService {
         })
     );
 
-    return response?.uploads ?? [];
+    return response ?? [];
   }
 
   /**
