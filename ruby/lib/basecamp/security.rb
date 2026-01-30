@@ -3,6 +3,8 @@
 require "uri"
 
 module Basecamp
+  # Security helpers for URL validation, message truncation, and header redaction.
+  # Used across the SDK to enforce HTTPS, prevent SSRF, and protect sensitive data.
   module Security
     MAX_ERROR_MESSAGE_BYTES = 500
     MAX_RESPONSE_BODY_BYTES = 50 * 1024 * 1024 # 50 MB

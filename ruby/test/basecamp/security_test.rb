@@ -67,7 +67,7 @@ class SecuritySameOriginTest < Minitest::Test
   end
 
   def test_different_host
-    refute Basecamp::Security.same_origin?(
+    assert_not Basecamp::Security.same_origin?(
       "https://api.example.com/path",
       "https://evil.com/path"
     )
@@ -81,14 +81,14 @@ class SecuritySameOriginTest < Minitest::Test
   end
 
   def test_different_port
-    refute Basecamp::Security.same_origin?(
+    assert_not Basecamp::Security.same_origin?(
       "https://api.example.com:8443/path",
       "https://api.example.com/path"
     )
   end
 
   def test_no_scheme
-    refute Basecamp::Security.same_origin?(
+    assert_not Basecamp::Security.same_origin?(
       "/page2",
       "https://api.example.com/page1"
     )
@@ -771,8 +771,8 @@ class SecurityPKCETest < Minitest::Test
     pkce2 = Basecamp::Oauth::Pkce.generate
 
     # Each call should generate a unique verifier
-    refute_equal pkce1[:verifier], pkce2[:verifier]
-    refute_equal pkce1[:challenge], pkce2[:challenge]
+    assert_not_equal pkce1[:verifier], pkce2[:verifier]
+    assert_not_equal pkce1[:challenge], pkce2[:challenge]
   end
 
   def test_generate_state_length
@@ -786,14 +786,14 @@ class SecurityPKCETest < Minitest::Test
     state1 = Basecamp::Oauth::Pkce.generate_state
     state2 = Basecamp::Oauth::Pkce.generate_state
 
-    refute_equal state1, state2
+    assert_not_equal state1, state2
   end
 
   def test_pkce_format_is_base64url
     pkce = Basecamp::Oauth::Pkce.generate
 
     # base64url should not contain +, /, or =
-    refute_match(/[+\/=]/, pkce[:verifier])
-    refute_match(/[+\/=]/, pkce[:challenge])
+    assert_no_match(/[+\/=]/, pkce[:verifier])
+    assert_no_match(/[+\/=]/, pkce[:challenge])
   end
 end

@@ -402,7 +402,7 @@ func makeFirstPageResponse(serverURL string, pageSize, totalItems int) *http.Res
 		StatusCode: 200,
 		Header:     make(http.Header),
 		Body:       io.NopCloser(strings.NewReader("[]")), // Empty array body for bodyclose linter
-		Request:    &http.Request{URL: firstPageURL},     // Required for same-origin validation
+		Request:    &http.Request{URL: firstPageURL},      // Required for same-origin validation
 	}
 
 	// Set Link header if there are more pages

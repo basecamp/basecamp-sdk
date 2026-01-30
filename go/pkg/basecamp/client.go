@@ -496,20 +496,18 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 		return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
 	}
 
-	currentPageURL := nextURL
-
 	var allResults []json.RawMessage
 	currentCount := firstPageCount
 	var page int
 
 	for page = 2; page <= c.httpOpts.MaxPages && nextURL != ""; page++ {
+		// Track current page URL for relative URL resolution in this iteration
+		currentPageURL := nextURL
+
 		resp, err := c.doRequestURL(ctx, "GET", nextURL, nil)
 		if err != nil {
 			return nil, err
 		}
-
-		// Update current page URL for next iteration's relative URL resolution
-		currentPageURL = nextURL
 
 		// Parse response as array
 		var items []json.RawMessage
