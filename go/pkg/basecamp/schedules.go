@@ -2,11 +2,28 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// ScheduleEntryListOptions specifies options for listing schedule entries.
+type ScheduleEntryListOptions struct {
+	// Limit is the maximum number of entries to return.
+	// If 0 (default), returns all entries. Use a positive value to cap results.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+
+	// Status filters entries by status: "active", "archived", or "trashed".
+	// If empty, returns active entries (API default).
+	Status string
+}
 
 // Schedule represents a Basecamp schedule (calendar) within a project.
 type Schedule struct {
@@ -143,7 +160,13 @@ func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) 
 
 // ListEntries returns all entries on a schedule.
 // bucketID is the project ID, scheduleID is the schedule ID.
-func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID int64) (result []ScheduleEntry, err error) {
+//
+// By default, returns all entries (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of entries to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID int64, opts *ScheduleEntryListOptions) (result []ScheduleEntry, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "ListEntries",
 		ResourceType: "schedule_entry", IsMutation: false,
@@ -158,19 +181,59 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListScheduleEntriesWithResponse(ctx, s.client.accountID, bucketID, scheduleID, nil)
+	// Build params for generated client
+	var params *generated.ListScheduleEntriesParams
+	if opts != nil && opts.Status != "" {
+		params = &generated.ListScheduleEntriesParams{
+			Status: opts.Status,
+		}
+	}
+
+	// Call generated client for first page (spec-conformant - no manual path construction)
+	resp, err := s.client.parent.gen.ListScheduleEntriesWithResponse(ctx, s.client.accountID, bucketID, scheduleID, params)
 	if err != nil {
 		return nil, err
 	}
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Parse first page
+	var entries []ScheduleEntry
+	if resp.JSON200 != nil {
+		for _, ge := range *resp.JSON200 {
+			entries = append(entries, scheduleEntryFromGenerated(ge))
+		}
 	}
 
-	entries := make([]ScheduleEntry, 0, len(*resp.JSON200))
-	for _, ge := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return entries, nil
+	}
+
+	// Determine limit: 0 = all (default for entries), >0 = specific limit
+	limit := 0 // default to all for entries
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(entries) >= limit {
+		return entries[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(entries), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var ge generated.ScheduleEntry
+		if err := json.Unmarshal(raw, &ge); err != nil {
+			return nil, fmt.Errorf("failed to parse schedule entry: %w", err)
+		}
 		entries = append(entries, scheduleEntryFromGenerated(ge))
 	}
 

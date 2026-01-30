@@ -2,11 +2,15 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// DefaultMessageLimit is the default number of messages to return when no limit is specified.
+const DefaultMessageLimit = 100
 
 // Message represents a Basecamp message on a message board.
 type Message struct {
@@ -49,6 +53,18 @@ type UpdateMessageRequest struct {
 	CategoryID int64 `json:"category_id,omitempty"`
 }
 
+// MessageListOptions specifies options for listing messages.
+type MessageListOptions struct {
+	// Limit is the maximum number of messages to return.
+	// If 0, uses DefaultMessageLimit (100). Use -1 for unlimited.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
+
 // MessagesService handles message operations.
 type MessagesService struct {
 	client *AccountClient
@@ -59,9 +75,15 @@ func NewMessagesService(client *AccountClient) *MessagesService {
 	return &MessagesService{client: client}
 }
 
-// List returns all messages on a message board.
+// List returns messages on a message board.
 // bucketID is the project ID, boardID is the message board ID.
-func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) (result []Message, err error) {
+//
+// By default, returns up to 100 messages. Use Limit: -1 for unlimited.
+//
+// Pagination options:
+//   - Limit: maximum number of messages to return (0 = 100, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opts *MessageListOptions) (result []Message, err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "List",
 		ResourceType: "message", IsMutation: false,
@@ -76,6 +98,7 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) (re
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListMessagesWithResponse(ctx, s.client.accountID, bucketID, boardID)
 	if err != nil {
 		return nil, err
@@ -83,14 +106,50 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64) (re
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Parse first page
+	var messages []Message
+	if resp.JSON200 != nil {
+		for _, gm := range *resp.JSON200 {
+			messages = append(messages, messageFromGenerated(gm))
+		}
 	}
 
-	messages := make([]Message, 0, len(*resp.JSON200))
-	for _, gm := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return messages, nil
+	}
+
+	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
+	limit := DefaultMessageLimit
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(messages) >= limit {
+		return messages[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(messages), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gm generated.Message
+		if err := json.Unmarshal(raw, &gm); err != nil {
+			return nil, fmt.Errorf("failed to parse message: %w", err)
+		}
 		messages = append(messages, messageFromGenerated(gm))
 	}
+
 	return messages, nil
 }
 

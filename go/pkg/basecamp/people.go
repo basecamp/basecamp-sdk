@@ -2,6 +2,7 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -38,6 +39,18 @@ type UpdateProjectAccessResponse struct {
 	Revoked []Person `json:"revoked"`
 }
 
+// PeopleListOptions specifies options for listing people.
+type PeopleListOptions struct {
+	// Limit is the maximum number of people to return.
+	// If 0 (default), returns all people.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
+
 // PeopleService handles people operations.
 type PeopleService struct {
 	client *AccountClient
@@ -49,7 +62,11 @@ func NewPeopleService(client *AccountClient) *PeopleService {
 }
 
 // List returns all people visible to the current user in the account.
-func (s *PeopleService) List(ctx context.Context) (result []Person, err error) {
+//
+// Pagination options:
+//   - Limit: maximum number of people to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (result []Person, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "List",
 		ResourceType: "person", IsMutation: false,
@@ -63,6 +80,7 @@ func (s *PeopleService) List(ctx context.Context) (result []Person, err error) {
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListPeopleWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
@@ -70,12 +88,43 @@ func (s *PeopleService) List(ctx context.Context) (result []Person, err error) {
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Parse first page
+	var people []Person
+	if resp.JSON200 != nil {
+		for _, gp := range *resp.JSON200 {
+			people = append(people, personFromGenerated(gp))
+		}
 	}
 
-	people := make([]Person, 0, len(*resp.JSON200))
-	for _, gp := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return people, nil
+	}
+
+	// Determine limit: 0 = all (default for people)
+	limit := 0
+	if opts != nil {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(people) >= limit {
+		return people[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(people), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gp generated.Person
+		if err := json.Unmarshal(raw, &gp); err != nil {
+			return nil, fmt.Errorf("failed to parse person: %w", err)
+		}
 		people = append(people, personFromGenerated(gp))
 	}
 
@@ -147,7 +196,11 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 
 // ListProjectPeople returns all active people on a project.
 // bucketID is the project ID.
-func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (result []Person, err error) {
+//
+// Pagination options:
+//   - Limit: maximum number of people to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, opts *PeopleListOptions) (result []Person, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "ListProjectPeople",
 		ResourceType: "person", IsMutation: false,
@@ -162,6 +215,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, bucketID)
 	if err != nil {
 		return nil, err
@@ -169,12 +223,43 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64) (
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Parse first page
+	var people []Person
+	if resp.JSON200 != nil {
+		for _, gp := range *resp.JSON200 {
+			people = append(people, personFromGenerated(gp))
+		}
 	}
 
-	people := make([]Person, 0, len(*resp.JSON200))
-	for _, gp := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return people, nil
+	}
+
+	// Determine limit: 0 = all (default for people)
+	limit := 0
+	if opts != nil {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(people) >= limit {
+		return people[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(people), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gp generated.Person
+		if err := json.Unmarshal(raw, &gp); err != nil {
+			return nil, fmt.Errorf("failed to parse person: %w", err)
+		}
 		people = append(people, personFromGenerated(gp))
 	}
 

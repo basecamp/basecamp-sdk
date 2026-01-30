@@ -259,7 +259,14 @@ func (ac *AccountClient) Delete(ctx context.Context, path string) (*Response, er
 
 // GetAll fetches all pages for an account-scoped paginated resource.
 func (ac *AccountClient) GetAll(ctx context.Context, path string) ([]json.RawMessage, error) {
-	return ac.parent.GetAll(ctx, ac.accountPath(path))
+	return ac.parent.GetAllWithLimit(ctx, ac.accountPath(path), 0)
+}
+
+// GetAllWithLimit fetches pages for an account-scoped paginated resource up to a limit.
+// If limit is 0, it fetches all pages (same as GetAll).
+// If limit > 0, it stops after collecting at least limit items.
+func (ac *AccountClient) GetAllWithLimit(ctx context.Context, path string, limit int) ([]json.RawMessage, error) {
+	return ac.parent.GetAllWithLimit(ctx, ac.accountPath(path), limit)
 }
 
 // accountPath prepends the account ID to the path.
@@ -348,6 +355,13 @@ func (c *Client) Delete(ctx context.Context, path string) (*Response, error) {
 
 // GetAll fetches all pages for a paginated resource.
 func (c *Client) GetAll(ctx context.Context, path string) ([]json.RawMessage, error) {
+	return c.GetAllWithLimit(ctx, path, 0)
+}
+
+// GetAllWithLimit fetches pages for a paginated resource up to a limit.
+// If limit is 0, it fetches all pages (same as GetAll).
+// If limit > 0, it stops after collecting at least limit items.
+func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([]json.RawMessage, error) {
 	var allResults []json.RawMessage
 	url := c.buildURL(path)
 	var page int
@@ -365,12 +379,80 @@ func (c *Client) GetAll(ctx context.Context, path string) ([]json.RawMessage, er
 		}
 		allResults = append(allResults, items...)
 
+		// Check if we've reached the limit
+		if limit > 0 && len(allResults) >= limit {
+			// Trim to exactly the limit
+			allResults = allResults[:limit]
+			break
+		}
+
 		// Check for next page
 		nextURL := parseNextLink(resp.Headers.Get("Link"))
 		if nextURL == "" {
 			break
 		}
 		url = nextURL
+	}
+
+	if page > c.httpOpts.MaxPages {
+		c.logger.Warn("pagination capped", "maxPages", c.httpOpts.MaxPages)
+	}
+
+	return allResults, nil
+}
+
+// FollowPagination fetches additional pages following Link headers from an HTTP response.
+// This is used after calling the generated client for the first page.
+// The httpResp should be from the generated client's *WithResponse method.
+// firstPageCount is the number of items already collected from the first page.
+// limit is the maximum total items to return (0 = unlimited).
+// Returns raw JSON items from subsequent pages only (first page items are handled by caller).
+func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, firstPageCount, limit int) ([]json.RawMessage, error) {
+	if httpResp == nil {
+		return nil, nil
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && firstPageCount >= limit {
+		return nil, nil
+	}
+
+	// Get next page URL from Link header
+	nextURL := parseNextLink(httpResp.Header.Get("Link"))
+	if nextURL == "" {
+		return nil, nil
+	}
+
+	var allResults []json.RawMessage
+	currentCount := firstPageCount
+	var page int
+
+	for page = 2; page <= c.httpOpts.MaxPages && nextURL != ""; page++ {
+		resp, err := c.doRequestURL(ctx, "GET", nextURL, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse response as array
+		var items []json.RawMessage
+		if err := json.Unmarshal(resp.Data, &items); err != nil {
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
+		allResults = append(allResults, items...)
+		currentCount += len(items)
+
+		// Check if we've reached the limit
+		if limit > 0 && currentCount >= limit {
+			// Trim to exactly the limit (accounting for first page)
+			excess := currentCount - limit
+			if excess > 0 && len(allResults) > excess {
+				allResults = allResults[:len(allResults)-excess]
+			}
+			break
+		}
+
+		// Get next page URL
+		nextURL = parseNextLink(resp.Headers.Get("Link"))
 	}
 
 	if page > c.httpOpts.MaxPages {

@@ -2,10 +2,27 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// DefaultEventLimit is the default number of events to return when no limit is specified.
+const DefaultEventLimit = 100
+
+// EventListOptions specifies options for listing events.
+type EventListOptions struct {
+	// Limit is the maximum number of events to return.
+	// If 0, uses DefaultEventLimit (100). Use -1 for unlimited.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
 
 // Event represents a recording change event in Basecamp.
 // An event is created any time a recording changes.
@@ -40,7 +57,13 @@ func NewEventsService(client *AccountClient) *EventsService {
 
 // List returns all events for a recording.
 // bucketID is the project ID, recordingID is the ID of the recording.
-func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64) (result []Event, err error) {
+//
+// By default, returns up to 100 events. Use Limit: -1 for unlimited.
+//
+// Pagination options:
+//   - Limit: maximum number of events to return (0 = 100, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, opts *EventListOptions) (result []Event, err error) {
 	op := OperationInfo{
 		Service: "Events", Operation: "List",
 		ResourceType: "event", IsMutation: false,
@@ -55,6 +78,7 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListEventsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
@@ -62,12 +86,47 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64) (
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Parse first page
+	var events []Event
+	if resp.JSON200 != nil {
+		for _, ge := range *resp.JSON200 {
+			events = append(events, eventFromGenerated(ge))
+		}
 	}
 
-	events := make([]Event, 0, len(*resp.JSON200))
-	for _, ge := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return events, nil
+	}
+
+	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
+	limit := DefaultEventLimit
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(events) >= limit {
+		return events[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(events), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var ge generated.Event
+		if err := json.Unmarshal(raw, &ge); err != nil {
+			return nil, fmt.Errorf("failed to parse event: %w", err)
+		}
 		events = append(events, eventFromGenerated(ge))
 	}
 

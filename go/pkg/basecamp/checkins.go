@@ -2,12 +2,37 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
+
+// QuestionListOptions specifies options for listing questions.
+type QuestionListOptions struct {
+	// Limit is the maximum number of questions to return.
+	// If 0 (default), returns all questions. Use a positive value to cap results.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
+
+// AnswerListOptions specifies options for listing answers.
+type AnswerListOptions struct {
+	// Limit is the maximum number of answers to return.
+	// If 0 (default), returns all answers. Use a positive value to cap results.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
 
 // Questionnaire represents a Basecamp automatic check-in questionnaire.
 type Questionnaire struct {
@@ -177,7 +202,13 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questi
 
 // ListQuestions returns all questions in a questionnaire.
 // bucketID is the project ID, questionnaireID is the questionnaire ID.
-func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionnaireID int64) (result []Question, err error) {
+//
+// By default, returns all questions (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of questions to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionnaireID int64, opts *QuestionListOptions) (result []Question, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "ListQuestions",
 		ResourceType: "question", IsMutation: false,
@@ -192,6 +223,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListQuestionsWithResponse(ctx, s.client.accountID, bucketID, questionnaireID)
 	if err != nil {
 		return nil, err
@@ -199,12 +231,43 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Parse first page
+	var questions []Question
+	if resp.JSON200 != nil {
+		for _, gq := range *resp.JSON200 {
+			questions = append(questions, questionFromGenerated(gq))
+		}
 	}
 
-	questions := make([]Question, 0, len(*resp.JSON200))
-	for _, gq := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return questions, nil
+	}
+
+	// Determine limit: 0 = all (default for questions), >0 = specific limit
+	limit := 0 // default to all for questions
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(questions) >= limit {
+		return questions[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(questions), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gq generated.Question
+		if err := json.Unmarshal(raw, &gq); err != nil {
+			return nil, fmt.Errorf("failed to parse question: %w", err)
+		}
 		questions = append(questions, questionFromGenerated(gq))
 	}
 
@@ -344,7 +407,13 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 
 // ListAnswers returns all answers for a question.
 // bucketID is the project ID, questionID is the question ID.
-func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID int64) (result []QuestionAnswer, err error) {
+//
+// By default, returns all answers (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of answers to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID int64, opts *AnswerListOptions) (result []QuestionAnswer, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "ListAnswers",
 		ResourceType: "answer", IsMutation: false,
@@ -359,6 +428,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListAnswersWithResponse(ctx, s.client.accountID, bucketID, questionID)
 	if err != nil {
 		return nil, err
@@ -366,12 +436,43 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Parse first page
+	var answers []QuestionAnswer
+	if resp.JSON200 != nil {
+		for _, ga := range *resp.JSON200 {
+			answers = append(answers, questionAnswerFromGenerated(ga))
+		}
 	}
 
-	answers := make([]QuestionAnswer, 0, len(*resp.JSON200))
-	for _, ga := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return answers, nil
+	}
+
+	// Determine limit: 0 = all (default for answers), >0 = specific limit
+	limit := 0 // default to all for answers
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(answers) >= limit {
+		return answers[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(answers), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var ga generated.QuestionAnswer
+		if err := json.Unmarshal(raw, &ga); err != nil {
+			return nil, fmt.Errorf("failed to parse answer: %w", err)
+		}
 		answers = append(answers, questionAnswerFromGenerated(ga))
 	}
 

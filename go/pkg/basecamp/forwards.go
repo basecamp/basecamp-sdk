@@ -2,11 +2,36 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// ForwardListOptions specifies options for listing forwards.
+type ForwardListOptions struct {
+	// Limit is the maximum number of forwards to return.
+	// If 0 (default), returns all forwards. Use a positive value to cap results.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
+
+// ForwardReplyListOptions specifies options for listing forward replies.
+type ForwardReplyListOptions struct {
+	// Limit is the maximum number of replies to return.
+	// If 0 (default), returns all replies. Use a positive value to cap results.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
 
 // Inbox represents a Basecamp email inbox (forwards tool).
 type Inbox struct {
@@ -105,7 +130,13 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 
 // List returns all forwards in an inbox.
 // bucketID is the project ID, inboxID is the inbox ID.
-func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) (result []Forward, err error) {
+//
+// By default, returns all forwards (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of forwards to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opts *ForwardListOptions) (result []Forward, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "List",
 		ResourceType: "forward", IsMutation: false,
@@ -120,6 +151,7 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) (re
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, bucketID, inboxID)
 	if err != nil {
 		return nil, err
@@ -127,12 +159,43 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64) (re
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Parse first page
+	var forwards []Forward
+	if resp.JSON200 != nil {
+		for _, gf := range *resp.JSON200 {
+			forwards = append(forwards, forwardFromGenerated(gf))
+		}
 	}
 
-	forwards := make([]Forward, 0, len(*resp.JSON200))
-	for _, gf := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return forwards, nil
+	}
+
+	// Determine limit: 0 = all (default for forwards), >0 = specific limit
+	limit := 0 // default to all for forwards
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(forwards) >= limit {
+		return forwards[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(forwards), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gf generated.Forward
+		if err := json.Unmarshal(raw, &gf); err != nil {
+			return nil, fmt.Errorf("failed to parse forward: %w", err)
+		}
 		forwards = append(forwards, forwardFromGenerated(gf))
 	}
 
@@ -174,7 +237,13 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (r
 
 // ListReplies returns all replies to a forward.
 // bucketID is the project ID, forwardID is the forward ID.
-func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID int64) (result []ForwardReply, err error) {
+//
+// By default, returns all replies (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of replies to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID int64, opts *ForwardReplyListOptions) (result []ForwardReply, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "ListReplies",
 		ResourceType: "forward_reply", IsMutation: false,
@@ -189,6 +258,7 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListForwardRepliesWithResponse(ctx, s.client.accountID, bucketID, forwardID)
 	if err != nil {
 		return nil, err
@@ -196,12 +266,43 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Parse first page
+	var replies []ForwardReply
+	if resp.JSON200 != nil {
+		for _, gr := range *resp.JSON200 {
+			replies = append(replies, forwardReplyFromGenerated(gr))
+		}
 	}
 
-	replies := make([]ForwardReply, 0, len(*resp.JSON200))
-	for _, gr := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return replies, nil
+	}
+
+	// Determine limit: 0 = all (default for replies), >0 = specific limit
+	limit := 0 // default to all for replies
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(replies) >= limit {
+		return replies[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(replies), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gr generated.ForwardReply
+		if err := json.Unmarshal(raw, &gr); err != nil {
+			return nil, fmt.Errorf("failed to parse forward reply: %w", err)
+		}
 		replies = append(replies, forwardReplyFromGenerated(gr))
 	}
 

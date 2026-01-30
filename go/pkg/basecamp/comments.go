@@ -2,11 +2,15 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// DefaultCommentLimit is the default number of comments to return when no limit is specified.
+const DefaultCommentLimit = 100
 
 // Comment represents a Basecamp comment on a recording.
 type Comment struct {
@@ -35,6 +39,18 @@ type UpdateCommentRequest struct {
 	Content string `json:"content"`
 }
 
+// CommentListOptions specifies options for listing comments.
+type CommentListOptions struct {
+	// Limit is the maximum number of comments to return.
+	// If 0, uses DefaultCommentLimit (100). Use -1 for unlimited.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
+
 // CommentsService handles comment operations.
 type CommentsService struct {
 	client *AccountClient
@@ -45,9 +61,15 @@ func NewCommentsService(client *AccountClient) *CommentsService {
 	return &CommentsService{client: client}
 }
 
-// List returns all comments on a recording.
+// List returns comments on a recording.
 // bucketID is the project ID, recordingID is the ID of the recording (todo, message, etc.).
-func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64) (result []Comment, err error) {
+//
+// By default, returns up to 100 comments. Use Limit: -1 for unlimited.
+//
+// Pagination options:
+//   - Limit: maximum number of comments to return (0 = 100, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64, opts *CommentListOptions) (result []Comment, err error) {
 	op := OperationInfo{
 		Service: "Comments", Operation: "List",
 		ResourceType: "comment", IsMutation: false,
@@ -62,6 +84,7 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListCommentsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
 	if err != nil {
 		return nil, err
@@ -69,15 +92,50 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64)
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Parse first page
+	var comments []Comment
+	if resp.JSON200 != nil {
+		for _, gc := range *resp.JSON200 {
+			comments = append(comments, commentFromGenerated(gc))
+		}
 	}
 
-	// Convert generated types to our clean types
-	comments := make([]Comment, 0, len(*resp.JSON200))
-	for _, gc := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return comments, nil
+	}
+
+	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
+	limit := DefaultCommentLimit
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(comments) >= limit {
+		return comments[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(comments), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gc generated.Comment
+		if err := json.Unmarshal(raw, &gc); err != nil {
+			return nil, fmt.Errorf("failed to parse comment: %w", err)
+		}
 		comments = append(comments, commentFromGenerated(gc))
 	}
+
 	return comments, nil
 }
 

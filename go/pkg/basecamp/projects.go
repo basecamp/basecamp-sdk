@@ -2,6 +2,7 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -64,6 +65,15 @@ type ProjectListOptions struct {
 	// Status filters by project status (active, archived, trashed).
 	// If empty, defaults to active projects.
 	Status ProjectStatus
+
+	// Limit is the maximum number of projects to return.
+	// If 0 (default), returns all projects.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
 }
 
 // CreateProjectRequest specifies the parameters for creating a project.
@@ -106,6 +116,10 @@ func NewProjectsService(client *AccountClient) *ProjectsService {
 
 // List returns all projects visible to the current user.
 // By default, returns active projects sorted by most recently created first.
+//
+// Pagination options:
+//   - Limit: maximum number of projects to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
 func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (result []Project, err error) {
 	op := OperationInfo{
 		Service: "Projects", Operation: "List",
@@ -120,11 +134,13 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Build params for generated client
 	params := &generated.ListProjectsParams{}
 	if opts != nil && opts.Status != "" {
 		params.Status = string(opts.Status)
 	}
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListProjectsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
@@ -132,12 +148,43 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Parse first page
+	var projects []Project
+	if resp.JSON200 != nil {
+		for _, gp := range *resp.JSON200 {
+			projects = append(projects, projectFromGenerated(gp))
+		}
 	}
 
-	projects := make([]Project, 0, len(*resp.JSON200))
-	for _, gp := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return projects, nil
+	}
+
+	// Determine limit: 0 = all (default for projects)
+	limit := 0
+	if opts != nil {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(projects) >= limit {
+		return projects[:limit], nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(projects), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gp generated.Project
+		if err := json.Unmarshal(raw, &gp); err != nil {
+			return nil, fmt.Errorf("failed to parse project: %w", err)
+		}
 		projects = append(projects, projectFromGenerated(gp))
 	}
 
