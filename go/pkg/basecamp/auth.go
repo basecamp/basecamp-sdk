@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -152,12 +151,31 @@ func (s *CredentialStore) saveAllToFile(all map[string]*Credentials) error {
 		return err
 	}
 
-	// Atomic write
-	tmpPath := s.credentialsPath() + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+	// Atomic write using unique temp file to avoid collisions
+	tmpFile, err := os.CreateTemp(s.fallbackDir, "credentials-*.tmp")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmpPath, s.credentialsPath())
+	tmpPath := tmpFile.Name()
+	if _, err := tmpFile.Write(data); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+	if err := tmpFile.Chmod(0600); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+	if err := tmpFile.Close(); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	if err := os.Rename(tmpPath, s.credentialsPath()); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	return nil
 }
 
 func (s *CredentialStore) loadFromFile(origin string) (*Credentials, error) {
@@ -289,6 +307,9 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	if tokenEndpoint == "" {
 		return ErrAuth("No token endpoint stored")
 	}
+	if err := requireHTTPSUnlessLocalhost(tokenEndpoint); err != nil {
+		return ErrAuth(fmt.Sprintf("Token endpoint must use HTTPS: %s", tokenEndpoint))
+	}
 
 	data := url.Values{}
 	data.Set("grant_type", "refresh_token")
@@ -307,8 +328,8 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return ErrAPI(resp.StatusCode, fmt.Sprintf("token refresh failed: %s", string(body)))
+		body, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
+		return ErrAPI(resp.StatusCode, fmt.Sprintf("token refresh failed: %s", truncateString(string(body), MaxErrorMessageBytes)))
 	}
 
 	var tokenResp struct {

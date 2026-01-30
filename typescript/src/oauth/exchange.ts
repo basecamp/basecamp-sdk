@@ -165,6 +165,24 @@ export async function refreshToken(
 }
 
 /**
+ * Validates that a URL uses the HTTPS scheme (allows localhost for testing).
+ */
+function requireHTTPS(url: string, label: string): void {
+  try {
+    const parsed = new URL(url);
+    const isLocalhost = parsed.hostname === "localhost" ||
+                        parsed.hostname === "127.0.0.1" ||
+                        parsed.hostname === "::1";
+    if (parsed.protocol !== "https:" && !isLocalhost) {
+      throw new BasecampError("validation", `${label} must use HTTPS: ${url}`);
+    }
+  } catch (err) {
+    if (err instanceof BasecampError) throw err;
+    throw new BasecampError("validation", `Invalid ${label}: ${url}`);
+  }
+}
+
+/**
  * Performs the actual HTTP token request.
  */
 async function doTokenRequest(
@@ -172,6 +190,8 @@ async function doTokenRequest(
   body: URLSearchParams,
   options: TokenOptions
 ): Promise<OAuthToken> {
+  requireHTTPS(tokenEndpoint, "token endpoint");
+
   const { fetch: customFetch = globalThis.fetch, timeoutMs = 30000 } = options;
 
   // Create abort controller for timeout
@@ -189,15 +209,40 @@ async function doTokenRequest(
       signal: controller.signal,
     });
 
+    const MAX_TOKEN_RESPONSE_BYTES = 1 * 1024 * 1024; // 1 MB
+
+    // Early guard using Content-Length header (before reading body into memory)
+    const contentLength = response.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > MAX_TOKEN_RESPONSE_BYTES) {
+      throw new BasecampError(
+        "api_error",
+        `Token response too large (${contentLength} bytes, max ${MAX_TOKEN_RESPONSE_BYTES})`,
+        { httpStatus: response.status }
+      );
+    }
+
     const responseText = await response.text();
+    // Secondary check on actual body (Content-Length may be absent or inaccurate)
+    // Use TextEncoder for byte-accurate length (handles multibyte UTF-8)
+    const actualBytes = new TextEncoder().encode(responseText).length;
+    if (actualBytes > MAX_TOKEN_RESPONSE_BYTES) {
+      throw new BasecampError(
+        "api_error",
+        `Token response too large (${actualBytes} bytes, max ${MAX_TOKEN_RESPONSE_BYTES})`,
+        { httpStatus: response.status }
+      );
+    }
+
     let data: RawTokenResponse | OAuthErrorResponse;
 
     try {
       data = JSON.parse(responseText);
     } catch {
+      // Truncate response text to avoid leaking sensitive data in error messages
+      const truncated = responseText.length > 500 ? responseText.slice(0, 497) + "..." : responseText;
       throw new BasecampError(
         "api_error",
-        `Failed to parse token response: ${responseText}`,
+        `Failed to parse token response: ${truncated}`,
         { httpStatus: response.status }
       );
     }
@@ -205,7 +250,8 @@ async function doTokenRequest(
     // Check for error response
     if (!response.ok) {
       const errorData = data as OAuthErrorResponse;
-      const message = errorData.error_description || errorData.error || "Token request failed";
+      const rawMessage = errorData.error_description || errorData.error || "Token request failed";
+      const message = rawMessage.length > 500 ? rawMessage.slice(0, 497) + "..." : rawMessage;
 
       if (response.status === 401 || errorData.error === "invalid_grant") {
         throw new BasecampError("auth", message, {

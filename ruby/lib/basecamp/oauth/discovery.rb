@@ -32,6 +32,8 @@ module Basecamp
       #   puts config.token_endpoint
       #   # => "https://launchpad.37signals.com/authorization/token"
       def discover(base_url)
+        Basecamp::Security.require_https_unless_localhost!(base_url, "discovery base URL")
+
         normalized_base = base_url.chomp("/")
         discovery_url = "#{normalized_base}/.well-known/oauth-authorization-server"
 
@@ -42,10 +44,12 @@ module Basecamp
         unless response.success?
           raise OAuthError.new(
             "network",
-            "OAuth discovery failed with status #{response.status}: #{response.body}",
+            "OAuth discovery failed with status #{response.status}: #{Basecamp::Security.truncate(response.body)}",
             http_status: response.status
           )
         end
+
+        Basecamp::Security.check_body_size!(response.body, Basecamp::Security::MAX_ERROR_BODY_BYTES, "Discovery")
 
         data = JSON.parse(response.body)
         validate_discovery_response!(data)

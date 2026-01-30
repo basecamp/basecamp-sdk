@@ -52,6 +52,20 @@ export async function discover(
 ): Promise<OAuthConfig> {
   const { fetch: customFetch = globalThis.fetch, timeoutMs = 10000 } = options;
 
+  // Validate HTTPS before making any network request (allow localhost for testing)
+  try {
+    const parsed = new URL(baseUrl);
+    const isLocalhost = parsed.hostname === "localhost" ||
+                        parsed.hostname === "127.0.0.1" ||
+                        parsed.hostname === "::1";
+    if (parsed.protocol !== "https:" && !isLocalhost) {
+      throw new BasecampError("validation", `OAuth discovery base URL must use HTTPS: ${baseUrl}`);
+    }
+  } catch (err) {
+    if (err instanceof BasecampError) throw err;
+    throw new BasecampError("validation", `Invalid OAuth discovery base URL: ${baseUrl}`);
+  }
+
   // Normalize base URL (remove trailing slash)
   const normalizedBase = baseUrl.replace(/\/$/, "");
   const discoveryUrl = `${normalizedBase}/.well-known/oauth-authorization-server`;
