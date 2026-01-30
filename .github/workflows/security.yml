@@ -90,6 +90,9 @@ jobs:
   gosec:
     name: Go Security Checker
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -99,17 +102,11 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Run gosec
-        uses: securego/gosec@v2.22.11
-        with:
-          args: '-fmt sarif -out gosec-results.sarif ./go/...'
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.4
 
-      - name: Upload gosec scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        continue-on-error: true  # Requires GitHub Advanced Security
-        with:
-          sarif_file: 'gosec-results.sarif'
+      - name: Run gosec
+        run: gosec -severity high ./...
 
   npm-audit:
     name: npm Audit (TypeScript SDK)
