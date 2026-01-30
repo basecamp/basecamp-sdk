@@ -3,6 +3,7 @@ package basecamp
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 )
@@ -123,4 +124,35 @@ func requireHTTPSUnlessLocalhost(rawURL string) error {
 		return nil
 	}
 	return requireHTTPS(rawURL)
+}
+
+// sensitiveHeaders is the list of headers that should be redacted for logging.
+var sensitiveHeaders = []string{
+	"Authorization",
+	"Cookie",
+	"Set-Cookie",
+	"X-CSRF-Token",
+}
+
+// RedactHeaders returns a copy of the headers with sensitive values replaced by "[REDACTED]".
+// This is useful for safely logging HTTP requests and responses without exposing tokens.
+//
+// The following headers are redacted:
+//   - Authorization
+//   - Cookie
+//   - Set-Cookie
+//   - X-CSRF-Token
+//
+// Example:
+//
+//	safeHeaders := basecamp.RedactHeaders(req.Header)
+//	logger.Debug("request", "headers", safeHeaders)
+func RedactHeaders(headers http.Header) http.Header {
+	result := headers.Clone()
+	for _, key := range sensitiveHeaders {
+		if result.Get(key) != "" {
+			result.Set(key, "[REDACTED]")
+		}
+	}
+	return result
 }

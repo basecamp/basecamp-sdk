@@ -329,6 +329,36 @@ describe("errorFromResponse", () => {
     expect(error.retryAfter).toBeGreaterThan(100);
     expect(error.retryAfter).toBeLessThanOrEqual(120);
   });
+
+  it("should truncate large error messages to 500 chars", async () => {
+    const largeMessage = "x".repeat(1000);
+    const response = new Response(JSON.stringify({ error: largeMessage }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const error = await errorFromResponse(response);
+
+    expect(error.message.length).toBeLessThanOrEqual(500);
+    expect(error.message).toMatch(/\.\.\.$/); // Ends with ...
+  });
+
+  it("should truncate large error_description to 500 chars", async () => {
+    const largeDescription = "y".repeat(1000);
+    const response = new Response(
+      JSON.stringify({ error: "Bad request", error_description: largeDescription }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    const error = await errorFromResponse(response);
+
+    expect(error.hint).toBeDefined();
+    expect(error.hint!.length).toBeLessThanOrEqual(500);
+    expect(error.hint).toMatch(/\.\.\.$/); // Ends with ...
+  });
 });
 
 describe("isBasecampError", () => {

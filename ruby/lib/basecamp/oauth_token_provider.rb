@@ -54,7 +54,11 @@ module Basecamp
     # Refreshes the access token using the refresh token.
     # @return [Boolean] true if refresh succeeded
     def refresh
-      refreshable? && @mutex.synchronize { perform_refresh }
+      @mutex.synchronize do
+        return false unless refreshable?
+
+        perform_refresh
+      end
     end
 
     # @return [Boolean] true if refresh token is available

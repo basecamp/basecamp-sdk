@@ -375,6 +375,95 @@ describe("Token Exchange", () => {
   });
 });
 
+describe("Response Size Limits", () => {
+  const tokenEndpoint = "https://launchpad.37signals.com/authorization/token";
+
+  it("rejects response with Content-Length exceeding limit", async () => {
+    server.use(
+      http.post(tokenEndpoint, () => {
+        return new HttpResponse(JSON.stringify({ access_token: "test" }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": "99999999999", // ~100GB
+          },
+        });
+      })
+    );
+
+    await expect(
+      exchangeCode({
+        tokenEndpoint,
+        code: "auth_code",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client",
+      })
+    ).rejects.toThrow(/too large/);
+  });
+
+  it("treats non-numeric Content-Length as missing (security)", async () => {
+    // A non-numeric Content-Length should not bypass size checks.
+    // In non-streaming environments, this should fail closed.
+    server.use(
+      http.post(tokenEndpoint, () => {
+        return new HttpResponse(JSON.stringify({ access_token: "test" }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": "abc123", // Invalid - not a number
+          },
+        });
+      })
+    );
+
+    // Note: In a streaming environment (Node.js), this will succeed because
+    // streaming can enforce the byte limit. In a non-streaming environment,
+    // this would fail closed. The test verifies the response is either:
+    // 1. Successfully parsed (streaming was available), OR
+    // 2. Rejected with "no valid Content-Length" error (fail closed)
+    try {
+      const result = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client",
+      });
+      // If it succeeds, streaming was available and the small body was read
+      expect(result.accessToken).toBe("test");
+    } catch (err) {
+      // If it fails, it should be because we failed closed on invalid Content-Length
+      expect((err as Error).message).toMatch(/no valid Content-Length/);
+    }
+  });
+
+  it("treats negative Content-Length as missing", async () => {
+    server.use(
+      http.post(tokenEndpoint, () => {
+        return new HttpResponse(JSON.stringify({ access_token: "test" }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": "-100",
+          },
+        });
+      })
+    );
+
+    // Same behavior as non-numeric: either streaming succeeds or fail closed
+    try {
+      const result = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client",
+      });
+      expect(result.accessToken).toBe("test");
+    } catch (err) {
+      expect((err as Error).message).toMatch(/no valid Content-Length/);
+    }
+  });
+});
+
 describe("Token Expiration", () => {
   describe("isTokenExpired", () => {
     it("returns false for token without expiration", () => {

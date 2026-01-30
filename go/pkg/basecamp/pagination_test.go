@@ -394,10 +394,14 @@ func (h *followPaginationHandler) getPageCount() int {
 // makeFirstPageResponse creates a mock HTTP response simulating the generated client's first page.
 // The path is always /items.json for these tests.
 func makeFirstPageResponse(serverURL string, pageSize, totalItems int) *http.Response {
+	// Parse the server URL to create the request URL
+	firstPageURL, _ := url.Parse(serverURL + "/items.json")
+
 	resp := &http.Response{
 		StatusCode: 200,
 		Header:     make(http.Header),
 		Body:       io.NopCloser(strings.NewReader("[]")), // Empty array body for bodyclose linter
+		Request:    &http.Request{URL: firstPageURL},     // Required for same-origin validation
 	}
 
 	// Set Link header if there are more pages
@@ -458,9 +462,11 @@ func TestFollowPagination_NoLinkHeader(t *testing.T) {
 	client := NewClient(cfg, &mockTokenProvider{})
 	ctx := context.Background()
 
+	firstPageURL, _ := url.Parse("https://example.com/items.json")
 	resp := &http.Response{
 		StatusCode: 200,
 		Header:     make(http.Header), // No Link header
+		Request:    &http.Request{URL: firstPageURL},
 	}
 
 	results, err := client.FollowPagination(ctx, resp, 5, 10)

@@ -320,5 +320,21 @@ export {
   type TokenOptions,
 } from "./oauth/exchange.js";
 
+// PKCE utilities
+export {
+  generatePKCE,
+  generateState,
+  type PKCE,
+} from "./oauth/pkce.js";
+
+// =============================================================================
+// Security Utilities
+// =============================================================================
+
+export {
+  redactHeaders,
+  redactHeadersRecord,
+} from "./security.js";
+
 // Re-export generated types
 export type { paths } from "./generated/schema.js";

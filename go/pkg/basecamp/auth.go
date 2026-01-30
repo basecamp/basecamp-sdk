@@ -276,6 +276,9 @@ func (m *AuthManager) IsAuthenticated() bool {
 		return true
 	}
 
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	origin := NormalizeBaseURL(m.cfg.BaseURL)
 	creds, err := m.store.Load(origin)
 	if err != nil {
@@ -354,12 +357,18 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 
 // Logout removes stored credentials.
 func (m *AuthManager) Logout() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	origin := NormalizeBaseURL(m.cfg.BaseURL)
 	return m.store.Delete(origin)
 }
 
 // GetUserID returns the stored user ID.
 func (m *AuthManager) GetUserID() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	origin := NormalizeBaseURL(m.cfg.BaseURL)
 	creds, err := m.store.Load(origin)
 	if err != nil {
@@ -370,6 +379,9 @@ func (m *AuthManager) GetUserID() string {
 
 // SetUserID stores the user ID.
 func (m *AuthManager) SetUserID(userID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	origin := NormalizeBaseURL(m.cfg.BaseURL)
 	creds, err := m.store.Load(origin)
 	if err != nil {

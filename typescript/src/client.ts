@@ -256,15 +256,15 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 
   // Add lazy-initialized service accessors
   // Services are created on first access and cached
+  // Uses nullish coalescing assignment for atomic check-and-set in single-threaded JS
   const serviceCache: Record<string, unknown> = {};
 
   const defineService = <T>(name: string, factory: () => T) => {
     Object.defineProperty(enhancedClient, name, {
       get() {
-        if (!serviceCache[name]) {
-          serviceCache[name] = factory();
-        }
-        return serviceCache[name] as T;
+        // Nullish coalescing assignment is atomic in single-threaded JS.
+        // This prevents duplicate service creation during async interleaving.
+        return (serviceCache[name] ??= factory()) as T;
       },
       enumerable: true,
       configurable: false,
@@ -434,19 +434,52 @@ function createCacheMiddleware(): Middleware {
   // Derive a short token hash from the Authorization header for cache key isolation.
   // Different auth contexts must not share cached responses.
   // Re-computed per request so refreshed tokens produce new cache keys.
+  //
+  // Security: The map is bounded to MAX_TOKEN_HASH_ENTRIES to prevent unbounded growth.
+  // LRU-like eviction removes oldest entries when the limit is reached.
+  const MAX_TOKEN_HASH_ENTRIES = 100;
   const hashTokenMap = new Map<string, string>();
+  // Track pending hash computations to coalesce concurrent requests for the same token.
+  // This prevents duplicate crypto operations during async interleaving.
+  const pendingHashes = new Map<string, Promise<string>>();
+
+  const evictOldestHash = () => {
+    if (hashTokenMap.size >= MAX_TOKEN_HASH_ENTRIES) {
+      // Delete oldest entry (first key in insertion order)
+      const firstKey = hashTokenMap.keys().next().value;
+      if (firstKey) hashTokenMap.delete(firstKey);
+    }
+  };
+
   const getTokenHash = async (authHeader: string | null): Promise<string> => {
     if (!authHeader) return "";
+
+    // Check completed cache first
     const cached = hashTokenMap.get(authHeader);
     if (cached) return cached;
-    const data = new TextEncoder().encode(authHeader);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = new Uint8Array(hashBuffer);
-    const hash = Array.from(hashArray.slice(0, 8))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    hashTokenMap.set(authHeader, hash);
-    return hash;
+
+    // Check if computation already in progress (coalesce concurrent requests)
+    const pending = pendingHashes.get(authHeader);
+    if (pending) return pending;
+
+    // Start new computation with promise coalescing
+    const promise = (async () => {
+      const data = new TextEncoder().encode(authHeader);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = new Uint8Array(hashBuffer);
+      const hash = Array.from(hashArray.slice(0, 8))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      // Evict oldest before adding new entry
+      evictOldestHash();
+      hashTokenMap.set(authHeader, hash);
+      return hash;
+    })();
+
+    pendingHashes.set(authHeader, promise);
+    promise.finally(() => pendingHashes.delete(authHeader));
+
+    return promise;
   };
 
   const evictOldest = () => {

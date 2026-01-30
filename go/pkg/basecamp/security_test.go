@@ -3,10 +3,12 @@ package basecamp
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -327,6 +329,187 @@ func TestTruncateString_Long(t *testing.T) {
 	}
 }
 
+func TestHandleError_TruncatesLargeErrorMessage(t *testing.T) {
+	// Create a response with a very large error message
+	largeMsg := strings.Repeat("x", 1000)
+	body := fmt.Sprintf(`{"error": "%s"}`, largeMsg)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(body))
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test"})
+
+	_, err := client.Get(context.Background(), "/test")
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+
+	var apiErr *Error
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("Expected *Error, got %T", err)
+	}
+
+	// Error message should be truncated to 500 chars (497 + "...")
+	if len(apiErr.Message) > MaxErrorMessageBytes {
+		t.Errorf("Error message too long (%d chars), expected max %d", len(apiErr.Message), MaxErrorMessageBytes)
+	}
+	if !strings.HasSuffix(apiErr.Message, "...") {
+		t.Error("Expected '...' suffix in truncated error")
+	}
+}
+
+// =============================================================================
+// FollowPagination Security Tests
+// =============================================================================
+
+func TestFollowPagination_RejectsCrossOriginLink(t *testing.T) {
+	// Page 1 server (legitimate)
+	page1Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Link header pointing to a different origin (evil.com)
+		w.Header().Set("Link", `<https://evil.com/page2>; rel="next"`)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[{"id":1}]`))
+	}))
+	defer page1Server.Close()
+
+	cfg := &Config{BaseURL: page1Server.URL}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "secret-token"})
+
+	// Make first page request
+	resp, err := client.Get(context.Background(), "/items")
+	if err != nil {
+		t.Fatalf("First page request failed: %v", err)
+	}
+
+	// Create a mock http.Response with the Request URL set
+	httpResp := &http.Response{
+		Request: &http.Request{URL: mustParseURL(page1Server.URL + "/items")},
+		Header:  resp.Headers,
+	}
+
+	// FollowPagination should reject the cross-origin Link
+	_, err = client.FollowPagination(context.Background(), httpResp, 1, 0)
+	if err == nil {
+		t.Fatal("Expected error for cross-origin Link, got nil")
+	}
+	if !strings.Contains(err.Error(), "different origin") {
+		t.Errorf("Expected 'different origin' error, got: %v", err)
+	}
+}
+
+func TestFollowPagination_ResolvesRelativeLinkFromCurrentPage(t *testing.T) {
+	requestedURLs := []string{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestedURLs = append(requestedURLs, r.URL.String())
+		w.Header().Set("Content-Type", "application/json")
+
+		// Route based on path + query
+		fullPath := r.URL.Path
+		if r.URL.RawQuery != "" {
+			fullPath += "?" + r.URL.RawQuery
+		}
+
+		switch fullPath {
+		case "/items":
+			// Page 1: Link to page 2 using relative URL
+			w.Header().Set("Link", `<./items?page=2>; rel="next"`)
+			w.Write([]byte(`[{"id":1}]`))
+		case "/items?page=2":
+			// Page 2: Link to page 3 using relative URL
+			w.Header().Set("Link", `<./items?page=3>; rel="next"`)
+			w.Write([]byte(`[{"id":2}]`))
+		default:
+			// Page 3 or beyond: no more pages
+			w.Write([]byte(`[{"id":3}]`))
+		}
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test"})
+
+	// Make first page request
+	resp, err := client.Get(context.Background(), "/items")
+	if err != nil {
+		t.Fatalf("First page request failed: %v", err)
+	}
+
+	// Create a mock http.Response with the Request URL set
+	httpResp := &http.Response{
+		Request: &http.Request{URL: mustParseURL(server.URL + "/items")},
+		Header:  resp.Headers,
+	}
+
+	// FollowPagination should resolve relative URLs correctly
+	results, err := client.FollowPagination(context.Background(), httpResp, 1, 0)
+	if err != nil {
+		t.Fatalf("FollowPagination failed: %v", err)
+	}
+
+	// Should have fetched additional pages
+	if len(results) == 0 {
+		t.Error("Expected pagination results, got none")
+	}
+}
+
+func TestFollowPagination_AcceptsSameOriginWithExplicitPort(t *testing.T) {
+	// Test that explicit port in Link header is accepted when it matches
+	// The isSameOrigin function normalizes default ports, so :80 matches no-port for HTTP
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/items" && r.URL.RawQuery == "" {
+			// Page 1: Link with explicit port (same as server's port)
+			// httptest.NewServer uses a random port, so we use the actual host
+			w.Header().Set("Link", fmt.Sprintf(`<http://%s/items?page=2>; rel="next"`, r.Host))
+			w.Write([]byte(`[{"id":1}]`))
+		} else {
+			// Page 2: no more pages
+			w.Write([]byte(`[{"id":2}]`))
+		}
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test"})
+
+	// Make first page request
+	resp, err := client.Get(context.Background(), "/items")
+	if err != nil {
+		t.Fatalf("First page request failed: %v", err)
+	}
+
+	// Create a mock http.Response
+	httpResp := &http.Response{
+		Request: &http.Request{URL: mustParseURL(server.URL + "/items")},
+		Header:  resp.Headers,
+	}
+
+	// FollowPagination should accept same-origin with explicit port
+	results, err := client.FollowPagination(context.Background(), httpResp, 1, 0)
+	if err != nil {
+		t.Fatalf("FollowPagination failed: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result from page 2, got %d", len(results))
+	}
+}
+
+func mustParseURL(s string) *url.URL {
+	u, err := url.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
+
 // =============================================================================
 // isSameOrigin Tests
 // =============================================================================
@@ -567,4 +750,72 @@ func TestNewClient_PanicsOnNegativeMaxPages(t *testing.T) {
 	cfg := &Config{BaseURL: "https://3.basecampapi.com"}
 	NewClient(cfg, &StaticTokenProvider{Token: "token"},
 		WithMaxPages(0))
+}
+
+// =============================================================================
+// Header Redaction Tests
+// =============================================================================
+
+func TestRedactHeaders_RedactsSensitiveHeaders(t *testing.T) {
+	headers := http.Header{}
+	headers.Set("Authorization", "Bearer secret-token")
+	headers.Set("Cookie", "session=abc123")
+	headers.Set("Content-Type", "application/json")
+	headers.Set("X-CSRF-Token", "csrf-token-value")
+
+	redacted := RedactHeaders(headers)
+
+	// Sensitive headers should be redacted
+	if redacted.Get("Authorization") != "[REDACTED]" {
+		t.Errorf("Expected Authorization to be redacted, got: %q", redacted.Get("Authorization"))
+	}
+	if redacted.Get("Cookie") != "[REDACTED]" {
+		t.Errorf("Expected Cookie to be redacted, got: %q", redacted.Get("Cookie"))
+	}
+	if redacted.Get("X-CSRF-Token") != "[REDACTED]" {
+		t.Errorf("Expected X-CSRF-Token to be redacted, got: %q", redacted.Get("X-CSRF-Token"))
+	}
+
+	// Non-sensitive headers should be preserved
+	if redacted.Get("Content-Type") != "application/json" {
+		t.Errorf("Expected Content-Type to be preserved, got: %q", redacted.Get("Content-Type"))
+	}
+}
+
+func TestRedactHeaders_PreservesOriginal(t *testing.T) {
+	original := http.Header{}
+	original.Set("Authorization", "Bearer secret-token")
+
+	_ = RedactHeaders(original)
+
+	// Original should not be modified
+	if original.Get("Authorization") != "Bearer secret-token" {
+		t.Errorf("Original header was modified, got: %q", original.Get("Authorization"))
+	}
+}
+
+func TestRedactHeaders_EmptyHeaders(t *testing.T) {
+	headers := http.Header{}
+	redacted := RedactHeaders(headers)
+
+	if len(redacted) != 0 {
+		t.Errorf("Expected empty headers, got: %v", redacted)
+	}
+}
+
+func TestRedactHeaders_SkipsAbsentSensitiveHeaders(t *testing.T) {
+	headers := http.Header{}
+	headers.Set("Content-Type", "application/json")
+
+	redacted := RedactHeaders(headers)
+
+	// Non-sensitive header should be preserved
+	if redacted.Get("Content-Type") != "application/json" {
+		t.Errorf("Expected Content-Type to be preserved, got: %q", redacted.Get("Content-Type"))
+	}
+
+	// Absent sensitive headers should remain absent, not be set to [REDACTED]
+	if redacted.Get("Authorization") != "" {
+		t.Errorf("Expected Authorization to be absent, got: %q", redacted.Get("Authorization"))
+	}
 }

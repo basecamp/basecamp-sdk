@@ -71,5 +71,34 @@ module Basecamp
 
       require_https!(url, label)
     end
+
+    # Headers that contain sensitive values and should be redacted.
+    SENSITIVE_HEADERS = %w[
+      authorization
+      cookie
+      set-cookie
+      x-csrf-token
+    ].freeze
+
+    # Returns a copy of the headers with sensitive values replaced by "[REDACTED]".
+    #
+    # This is useful for safely logging HTTP requests and responses without
+    # exposing tokens, cookies, or other credentials.
+    #
+    # @param headers [Hash] the headers hash (case-insensitive keys)
+    # @return [Hash] a new hash with sensitive values redacted
+    #
+    # @example
+    #   headers = { "Authorization" => "Bearer token", "Content-Type" => "application/json" }
+    #   safe = Basecamp::Security.redact_headers(headers)
+    #   # => { "Authorization" => "[REDACTED]", "Content-Type" => "application/json" }
+    #
+    def self.redact_headers(headers)
+      result = {}
+      headers.each do |key, value|
+        result[key] = SENSITIVE_HEADERS.include?(key.to_s.downcase) ? "[REDACTED]" : value
+      end
+      result
+    end
   end
 end

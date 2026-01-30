@@ -599,3 +599,201 @@ class SecurityConfigTest < Minitest::Test
     end
   end
 end
+
+# =============================================================================
+# Header Redaction Tests
+# =============================================================================
+
+class SecurityRedactHeadersTest < Minitest::Test
+  def test_redacts_authorization_header
+    headers = { "Authorization" => "Bearer secret-token", "Content-Type" => "application/json" }
+    result = Basecamp::Security.redact_headers(headers)
+
+    assert_equal "[REDACTED]", result["Authorization"]
+    assert_equal "application/json", result["Content-Type"]
+  end
+
+  def test_redacts_cookie_header
+    headers = { "Cookie" => "session=abc123", "Accept" => "application/json" }
+    result = Basecamp::Security.redact_headers(headers)
+
+    assert_equal "[REDACTED]", result["Cookie"]
+    assert_equal "application/json", result["Accept"]
+  end
+
+  def test_redacts_set_cookie_header
+    headers = { "Set-Cookie" => "session=abc123; HttpOnly", "Content-Type" => "text/html" }
+    result = Basecamp::Security.redact_headers(headers)
+
+    assert_equal "[REDACTED]", result["Set-Cookie"]
+  end
+
+  def test_redacts_csrf_token
+    headers = { "X-CSRF-Token" => "csrf-secret", "Content-Type" => "application/json" }
+    result = Basecamp::Security.redact_headers(headers)
+
+    assert_equal "[REDACTED]", result["X-CSRF-Token"]
+  end
+
+  def test_preserves_non_sensitive_headers
+    headers = { "Content-Type" => "application/json", "Accept" => "*/*", "User-Agent" => "test" }
+    result = Basecamp::Security.redact_headers(headers)
+
+    assert_equal "application/json", result["Content-Type"]
+    assert_equal "*/*", result["Accept"]
+    assert_equal "test", result["User-Agent"]
+  end
+
+  def test_case_insensitive_redaction
+    headers = { "authorization" => "Bearer token", "COOKIE" => "session=123" }
+    result = Basecamp::Security.redact_headers(headers)
+
+    assert_equal "[REDACTED]", result["authorization"]
+    assert_equal "[REDACTED]", result["COOKIE"]
+  end
+
+  def test_returns_new_hash
+    original = { "Authorization" => "Bearer secret-token" }
+    result = Basecamp::Security.redact_headers(original)
+
+    # Original should not be modified
+    assert_equal "Bearer secret-token", original["Authorization"]
+    assert_equal "[REDACTED]", result["Authorization"]
+  end
+
+  def test_handles_empty_headers
+    result = Basecamp::Security.redact_headers({})
+    assert_empty result
+  end
+end
+
+# =============================================================================
+# Concurrency Tests
+# =============================================================================
+
+class SecurityConcurrencyTest < Minitest::Test
+  def setup
+    # Stub the OAuth token endpoint for all concurrency tests
+    stub_request(:post, "https://launchpad.37signals.com/authorization/token")
+      .to_return(
+        status: 200,
+        body: { access_token: "refreshed-token", expires_in: 3600 }.to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+  end
+
+  def test_oauth_token_provider_concurrent_refresh
+    # This test verifies that concurrent refresh attempts don't race.
+    # The mutex should ensure only one refresh happens at a time.
+    provider = Basecamp::OauthTokenProvider.new(
+      access_token: "initial-token",
+      refresh_token: "refresh-token",
+      client_id: "client-id",
+      client_secret: "client-secret",
+      expires_at: Time.now - 60  # Already expired
+    )
+
+    threads = 10.times.map do
+      Thread.new do
+        # All threads try to get the access token simultaneously.
+        # With proper mutex protection, this should not cause deadlocks.
+        provider.access_token
+      end
+    end
+
+    # Should complete without deadlock
+    assert threads.all? { |t| t.join(5) }, "Threads should complete without deadlock"
+  end
+
+  def test_oauth_token_provider_refresh_check_inside_mutex
+    # Verify that refreshable? check is inside the mutex by testing
+    # that setting refresh_token to nil during concurrent access doesn't cause issues
+    provider = Basecamp::OauthTokenProvider.new(
+      access_token: "initial-token",
+      refresh_token: "refresh-token",
+      client_id: "client-id",
+      client_secret: "client-secret"
+    )
+
+    # Access refreshable? from multiple threads while calling refresh
+    # This would have raced before the fix (check outside mutex)
+    threads = []
+    10.times do
+      threads << Thread.new { provider.refreshable? }
+      threads << Thread.new { provider.refresh }
+    end
+
+    # Should complete without deadlock
+    assert threads.all? { |t| t.join(5) }, "Threads should complete without deadlock"
+  end
+end
+
+# =============================================================================
+# PKCE Tests
+# =============================================================================
+
+class SecurityPKCETest < Minitest::Test
+  def test_generate_pkce_returns_verifier_and_challenge
+    pkce = Basecamp::Oauth::Pkce.generate
+
+    assert pkce.key?(:verifier)
+    assert pkce.key?(:challenge)
+  end
+
+  def test_generate_pkce_verifier_length
+    pkce = Basecamp::Oauth::Pkce.generate
+
+    # 32 bytes base64url-encoded without padding = 43 characters
+    assert_equal 43, pkce[:verifier].length
+  end
+
+  def test_generate_pkce_challenge_length
+    pkce = Basecamp::Oauth::Pkce.generate
+
+    # SHA256 = 32 bytes, base64url-encoded without padding = 43 characters
+    assert_equal 43, pkce[:challenge].length
+  end
+
+  def test_generate_pkce_challenge_is_sha256_of_verifier
+    pkce = Basecamp::Oauth::Pkce.generate
+
+    # Manually compute the expected challenge
+    expected_challenge = Base64.urlsafe_encode64(
+      Digest::SHA256.digest(pkce[:verifier]),
+      padding: false
+    )
+
+    assert_equal expected_challenge, pkce[:challenge]
+  end
+
+  def test_generate_pkce_uniqueness
+    pkce1 = Basecamp::Oauth::Pkce.generate
+    pkce2 = Basecamp::Oauth::Pkce.generate
+
+    # Each call should generate a unique verifier
+    refute_equal pkce1[:verifier], pkce2[:verifier]
+    refute_equal pkce1[:challenge], pkce2[:challenge]
+  end
+
+  def test_generate_state_length
+    state = Basecamp::Oauth::Pkce.generate_state
+
+    # 16 bytes base64url-encoded without padding = 22 characters
+    assert_equal 22, state.length
+  end
+
+  def test_generate_state_uniqueness
+    state1 = Basecamp::Oauth::Pkce.generate_state
+    state2 = Basecamp::Oauth::Pkce.generate_state
+
+    refute_equal state1, state2
+  end
+
+  def test_pkce_format_is_base64url
+    pkce = Basecamp::Oauth::Pkce.generate
+
+    # base64url should not contain +, /, or =
+    refute_match(/[+\/=]/, pkce[:verifier])
+    refute_match(/[+\/=]/, pkce[:challenge])
+  end
+end

@@ -183,6 +183,94 @@ function requireHTTPS(url: string, label: string): void {
 }
 
 /**
+ * Parses Content-Length header, returning null for missing/invalid values.
+ * Treats non-numeric or negative values as invalid (fail closed).
+ */
+function parseContentLength(header: string | null): number | null {
+  if (!header) return null;
+  const parsed = parseInt(header, 10);
+  // NaN, negative, or non-integer values are invalid
+  if (!Number.isInteger(parsed) || parsed < 0) return null;
+  // Reject if the header contains non-digit characters (e.g., "123abc")
+  if (!/^\d+$/.test(header.trim())) return null;
+  return parsed;
+}
+
+/**
+ * Reads a response body with streaming byte limit.
+ * Uses true byte counting even when Content-Length is absent or inaccurate.
+ */
+async function readResponseWithByteLimit(
+  response: Response,
+  maxBytes: number,
+  httpStatus: number
+): Promise<string> {
+  // Parse Content-Length, treating invalid values as missing (fail closed)
+  const contentLengthBytes = parseContentLength(
+    response.headers.get("Content-Length")
+  );
+
+  // Fast path: reject if Content-Length exceeds limit
+  if (contentLengthBytes !== null && contentLengthBytes > maxBytes) {
+    throw new BasecampError(
+      "api_error",
+      `Token response too large (Content-Length: ${contentLengthBytes} bytes, max ${maxBytes})`,
+      { httpStatus }
+    );
+  }
+
+  // If no body or body isn't streamable, require valid Content-Length
+  if (!response.body) {
+    // If Content-Length is missing or invalid, we cannot protect against DoS - fail closed.
+    // If it was valid and within limits, we can safely read.
+    if (contentLengthBytes === null) {
+      throw new BasecampError(
+        "api_error",
+        "Cannot safely read token response: no valid Content-Length header and streaming unavailable",
+        { httpStatus }
+      );
+    }
+    // Content-Length was valid and within limits, safe to read
+    return response.text();
+  }
+
+  // Stream with byte counting
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      totalBytes += value.length;
+      if (totalBytes > maxBytes) {
+        reader.cancel();
+        throw new BasecampError(
+          "api_error",
+          `Token response too large (${totalBytes}+ bytes, max ${maxBytes})`,
+          { httpStatus }
+        );
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  // Concatenate and decode
+  const combined = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return new TextDecoder().decode(combined);
+}
+
+/**
  * Performs the actual HTTP token request.
  */
 async function doTokenRequest(
@@ -211,27 +299,13 @@ async function doTokenRequest(
 
     const MAX_TOKEN_RESPONSE_BYTES = 1 * 1024 * 1024; // 1 MB
 
-    // Early guard using Content-Length header (before reading body into memory)
-    const contentLength = response.headers.get("content-length");
-    if (contentLength && parseInt(contentLength, 10) > MAX_TOKEN_RESPONSE_BYTES) {
-      throw new BasecampError(
-        "api_error",
-        `Token response too large (${contentLength} bytes, max ${MAX_TOKEN_RESPONSE_BYTES})`,
-        { httpStatus: response.status }
-      );
-    }
-
-    const responseText = await response.text();
-    // Secondary check on actual body (Content-Length may be absent or inaccurate)
-    // Use TextEncoder for byte-accurate length (handles multibyte UTF-8)
-    const actualBytes = new TextEncoder().encode(responseText).length;
-    if (actualBytes > MAX_TOKEN_RESPONSE_BYTES) {
-      throw new BasecampError(
-        "api_error",
-        `Token response too large (${actualBytes} bytes, max ${MAX_TOKEN_RESPONSE_BYTES})`,
-        { httpStatus: response.status }
-      );
-    }
+    // Use streaming reader with true byte-level limit enforcement.
+    // This handles cases where Content-Length is absent or inaccurate.
+    const responseText = await readResponseWithByteLimit(
+      response,
+      MAX_TOKEN_RESPONSE_BYTES,
+      response.status
+    );
 
     let data: RawTokenResponse | OAuthErrorResponse;
 

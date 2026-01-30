@@ -578,3 +578,87 @@ describe("OAuth response body size limit", () => {
     ).rejects.toThrow("too large");
   });
 });
+
+// =============================================================================
+// Service Cache Concurrency (Race Condition Prevention)
+// =============================================================================
+
+describe("Service cache concurrency", () => {
+  it("concurrent service access returns same instance", async () => {
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+    });
+
+    // Access the same service concurrently from multiple "threads"
+    // In single-threaded JS, this simulates interleaved access
+    const promises = Array(100)
+      .fill(null)
+      .map(() => Promise.resolve(client.projects));
+
+    const services = await Promise.all(promises);
+
+    // All should be the same instance (singleton pattern)
+    const uniqueServices = new Set(services);
+    expect(uniqueServices.size).toBe(1);
+  });
+
+  it("different services are different instances", () => {
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+    });
+
+    const projects = client.projects;
+    const todos = client.todos;
+    const people = client.people;
+
+    // Each service type should be a different instance
+    expect(projects).not.toBe(todos);
+    expect(todos).not.toBe(people);
+    expect(projects).not.toBe(people);
+  });
+});
+
+// =============================================================================
+// Header Redaction
+// =============================================================================
+
+describe("Header redaction", () => {
+  // Import inline to avoid circular dependencies in test setup
+  it("redactHeaders redacts sensitive headers", async () => {
+    const { redactHeaders } = await import("../src/security.js");
+
+    const headers = new Headers({
+      Authorization: "Bearer secret-token",
+      Cookie: "session=abc123",
+      "Content-Type": "application/json",
+      "X-CSRF-Token": "csrf-token-value",
+    });
+
+    const redacted = redactHeaders(headers);
+
+    // Note: Headers.forEach yields lowercase keys in most runtimes
+    expect(redacted.authorization).toBe("[REDACTED]");
+    expect(redacted.cookie).toBe("[REDACTED]");
+    expect(redacted["x-csrf-token"]).toBe("[REDACTED]");
+    expect(redacted["content-type"]).toBe("application/json");
+  });
+
+  it("redactHeadersRecord preserves original key casing", async () => {
+    const { redactHeadersRecord } = await import("../src/security.js");
+
+    const headers = {
+      Authorization: "Bearer secret-token",
+      Cookie: "session=abc123",
+      "Content-Type": "application/json",
+    };
+
+    const redacted = redactHeadersRecord(headers);
+
+    // redactHeadersRecord preserves the original key casing from the input object
+    expect(redacted.Authorization).toBe("[REDACTED]");
+    expect(redacted.Cookie).toBe("[REDACTED]");
+    expect(redacted["Content-Type"]).toBe("application/json");
+  });
+});
