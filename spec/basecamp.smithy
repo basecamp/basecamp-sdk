@@ -356,7 +356,7 @@ structure GetProjectOutput {
 
 /// Create a new project
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/projects.json")
+@http(method: "POST", uri: "/{accountId}/projects.json", code: 201)
 operation CreateProject {
   input: CreateProjectInput
   output: CreateProjectOutput
@@ -597,7 +597,7 @@ structure GetTodoOutput {
 
 /// Create a new todo in a todolist
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todolists/{todolistId}/todos.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todolists/{todolistId}/todos.json", code: 201)
 operation CreateTodo {
   input: CreateTodoInput
   output: CreateTodoOutput
@@ -701,7 +701,7 @@ structure TrashTodoOutput {}
 /// Mark a todo as complete
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}/completion.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}/completion.json", code: 204)
 operation CompleteTodo {
   input: CompleteTodoInput
   output: CompleteTodoOutput
@@ -728,7 +728,7 @@ structure CompleteTodoOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}/completion.json")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}/completion.json", code: 204)
 operation UncompleteTodo {
   input: UncompleteTodoInput
   output: UncompleteTodoOutput
@@ -888,7 +888,7 @@ union TodolistOrGroup {
 
 /// Create a new todolist in a todoset
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todosets/{todosetId}/todolists.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todosets/{todosetId}/todolists.json", code: 201)
 operation CreateTodolist {
   input: CreateTodolistInput
   output: CreateTodolistOutput
@@ -996,7 +996,7 @@ structure ListTodolistGroupsOutput {
 
 /// Create a new group in a todolist
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todolists/{todolistId}/groups.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todolists/{todolistId}/groups.json", code: 201)
 operation CreateTodolistGroup {
   input: CreateTodolistGroupInput
   output: CreateTodolistGroupOutput
@@ -1335,7 +1335,7 @@ structure GetCommentOutput {
 
 /// Create a new comment on a recording
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/comments.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/comments.json", code: 201)
 operation CreateComment {
   input: CreateCommentInput
   output: CreateCommentOutput
@@ -1465,7 +1465,7 @@ structure GetMessageOutput {
 
 /// Create a new message on a message board
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/message_boards/{boardId}/messages.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/message_boards/{boardId}/messages.json", code: 201)
 operation CreateMessage {
   input: CreateMessageInput
   output: CreateMessageOutput
@@ -1686,7 +1686,7 @@ structure GetMessageTypeOutput {
 
 /// Create a new message type in a project
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/categories.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/categories.json", code: 201)
 operation CreateMessageType {
   input: CreateMessageTypeInput
   output: CreateMessageTypeOutput
@@ -1751,7 +1751,7 @@ structure UpdateMessageTypeOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/categories/{typeId}")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/categories/{typeId}", code: 204)
 operation DeleteMessageType {
   input: DeleteMessageTypeInput
   output: DeleteMessageTypeOutput
@@ -1840,7 +1840,7 @@ structure GetVaultOutput {
 
 /// Create a new vault (subfolder) in a vault
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/vaults.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/vaults.json", code: 201)
 operation CreateVault {
   input: CreateVaultInput
   output: CreateVaultOutput
@@ -1967,7 +1967,7 @@ structure GetDocumentOutput {
 
 /// Create a new document in a vault
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/documents.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/documents.json", code: 201)
 operation CreateDocument {
   input: CreateDocumentInput
   output: CreateDocumentOutput
@@ -2102,7 +2102,7 @@ structure GetUploadOutput {
 
 /// Create a new upload in a vault
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/uploads.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/uploads.json", code: 201)
 operation CreateUpload {
   input: CreateUploadInput
   output: CreateUploadOutput
@@ -2206,7 +2206,7 @@ structure ListUploadVersionsOutput {
 
 /// Create an attachment (upload a file for embedding)
 @basecampRetry(maxAttempts: 3, baseDelayMs: 2000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/attachments.json")
+@http(method: "POST", uri: "/{accountId}/attachments.json", code: 201)
 operation CreateAttachment {
   input: CreateAttachmentInput
   output: CreateAttachmentOutput
@@ -2395,7 +2395,7 @@ structure GetScheduleEntryOccurrenceOutput {
 
 /// Create a new schedule entry
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/schedules/{scheduleId}/entries.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/schedules/{scheduleId}/entries.json", code: 201)
 operation CreateScheduleEntry {
   input: CreateScheduleEntryInput
   output: CreateScheduleEntryOutput
@@ -3005,7 +3005,7 @@ structure GetCampfireLineOutput {
 
 /// Create a new line (message) in a campfire
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines.json", code: 201)
 operation CreateCampfireLine {
   input: CreateCampfireLineInput
   output: CreateCampfireLineOutput
@@ -3135,7 +3135,7 @@ structure GetChatbotOutput {
 
 /// Create a new chatbot for a campfire
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations.json", code: 201)
 operation CreateChatbot {
   input: CreateChatbotInput
   output: CreateChatbotOutput
@@ -3209,7 +3209,7 @@ structure UpdateChatbotOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}", code: 204)
 operation DeleteChatbot {
   input: DeleteChatbotInput
   output: DeleteChatbotOutput
@@ -3399,7 +3399,7 @@ structure GetForwardReplyOutput {
 
 /// Create a reply to a forward
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json", code: 201)
 operation CreateForwardReply {
   input: CreateForwardReplyInput
   output: CreateForwardReplyOutput
@@ -3670,7 +3670,7 @@ structure GetCardOutput {
 
 /// Create a card in a column
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/cards.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/cards.json", code: 201)
 operation CreateCard {
   input: CreateCardInput
   output: CreateCardOutput
@@ -3740,7 +3740,7 @@ structure UpdateCardOutput {
 
 /// Move a card to a different column
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/moves.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/moves.json", code: 204)
 operation MoveCard {
   input: MoveCardInput
   output: MoveCardOutput
@@ -3801,7 +3801,7 @@ structure GetCardColumnOutput {
 
 /// Create a column in a card table
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}/columns.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}/columns.json", code: 201)
 operation CreateCardColumn {
   input: CreateCardColumnInput
   output: CreateCardColumnOutput
@@ -4047,7 +4047,7 @@ structure UnsubscribeFromCardColumnOutput {}
 
 /// Create a step on a card
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/steps.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/steps.json", code: 201)
 operation CreateCardStep {
   input: CreateCardStepInput
   output: CreateCardStepOutput
@@ -4568,7 +4568,7 @@ structure SubscribeOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/subscription.json")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/subscription.json", code: 204)
 operation Unsubscribe {
   input: UnsubscribeInput
   output: UnsubscribeOutput
@@ -5003,7 +5003,7 @@ structure GetWebhookOutput {
 
 /// Create a new webhook for a project
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/webhooks.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/webhooks.json", code: 201)
 operation CreateWebhook {
   input: CreateWebhookInput
   output: CreateWebhookOutput
@@ -5071,7 +5071,7 @@ structure UpdateWebhookOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/webhooks/{webhookId}")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/webhooks/{webhookId}", code: 204)
 operation DeleteWebhook {
   input: DeleteWebhookInput
   output: DeleteWebhookOutput
@@ -5205,7 +5205,7 @@ structure GetRecordingOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/trashed.json")
+@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/trashed.json", code: 204)
 operation TrashRecording {
   input: TrashRecordingInput
   output: TrashRecordingOutput
@@ -5232,7 +5232,7 @@ structure TrashRecordingOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/archived.json")
+@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/archived.json", code: 204)
 operation ArchiveRecording {
   input: ArchiveRecordingInput
   output: ArchiveRecordingOutput
@@ -5259,7 +5259,7 @@ structure ArchiveRecordingOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/active.json")
+@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/active.json", code: 204)
 operation UnarchiveRecording {
   input: UnarchiveRecordingInput
   output: UnarchiveRecordingOutput
@@ -5497,7 +5497,7 @@ structure GetQuestionOutput {
 
 /// Create a new question in a questionnaire
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json", code: 201)
 operation CreateQuestion {
   input: CreateQuestionInput
   output: CreateQuestionOutput
@@ -5715,7 +5715,7 @@ structure GetAnswerOutput {
 
 /// Create a new answer for a question
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/answers.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/answers.json", code: 201)
 operation CreateAnswer {
   input: CreateAnswerInput
   output: CreateAnswerOutput
@@ -6112,7 +6112,7 @@ structure GetTemplateOutput {
 
 /// Create a new template
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/templates.json")
+@http(method: "POST", uri: "/{accountId}/templates.json", code: 201)
 operation CreateTemplate {
   input: CreateTemplateInput
   output: CreateTemplateOutput
@@ -6190,7 +6190,7 @@ structure DeleteTemplateOutput {}
 
 /// Create a project from a template (asynchronous)
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/templates/{templateId}/project_constructions.json")
+@http(method: "POST", uri: "/{accountId}/templates/{templateId}/project_constructions.json", code: 201)
 operation CreateProjectFromTemplate {
   input: CreateProjectFromTemplateInput
   output: CreateProjectFromTemplateOutput
@@ -6342,7 +6342,7 @@ structure UpdateToolOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/dock/tools/{toolId}")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/dock/tools/{toolId}", code: 204)
 operation DeleteTool {
   input: DeleteToolInput
   output: DeleteToolOutput
@@ -6451,7 +6451,7 @@ structure RepositionToolOutput {}
 
 /// Create a new lineup marker
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/lineup/markers.json")
+@http(method: "POST", uri: "/{accountId}/lineup/markers.json", code: 201)
 operation CreateLineupMarker {
   input: CreateLineupMarkerInput
   output: CreateLineupMarkerOutput
@@ -6517,7 +6517,7 @@ structure UpdateLineupMarkerOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/lineup/markers/{markerId}")
+@http(method: "DELETE", uri: "/{accountId}/lineup/markers/{markerId}", code: 204)
 operation DeleteLineupMarker {
   input: DeleteLineupMarkerInput
   output: DeleteLineupMarkerOutput
