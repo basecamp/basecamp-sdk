@@ -17,7 +17,7 @@
  */
 
 import { BaseService } from "./base.js";
-import { Errors } from "../errors.js";
+import { BasecampError, Errors } from "../errors.js";
 
 // =============================================================================
 // Types
@@ -153,6 +153,15 @@ export class WebhooksService extends BaseService {
     if (!req.payloadUrl) {
       throw Errors.validation("Webhook payload_url is required");
     }
+    try {
+      const parsed = new URL(req.payloadUrl);
+      if (parsed.protocol !== "https:") {
+        throw Errors.validation("Webhook payload_url must use HTTPS");
+      }
+    } catch (err) {
+      if (err instanceof BasecampError) throw err;
+      throw Errors.validation(`Invalid webhook payload_url: ${req.payloadUrl}`);
+    }
     if (!req.types || req.types.length === 0) {
       throw Errors.validation("Webhook types are required");
     }
@@ -199,6 +208,18 @@ export class WebhooksService extends BaseService {
     webhookId: number,
     req: UpdateWebhookRequest
   ): Promise<Webhook> {
+    if (req.payloadUrl !== undefined) {
+      try {
+        const parsed = new URL(req.payloadUrl);
+        if (parsed.protocol !== "https:") {
+          throw Errors.validation("Webhook payload_url must use HTTPS");
+        }
+      } catch (err) {
+        if (err instanceof BasecampError) throw err;
+        throw Errors.validation(`Invalid webhook payload_url: ${req.payloadUrl}`);
+      }
+    }
+
     const response = await this.request(
       {
         service: "Webhooks",

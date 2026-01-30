@@ -43,6 +43,9 @@ module Basecamp
       # @param types [Array<String>, nil] recording types to subscribe to
       # @return [Hash] created webhook
       def create(project_id:, payload_url:, types: nil)
+        raise Basecamp::UsageError.new("Webhook payload URL is required") if payload_url.to_s.empty?
+        Basecamp::Security.require_https!(payload_url, "webhook payload URL")
+
         body = compact_params(
           payload_url: payload_url,
           types: types
@@ -59,6 +62,10 @@ module Basecamp
       # @param active [Boolean, nil] whether the webhook is active
       # @return [Hash] updated webhook
       def update(project_id:, webhook_id:, payload_url: nil, types: nil, active: nil)
+        if payload_url
+          Basecamp::Security.require_https!(payload_url, "webhook payload URL")
+        end
+
         body = compact_params(
           payload_url: payload_url,
           types: types,

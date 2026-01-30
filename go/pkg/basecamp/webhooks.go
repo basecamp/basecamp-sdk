@@ -147,6 +147,10 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 		err = ErrUsage("webhook payload_url is required")
 		return nil, err
 	}
+	if err = requireHTTPS(req.PayloadURL); err != nil {
+		err = ErrUsage("webhook payload_url must use HTTPS")
+		return nil, err
+	}
 	if len(req.Types) == 0 {
 		err = ErrUsage("webhook types are required")
 		return nil, err
@@ -191,6 +195,13 @@ func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64,
 	start := time.Now()
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req.PayloadURL != "" {
+		if err = requireHTTPS(req.PayloadURL); err != nil {
+			err = ErrUsage("webhook payload_url must use HTTPS")
+			return nil, err
+		}
+	}
 
 	body := generated.UpdateWebhookJSONRequestBody{
 		PayloadUrl: req.PayloadURL,
