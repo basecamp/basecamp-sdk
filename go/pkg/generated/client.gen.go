@@ -717,6 +717,11 @@ type ForwardReply struct {
 // GetAnswerResponseContent defines model for GetAnswerResponseContent.
 type GetAnswerResponseContent = QuestionAnswer
 
+// GetAnswersByPersonResponseContent defines model for GetAnswersByPersonResponseContent.
+type GetAnswersByPersonResponseContent struct {
+	Answers []QuestionAnswer `json:"answers,omitempty"`
+}
+
 // GetAssignedTodosResponseContent defines model for GetAssignedTodosResponseContent.
 type GetAssignedTodosResponseContent struct {
 	GroupedBy string `json:"grouped_by,omitempty"`
@@ -814,6 +819,11 @@ type GetProjectTimelineResponseContent struct {
 // GetProjectTimesheetResponseContent defines model for GetProjectTimesheetResponseContent.
 type GetProjectTimesheetResponseContent struct {
 	Entries []TimesheetEntry `json:"entries,omitempty"`
+}
+
+// GetQuestionRemindersResponseContent defines model for GetQuestionRemindersResponseContent.
+type GetQuestionRemindersResponseContent struct {
+	Reminders []QuestionReminder `json:"reminders,omitempty"`
 }
 
 // GetQuestionResponseContent defines model for GetQuestionResponseContent.
@@ -985,6 +995,9 @@ type ListProjectPeopleResponseContent = []Person
 
 // ListProjectsResponseContent defines model for ListProjectsResponseContent.
 type ListProjectsResponseContent = []Project
+
+// ListQuestionAnswerersResponseContent defines model for ListQuestionAnswerersResponseContent.
+type ListQuestionAnswerersResponseContent = []Person
 
 // ListQuestionsResponseContent defines model for ListQuestionsResponseContent.
 type ListQuestionsResponseContent = []Question
@@ -1213,6 +1226,14 @@ type QuestionAnswerPayload struct {
 // QuestionAnswerUpdatePayload defines model for QuestionAnswerUpdatePayload.
 type QuestionAnswerUpdatePayload struct {
 	Content string `json:"content"`
+}
+
+// QuestionReminder defines model for QuestionReminder.
+type QuestionReminder struct {
+	GroupOn    types.Date `json:"group_on,omitempty"`
+	Question   Question   `json:"question,omitempty"`
+	RemindAt   time.Time  `json:"remind_at,omitempty"`
+	ReminderId *int64     `json:"reminder_id,omitempty"`
 }
 
 // QuestionSchedule defines model for QuestionSchedule.
@@ -1799,6 +1820,15 @@ type UpdateProjectResponseContent struct {
 	Project Project `json:"project,omitempty"`
 }
 
+// UpdateQuestionNotificationSettingsRequestContent defines model for UpdateQuestionNotificationSettingsRequestContent.
+type UpdateQuestionNotificationSettingsRequestContent struct {
+	// DigestIncludeUnanswered Include unanswered in digest
+	DigestIncludeUnanswered bool `json:"digest_include_unanswered,omitempty"`
+
+	// NotifyOnAnswer Notify when someone answers
+	NotifyOnAnswer bool `json:"notify_on_answer,omitempty"`
+}
+
 // UpdateQuestionRequestContent defines model for UpdateQuestionRequestContent.
 type UpdateQuestionRequestContent struct {
 	Paused   bool             `json:"paused,omitempty"`
@@ -2197,6 +2227,9 @@ type UpdateQuestionJSONRequestBody = UpdateQuestionRequestContent
 
 // CreateAnswerJSONRequestBody defines body for CreateAnswer for application/json ContentType.
 type CreateAnswerJSONRequestBody = QuestionAnswerPayload
+
+// UpdateQuestionNotificationSettingsJSONRequestBody defines body for UpdateQuestionNotificationSettings for application/json ContentType.
+type UpdateQuestionNotificationSettingsJSONRequestBody = UpdateQuestionNotificationSettingsRequestContent
 
 // SetClientVisibilityJSONRequestBody defines body for SetClientVisibility for application/json ContentType.
 type SetClientVisibilityJSONRequestBody = SetClientVisibilityRequestContent
@@ -2625,6 +2658,12 @@ type ClientInterface interface {
 
 	CreateCard(ctx context.Context, accountId string, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UnsubscribeFromCardColumn request
+	UnsubscribeFromCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SubscribeToCardColumn request
+	SubscribeToCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UpdateCardStepWithBody request with any body
 	UpdateCardStepWithBody(ctx context.Context, accountId string, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2836,6 +2875,23 @@ type ClientInterface interface {
 	CreateAnswerWithBody(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateAnswer(ctx context.Context, accountId string, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListQuestionAnswerers request
+	ListQuestionAnswerers(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAnswersByPerson request
+	GetAnswersByPerson(ctx context.Context, accountId string, projectId int64, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateQuestionNotificationSettingsWithBody request with any body
+	UpdateQuestionNotificationSettingsWithBody(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateQuestionNotificationSettings(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionNotificationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResumeQuestion request
+	ResumeQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PauseQuestion request
+	PauseQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnpinMessage request
 	UnpinMessage(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3066,6 +3122,9 @@ type ClientInterface interface {
 
 	// GetMyProfile request
 	GetMyProfile(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetQuestionReminders request
+	GetQuestionReminders(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPeople request
 	ListPeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3401,6 +3460,26 @@ func (c *Client) CreateCard(ctx context.Context, accountId string, projectId int
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// UnsubscribeFromCardColumn is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UnsubscribeFromCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUnsubscribeFromCardColumnRequest(c.Server, accountId, projectId, columnId)
+	}, true, "UnsubscribeFromCardColumn", reqEditors...)
+
+}
+
+// SubscribeToCardColumn is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) SubscribeToCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewSubscribeToCardColumnRequest(c.Server, accountId, projectId, columnId)
+	}, true, "SubscribeToCardColumn", reqEditors...)
 
 }
 
@@ -4253,6 +4332,64 @@ func (c *Client) CreateAnswer(ctx context.Context, accountId string, projectId i
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// ListQuestionAnswerers is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListQuestionAnswerers(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListQuestionAnswerersRequest(c.Server, accountId, projectId, questionId)
+	}, true, "ListQuestionAnswerers", reqEditors...)
+
+}
+
+// GetAnswersByPerson is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetAnswersByPerson(ctx context.Context, accountId string, projectId int64, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetAnswersByPersonRequest(c.Server, accountId, projectId, questionId, personId)
+	}, true, "GetAnswersByPerson", reqEditors...)
+
+}
+
+// UpdateQuestionNotificationSettingsWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateQuestionNotificationSettingsWithBody(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateQuestionNotificationSettingsRequestWithBody(c.Server, accountId, projectId, questionId, contentType, body)
+	}, true, "UpdateQuestionNotificationSettings", reqEditors...)
+
+}
+
+func (c *Client) UpdateQuestionNotificationSettings(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionNotificationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateQuestionNotificationSettingsRequest(c.Server, accountId, projectId, questionId, body)
+	}, true, "UpdateQuestionNotificationSettings", reqEditors...)
+
+}
+
+// ResumeQuestion is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ResumeQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewResumeQuestionRequest(c.Server, accountId, projectId, questionId)
+	}, true, "ResumeQuestion", reqEditors...)
+
+}
+
+// PauseQuestion is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) PauseQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewPauseQuestionRequest(c.Server, accountId, projectId, questionId)
+	}, true, "PauseQuestion", reqEditors...)
 
 }
 
@@ -5181,6 +5318,16 @@ func (c *Client) GetMyProfile(ctx context.Context, accountId string, reqEditors 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetMyProfileRequest(c.Server, accountId)
 	}, true, "GetMyProfile", reqEditors...)
+
+}
+
+// GetQuestionReminders is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetQuestionReminders(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetQuestionRemindersRequest(c.Server, accountId)
+	}, true, "GetQuestionReminders", reqEditors...)
 
 }
 
@@ -6245,6 +6392,102 @@ func NewCreateCardRequestWithBody(server string, accountId string, projectId int
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUnsubscribeFromCardColumnRequest generates requests for UnsubscribeFromCardColumn
+func NewUnsubscribeFromCardColumnRequest(server string, accountId string, projectId int64, columnId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/lists/%s/subscription.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSubscribeToCardColumnRequest generates requests for SubscribeToCardColumn
+func NewSubscribeToCardColumnRequest(server string, accountId string, projectId int64, columnId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/lists/%s/subscription.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -9297,6 +9540,266 @@ func NewCreateAnswerRequestWithBody(server string, accountId string, projectId i
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListQuestionAnswerersRequest generates requests for ListQuestionAnswerers
+func NewListQuestionAnswerersRequest(server string, accountId string, projectId int64, questionId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/answers/by.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAnswersByPersonRequest generates requests for GetAnswersByPerson
+func NewGetAnswersByPersonRequest(server string, accountId string, projectId int64, questionId int64, personId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "personId", runtime.ParamLocationPath, personId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/answers/by/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateQuestionNotificationSettingsRequest calls the generic UpdateQuestionNotificationSettings builder with application/json body
+func NewUpdateQuestionNotificationSettingsRequest(server string, accountId string, projectId int64, questionId int64, body UpdateQuestionNotificationSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateQuestionNotificationSettingsRequestWithBody(server, accountId, projectId, questionId, "application/json", bodyReader)
+}
+
+// NewUpdateQuestionNotificationSettingsRequestWithBody generates requests for UpdateQuestionNotificationSettings with any type of body
+func NewUpdateQuestionNotificationSettingsRequestWithBody(server string, accountId string, projectId int64, questionId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/notification_settings.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewResumeQuestionRequest generates requests for ResumeQuestion
+func NewResumeQuestionRequest(server string, accountId string, projectId int64, questionId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/pause.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPauseQuestionRequest generates requests for PauseQuestion
+func NewPauseQuestionRequest(server string, accountId string, projectId int64, questionId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/pause.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -12622,6 +13125,40 @@ func NewGetMyProfileRequest(server string, accountId string) (*http.Request, err
 	return req, nil
 }
 
+// NewGetQuestionRemindersRequest generates requests for GetQuestionReminders
+func NewGetQuestionRemindersRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/question_reminders.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListPeopleRequest generates requests for ListPeople
 func NewListPeopleRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -13930,165 +14467,173 @@ type OperationMetadata struct {
 // This is generated from x-basecamp-* extensions in the OpenAPI spec.
 // GET/HEAD operations are always considered idempotent for retry purposes.
 var operationMetadata = map[string]OperationMetadata{
-	"CreateAttachment":           {Idempotent: false, HasSensitiveParams: false},
-	"GetCard":                    {Idempotent: true, HasSensitiveParams: false},
-	"UpdateCard":                 {Idempotent: true, HasSensitiveParams: false},
-	"MoveCard":                   {Idempotent: false, HasSensitiveParams: false},
-	"RepositionCardStep":         {Idempotent: false, HasSensitiveParams: false},
-	"CreateCardStep":             {Idempotent: false, HasSensitiveParams: false},
-	"GetCardColumn":              {Idempotent: true, HasSensitiveParams: false},
-	"UpdateCardColumn":           {Idempotent: true, HasSensitiveParams: false},
-	"SetCardColumnColor":         {Idempotent: true, HasSensitiveParams: false},
-	"DisableCardColumnOnHold":    {Idempotent: true, HasSensitiveParams: false},
-	"EnableCardColumnOnHold":     {Idempotent: false, HasSensitiveParams: false},
-	"ListCards":                  {Idempotent: true, HasSensitiveParams: false},
-	"CreateCard":                 {Idempotent: false, HasSensitiveParams: false},
-	"UpdateCardStep":             {Idempotent: true, HasSensitiveParams: false},
-	"UncompleteCardStep":         {Idempotent: true, HasSensitiveParams: false},
-	"CompleteCardStep":           {Idempotent: true, HasSensitiveParams: false},
-	"GetCardTable":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateCardColumn":           {Idempotent: false, HasSensitiveParams: false},
-	"MoveCardColumn":             {Idempotent: false, HasSensitiveParams: false},
-	"ListMessageTypes":           {Idempotent: true, HasSensitiveParams: false},
-	"CreateMessageType":          {Idempotent: false, HasSensitiveParams: false},
-	"DeleteMessageType":          {Idempotent: true, HasSensitiveParams: false},
-	"GetMessageType":             {Idempotent: true, HasSensitiveParams: false},
-	"UpdateMessageType":          {Idempotent: true, HasSensitiveParams: false},
-	"GetCampfire":                {Idempotent: true, HasSensitiveParams: false},
-	"ListChatbots":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateChatbot":              {Idempotent: false, HasSensitiveParams: false},
-	"DeleteChatbot":              {Idempotent: true, HasSensitiveParams: false},
-	"GetChatbot":                 {Idempotent: true, HasSensitiveParams: false},
-	"UpdateChatbot":              {Idempotent: true, HasSensitiveParams: false},
-	"ListCampfireLines":          {Idempotent: true, HasSensitiveParams: false},
-	"CreateCampfireLine":         {Idempotent: false, HasSensitiveParams: false},
-	"DeleteCampfireLine":         {Idempotent: true, HasSensitiveParams: false},
-	"GetCampfireLine":            {Idempotent: true, HasSensitiveParams: false},
-	"ListClientApprovals":        {Idempotent: true, HasSensitiveParams: false},
-	"GetClientApproval":          {Idempotent: true, HasSensitiveParams: false},
-	"ListClientCorrespondences":  {Idempotent: true, HasSensitiveParams: false},
-	"GetClientCorrespondence":    {Idempotent: true, HasSensitiveParams: false},
-	"ListClientReplies":          {Idempotent: true, HasSensitiveParams: false},
-	"GetClientReply":             {Idempotent: true, HasSensitiveParams: false},
-	"GetComment":                 {Idempotent: true, HasSensitiveParams: false},
-	"UpdateComment":              {Idempotent: true, HasSensitiveParams: false},
-	"CloneTool":                  {Idempotent: false, HasSensitiveParams: false},
-	"DeleteTool":                 {Idempotent: true, HasSensitiveParams: false},
-	"GetTool":                    {Idempotent: true, HasSensitiveParams: false},
-	"UpdateTool":                 {Idempotent: true, HasSensitiveParams: false},
-	"DisableTool":                {Idempotent: true, HasSensitiveParams: false},
-	"EnableTool":                 {Idempotent: false, HasSensitiveParams: false},
-	"RepositionTool":             {Idempotent: true, HasSensitiveParams: false},
-	"GetDocument":                {Idempotent: true, HasSensitiveParams: false},
-	"UpdateDocument":             {Idempotent: true, HasSensitiveParams: false},
-	"GetForward":                 {Idempotent: true, HasSensitiveParams: false},
-	"ListForwardReplies":         {Idempotent: true, HasSensitiveParams: false},
-	"CreateForwardReply":         {Idempotent: false, HasSensitiveParams: false},
-	"GetForwardReply":            {Idempotent: true, HasSensitiveParams: false},
-	"GetInbox":                   {Idempotent: true, HasSensitiveParams: false},
-	"ListForwards":               {Idempotent: true, HasSensitiveParams: false},
-	"GetMessageBoard":            {Idempotent: true, HasSensitiveParams: false},
-	"ListMessages":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateMessage":              {Idempotent: false, HasSensitiveParams: false},
-	"GetMessage":                 {Idempotent: true, HasSensitiveParams: false},
-	"UpdateMessage":              {Idempotent: true, HasSensitiveParams: false},
-	"GetAnswer":                  {Idempotent: true, HasSensitiveParams: false},
-	"UpdateAnswer":               {Idempotent: true, HasSensitiveParams: false},
-	"GetQuestionnaire":           {Idempotent: true, HasSensitiveParams: false},
-	"ListQuestions":              {Idempotent: true, HasSensitiveParams: false},
-	"CreateQuestion":             {Idempotent: false, HasSensitiveParams: false},
-	"GetQuestion":                {Idempotent: true, HasSensitiveParams: false},
-	"UpdateQuestion":             {Idempotent: true, HasSensitiveParams: false},
-	"ListAnswers":                {Idempotent: true, HasSensitiveParams: false},
-	"CreateAnswer":               {Idempotent: false, HasSensitiveParams: false},
-	"UnpinMessage":               {Idempotent: true, HasSensitiveParams: false},
-	"PinMessage":                 {Idempotent: false, HasSensitiveParams: false},
-	"GetRecording":               {Idempotent: true, HasSensitiveParams: false},
-	"SetClientVisibility":        {Idempotent: true, HasSensitiveParams: false},
-	"ListComments":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateComment":              {Idempotent: false, HasSensitiveParams: false},
-	"ListEvents":                 {Idempotent: true, HasSensitiveParams: false},
-	"UnarchiveRecording":         {Idempotent: true, HasSensitiveParams: false},
-	"ArchiveRecording":           {Idempotent: true, HasSensitiveParams: false},
-	"TrashRecording":             {Idempotent: true, HasSensitiveParams: false},
-	"Unsubscribe":                {Idempotent: true, HasSensitiveParams: false},
-	"GetSubscription":            {Idempotent: true, HasSensitiveParams: false},
-	"Subscribe":                  {Idempotent: false, HasSensitiveParams: false},
-	"UpdateSubscription":         {Idempotent: true, HasSensitiveParams: false},
-	"GetRecordingTimesheet":      {Idempotent: true, HasSensitiveParams: false},
-	"GetScheduleEntry":           {Idempotent: true, HasSensitiveParams: false},
-	"UpdateScheduleEntry":        {Idempotent: true, HasSensitiveParams: false},
-	"GetScheduleEntryOccurrence": {Idempotent: true, HasSensitiveParams: false},
-	"GetSchedule":                {Idempotent: true, HasSensitiveParams: false},
-	"UpdateScheduleSettings":     {Idempotent: true, HasSensitiveParams: false},
-	"ListScheduleEntries":        {Idempotent: true, HasSensitiveParams: false},
-	"CreateScheduleEntry":        {Idempotent: false, HasSensitiveParams: false},
-	"GetProjectTimeline":         {Idempotent: true, HasSensitiveParams: false},
-	"GetProjectTimesheet":        {Idempotent: true, HasSensitiveParams: false},
-	"RepositionTodolistGroup":    {Idempotent: true, HasSensitiveParams: false},
-	"GetTodolistOrGroup":         {Idempotent: true, HasSensitiveParams: false},
-	"UpdateTodolistOrGroup":      {Idempotent: true, HasSensitiveParams: false},
-	"ListTodolistGroups":         {Idempotent: true, HasSensitiveParams: false},
-	"CreateTodolistGroup":        {Idempotent: false, HasSensitiveParams: false},
-	"ListTodos":                  {Idempotent: true, HasSensitiveParams: false},
-	"CreateTodo":                 {Idempotent: false, HasSensitiveParams: false},
-	"TrashTodo":                  {Idempotent: true, HasSensitiveParams: false},
-	"GetTodo":                    {Idempotent: true, HasSensitiveParams: false},
-	"UpdateTodo":                 {Idempotent: true, HasSensitiveParams: false},
-	"UncompleteTodo":             {Idempotent: true, HasSensitiveParams: false},
-	"CompleteTodo":               {Idempotent: true, HasSensitiveParams: false},
-	"RepositionTodo":             {Idempotent: true, HasSensitiveParams: false},
-	"GetTodoset":                 {Idempotent: true, HasSensitiveParams: false},
-	"ListTodolists":              {Idempotent: true, HasSensitiveParams: false},
-	"CreateTodolist":             {Idempotent: false, HasSensitiveParams: false},
-	"GetUpload":                  {Idempotent: true, HasSensitiveParams: false},
-	"UpdateUpload":               {Idempotent: true, HasSensitiveParams: false},
-	"ListUploadVersions":         {Idempotent: true, HasSensitiveParams: false},
-	"GetVault":                   {Idempotent: true, HasSensitiveParams: false},
-	"UpdateVault":                {Idempotent: true, HasSensitiveParams: false},
-	"ListDocuments":              {Idempotent: true, HasSensitiveParams: false},
-	"CreateDocument":             {Idempotent: false, HasSensitiveParams: false},
-	"ListUploads":                {Idempotent: true, HasSensitiveParams: false},
-	"CreateUpload":               {Idempotent: false, HasSensitiveParams: false},
-	"ListVaults":                 {Idempotent: true, HasSensitiveParams: false},
-	"CreateVault":                {Idempotent: false, HasSensitiveParams: false},
-	"ListWebhooks":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateWebhook":              {Idempotent: false, HasSensitiveParams: false},
-	"DeleteWebhook":              {Idempotent: true, HasSensitiveParams: false},
-	"GetWebhook":                 {Idempotent: true, HasSensitiveParams: false},
-	"UpdateWebhook":              {Idempotent: true, HasSensitiveParams: false},
-	"ListCampfires":              {Idempotent: true, HasSensitiveParams: false},
-	"ListPingablePeople":         {Idempotent: true, HasSensitiveParams: false},
-	"CreateLineupMarker":         {Idempotent: false, HasSensitiveParams: false},
-	"DeleteLineupMarker":         {Idempotent: true, HasSensitiveParams: false},
-	"UpdateLineupMarker":         {Idempotent: true, HasSensitiveParams: false},
-	"GetMyProfile":               {Idempotent: true, HasSensitiveParams: false},
-	"ListPeople":                 {Idempotent: true, HasSensitiveParams: false},
-	"GetPerson":                  {Idempotent: true, HasSensitiveParams: false},
-	"ListProjects":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateProject":              {Idempotent: false, HasSensitiveParams: false},
-	"ListRecordings":             {Idempotent: true, HasSensitiveParams: false},
-	"TrashProject":               {Idempotent: true, HasSensitiveParams: false},
-	"GetProject":                 {Idempotent: true, HasSensitiveParams: false},
-	"UpdateProject":              {Idempotent: true, HasSensitiveParams: false},
-	"ListProjectPeople":          {Idempotent: true, HasSensitiveParams: false},
-	"UpdateProjectAccess":        {Idempotent: true, HasSensitiveParams: false},
-	"GetProgressReport":          {Idempotent: true, HasSensitiveParams: false},
-	"GetUpcomingSchedule":        {Idempotent: true, HasSensitiveParams: false},
-	"GetTimesheetReport":         {Idempotent: true, HasSensitiveParams: false},
-	"ListAssignablePeople":       {Idempotent: true, HasSensitiveParams: false},
-	"GetAssignedTodos":           {Idempotent: true, HasSensitiveParams: false},
-	"GetOverdueTodos":            {Idempotent: true, HasSensitiveParams: false},
-	"GetPersonProgress":          {Idempotent: true, HasSensitiveParams: false},
-	"Search":                     {Idempotent: true, HasSensitiveParams: false},
-	"GetSearchMetadata":          {Idempotent: true, HasSensitiveParams: false},
-	"ListTemplates":              {Idempotent: true, HasSensitiveParams: false},
-	"CreateTemplate":             {Idempotent: false, HasSensitiveParams: false},
-	"DeleteTemplate":             {Idempotent: true, HasSensitiveParams: false},
-	"GetTemplate":                {Idempotent: true, HasSensitiveParams: false},
-	"UpdateTemplate":             {Idempotent: true, HasSensitiveParams: false},
-	"CreateProjectFromTemplate":  {Idempotent: false, HasSensitiveParams: false},
-	"GetProjectConstruction":     {Idempotent: true, HasSensitiveParams: false},
+	"CreateAttachment":                   {Idempotent: false, HasSensitiveParams: false},
+	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
+	"UpdateCard":                         {Idempotent: true, HasSensitiveParams: false},
+	"MoveCard":                           {Idempotent: false, HasSensitiveParams: false},
+	"RepositionCardStep":                 {Idempotent: false, HasSensitiveParams: false},
+	"CreateCardStep":                     {Idempotent: false, HasSensitiveParams: false},
+	"GetCardColumn":                      {Idempotent: true, HasSensitiveParams: false},
+	"UpdateCardColumn":                   {Idempotent: true, HasSensitiveParams: false},
+	"SetCardColumnColor":                 {Idempotent: true, HasSensitiveParams: false},
+	"DisableCardColumnOnHold":            {Idempotent: true, HasSensitiveParams: false},
+	"EnableCardColumnOnHold":             {Idempotent: false, HasSensitiveParams: false},
+	"ListCards":                          {Idempotent: true, HasSensitiveParams: false},
+	"CreateCard":                         {Idempotent: false, HasSensitiveParams: false},
+	"UnsubscribeFromCardColumn":          {Idempotent: true, HasSensitiveParams: false},
+	"SubscribeToCardColumn":              {Idempotent: true, HasSensitiveParams: false},
+	"UpdateCardStep":                     {Idempotent: true, HasSensitiveParams: false},
+	"UncompleteCardStep":                 {Idempotent: true, HasSensitiveParams: false},
+	"CompleteCardStep":                   {Idempotent: true, HasSensitiveParams: false},
+	"GetCardTable":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateCardColumn":                   {Idempotent: false, HasSensitiveParams: false},
+	"MoveCardColumn":                     {Idempotent: false, HasSensitiveParams: false},
+	"ListMessageTypes":                   {Idempotent: true, HasSensitiveParams: false},
+	"CreateMessageType":                  {Idempotent: false, HasSensitiveParams: false},
+	"DeleteMessageType":                  {Idempotent: true, HasSensitiveParams: false},
+	"GetMessageType":                     {Idempotent: true, HasSensitiveParams: false},
+	"UpdateMessageType":                  {Idempotent: true, HasSensitiveParams: false},
+	"GetCampfire":                        {Idempotent: true, HasSensitiveParams: false},
+	"ListChatbots":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateChatbot":                      {Idempotent: false, HasSensitiveParams: false},
+	"DeleteChatbot":                      {Idempotent: true, HasSensitiveParams: false},
+	"GetChatbot":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateChatbot":                      {Idempotent: true, HasSensitiveParams: false},
+	"ListCampfireLines":                  {Idempotent: true, HasSensitiveParams: false},
+	"CreateCampfireLine":                 {Idempotent: false, HasSensitiveParams: false},
+	"DeleteCampfireLine":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetCampfireLine":                    {Idempotent: true, HasSensitiveParams: false},
+	"ListClientApprovals":                {Idempotent: true, HasSensitiveParams: false},
+	"GetClientApproval":                  {Idempotent: true, HasSensitiveParams: false},
+	"ListClientCorrespondences":          {Idempotent: true, HasSensitiveParams: false},
+	"GetClientCorrespondence":            {Idempotent: true, HasSensitiveParams: false},
+	"ListClientReplies":                  {Idempotent: true, HasSensitiveParams: false},
+	"GetClientReply":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetComment":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateComment":                      {Idempotent: true, HasSensitiveParams: false},
+	"CloneTool":                          {Idempotent: false, HasSensitiveParams: false},
+	"DeleteTool":                         {Idempotent: true, HasSensitiveParams: false},
+	"GetTool":                            {Idempotent: true, HasSensitiveParams: false},
+	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
+	"DisableTool":                        {Idempotent: true, HasSensitiveParams: false},
+	"EnableTool":                         {Idempotent: false, HasSensitiveParams: false},
+	"RepositionTool":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetDocument":                        {Idempotent: true, HasSensitiveParams: false},
+	"UpdateDocument":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetForward":                         {Idempotent: true, HasSensitiveParams: false},
+	"ListForwardReplies":                 {Idempotent: true, HasSensitiveParams: false},
+	"CreateForwardReply":                 {Idempotent: false, HasSensitiveParams: false},
+	"GetForwardReply":                    {Idempotent: true, HasSensitiveParams: false},
+	"GetInbox":                           {Idempotent: true, HasSensitiveParams: false},
+	"ListForwards":                       {Idempotent: true, HasSensitiveParams: false},
+	"GetMessageBoard":                    {Idempotent: true, HasSensitiveParams: false},
+	"ListMessages":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateMessage":                      {Idempotent: false, HasSensitiveParams: false},
+	"GetMessage":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateMessage":                      {Idempotent: true, HasSensitiveParams: false},
+	"GetAnswer":                          {Idempotent: true, HasSensitiveParams: false},
+	"UpdateAnswer":                       {Idempotent: true, HasSensitiveParams: false},
+	"GetQuestionnaire":                   {Idempotent: true, HasSensitiveParams: false},
+	"ListQuestions":                      {Idempotent: true, HasSensitiveParams: false},
+	"CreateQuestion":                     {Idempotent: false, HasSensitiveParams: false},
+	"GetQuestion":                        {Idempotent: true, HasSensitiveParams: false},
+	"UpdateQuestion":                     {Idempotent: true, HasSensitiveParams: false},
+	"ListAnswers":                        {Idempotent: true, HasSensitiveParams: false},
+	"CreateAnswer":                       {Idempotent: false, HasSensitiveParams: false},
+	"ListQuestionAnswerers":              {Idempotent: true, HasSensitiveParams: false},
+	"GetAnswersByPerson":                 {Idempotent: true, HasSensitiveParams: false},
+	"UpdateQuestionNotificationSettings": {Idempotent: true, HasSensitiveParams: false},
+	"ResumeQuestion":                     {Idempotent: true, HasSensitiveParams: false},
+	"PauseQuestion":                      {Idempotent: true, HasSensitiveParams: false},
+	"UnpinMessage":                       {Idempotent: true, HasSensitiveParams: false},
+	"PinMessage":                         {Idempotent: false, HasSensitiveParams: false},
+	"GetRecording":                       {Idempotent: true, HasSensitiveParams: false},
+	"SetClientVisibility":                {Idempotent: true, HasSensitiveParams: false},
+	"ListComments":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateComment":                      {Idempotent: false, HasSensitiveParams: false},
+	"ListEvents":                         {Idempotent: true, HasSensitiveParams: false},
+	"UnarchiveRecording":                 {Idempotent: true, HasSensitiveParams: false},
+	"ArchiveRecording":                   {Idempotent: true, HasSensitiveParams: false},
+	"TrashRecording":                     {Idempotent: true, HasSensitiveParams: false},
+	"Unsubscribe":                        {Idempotent: true, HasSensitiveParams: false},
+	"GetSubscription":                    {Idempotent: true, HasSensitiveParams: false},
+	"Subscribe":                          {Idempotent: false, HasSensitiveParams: false},
+	"UpdateSubscription":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetRecordingTimesheet":              {Idempotent: true, HasSensitiveParams: false},
+	"GetScheduleEntry":                   {Idempotent: true, HasSensitiveParams: false},
+	"UpdateScheduleEntry":                {Idempotent: true, HasSensitiveParams: false},
+	"GetScheduleEntryOccurrence":         {Idempotent: true, HasSensitiveParams: false},
+	"GetSchedule":                        {Idempotent: true, HasSensitiveParams: false},
+	"UpdateScheduleSettings":             {Idempotent: true, HasSensitiveParams: false},
+	"ListScheduleEntries":                {Idempotent: true, HasSensitiveParams: false},
+	"CreateScheduleEntry":                {Idempotent: false, HasSensitiveParams: false},
+	"GetProjectTimeline":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetProjectTimesheet":                {Idempotent: true, HasSensitiveParams: false},
+	"RepositionTodolistGroup":            {Idempotent: true, HasSensitiveParams: false},
+	"GetTodolistOrGroup":                 {Idempotent: true, HasSensitiveParams: false},
+	"UpdateTodolistOrGroup":              {Idempotent: true, HasSensitiveParams: false},
+	"ListTodolistGroups":                 {Idempotent: true, HasSensitiveParams: false},
+	"CreateTodolistGroup":                {Idempotent: false, HasSensitiveParams: false},
+	"ListTodos":                          {Idempotent: true, HasSensitiveParams: false},
+	"CreateTodo":                         {Idempotent: false, HasSensitiveParams: false},
+	"TrashTodo":                          {Idempotent: true, HasSensitiveParams: false},
+	"GetTodo":                            {Idempotent: true, HasSensitiveParams: false},
+	"UpdateTodo":                         {Idempotent: true, HasSensitiveParams: false},
+	"UncompleteTodo":                     {Idempotent: true, HasSensitiveParams: false},
+	"CompleteTodo":                       {Idempotent: true, HasSensitiveParams: false},
+	"RepositionTodo":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetTodoset":                         {Idempotent: true, HasSensitiveParams: false},
+	"ListTodolists":                      {Idempotent: true, HasSensitiveParams: false},
+	"CreateTodolist":                     {Idempotent: false, HasSensitiveParams: false},
+	"GetUpload":                          {Idempotent: true, HasSensitiveParams: false},
+	"UpdateUpload":                       {Idempotent: true, HasSensitiveParams: false},
+	"ListUploadVersions":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetVault":                           {Idempotent: true, HasSensitiveParams: false},
+	"UpdateVault":                        {Idempotent: true, HasSensitiveParams: false},
+	"ListDocuments":                      {Idempotent: true, HasSensitiveParams: false},
+	"CreateDocument":                     {Idempotent: false, HasSensitiveParams: false},
+	"ListUploads":                        {Idempotent: true, HasSensitiveParams: false},
+	"CreateUpload":                       {Idempotent: false, HasSensitiveParams: false},
+	"ListVaults":                         {Idempotent: true, HasSensitiveParams: false},
+	"CreateVault":                        {Idempotent: false, HasSensitiveParams: false},
+	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
+	"DeleteWebhook":                      {Idempotent: true, HasSensitiveParams: false},
+	"GetWebhook":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateWebhook":                      {Idempotent: true, HasSensitiveParams: false},
+	"ListCampfires":                      {Idempotent: true, HasSensitiveParams: false},
+	"ListPingablePeople":                 {Idempotent: true, HasSensitiveParams: false},
+	"CreateLineupMarker":                 {Idempotent: false, HasSensitiveParams: false},
+	"DeleteLineupMarker":                 {Idempotent: true, HasSensitiveParams: false},
+	"UpdateLineupMarker":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetMyProfile":                       {Idempotent: true, HasSensitiveParams: false},
+	"GetQuestionReminders":               {Idempotent: true, HasSensitiveParams: false},
+	"ListPeople":                         {Idempotent: true, HasSensitiveParams: false},
+	"GetPerson":                          {Idempotent: true, HasSensitiveParams: false},
+	"ListProjects":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateProject":                      {Idempotent: false, HasSensitiveParams: false},
+	"ListRecordings":                     {Idempotent: true, HasSensitiveParams: false},
+	"TrashProject":                       {Idempotent: true, HasSensitiveParams: false},
+	"GetProject":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateProject":                      {Idempotent: true, HasSensitiveParams: false},
+	"ListProjectPeople":                  {Idempotent: true, HasSensitiveParams: false},
+	"UpdateProjectAccess":                {Idempotent: true, HasSensitiveParams: false},
+	"GetProgressReport":                  {Idempotent: true, HasSensitiveParams: false},
+	"GetUpcomingSchedule":                {Idempotent: true, HasSensitiveParams: false},
+	"GetTimesheetReport":                 {Idempotent: true, HasSensitiveParams: false},
+	"ListAssignablePeople":               {Idempotent: true, HasSensitiveParams: false},
+	"GetAssignedTodos":                   {Idempotent: true, HasSensitiveParams: false},
+	"GetOverdueTodos":                    {Idempotent: true, HasSensitiveParams: false},
+	"GetPersonProgress":                  {Idempotent: true, HasSensitiveParams: false},
+	"Search":                             {Idempotent: true, HasSensitiveParams: false},
+	"GetSearchMetadata":                  {Idempotent: true, HasSensitiveParams: false},
+	"ListTemplates":                      {Idempotent: true, HasSensitiveParams: false},
+	"CreateTemplate":                     {Idempotent: false, HasSensitiveParams: false},
+	"DeleteTemplate":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetTemplate":                        {Idempotent: true, HasSensitiveParams: false},
+	"UpdateTemplate":                     {Idempotent: true, HasSensitiveParams: false},
+	"CreateProjectFromTemplate":          {Idempotent: false, HasSensitiveParams: false},
+	"GetProjectConstruction":             {Idempotent: true, HasSensitiveParams: false},
 }
 
 // GetOperationMetadata returns metadata for the given operation ID.
@@ -15078,6 +15623,12 @@ type ClientWithResponsesInterface interface {
 
 	CreateCardWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardResponse, error)
 
+	// UnsubscribeFromCardColumnWithResponse request
+	UnsubscribeFromCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*UnsubscribeFromCardColumnResponse, error)
+
+	// SubscribeToCardColumnWithResponse request
+	SubscribeToCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*SubscribeToCardColumnResponse, error)
+
 	// UpdateCardStepWithBodyWithResponse request with any body
 	UpdateCardStepWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error)
 
@@ -15289,6 +15840,23 @@ type ClientWithResponsesInterface interface {
 	CreateAnswerWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
 
 	CreateAnswerWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
+
+	// ListQuestionAnswerersWithResponse request
+	ListQuestionAnswerersWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ListQuestionAnswerersResponse, error)
+
+	// GetAnswersByPersonWithResponse request
+	GetAnswersByPersonWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*GetAnswersByPersonResponse, error)
+
+	// UpdateQuestionNotificationSettingsWithBodyWithResponse request with any body
+	UpdateQuestionNotificationSettingsWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionNotificationSettingsResponse, error)
+
+	UpdateQuestionNotificationSettingsWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionNotificationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionNotificationSettingsResponse, error)
+
+	// ResumeQuestionWithResponse request
+	ResumeQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ResumeQuestionResponse, error)
+
+	// PauseQuestionWithResponse request
+	PauseQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*PauseQuestionResponse, error)
 
 	// UnpinMessageWithResponse request
 	UnpinMessageWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*UnpinMessageResponse, error)
@@ -15519,6 +16087,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetMyProfileWithResponse request
 	GetMyProfileWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyProfileResponse, error)
+
+	// GetQuestionRemindersWithResponse request
+	GetQuestionRemindersWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetQuestionRemindersResponse, error)
 
 	// ListPeopleWithResponse request
 	ListPeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error)
@@ -15950,6 +16521,57 @@ func (r CreateCardResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateCardResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UnsubscribeFromCardColumnResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UnsubscribeFromCardColumnResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UnsubscribeFromCardColumnResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type SubscribeToCardColumnResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r SubscribeToCardColumnResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SubscribeToCardColumnResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -17472,6 +18094,137 @@ func (r CreateAnswerResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateAnswerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListQuestionAnswerersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListQuestionAnswerersResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListQuestionAnswerersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListQuestionAnswerersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetAnswersByPersonResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetAnswersByPersonResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAnswersByPersonResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAnswersByPersonResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpdateQuestionNotificationSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateQuestionNotificationSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateQuestionNotificationSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ResumeQuestionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ResumeQuestionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResumeQuestionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PauseQuestionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r PauseQuestionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PauseQuestionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -19106,6 +19859,32 @@ func (r GetMyProfileResponse) StatusCode() int {
 	return 0
 }
 
+type GetQuestionRemindersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetQuestionRemindersResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetQuestionRemindersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetQuestionRemindersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type ListPeopleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19961,6 +20740,24 @@ func (c *ClientWithResponses) CreateCardWithResponse(ctx context.Context, accoun
 	return ParseCreateCardResponse(rsp)
 }
 
+// UnsubscribeFromCardColumnWithResponse request returning *UnsubscribeFromCardColumnResponse
+func (c *ClientWithResponses) UnsubscribeFromCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*UnsubscribeFromCardColumnResponse, error) {
+	rsp, err := c.UnsubscribeFromCardColumn(ctx, accountId, projectId, columnId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnsubscribeFromCardColumnResponse(rsp)
+}
+
+// SubscribeToCardColumnWithResponse request returning *SubscribeToCardColumnResponse
+func (c *ClientWithResponses) SubscribeToCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*SubscribeToCardColumnResponse, error) {
+	rsp, err := c.SubscribeToCardColumn(ctx, accountId, projectId, columnId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSubscribeToCardColumnResponse(rsp)
+}
+
 // UpdateCardStepWithBodyWithResponse request with arbitrary body returning *UpdateCardStepResponse
 func (c *ClientWithResponses) UpdateCardStepWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error) {
 	rsp, err := c.UpdateCardStepWithBody(ctx, accountId, projectId, stepId, contentType, body, reqEditors...)
@@ -20633,6 +21430,59 @@ func (c *ClientWithResponses) CreateAnswerWithResponse(ctx context.Context, acco
 		return nil, err
 	}
 	return ParseCreateAnswerResponse(rsp)
+}
+
+// ListQuestionAnswerersWithResponse request returning *ListQuestionAnswerersResponse
+func (c *ClientWithResponses) ListQuestionAnswerersWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ListQuestionAnswerersResponse, error) {
+	rsp, err := c.ListQuestionAnswerers(ctx, accountId, projectId, questionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListQuestionAnswerersResponse(rsp)
+}
+
+// GetAnswersByPersonWithResponse request returning *GetAnswersByPersonResponse
+func (c *ClientWithResponses) GetAnswersByPersonWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*GetAnswersByPersonResponse, error) {
+	rsp, err := c.GetAnswersByPerson(ctx, accountId, projectId, questionId, personId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAnswersByPersonResponse(rsp)
+}
+
+// UpdateQuestionNotificationSettingsWithBodyWithResponse request with arbitrary body returning *UpdateQuestionNotificationSettingsResponse
+func (c *ClientWithResponses) UpdateQuestionNotificationSettingsWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionNotificationSettingsResponse, error) {
+	rsp, err := c.UpdateQuestionNotificationSettingsWithBody(ctx, accountId, projectId, questionId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateQuestionNotificationSettingsResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateQuestionNotificationSettingsWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionNotificationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionNotificationSettingsResponse, error) {
+	rsp, err := c.UpdateQuestionNotificationSettings(ctx, accountId, projectId, questionId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateQuestionNotificationSettingsResponse(rsp)
+}
+
+// ResumeQuestionWithResponse request returning *ResumeQuestionResponse
+func (c *ClientWithResponses) ResumeQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ResumeQuestionResponse, error) {
+	rsp, err := c.ResumeQuestion(ctx, accountId, projectId, questionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResumeQuestionResponse(rsp)
+}
+
+// PauseQuestionWithResponse request returning *PauseQuestionResponse
+func (c *ClientWithResponses) PauseQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*PauseQuestionResponse, error) {
+	rsp, err := c.PauseQuestion(ctx, accountId, projectId, questionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePauseQuestionResponse(rsp)
 }
 
 // UnpinMessageWithResponse request returning *UnpinMessageResponse
@@ -21367,6 +22217,15 @@ func (c *ClientWithResponses) GetMyProfileWithResponse(ctx context.Context, acco
 		return nil, err
 	}
 	return ParseGetMyProfileResponse(rsp)
+}
+
+// GetQuestionRemindersWithResponse request returning *GetQuestionRemindersResponse
+func (c *ClientWithResponses) GetQuestionRemindersWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetQuestionRemindersResponse, error) {
+	rsp, err := c.GetQuestionReminders(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetQuestionRemindersResponse(rsp)
 }
 
 // ListPeopleWithResponse request returning *ListPeopleResponse
@@ -22382,6 +23241,107 @@ func ParseCreateCardResponse(rsp *http.Response) (*CreateCardResponse, error) {
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUnsubscribeFromCardColumnResponse parses an HTTP response from a UnsubscribeFromCardColumnWithResponse call
+func ParseUnsubscribeFromCardColumnResponse(rsp *http.Response) (*UnsubscribeFromCardColumnResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UnsubscribeFromCardColumnResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSubscribeToCardColumnResponse parses an HTTP response from a SubscribeToCardColumnWithResponse call
+func ParseSubscribeToCardColumnResponse(rsp *http.Response) (*SubscribeToCardColumnResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SubscribeToCardColumnResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent
@@ -25612,6 +26572,283 @@ func ParseCreateAnswerResponse(rsp *http.Response) (*CreateAnswerResponse, error
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListQuestionAnswerersResponse parses an HTTP response from a ListQuestionAnswerersWithResponse call
+func ParseListQuestionAnswerersResponse(rsp *http.Response) (*ListQuestionAnswerersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListQuestionAnswerersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListQuestionAnswerersResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAnswersByPersonResponse parses an HTTP response from a GetAnswersByPersonWithResponse call
+func ParseGetAnswersByPersonResponse(rsp *http.Response) (*GetAnswersByPersonResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAnswersByPersonResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetAnswersByPersonResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateQuestionNotificationSettingsResponse parses an HTTP response from a UpdateQuestionNotificationSettingsWithResponse call
+func ParseUpdateQuestionNotificationSettingsResponse(rsp *http.Response) (*UpdateQuestionNotificationSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateQuestionNotificationSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseResumeQuestionResponse parses an HTTP response from a ResumeQuestionWithResponse call
+func ParseResumeQuestionResponse(rsp *http.Response) (*ResumeQuestionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResumeQuestionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePauseQuestionResponse parses an HTTP response from a PauseQuestionWithResponse call
+func ParsePauseQuestionResponse(rsp *http.Response) (*PauseQuestionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PauseQuestionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent
@@ -29079,6 +30316,60 @@ func ParseGetMyProfileResponse(rsp *http.Response) (*GetMyProfileResponse, error
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetQuestionRemindersResponse parses an HTTP response from a GetQuestionRemindersWithResponse call
+func ParseGetQuestionRemindersResponse(rsp *http.Response) (*GetQuestionRemindersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetQuestionRemindersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetQuestionRemindersResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
