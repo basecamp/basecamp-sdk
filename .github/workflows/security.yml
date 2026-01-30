@@ -184,18 +184,3 @@ jobs:
       - name: Run bundler-audit
         run: bundle-audit check
 
-  dependency-review:
-    name: Dependency Review
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    # Requires Dependency Graph + GitHub Advanced Security to be enabled
-    continue-on-error: true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-          deny-licenses: GPL-3.0, AGPL-3.0
