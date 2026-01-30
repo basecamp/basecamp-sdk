@@ -102,7 +102,7 @@ func (s *ToolsService) Create(ctx context.Context, bucketID, sourceToolID int64)
 		return nil, err
 	}
 
-	tool := toolFromGenerated(resp.JSON200.Tool)
+	tool := toolFromGenerated(*resp.JSON200)
 	return &tool, nil
 }
 
@@ -145,7 +145,7 @@ func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, title
 		return nil, err
 	}
 
-	tool := toolFromGenerated(resp.JSON200.Tool)
+	tool := toolFromGenerated(*resp.JSON200)
 	return &tool, nil
 }
 

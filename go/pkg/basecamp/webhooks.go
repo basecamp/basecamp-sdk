@@ -174,7 +174,7 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 	body := generated.CreateWebhookJSONRequestBody{
 		PayloadUrl: req.PayloadURL,
 		Types:      req.Types,
-		Active:     req.Active != nil && *req.Active,
+		Active:     req.Active,
 	}
 
 	resp, err := s.client.parent.gen.CreateWebhookWithResponse(ctx, s.client.accountID, bucketID, body)
@@ -189,7 +189,7 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 		return nil, err
 	}
 
-	webhook := webhookFromGenerated(resp.JSON200.Webhook)
+	webhook := webhookFromGenerated(*resp.JSON200)
 	return &webhook, nil
 }
 
@@ -221,7 +221,7 @@ func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64,
 	body := generated.UpdateWebhookJSONRequestBody{
 		PayloadUrl: req.PayloadURL,
 		Types:      req.Types,
-		Active:     req.Active != nil && *req.Active,
+		Active:     req.Active,
 	}
 
 	resp, err := s.client.parent.gen.UpdateWebhookWithResponse(ctx, s.client.accountID, bucketID, webhookID, body)
@@ -236,7 +236,7 @@ func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64,
 		return nil, err
 	}
 
-	webhook := webhookFromGenerated(resp.JSON200.Webhook)
+	webhook := webhookFromGenerated(*resp.JSON200)
 	return &webhook, nil
 }
 

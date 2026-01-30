@@ -308,7 +308,7 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 		Description:             req.Description,
 		AssigneeIds:             req.AssigneeIDs,
 		CompletionSubscriberIds: req.CompletionSubscriberIDs,
-		Notify:                  req.Notify,
+		Notify:                  &req.Notify,
 	}
 	// Parse date strings to types.Date for the generated client
 	if req.DueOn != "" {
@@ -340,7 +340,7 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 		return nil, err
 	}
 
-	todo := todoFromGenerated(resp.JSON200.Todo)
+	todo := todoFromGenerated(*resp.JSON200)
 	return &todo, nil
 }
 
@@ -367,7 +367,7 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 		Description:             req.Description,
 		AssigneeIds:             req.AssigneeIDs,
 		CompletionSubscriberIds: req.CompletionSubscriberIDs,
-		Notify:                  req.Notify,
+		Notify:                  &req.Notify,
 	}
 	// Parse date strings to types.Date for the generated client
 	if req.DueOn != "" {
@@ -399,7 +399,7 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 		return nil, err
 	}
 
-	todo := todoFromGenerated(resp.JSON200.Todo)
+	todo := todoFromGenerated(*resp.JSON200)
 	return &todo, nil
 }
 

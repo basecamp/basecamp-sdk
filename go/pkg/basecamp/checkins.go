@@ -373,7 +373,7 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, question
 		return nil, err
 	}
 
-	question := questionFromGenerated(resp.JSON200.Question)
+	question := questionFromGenerated(*resp.JSON200)
 	return &question, nil
 }
 
@@ -408,7 +408,7 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 		body.Schedule = questionScheduleToGenerated(req.Schedule)
 	}
 	if req.Paused != nil {
-		body.Paused = *req.Paused
+		body.Paused = req.Paused
 	}
 
 	resp, err := s.client.parent.gen.UpdateQuestionWithResponse(ctx, s.client.accountID, bucketID, questionID, body)
@@ -423,7 +423,7 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 		return nil, err
 	}
 
-	question := questionFromGenerated(resp.JSON200.Question)
+	question := questionFromGenerated(*resp.JSON200)
 	return &question, nil
 }
 
@@ -584,7 +584,7 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 		return nil, err
 	}
 
-	answer := questionAnswerFromGenerated(resp.JSON200.Answer)
+	answer := questionAnswerFromGenerated(*resp.JSON200)
 	return &answer, nil
 }
 

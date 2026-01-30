@@ -225,7 +225,7 @@ func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int6
 		return nil, err
 	}
 
-	comment := commentFromGenerated(resp.JSON200.Comment)
+	comment := commentFromGenerated(*resp.JSON200)
 	return &comment, nil
 }
 
@@ -268,7 +268,7 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 		return nil, err
 	}
 
-	comment := commentFromGenerated(resp.JSON200.Comment)
+	comment := commentFromGenerated(*resp.JSON200)
 	return &comment, nil
 }
 

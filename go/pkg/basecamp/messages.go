@@ -244,7 +244,7 @@ func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, r
 		return nil, err
 	}
 
-	message := messageFromGenerated(resp.JSON200.Message)
+	message := messageFromGenerated(*resp.JSON200)
 	return &message, nil
 }
 
@@ -292,7 +292,7 @@ func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64,
 		return nil, err
 	}
 
-	message := messageFromGenerated(resp.JSON200.Message)
+	message := messageFromGenerated(*resp.JSON200)
 	return &message, nil
 }
 

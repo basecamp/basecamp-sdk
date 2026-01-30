@@ -357,7 +357,7 @@ func (s *VaultsService) Create(ctx context.Context, bucketID, vaultID int64, req
 		return nil, err
 	}
 
-	vault := vaultFromGenerated(resp.JSON200.Vault)
+	vault := vaultFromGenerated(*resp.JSON200)
 	return &vault, nil
 }
 
@@ -400,7 +400,7 @@ func (s *VaultsService) Update(ctx context.Context, bucketID, vaultID int64, req
 		return nil, err
 	}
 
-	vault := vaultFromGenerated(resp.JSON200.Vault)
+	vault := vaultFromGenerated(*resp.JSON200)
 	return &vault, nil
 }
 
@@ -568,7 +568,7 @@ func (s *DocumentsService) Create(ctx context.Context, bucketID, vaultID int64, 
 		return nil, err
 	}
 
-	document := documentFromGenerated(resp.JSON200.Document)
+	document := documentFromGenerated(*resp.JSON200)
 	return &document, nil
 }
 
@@ -612,7 +612,7 @@ func (s *DocumentsService) Update(ctx context.Context, bucketID, documentID int6
 		return nil, err
 	}
 
-	document := documentFromGenerated(resp.JSON200.Document)
+	document := documentFromGenerated(*resp.JSON200)
 	return &document, nil
 }
 
@@ -804,7 +804,7 @@ func (s *UploadsService) Update(ctx context.Context, bucketID, uploadID int64, r
 		return nil, err
 	}
 
-	upload := uploadFromGenerated(resp.JSON200.Upload)
+	upload := uploadFromGenerated(*resp.JSON200)
 	return &upload, nil
 }
 
@@ -850,7 +850,7 @@ func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, re
 		return nil, err
 	}
 
-	upload := uploadFromGenerated(resp.JSON200.Upload)
+	upload := uploadFromGenerated(*resp.JSON200)
 	return &upload, nil
 }
 

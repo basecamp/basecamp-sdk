@@ -126,7 +126,7 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 		return nil, err
 	}
 
-	marker := lineupMarkerFromGenerated(resp.JSON200.Marker)
+	marker := lineupMarkerFromGenerated(*resp.JSON200)
 	return &marker, nil
 }
 
@@ -187,7 +187,7 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 		return nil, err
 	}
 
-	marker := lineupMarkerFromGenerated(resp.JSON200.Marker)
+	marker := lineupMarkerFromGenerated(*resp.JSON200)
 	return &marker, nil
 }
 

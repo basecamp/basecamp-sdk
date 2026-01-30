@@ -275,7 +275,7 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 		return nil, err
 	}
 
-	project := projectFromGenerated(resp.JSON200.Project)
+	project := projectFromGenerated(*resp.JSON200)
 	return &project, nil
 }
 
@@ -325,7 +325,7 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 		return nil, err
 	}
 
-	project := projectFromGenerated(resp.JSON200.Project)
+	project := projectFromGenerated(*resp.JSON200)
 	return &project, nil
 }
 

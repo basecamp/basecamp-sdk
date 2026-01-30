@@ -409,7 +409,7 @@ func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID i
 		return nil, err
 	}
 
-	reply := forwardReplyFromGenerated(resp.JSON200.Reply)
+	reply := forwardReplyFromGenerated(*resp.JSON200)
 	return &reply, nil
 }
 

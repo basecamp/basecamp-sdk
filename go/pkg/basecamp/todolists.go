@@ -257,7 +257,7 @@ func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64
 		return nil, err
 	}
 
-	todolist := todolistFromGenerated(resp.JSON200.Todolist)
+	todolist := todolistFromGenerated(*resp.JSON200)
 	return &todolist, nil
 }
 
@@ -297,7 +297,7 @@ func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int6
 	}
 
 	// The response is a union type, try to extract as Todolist
-	tl, err := resp.JSON200.Result.AsTodolistOrGroup0()
+	tl, err := resp.JSON200.AsTodolistOrGroup0()
 	if err != nil {
 		err = fmt.Errorf("response is not a todolist: %w", err)
 		return nil, err

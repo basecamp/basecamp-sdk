@@ -97,7 +97,7 @@ func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordin
 		return nil, err
 	}
 
-	subscription := subscriptionFromGenerated(resp.JSON200.Subscription)
+	subscription := subscriptionFromGenerated(*resp.JSON200)
 	return &subscription, nil
 }
 
@@ -166,7 +166,7 @@ func (s *SubscriptionsService) Update(ctx context.Context, bucketID, recordingID
 		return nil, err
 	}
 
-	subscription := subscriptionFromGenerated(resp.JSON200.Subscription)
+	subscription := subscriptionFromGenerated(*resp.JSON200)
 	return &subscription, nil
 }
 

@@ -60,8 +60,8 @@ func (s *TimelineService) Progress(ctx context.Context) (result []TimelineEvent,
 		return nil, nil
 	}
 
-	events := make([]TimelineEvent, 0, len(resp.JSON200.Events))
-	for _, ge := range resp.JSON200.Events {
+	events := make([]TimelineEvent, 0, len(*resp.JSON200))
+	for _, ge := range *resp.JSON200 {
 		events = append(events, timelineEventFromGenerated(ge))
 	}
 
@@ -95,8 +95,8 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64) 
 		return nil, nil
 	}
 
-	events := make([]TimelineEvent, 0, len(resp.JSON200.Events))
-	for _, ge := range resp.JSON200.Events {
+	events := make([]TimelineEvent, 0, len(*resp.JSON200))
+	for _, ge := range *resp.JSON200 {
 		events = append(events, timelineEventFromGenerated(ge))
 	}
 

@@ -292,7 +292,7 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 		return nil, err
 	}
 
-	line := campfireLineFromGenerated(resp.JSON200.Line)
+	line := campfireLineFromGenerated(*resp.JSON200)
 	return &line, nil
 }
 
@@ -432,7 +432,7 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfire
 		return nil, err
 	}
 
-	chatbot := chatbotFromGenerated(resp.JSON200.Chatbot)
+	chatbot := chatbotFromGenerated(*resp.JSON200)
 	return &chatbot, nil
 }
 
@@ -479,7 +479,7 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfire
 		return nil, err
 	}
 
-	chatbot := chatbotFromGenerated(resp.JSON200.Chatbot)
+	chatbot := chatbotFromGenerated(*resp.JSON200)
 	return &chatbot, nil
 }
 

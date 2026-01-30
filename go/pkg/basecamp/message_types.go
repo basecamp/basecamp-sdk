@@ -170,7 +170,7 @@ func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *C
 		return nil, err
 	}
 
-	msgType := messageTypeFromGenerated(resp.JSON200.MessageType)
+	msgType := messageTypeFromGenerated(*resp.JSON200)
 	return &msgType, nil
 }
 
@@ -214,7 +214,7 @@ func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64
 		return nil, err
 	}
 
-	msgType := messageTypeFromGenerated(resp.JSON200.MessageType)
+	msgType := messageTypeFromGenerated(*resp.JSON200)
 	return &msgType, nil
 }
 

@@ -293,9 +293,7 @@ type ClientSide struct {
 }
 
 // CloneToolResponseContent defines model for CloneToolResponseContent.
-type CloneToolResponseContent struct {
-	Tool Tool `json:"tool,omitempty"`
-}
+type CloneToolResponseContent = Tool
 
 // Comment defines model for Comment.
 type Comment struct {
@@ -317,14 +315,10 @@ type Comment struct {
 }
 
 // CompleteCardStepResponseContent defines model for CompleteCardStepResponseContent.
-type CompleteCardStepResponseContent struct {
-	Step CardStep `json:"step,omitempty"`
-}
+type CompleteCardStepResponseContent = CardStep
 
 // CreateAnswerResponseContent defines model for CreateAnswerResponseContent.
-type CreateAnswerResponseContent struct {
-	Answer QuestionAnswer `json:"answer,omitempty"`
-}
+type CreateAnswerResponseContent = QuestionAnswer
 
 // CreateAttachmentInputPayload defines model for CreateAttachmentInputPayload.
 type CreateAttachmentInputPayload = string
@@ -340,9 +334,7 @@ type CreateCampfireLineRequestContent struct {
 }
 
 // CreateCampfireLineResponseContent defines model for CreateCampfireLineResponseContent.
-type CreateCampfireLineResponseContent struct {
-	Line CampfireLine `json:"line,omitempty"`
-}
+type CreateCampfireLineResponseContent = CampfireLine
 
 // CreateCardColumnRequestContent defines model for CreateCardColumnRequestContent.
 type CreateCardColumnRequestContent struct {
@@ -351,22 +343,18 @@ type CreateCardColumnRequestContent struct {
 }
 
 // CreateCardColumnResponseContent defines model for CreateCardColumnResponseContent.
-type CreateCardColumnResponseContent struct {
-	Column CardColumn `json:"column,omitempty"`
-}
+type CreateCardColumnResponseContent = CardColumn
 
 // CreateCardRequestContent defines model for CreateCardRequestContent.
 type CreateCardRequestContent struct {
 	Content string     `json:"content,omitempty"`
 	DueOn   types.Date `json:"due_on,omitempty"`
-	Notify  bool       `json:"notify,omitempty"`
+	Notify  *bool      `json:"notify,omitempty"`
 	Title   string     `json:"title"`
 }
 
 // CreateCardResponseContent defines model for CreateCardResponseContent.
-type CreateCardResponseContent struct {
-	Card Card `json:"card,omitempty"`
-}
+type CreateCardResponseContent = Card
 
 // CreateCardStepRequestContent defines model for CreateCardStepRequestContent.
 type CreateCardStepRequestContent struct {
@@ -376,9 +364,7 @@ type CreateCardStepRequestContent struct {
 }
 
 // CreateCardStepResponseContent defines model for CreateCardStepResponseContent.
-type CreateCardStepResponseContent struct {
-	Step CardStep `json:"step,omitempty"`
-}
+type CreateCardStepResponseContent = CardStep
 
 // CreateChatbotRequestContent defines model for CreateChatbotRequestContent.
 type CreateChatbotRequestContent struct {
@@ -387,9 +373,7 @@ type CreateChatbotRequestContent struct {
 }
 
 // CreateChatbotResponseContent defines model for CreateChatbotResponseContent.
-type CreateChatbotResponseContent struct {
-	Chatbot Chatbot `json:"chatbot,omitempty"`
-}
+type CreateChatbotResponseContent = Chatbot
 
 // CreateCommentRequestContent defines model for CreateCommentRequestContent.
 type CreateCommentRequestContent struct {
@@ -397,9 +381,7 @@ type CreateCommentRequestContent struct {
 }
 
 // CreateCommentResponseContent defines model for CreateCommentResponseContent.
-type CreateCommentResponseContent struct {
-	Comment Comment `json:"comment,omitempty"`
-}
+type CreateCommentResponseContent = Comment
 
 // CreateDocumentRequestContent defines model for CreateDocumentRequestContent.
 type CreateDocumentRequestContent struct {
@@ -411,9 +393,7 @@ type CreateDocumentRequestContent struct {
 }
 
 // CreateDocumentResponseContent defines model for CreateDocumentResponseContent.
-type CreateDocumentResponseContent struct {
-	Document Document `json:"document,omitempty"`
-}
+type CreateDocumentResponseContent = Document
 
 // CreateForwardReplyRequestContent defines model for CreateForwardReplyRequestContent.
 type CreateForwardReplyRequestContent struct {
@@ -421,9 +401,7 @@ type CreateForwardReplyRequestContent struct {
 }
 
 // CreateForwardReplyResponseContent defines model for CreateForwardReplyResponseContent.
-type CreateForwardReplyResponseContent struct {
-	Reply ForwardReply `json:"reply,omitempty"`
-}
+type CreateForwardReplyResponseContent = ForwardReply
 
 // CreateLineupMarkerRequestContent defines model for CreateLineupMarkerRequestContent.
 type CreateLineupMarkerRequestContent struct {
@@ -435,9 +413,7 @@ type CreateLineupMarkerRequestContent struct {
 }
 
 // CreateLineupMarkerResponseContent defines model for CreateLineupMarkerResponseContent.
-type CreateLineupMarkerResponseContent struct {
-	Marker LineupMarker `json:"marker,omitempty"`
-}
+type CreateLineupMarkerResponseContent = LineupMarker
 
 // CreateMessageRequestContent defines model for CreateMessageRequestContent.
 type CreateMessageRequestContent struct {
@@ -450,9 +426,7 @@ type CreateMessageRequestContent struct {
 }
 
 // CreateMessageResponseContent defines model for CreateMessageResponseContent.
-type CreateMessageResponseContent struct {
-	Message Message `json:"message,omitempty"`
-}
+type CreateMessageResponseContent = Message
 
 // CreateMessageTypeRequestContent defines model for CreateMessageTypeRequestContent.
 type CreateMessageTypeRequestContent struct {
@@ -461,9 +435,7 @@ type CreateMessageTypeRequestContent struct {
 }
 
 // CreateMessageTypeResponseContent defines model for CreateMessageTypeResponseContent.
-type CreateMessageTypeResponseContent struct {
-	MessageType MessageType `json:"message_type,omitempty"`
-}
+type CreateMessageTypeResponseContent = MessageType
 
 // CreatePersonRequest defines model for CreatePersonRequest.
 type CreatePersonRequest struct {
@@ -480,9 +452,7 @@ type CreateProjectFromTemplateRequestContent struct {
 }
 
 // CreateProjectFromTemplateResponseContent defines model for CreateProjectFromTemplateResponseContent.
-type CreateProjectFromTemplateResponseContent struct {
-	Construction ProjectConstruction `json:"construction,omitempty"`
-}
+type CreateProjectFromTemplateResponseContent = ProjectConstruction
 
 // CreateProjectRequestContent defines model for CreateProjectRequestContent.
 type CreateProjectRequestContent struct {
@@ -491,9 +461,7 @@ type CreateProjectRequestContent struct {
 }
 
 // CreateProjectResponseContent defines model for CreateProjectResponseContent.
-type CreateProjectResponseContent struct {
-	Project Project `json:"project,omitempty"`
-}
+type CreateProjectResponseContent = Project
 
 // CreateQuestionRequestContent defines model for CreateQuestionRequestContent.
 type CreateQuestionRequestContent struct {
@@ -502,25 +470,21 @@ type CreateQuestionRequestContent struct {
 }
 
 // CreateQuestionResponseContent defines model for CreateQuestionResponseContent.
-type CreateQuestionResponseContent struct {
-	Question Question `json:"question,omitempty"`
-}
+type CreateQuestionResponseContent = Question
 
 // CreateScheduleEntryRequestContent defines model for CreateScheduleEntryRequestContent.
 type CreateScheduleEntryRequestContent struct {
-	AllDay         bool      `json:"all_day,omitempty"`
+	AllDay         *bool     `json:"all_day,omitempty"`
 	Description    string    `json:"description,omitempty"`
 	EndsAt         time.Time `json:"ends_at"`
-	Notify         bool      `json:"notify,omitempty"`
+	Notify         *bool     `json:"notify,omitempty"`
 	ParticipantIds []int64   `json:"participant_ids,omitempty"`
 	StartsAt       time.Time `json:"starts_at"`
 	Summary        string    `json:"summary"`
 }
 
 // CreateScheduleEntryResponseContent defines model for CreateScheduleEntryResponseContent.
-type CreateScheduleEntryResponseContent struct {
-	Entry ScheduleEntry `json:"entry,omitempty"`
-}
+type CreateScheduleEntryResponseContent = ScheduleEntry
 
 // CreateTemplateRequestContent defines model for CreateTemplateRequestContent.
 type CreateTemplateRequestContent struct {
@@ -529,9 +493,7 @@ type CreateTemplateRequestContent struct {
 }
 
 // CreateTemplateResponseContent defines model for CreateTemplateResponseContent.
-type CreateTemplateResponseContent struct {
-	Template Template `json:"template,omitempty"`
-}
+type CreateTemplateResponseContent = Template
 
 // CreateTodoRequestContent defines model for CreateTodoRequestContent.
 type CreateTodoRequestContent struct {
@@ -540,14 +502,12 @@ type CreateTodoRequestContent struct {
 	Content                 string     `json:"content"`
 	Description             string     `json:"description,omitempty"`
 	DueOn                   types.Date `json:"due_on,omitempty"`
-	Notify                  bool       `json:"notify,omitempty"`
+	Notify                  *bool      `json:"notify,omitempty"`
 	StartsOn                types.Date `json:"starts_on,omitempty"`
 }
 
 // CreateTodoResponseContent defines model for CreateTodoResponseContent.
-type CreateTodoResponseContent struct {
-	Todo Todo `json:"todo,omitempty"`
-}
+type CreateTodoResponseContent = Todo
 
 // CreateTodolistGroupRequestContent defines model for CreateTodolistGroupRequestContent.
 type CreateTodolistGroupRequestContent struct {
@@ -555,9 +515,7 @@ type CreateTodolistGroupRequestContent struct {
 }
 
 // CreateTodolistGroupResponseContent defines model for CreateTodolistGroupResponseContent.
-type CreateTodolistGroupResponseContent struct {
-	Group TodolistGroup `json:"group,omitempty"`
-}
+type CreateTodolistGroupResponseContent = TodolistGroup
 
 // CreateTodolistRequestContent defines model for CreateTodolistRequestContent.
 type CreateTodolistRequestContent struct {
@@ -566,9 +524,7 @@ type CreateTodolistRequestContent struct {
 }
 
 // CreateTodolistResponseContent defines model for CreateTodolistResponseContent.
-type CreateTodolistResponseContent struct {
-	Todolist Todolist `json:"todolist,omitempty"`
-}
+type CreateTodolistResponseContent = Todolist
 
 // CreateUploadRequestContent defines model for CreateUploadRequestContent.
 type CreateUploadRequestContent struct {
@@ -578,9 +534,7 @@ type CreateUploadRequestContent struct {
 }
 
 // CreateUploadResponseContent defines model for CreateUploadResponseContent.
-type CreateUploadResponseContent struct {
-	Upload Upload `json:"upload,omitempty"`
-}
+type CreateUploadResponseContent = Upload
 
 // CreateVaultRequestContent defines model for CreateVaultRequestContent.
 type CreateVaultRequestContent struct {
@@ -588,26 +542,20 @@ type CreateVaultRequestContent struct {
 }
 
 // CreateVaultResponseContent defines model for CreateVaultResponseContent.
-type CreateVaultResponseContent struct {
-	Vault Vault `json:"vault,omitempty"`
-}
+type CreateVaultResponseContent = Vault
 
 // CreateWebhookRequestContent defines model for CreateWebhookRequestContent.
 type CreateWebhookRequestContent struct {
-	Active     bool     `json:"active,omitempty"`
+	Active     *bool    `json:"active,omitempty"`
 	PayloadUrl string   `json:"payload_url"`
 	Types      []string `json:"types"`
 }
 
 // CreateWebhookResponseContent defines model for CreateWebhookResponseContent.
-type CreateWebhookResponseContent struct {
-	Webhook Webhook `json:"webhook,omitempty"`
-}
+type CreateWebhookResponseContent = Webhook
 
 // DisableCardColumnOnHoldResponseContent defines model for DisableCardColumnOnHoldResponseContent.
-type DisableCardColumnOnHoldResponseContent struct {
-	Column CardColumn `json:"column,omitempty"`
-}
+type DisableCardColumnOnHoldResponseContent = CardColumn
 
 // DockItem defines model for DockItem.
 type DockItem struct {
@@ -644,9 +592,7 @@ type Document struct {
 }
 
 // EnableCardColumnOnHoldResponseContent defines model for EnableCardColumnOnHoldResponseContent.
-type EnableCardColumnOnHoldResponseContent struct {
-	Column CardColumn `json:"column,omitempty"`
-}
+type EnableCardColumnOnHoldResponseContent = CardColumn
 
 // Event defines model for Event.
 type Event struct {
@@ -718,9 +664,7 @@ type ForwardReply struct {
 type GetAnswerResponseContent = QuestionAnswer
 
 // GetAnswersByPersonResponseContent defines model for GetAnswersByPersonResponseContent.
-type GetAnswersByPersonResponseContent struct {
-	Answers []QuestionAnswer `json:"answers,omitempty"`
-}
+type GetAnswersByPersonResponseContent = []QuestionAnswer
 
 // GetAssignedTodosResponseContent defines model for GetAssignedTodosResponseContent.
 type GetAssignedTodosResponseContent struct {
@@ -801,9 +745,7 @@ type GetPersonProgressResponseContent struct {
 type GetPersonResponseContent = Person
 
 // GetProgressReportResponseContent defines model for GetProgressReportResponseContent.
-type GetProgressReportResponseContent struct {
-	Events []TimelineEvent `json:"events,omitempty"`
-}
+type GetProgressReportResponseContent = []TimelineEvent
 
 // GetProjectConstructionResponseContent defines model for GetProjectConstructionResponseContent.
 type GetProjectConstructionResponseContent = ProjectConstruction
@@ -812,19 +754,13 @@ type GetProjectConstructionResponseContent = ProjectConstruction
 type GetProjectResponseContent = Project
 
 // GetProjectTimelineResponseContent defines model for GetProjectTimelineResponseContent.
-type GetProjectTimelineResponseContent struct {
-	Events []TimelineEvent `json:"events,omitempty"`
-}
+type GetProjectTimelineResponseContent = []TimelineEvent
 
 // GetProjectTimesheetResponseContent defines model for GetProjectTimesheetResponseContent.
-type GetProjectTimesheetResponseContent struct {
-	Entries []TimesheetEntry `json:"entries,omitempty"`
-}
+type GetProjectTimesheetResponseContent = []TimesheetEntry
 
 // GetQuestionRemindersResponseContent defines model for GetQuestionRemindersResponseContent.
-type GetQuestionRemindersResponseContent struct {
-	Reminders []QuestionReminder `json:"reminders,omitempty"`
-}
+type GetQuestionRemindersResponseContent = []QuestionReminder
 
 // GetQuestionResponseContent defines model for GetQuestionResponseContent.
 type GetQuestionResponseContent = Question
@@ -836,9 +772,7 @@ type GetQuestionnaireResponseContent = Questionnaire
 type GetRecordingResponseContent = Recording
 
 // GetRecordingTimesheetResponseContent defines model for GetRecordingTimesheetResponseContent.
-type GetRecordingTimesheetResponseContent struct {
-	Entries []TimesheetEntry `json:"entries,omitempty"`
-}
+type GetRecordingTimesheetResponseContent = []TimesheetEntry
 
 // GetScheduleEntryOccurrenceResponseContent defines model for GetScheduleEntryOccurrenceResponseContent.
 type GetScheduleEntryOccurrenceResponseContent = ScheduleEntry
@@ -859,9 +793,7 @@ type GetSubscriptionResponseContent = Subscription
 type GetTemplateResponseContent = Template
 
 // GetTimesheetReportResponseContent defines model for GetTimesheetReportResponseContent.
-type GetTimesheetReportResponseContent struct {
-	Entries []TimesheetEntry `json:"entries,omitempty"`
-}
+type GetTimesheetReportResponseContent = []TimesheetEntry
 
 // GetTodoResponseContent defines model for GetTodoResponseContent.
 type GetTodoResponseContent = Todo
@@ -1398,9 +1330,7 @@ type SearchProject struct {
 }
 
 // SearchResponseContent defines model for SearchResponseContent.
-type SearchResponseContent struct {
-	Results []SearchResult `json:"results,omitempty"`
-}
+type SearchResponseContent = []SearchResult
 
 // SearchResult defines model for SearchResult.
 type SearchResult struct {
@@ -1430,9 +1360,7 @@ type SetCardColumnColorRequestContent struct {
 }
 
 // SetCardColumnColorResponseContent defines model for SetCardColumnColorResponseContent.
-type SetCardColumnColorResponseContent struct {
-	Column CardColumn `json:"column,omitempty"`
-}
+type SetCardColumnColorResponseContent = CardColumn
 
 // SetClientVisibilityRequestContent defines model for SetClientVisibilityRequestContent.
 type SetClientVisibilityRequestContent struct {
@@ -1440,14 +1368,10 @@ type SetClientVisibilityRequestContent struct {
 }
 
 // SetClientVisibilityResponseContent defines model for SetClientVisibilityResponseContent.
-type SetClientVisibilityResponseContent struct {
-	Recording Recording `json:"recording,omitempty"`
-}
+type SetClientVisibilityResponseContent = Recording
 
 // SubscribeResponseContent defines model for SubscribeResponseContent.
-type SubscribeResponseContent struct {
-	Subscription Subscription `json:"subscription,omitempty"`
-}
+type SubscribeResponseContent = Subscription
 
 // Subscription defines model for Subscription.
 type Subscription struct {
@@ -1677,14 +1601,10 @@ type UnauthorizedErrorResponseContent struct {
 }
 
 // UncompleteCardStepResponseContent defines model for UncompleteCardStepResponseContent.
-type UncompleteCardStepResponseContent struct {
-	Step CardStep `json:"step,omitempty"`
-}
+type UncompleteCardStepResponseContent = CardStep
 
 // UpdateAnswerResponseContent defines model for UpdateAnswerResponseContent.
-type UpdateAnswerResponseContent struct {
-	Answer QuestionAnswer `json:"answer,omitempty"`
-}
+type UpdateAnswerResponseContent = QuestionAnswer
 
 // UpdateCardColumnRequestContent defines model for UpdateCardColumnRequestContent.
 type UpdateCardColumnRequestContent struct {
@@ -1693,9 +1613,7 @@ type UpdateCardColumnRequestContent struct {
 }
 
 // UpdateCardColumnResponseContent defines model for UpdateCardColumnResponseContent.
-type UpdateCardColumnResponseContent struct {
-	Column CardColumn `json:"column,omitempty"`
-}
+type UpdateCardColumnResponseContent = CardColumn
 
 // UpdateCardRequestContent defines model for UpdateCardRequestContent.
 type UpdateCardRequestContent struct {
@@ -1706,9 +1624,7 @@ type UpdateCardRequestContent struct {
 }
 
 // UpdateCardResponseContent defines model for UpdateCardResponseContent.
-type UpdateCardResponseContent struct {
-	Card Card `json:"card,omitempty"`
-}
+type UpdateCardResponseContent = Card
 
 // UpdateCardStepRequestContent defines model for UpdateCardStepRequestContent.
 type UpdateCardStepRequestContent struct {
@@ -1718,9 +1634,7 @@ type UpdateCardStepRequestContent struct {
 }
 
 // UpdateCardStepResponseContent defines model for UpdateCardStepResponseContent.
-type UpdateCardStepResponseContent struct {
-	Step CardStep `json:"step,omitempty"`
-}
+type UpdateCardStepResponseContent = CardStep
 
 // UpdateChatbotRequestContent defines model for UpdateChatbotRequestContent.
 type UpdateChatbotRequestContent struct {
@@ -1729,9 +1643,7 @@ type UpdateChatbotRequestContent struct {
 }
 
 // UpdateChatbotResponseContent defines model for UpdateChatbotResponseContent.
-type UpdateChatbotResponseContent struct {
-	Chatbot Chatbot `json:"chatbot,omitempty"`
-}
+type UpdateChatbotResponseContent = Chatbot
 
 // UpdateCommentRequestContent defines model for UpdateCommentRequestContent.
 type UpdateCommentRequestContent struct {
@@ -1739,9 +1651,7 @@ type UpdateCommentRequestContent struct {
 }
 
 // UpdateCommentResponseContent defines model for UpdateCommentResponseContent.
-type UpdateCommentResponseContent struct {
-	Comment Comment `json:"comment,omitempty"`
-}
+type UpdateCommentResponseContent = Comment
 
 // UpdateDocumentRequestContent defines model for UpdateDocumentRequestContent.
 type UpdateDocumentRequestContent struct {
@@ -1750,9 +1660,7 @@ type UpdateDocumentRequestContent struct {
 }
 
 // UpdateDocumentResponseContent defines model for UpdateDocumentResponseContent.
-type UpdateDocumentResponseContent struct {
-	Document Document `json:"document,omitempty"`
-}
+type UpdateDocumentResponseContent = Document
 
 // UpdateLineupMarkerRequestContent defines model for UpdateLineupMarkerRequestContent.
 type UpdateLineupMarkerRequestContent struct {
@@ -1764,9 +1672,7 @@ type UpdateLineupMarkerRequestContent struct {
 }
 
 // UpdateLineupMarkerResponseContent defines model for UpdateLineupMarkerResponseContent.
-type UpdateLineupMarkerResponseContent struct {
-	Marker LineupMarker `json:"marker,omitempty"`
-}
+type UpdateLineupMarkerResponseContent = LineupMarker
 
 // UpdateMessageRequestContent defines model for UpdateMessageRequestContent.
 type UpdateMessageRequestContent struct {
@@ -1779,9 +1685,7 @@ type UpdateMessageRequestContent struct {
 }
 
 // UpdateMessageResponseContent defines model for UpdateMessageResponseContent.
-type UpdateMessageResponseContent struct {
-	Message Message `json:"message,omitempty"`
-}
+type UpdateMessageResponseContent = Message
 
 // UpdateMessageTypeRequestContent defines model for UpdateMessageTypeRequestContent.
 type UpdateMessageTypeRequestContent struct {
@@ -1790,9 +1694,7 @@ type UpdateMessageTypeRequestContent struct {
 }
 
 // UpdateMessageTypeResponseContent defines model for UpdateMessageTypeResponseContent.
-type UpdateMessageTypeResponseContent struct {
-	MessageType MessageType `json:"message_type,omitempty"`
-}
+type UpdateMessageTypeResponseContent = MessageType
 
 // UpdateProjectAccessRequestContent defines model for UpdateProjectAccessRequestContent.
 type UpdateProjectAccessRequestContent struct {
@@ -1802,9 +1704,7 @@ type UpdateProjectAccessRequestContent struct {
 }
 
 // UpdateProjectAccessResponseContent defines model for UpdateProjectAccessResponseContent.
-type UpdateProjectAccessResponseContent struct {
-	Result ProjectAccessResult `json:"result,omitempty"`
-}
+type UpdateProjectAccessResponseContent = ProjectAccessResult
 
 // UpdateProjectRequestContent defines model for UpdateProjectRequestContent.
 type UpdateProjectRequestContent struct {
@@ -1816,46 +1716,40 @@ type UpdateProjectRequestContent struct {
 }
 
 // UpdateProjectResponseContent defines model for UpdateProjectResponseContent.
-type UpdateProjectResponseContent struct {
-	Project Project `json:"project,omitempty"`
-}
+type UpdateProjectResponseContent = Project
 
 // UpdateQuestionNotificationSettingsRequestContent defines model for UpdateQuestionNotificationSettingsRequestContent.
 type UpdateQuestionNotificationSettingsRequestContent struct {
 	// DigestIncludeUnanswered Include unanswered in digest
-	DigestIncludeUnanswered bool `json:"digest_include_unanswered,omitempty"`
+	DigestIncludeUnanswered *bool `json:"digest_include_unanswered,omitempty"`
 
 	// NotifyOnAnswer Notify when someone answers
-	NotifyOnAnswer bool `json:"notify_on_answer,omitempty"`
+	NotifyOnAnswer *bool `json:"notify_on_answer,omitempty"`
 }
 
 // UpdateQuestionRequestContent defines model for UpdateQuestionRequestContent.
 type UpdateQuestionRequestContent struct {
-	Paused   bool             `json:"paused,omitempty"`
+	Paused   *bool            `json:"paused,omitempty"`
 	Schedule QuestionSchedule `json:"schedule,omitempty"`
 	Title    string           `json:"title,omitempty"`
 }
 
 // UpdateQuestionResponseContent defines model for UpdateQuestionResponseContent.
-type UpdateQuestionResponseContent struct {
-	Question Question `json:"question,omitempty"`
-}
+type UpdateQuestionResponseContent = Question
 
 // UpdateScheduleEntryRequestContent defines model for UpdateScheduleEntryRequestContent.
 type UpdateScheduleEntryRequestContent struct {
-	AllDay         bool      `json:"all_day,omitempty"`
+	AllDay         *bool     `json:"all_day,omitempty"`
 	Description    string    `json:"description,omitempty"`
 	EndsAt         time.Time `json:"ends_at,omitempty"`
-	Notify         bool      `json:"notify,omitempty"`
+	Notify         *bool     `json:"notify,omitempty"`
 	ParticipantIds []int64   `json:"participant_ids,omitempty"`
 	StartsAt       time.Time `json:"starts_at,omitempty"`
 	Summary        string    `json:"summary,omitempty"`
 }
 
 // UpdateScheduleEntryResponseContent defines model for UpdateScheduleEntryResponseContent.
-type UpdateScheduleEntryResponseContent struct {
-	Entry ScheduleEntry `json:"entry,omitempty"`
-}
+type UpdateScheduleEntryResponseContent = ScheduleEntry
 
 // UpdateScheduleSettingsRequestContent defines model for UpdateScheduleSettingsRequestContent.
 type UpdateScheduleSettingsRequestContent struct {
@@ -1863,9 +1757,7 @@ type UpdateScheduleSettingsRequestContent struct {
 }
 
 // UpdateScheduleSettingsResponseContent defines model for UpdateScheduleSettingsResponseContent.
-type UpdateScheduleSettingsResponseContent struct {
-	Schedule Schedule `json:"schedule,omitempty"`
-}
+type UpdateScheduleSettingsResponseContent = Schedule
 
 // UpdateSubscriptionRequestContent defines model for UpdateSubscriptionRequestContent.
 type UpdateSubscriptionRequestContent struct {
@@ -1874,9 +1766,7 @@ type UpdateSubscriptionRequestContent struct {
 }
 
 // UpdateSubscriptionResponseContent defines model for UpdateSubscriptionResponseContent.
-type UpdateSubscriptionResponseContent struct {
-	Subscription Subscription `json:"subscription,omitempty"`
-}
+type UpdateSubscriptionResponseContent = Subscription
 
 // UpdateTemplateRequestContent defines model for UpdateTemplateRequestContent.
 type UpdateTemplateRequestContent struct {
@@ -1885,9 +1775,7 @@ type UpdateTemplateRequestContent struct {
 }
 
 // UpdateTemplateResponseContent defines model for UpdateTemplateResponseContent.
-type UpdateTemplateResponseContent struct {
-	Template Template `json:"template,omitempty"`
-}
+type UpdateTemplateResponseContent = Template
 
 // UpdateTodoRequestContent defines model for UpdateTodoRequestContent.
 type UpdateTodoRequestContent struct {
@@ -1896,14 +1784,12 @@ type UpdateTodoRequestContent struct {
 	Content                 string     `json:"content,omitempty"`
 	Description             string     `json:"description,omitempty"`
 	DueOn                   types.Date `json:"due_on,omitempty"`
-	Notify                  bool       `json:"notify,omitempty"`
+	Notify                  *bool      `json:"notify,omitempty"`
 	StartsOn                types.Date `json:"starts_on,omitempty"`
 }
 
 // UpdateTodoResponseContent defines model for UpdateTodoResponseContent.
-type UpdateTodoResponseContent struct {
-	Todo Todo `json:"todo,omitempty"`
-}
+type UpdateTodoResponseContent = Todo
 
 // UpdateTodolistOrGroupRequestContent defines model for UpdateTodolistOrGroupRequestContent.
 type UpdateTodolistOrGroupRequestContent struct {
@@ -1914,11 +1800,8 @@ type UpdateTodolistOrGroupRequestContent struct {
 	Name string `json:"name,omitempty"`
 }
 
-// UpdateTodolistOrGroupResponseContent defines model for UpdateTodolistOrGroupResponseContent.
-type UpdateTodolistOrGroupResponseContent struct {
-	// Result Union type for polymorphic todolist endpoint
-	Result TodolistOrGroup `json:"result,omitempty"`
-}
+// UpdateTodolistOrGroupResponseContent Union type for polymorphic todolist endpoint
+type UpdateTodolistOrGroupResponseContent = TodolistOrGroup
 
 // UpdateToolRequestContent defines model for UpdateToolRequestContent.
 type UpdateToolRequestContent struct {
@@ -1926,9 +1809,7 @@ type UpdateToolRequestContent struct {
 }
 
 // UpdateToolResponseContent defines model for UpdateToolResponseContent.
-type UpdateToolResponseContent struct {
-	Tool Tool `json:"tool,omitempty"`
-}
+type UpdateToolResponseContent = Tool
 
 // UpdateUploadRequestContent defines model for UpdateUploadRequestContent.
 type UpdateUploadRequestContent struct {
@@ -1937,9 +1818,7 @@ type UpdateUploadRequestContent struct {
 }
 
 // UpdateUploadResponseContent defines model for UpdateUploadResponseContent.
-type UpdateUploadResponseContent struct {
-	Upload Upload `json:"upload,omitempty"`
-}
+type UpdateUploadResponseContent = Upload
 
 // UpdateVaultRequestContent defines model for UpdateVaultRequestContent.
 type UpdateVaultRequestContent struct {
@@ -1947,21 +1826,17 @@ type UpdateVaultRequestContent struct {
 }
 
 // UpdateVaultResponseContent defines model for UpdateVaultResponseContent.
-type UpdateVaultResponseContent struct {
-	Vault Vault `json:"vault,omitempty"`
-}
+type UpdateVaultResponseContent = Vault
 
 // UpdateWebhookRequestContent defines model for UpdateWebhookRequestContent.
 type UpdateWebhookRequestContent struct {
-	Active     bool     `json:"active,omitempty"`
+	Active     *bool    `json:"active,omitempty"`
 	PayloadUrl string   `json:"payload_url,omitempty"`
 	Types      []string `json:"types,omitempty"`
 }
 
 // UpdateWebhookResponseContent defines model for UpdateWebhookResponseContent.
-type UpdateWebhookResponseContent struct {
-	Webhook Webhook `json:"webhook,omitempty"`
-}
+type UpdateWebhookResponseContent = Webhook
 
 // Upload defines model for Upload.
 type Upload struct {

@@ -19189,7 +19189,8 @@
             "x-go-type-skip-optional-pointer": true
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -19486,10 +19487,12 @@
             }
           },
           "all_day": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -19542,7 +19545,8 @@
             }
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "due_on": {
             "type": "string",
@@ -19646,7 +19650,8 @@
             }
           },
           "active": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -22770,11 +22775,13 @@
         "properties": {
           "notify_on_answer": {
             "type": "boolean",
-            "description": "Notify when someone answers"
+            "description": "Notify when someone answers",
+            "x-go-type-skip-optional-pointer": false
           },
           "digest_include_unanswered": {
             "type": "boolean",
-            "description": "Include unanswered in digest"
+            "description": "Include unanswered in digest",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -22788,7 +22795,8 @@
             "$ref": "#/components/schemas/QuestionSchedule"
           },
           "paused": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -22828,10 +22836,12 @@
             }
           },
           "all_day": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -22912,7 +22922,8 @@
             }
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "due_on": {
             "type": "string",
@@ -23003,7 +23014,8 @@
             }
           },
           "active": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },

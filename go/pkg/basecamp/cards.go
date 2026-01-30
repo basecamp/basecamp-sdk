@@ -419,7 +419,7 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 		body.DueOn = d
 	}
 	if req.Notify {
-		body.Notify = req.Notify
+		body.Notify = &req.Notify
 	}
 
 	resp, err := s.client.parent.gen.CreateCardWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
@@ -434,7 +434,7 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 		return nil, err
 	}
 
-	card := cardFromGenerated(resp.JSON200.Card)
+	card := cardFromGenerated(*resp.JSON200)
 	return &card, nil
 }
 
@@ -492,7 +492,7 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 		return nil, err
 	}
 
-	card := cardFromGenerated(resp.JSON200.Card)
+	card := cardFromGenerated(*resp.JSON200)
 	return &card, nil
 }
 
@@ -632,7 +632,7 @@ func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID i
 		return nil, err
 	}
 
-	column := cardColumnFromGenerated(resp.JSON200.Column)
+	column := cardColumnFromGenerated(*resp.JSON200)
 	return &column, nil
 }
 
@@ -676,7 +676,7 @@ func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int6
 		return nil, err
 	}
 
-	column := cardColumnFromGenerated(resp.JSON200.Column)
+	column := cardColumnFromGenerated(*resp.JSON200)
 	return &column, nil
 }
 
@@ -755,7 +755,7 @@ func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID in
 		return nil, err
 	}
 
-	column := cardColumnFromGenerated(resp.JSON200.Column)
+	column := cardColumnFromGenerated(*resp.JSON200)
 	return &column, nil
 }
 
@@ -789,7 +789,7 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnI
 		return nil, err
 	}
 
-	column := cardColumnFromGenerated(resp.JSON200.Column)
+	column := cardColumnFromGenerated(*resp.JSON200)
 	return &column, nil
 }
 
@@ -823,7 +823,7 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, column
 		return nil, err
 	}
 
-	column := cardColumnFromGenerated(resp.JSON200.Column)
+	column := cardColumnFromGenerated(*resp.JSON200)
 	return &column, nil
 }
 
@@ -857,7 +857,7 @@ func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64
 		return nil, err
 	}
 
-	sub := subscriptionFromGenerated(resp.JSON200.Subscription)
+	sub := subscriptionFromGenerated(*resp.JSON200)
 	return &sub, nil
 }
 
@@ -944,7 +944,7 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 		return nil, err
 	}
 
-	step := cardStepFromGenerated(resp.JSON200.Step)
+	step := cardStepFromGenerated(*resp.JSON200)
 	return &step, nil
 }
 
@@ -996,7 +996,7 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 		return nil, err
 	}
 
-	step := cardStepFromGenerated(resp.JSON200.Step)
+	step := cardStepFromGenerated(*resp.JSON200)
 	return &step, nil
 }
 
@@ -1030,7 +1030,7 @@ func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64)
 		return nil, err
 	}
 
-	step := cardStepFromGenerated(resp.JSON200.Step)
+	step := cardStepFromGenerated(*resp.JSON200)
 	return &step, nil
 }
 
@@ -1064,7 +1064,7 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int6
 		return nil, err
 	}
 
-	step := cardStepFromGenerated(resp.JSON200.Step)
+	step := cardStepFromGenerated(*resp.JSON200)
 	return &step, nil
 }
 
