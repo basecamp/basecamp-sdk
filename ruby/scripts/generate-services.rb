@@ -558,7 +558,7 @@ class ServiceGenerator
       # Query params must be embedded in the URL
       if op[:query_params].any?
         # Build URL with query string
-        query_parts = op[:query_params].map { |q| "#{q[:name]}=\#{CGI.escape(#{to_snake_case(q[:name])}.to_s)}" }
+        query_parts = op[:query_params].map { |q| "#{q[:name]}=\#{URI.encode_www_form_component(#{to_snake_case(q[:name])}.to_s)}" }
         query_string = query_parts.join('&')
         # Modify path_expr to include query string
         if path_expr.start_with?('bucket_path')
