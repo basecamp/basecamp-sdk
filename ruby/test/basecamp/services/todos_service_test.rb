@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# Tests for the TodosService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Some paths without .json suffix (get, update, trash)
+# - No client-side validation (API validates)
+
 require "test_helper"
 
 class TodosServiceTest < Minitest::Test
@@ -30,7 +36,8 @@ class TodosServiceTest < Minitest::Test
   end
 
   def test_get_todo
-    stub_get("/12345/buckets/100/todos/456.json", response_body: sample_todo)
+    # Generated service: /todos/{id} without .json
+    stub_get("/12345/buckets/100/todos/456", response_body: sample_todo)
 
     todo = @account.todos.get(project_id: 100, todo_id: 456)
 
@@ -54,8 +61,9 @@ class TodosServiceTest < Minitest::Test
   end
 
   def test_update_todo
+    # Generated service: /todos/{id} without .json
     updated = sample_todo(content: "Updated content")
-    stub_put("/12345/buckets/100/todos/456.json", response_body: updated)
+    stub_put("/12345/buckets/100/todos/456", response_body: updated)
 
     todo = @account.todos.update(
       project_id: 100,
@@ -91,7 +99,8 @@ class TodosServiceTest < Minitest::Test
   end
 
   def test_trash_todo
-    stub_delete("/12345/buckets/100/todos/456.json")
+    # Generated service: /todos/{id} without .json
+    stub_delete("/12345/buckets/100/todos/456")
 
     result = @account.todos.trash(project_id: 100, todo_id: 456)
 

@@ -8,26 +8,36 @@ module Basecamp
     class ReportsService < BaseService
 
       # Get account-wide activity feed (progress report)
+      # @return [Enumerator<Hash>] paginated results
       def progress()
         paginate("/reports/progress.json")
       end
 
       # Get upcoming schedule entries within a date window
+      # @param window_starts_on [String, nil] window starts on
+      # @param window_ends_on [String, nil] window ends on
+      # @return [Hash] response data
       def upcoming(window_starts_on: nil, window_ends_on: nil)
         http_get("/reports/schedules/upcoming.json", params: compact_params(window_starts_on: window_starts_on, window_ends_on: window_ends_on)).json
       end
 
       # Get todos assigned to a specific person
+      # @param person_id [Integer] person id ID
+      # @param group_by [String, nil] Group by "bucket" or "date"
+      # @return [Hash] response data
       def assigned(person_id:, group_by: nil)
         http_get("/reports/todos/assigned/#{person_id}", params: compact_params(group_by: group_by)).json
       end
 
       # Get overdue todos grouped by lateness
+      # @return [Hash] response data
       def overdue()
         http_get("/reports/todos/overdue.json").json
       end
 
       # Get a person's activity timeline
+      # @param person_id [Integer] person id ID
+      # @return [Hash] response data
       def person_progress(person_id:)
         http_get("/reports/users/progress/#{person_id}").json
       end

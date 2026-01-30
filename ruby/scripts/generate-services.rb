@@ -18,6 +18,9 @@ require 'fileutils'
 class ServiceGenerator
   METHODS = %w[get post put patch delete].freeze
 
+  # Schema reference cache for resolving $ref
+  attr_reader :schemas
+
   # Tag to service name mapping overrides
   TAG_TO_SERVICE = {
     'Card Tables' => 'CardTables',
@@ -266,6 +269,7 @@ class ServiceGenerator
 
   def initialize(openapi_path)
     @openapi = JSON.parse(File.read(openapi_path))
+    @schemas = @openapi.dig('components', 'schemas') || {}
   end
 
   def generate(output_dir)
@@ -336,7 +340,7 @@ class ServiceGenerator
     # Extract path parameters (excluding accountId)
     path_params = (operation['parameters'] || [])
                   .select { |p| p['in'] == 'path' && p['name'] != 'accountId' }
-                  .map { |p| { name: p['name'], type: schema_to_ruby_type(p['schema']) } }
+                  .map { |p| { name: p['name'], type: schema_to_ruby_type(p['schema']), description: p['description'] } }
 
     # Extract query parameters
     query_params = (operation['parameters'] || [])
@@ -351,8 +355,11 @@ class ServiceGenerator
     end
 
     # Check for request body (JSON or binary)
-    has_body = operation.dig('requestBody', 'content', 'application/json', 'schema')
+    body_schema_ref = operation.dig('requestBody', 'content', 'application/json', 'schema')
     has_binary_body = operation.dig('requestBody', 'content', 'application/octet-stream', 'schema')
+
+    # Extract body parameters from schema
+    body_params = extract_body_params(body_schema_ref)
 
     # Check response
     success_response = operation.dig('responses', '200') || operation.dig('responses', '201')
@@ -368,13 +375,72 @@ class ServiceGenerator
       description: description,
       path_params: path_params,
       query_params: query_params,
-      has_body: !!has_body,
+      body_params: body_params,
+      has_body: body_params.any?,
       has_binary_body: !!has_binary_body,
       returns_void: returns_void,
       returns_array: returns_array,
       is_mutation: http_method != 'GET',
       has_pagination: !!operation['x-basecamp-pagination']
     }
+  end
+
+  # Extract body parameters from a schema reference
+  def extract_body_params(schema_ref)
+    return [] unless schema_ref
+
+    # Resolve $ref
+    schema = resolve_schema_ref(schema_ref)
+    return [] unless schema && schema['properties']
+
+    required_fields = schema['required'] || []
+
+    schema['properties'].map do |name, prop|
+      type = schema_to_ruby_type(prop)
+      format_hint = extract_format_hint(prop)
+      {
+        name: name,
+        type: type,
+        required: required_fields.include?(name),
+        description: prop['description'],
+        format_hint: format_hint
+      }
+    end
+  end
+
+  # Resolve a schema reference to its definition
+  def resolve_schema_ref(schema_or_ref)
+    return schema_or_ref unless schema_or_ref['$ref']
+
+    ref_path = schema_or_ref['$ref']
+    # Handle #/components/schemas/SchemaName format
+    if ref_path.start_with?('#/components/schemas/')
+      schema_name = ref_path.split('/').last
+      @schemas[schema_name]
+    else
+      nil
+    end
+  end
+
+  # Extract format hint for documentation
+  def extract_format_hint(prop)
+    return nil unless prop
+
+    # Check for x-go-type hints (dates)
+    case prop['x-go-type']
+    when 'types.Date'
+      return 'YYYY-MM-DD'
+    when 'types.DateTime', 'time.Time'
+      return 'RFC3339 (e.g., 2024-12-15T09:00:00Z)'
+    end
+
+    # Check for format field
+    case prop['format']
+    when 'date'
+      'YYYY-MM-DD'
+    when 'date-time'
+      'RFC3339 (e.g., 2024-12-15T09:00:00Z)'
+    end
   end
 
   def extract_method_name(operation_id)
@@ -430,8 +496,13 @@ class ServiceGenerator
   def generate_service(service)
     lines = []
 
+    # Check if any operation uses URI encoding (binary uploads with query params)
+    needs_uri = service[:operations].any? { |op| op[:has_binary_body] && op[:query_params].any? }
+
     lines << '# frozen_string_literal: true'
     lines << ''
+    lines << 'require "uri"' if needs_uri
+    lines << '' if needs_uri
     lines << 'module Basecamp'
     lines << '  module Services'
     lines << "    # #{service[:description]}"
@@ -457,7 +528,54 @@ class ServiceGenerator
 
     # Method signature
     params = build_params(op)
+
+    # YARD documentation
     lines << "      # #{op[:description]}"
+
+    # Add @param tags for path params
+    op[:path_params].each do |p|
+      ruby_name = to_snake_case(p[:name])
+      type = p[:type] || 'Integer'
+      desc = p[:description] || "#{ruby_name.gsub('_', ' ')} ID"
+      lines << "      # @param #{ruby_name} [#{type}] #{desc}"
+    end
+
+    # Add @param tags for binary upload params
+    if op[:has_binary_body]
+      lines << '      # @param data [String] Binary file data to upload'
+      lines << '      # @param content_type [String] MIME type of the file (e.g., "application/pdf", "image/png")'
+    end
+
+    # Add @param tags for body params
+    if op[:body_params]&.any?
+      op[:body_params].each do |b|
+        ruby_name = to_snake_case(b[:name])
+        type = b[:type] || 'Object'
+        type = "#{type}, nil" unless b[:required]
+        desc = b[:description] || ruby_name.gsub('_', ' ')
+        format_hint = b[:format_hint] ? " (#{b[:format_hint]})" : ''
+        lines << "      # @param #{ruby_name} [#{type}] #{desc}#{format_hint}"
+      end
+    end
+
+    # Add @param tags for query params
+    op[:query_params].each do |q|
+      ruby_name = to_snake_case(q[:name])
+      type = q[:type] || 'String'
+      type = "#{type}, nil" unless q[:required]
+      desc = q[:description] || ruby_name.gsub('_', ' ')
+      lines << "      # @param #{ruby_name} [#{type}] #{desc}"
+    end
+
+    # Add @return tag
+    if op[:returns_void]
+      lines << '      # @return [void]'
+    elsif op[:returns_array] || op[:has_pagination]
+      lines << '      # @return [Enumerator<Hash>] paginated results'
+    else
+      lines << '      # @return [Hash] response data'
+    end
+
     lines << "      def #{op[:method_name]}(#{params})"
 
     # Build the path
@@ -489,8 +607,18 @@ class ServiceGenerator
       params << 'data:'
       params << 'content_type:'
     elsif op[:has_body]
-      # Request body parameters (simplified - just pass the body params as kwargs)
-      params << '**body'
+      # Request body parameters as explicit keyword args (not **body)
+      # Required body params first (no default), then optional (with nil default)
+      required_body_params = op[:body_params].select { |b| b[:required] }
+      optional_body_params = op[:body_params].reject { |b| b[:required] }
+
+      required_body_params.each do |b|
+        params << "#{to_snake_case(b[:name])}:"
+      end
+
+      optional_body_params.each do |b|
+        params << "#{to_snake_case(b[:name])}: nil"
+      end
     end
 
     # Query parameters - required first (no default), then optional (with nil default)
@@ -506,6 +634,20 @@ class ServiceGenerator
     end
 
     params.join(', ')
+  end
+
+  # Build body hash expression from explicit body params
+  def build_body_expression(op)
+    return '{}' unless op[:body_params]&.any?
+
+    # Build compact_params call with all body params
+    param_mappings = op[:body_params].map do |b|
+      ruby_name = to_snake_case(b[:name])
+      # Use original API name as key (snake_case), ruby variable as value
+      "#{b[:name]}: #{ruby_name}"
+    end
+
+    "compact_params(#{param_mappings.join(', ')})"
   end
 
   def build_path_expression(op)
@@ -525,7 +667,8 @@ class ServiceGenerator
     http_method = op[:http_method].downcase
 
     if op[:has_body]
-      lines << "        http_#{http_method}(#{path_expr}, body: body)"
+      body_expr = build_body_expression(op)
+      lines << "        http_#{http_method}(#{path_expr}, body: #{body_expr})"
     else
       lines << "        http_#{http_method}(#{path_expr})"
     end
@@ -573,7 +716,8 @@ class ServiceGenerator
         lines << "        http_#{http_method}_raw(#{path_expr}, body: data, content_type: content_type).json"
       end
     elsif op[:has_body]
-      lines << "        http_#{http_method}(#{path_expr}, body: body).json"
+      body_expr = build_body_expression(op)
+      lines << "        http_#{http_method}(#{path_expr}, body: #{body_expr}).json"
     elsif op[:query_params].any?
       param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
       lines << "        http_#{http_method}(#{path_expr}, params: compact_params(#{param_names.join(', ')})).json"

@@ -8,8 +8,12 @@ module Basecamp
     class ClientVisibilityService < BaseService
 
       # Set client visibility for a recording
-      def set_visibility(project_id:, recording_id:, **body)
-        http_put(bucket_path(project_id, "/recordings/#{recording_id}/client_visibility.json"), body: body).json
+      # @param project_id [Integer] project id ID
+      # @param recording_id [Integer] recording id ID
+      # @param visible_to_clients [Boolean] visible to clients
+      # @return [Hash] response data
+      def set_visibility(project_id:, recording_id:, visible_to_clients:)
+        http_put(bucket_path(project_id, "/recordings/#{recording_id}/client_visibility.json"), body: compact_params(visible_to_clients: visible_to_clients)).json
       end
     end
   end

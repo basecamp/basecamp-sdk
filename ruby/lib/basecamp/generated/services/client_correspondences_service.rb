@@ -8,11 +8,16 @@ module Basecamp
     class ClientCorrespondencesService < BaseService
 
       # List all client correspondences in a project
+      # @param project_id [Integer] project id ID
+      # @return [Enumerator<Hash>] paginated results
       def list(project_id:)
         paginate(bucket_path(project_id, "/client/correspondences.json"))
       end
 
       # Get a single client correspondence by id
+      # @param project_id [Integer] project id ID
+      # @param correspondence_id [Integer] correspondence id ID
+      # @return [Hash] response data
       def get(project_id:, correspondence_id:)
         http_get(bucket_path(project_id, "/client/correspondences/#{correspondence_id}")).json
       end

@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# Tests for the CheckinsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (get_questionnaire, get_question, etc.)
+# - No client-side validation (API validates)
+
 require "test_helper"
 
 class CheckinsServiceTest < Minitest::Test
@@ -36,7 +42,8 @@ class CheckinsServiceTest < Minitest::Test
   end
 
   def test_get_questionnaire
-    stub_get("/12345/buckets/100/questionnaires/200.json", response_body: sample_questionnaire(id: 200))
+    # Generated service: /questionnaires/{id} without .json
+    stub_get("/12345/buckets/100/questionnaires/200", response_body: sample_questionnaire(id: 200))
 
     questionnaire = @account.checkins.get_questionnaire(project_id: 100, questionnaire_id: 200)
 
@@ -55,7 +62,8 @@ class CheckinsServiceTest < Minitest::Test
   end
 
   def test_get_question
-    stub_get("/12345/buckets/100/questions/200.json", response_body: sample_question(id: 200))
+    # Generated service: /questions/{id} without .json
+    stub_get("/12345/buckets/100/questions/200", response_body: sample_question(id: 200))
 
     question = @account.checkins.get_question(project_id: 100, question_id: 200)
 
@@ -79,8 +87,9 @@ class CheckinsServiceTest < Minitest::Test
   end
 
   def test_update_question
+    # Generated service: /questions/{id} without .json
     updated_question = sample_question(id: 200, title: "Updated question")
-    stub_put("/12345/buckets/100/questions/200.json", response_body: updated_question)
+    stub_put("/12345/buckets/100/questions/200", response_body: updated_question)
 
     question = @account.checkins.update_question(
       project_id: 100,
@@ -103,7 +112,8 @@ class CheckinsServiceTest < Minitest::Test
   end
 
   def test_get_answer
-    stub_get("/12345/buckets/100/question_answers/200.json", response_body: sample_answer(id: 200))
+    # Generated service: /question_answers/{id} without .json
+    stub_get("/12345/buckets/100/question_answers/200", response_body: sample_answer(id: 200))
 
     answer = @account.checkins.get_answer(project_id: 100, answer_id: 200)
 
@@ -127,14 +137,16 @@ class CheckinsServiceTest < Minitest::Test
   end
 
   def test_update_answer
-    stub_put("/12345/buckets/100/question_answers/200.json", response_body: {})
+    # Generated service: /question_answers/{id} without .json
+    updated_answer = sample_answer(id: 200, content: "<p>Updated answer</p>")
+    stub_put("/12345/buckets/100/question_answers/200", response_body: updated_answer)
 
-    result = @account.checkins.update_answer(
+    answer = @account.checkins.update_answer(
       project_id: 100,
       answer_id: 200,
       content: "<p>Updated answer</p>"
     )
 
-    assert_nil result
+    assert_equal "<p>Updated answer</p>", answer["content"]
   end
 end

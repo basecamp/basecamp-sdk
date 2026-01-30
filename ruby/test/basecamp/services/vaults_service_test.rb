@@ -1,5 +1,12 @@
 # frozen_string_literal: true
 
+# Tests for the VaultsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - No list_documents(), list_uploads() - use documents/uploads service instead
+# - No client-side validation (API validates)
+# - Single-resource paths without .json (get, update)
+
 require "test_helper"
 
 class VaultsServiceTest < Minitest::Test
@@ -10,9 +17,10 @@ class VaultsServiceTest < Minitest::Test
   end
 
   def test_get
+    # Generated service: /vaults/{id} without .json
     response = { "id" => 1, "title" => "Files & Documents" }
 
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/vaults/\d+})
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/vaults/\d+$})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
     result = @account.vaults.get(project_id: 1, vault_id: 2)
@@ -41,32 +49,16 @@ class VaultsServiceTest < Minitest::Test
   end
 
   def test_update
+    # Generated service: /vaults/{id} without .json
     response = { "id" => 1, "title" => "Updated Folder" }
 
-    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/vaults/\d+})
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/vaults/\d+$})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
     result = @account.vaults.update(project_id: 1, vault_id: 2, title: "Updated Folder")
     assert_equal "Updated Folder", result["title"]
   end
 
-  def test_list_documents
-    response = [ { "id" => 1, "title" => "Doc 1" } ]
-
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/vaults/\d+/documents\.json})
-      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
-
-    result = @account.vaults.list_documents(project_id: 1, vault_id: 2).to_a
-    assert_kind_of Array, result
-  end
-
-  def test_list_uploads
-    response = [ { "id" => 1, "filename" => "file.pdf" } ]
-
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/vaults/\d+/uploads\.json})
-      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
-
-    result = @account.vaults.list_uploads(project_id: 1, vault_id: 2).to_a
-    assert_kind_of Array, result
-  end
+  # Note: list_documents() and list_uploads() not available in generated service (spec-conformant)
+  # Use the DocumentsService and UploadsService to work with documents/uploads
 end

@@ -1,5 +1,12 @@
 # frozen_string_literal: true
 
+# Tests for the PeopleService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - me() renamed to my_profile()
+# - list_project_people() renamed to list_for_project()
+# - list_assignable() added (was in ReportsService)
+
 require "test_helper"
 
 class PeopleServiceTest < Minitest::Test
@@ -37,11 +44,11 @@ class PeopleServiceTest < Minitest::Test
     assert_equal "Test User", result["name"]
   end
 
-  def test_me
+  def test_my_profile
     me = sample_person(id: 99, name: "Current User")
     stub_get("/12345/my/profile.json", response_body: me)
 
-    result = @account.people.me
+    result = @account.people.my_profile
 
     assert_equal 99, result["id"]
     assert_equal "Current User", result["name"]
@@ -56,11 +63,11 @@ class PeopleServiceTest < Minitest::Test
     assert_equal 2, result.length
   end
 
-  def test_list_project_people
+  def test_list_for_project
     people = [ sample_person(id: 5, name: "Project Member") ]
     stub_get("/12345/projects/100/people.json", response_body: people)
 
-    result = @account.people.list_project_people(project_id: 100).to_a
+    result = @account.people.list_for_project(project_id: 100).to_a
 
     assert_equal 1, result.length
     assert_equal "Project Member", result[0]["name"]
@@ -75,6 +82,20 @@ class PeopleServiceTest < Minitest::Test
       revoke: [ 3 ]
     )
 
-    assert_nil result
+    # Generated service returns parsed JSON (empty hash for empty response)
+    assert_kind_of Hash, result
+  end
+
+  def test_list_assignable
+    people = [
+      sample_person(id: 1, name: "Jane Doe"),
+      sample_person(id: 2, name: "John Smith")
+    ]
+    stub_get("/12345/reports/todos/assigned.json", response_body: people)
+
+    result = @account.people.list_assignable
+
+    assert_kind_of Array, result
+    assert_equal 2, result.length
   end
 end

@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# Tests for the CardStepsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (update)
+# - reposition uses source_id instead of step_id
+
 require "test_helper"
 
 class CardStepsServiceTest < Minitest::Test
@@ -36,8 +42,9 @@ class CardStepsServiceTest < Minitest::Test
   end
 
   def test_update_step
+    # Generated service: /card_tables/steps/{id} without .json
     updated_step = sample_step(id: 200, title: "Updated step")
-    stub_put("/12345/buckets/100/card_tables/steps/200.json", response_body: updated_step)
+    stub_put("/12345/buckets/100/card_tables/steps/200", response_body: updated_step)
 
     step = @account.card_steps.update(
       project_id: 100,
@@ -71,12 +78,13 @@ class CardStepsServiceTest < Minitest::Test
   end
 
   def test_reposition_step
+    # Generated service uses source_id instead of step_id
     stub_post("/12345/buckets/100/card_tables/cards/200/positions.json", response_body: {})
 
     result = @account.card_steps.reposition(
       project_id: 100,
       card_id: 200,
-      step_id: 300,
+      source_id: 300,
       position: 2
     )
 

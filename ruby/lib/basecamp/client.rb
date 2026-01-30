@@ -377,9 +377,14 @@ module Basecamp
       service(:timeline) { Services::TimelineService.new(self) }
     end
 
-    # @return [Services::TimesheetService]
-    def timesheet
-      service(:timesheet) { Services::TimesheetService.new(self) }
+    # @return [Services::TimesheetsService]
+    def timesheets
+      service(:timesheets) { Services::TimesheetsService.new(self) }
+    end
+
+    # @return [Services::ClientVisibilityService]
+    def client_visibility
+      service(:client_visibility) { Services::ClientVisibilityService.new(self) }
     end
 
     # @return [Services::TodolistGroupsService]

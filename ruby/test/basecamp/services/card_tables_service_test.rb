@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Tests for the CardTablesService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (get)
+
 require "test_helper"
 
 class CardTablesServiceTest < Minitest::Test
@@ -22,7 +27,8 @@ class CardTablesServiceTest < Minitest::Test
   end
 
   def test_get_card_table
-    stub_get("/12345/buckets/100/card_tables/200.json", response_body: sample_card_table(id: 200))
+    # Generated service: /card_tables/{id} without .json
+    stub_get("/12345/buckets/100/card_tables/200", response_body: sample_card_table(id: 200))
 
     table = @account.card_tables.get(project_id: 100, card_table_id: 200)
 

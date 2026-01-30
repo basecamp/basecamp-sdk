@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# Tests for the ProjectsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (get, update, trash)
+# - Uses keyword argument project_id: instead of positional
+
 require "test_helper"
 
 class ProjectsServiceTest < Minitest::Test
@@ -7,6 +13,15 @@ class ProjectsServiceTest < Minitest::Test
 
   def setup
     @account = create_account_client(account_id: "12345")
+  end
+
+  def sample_project(id: 123, name: "Test Project")
+    {
+      "id" => id,
+      "name" => name,
+      "description" => "A test project",
+      "status" => "active"
+    }
   end
 
   def test_list_projects
@@ -30,9 +45,10 @@ class ProjectsServiceTest < Minitest::Test
   end
 
   def test_get_project
-    stub_get("/12345/projects/123.json", response_body: sample_project)
+    # Generated service: /projects/{id} without .json
+    stub_get("/12345/projects/123", response_body: sample_project)
 
-    project = @account.projects.get(123)
+    project = @account.projects.get(project_id: 123)
 
     assert_equal 123, project["id"]
     assert_equal "Test Project", project["name"]
@@ -48,17 +64,19 @@ class ProjectsServiceTest < Minitest::Test
   end
 
   def test_update_project
-    stub_put("/12345/projects/123.json", response_body: sample_project(name: "Updated Name"))
+    # Generated service: /projects/{id} without .json
+    stub_put("/12345/projects/123", response_body: sample_project(name: "Updated Name"))
 
-    project = @account.projects.update(123, name: "Updated Name")
+    project = @account.projects.update(project_id: 123, name: "Updated Name")
 
     assert_equal "Updated Name", project["name"]
   end
 
   def test_trash_project
-    stub_delete("/12345/projects/123.json")
+    # Generated service: /projects/{id} without .json
+    stub_delete("/12345/projects/123")
 
-    result = @account.projects.trash(123)
+    result = @account.projects.trash(project_id: 123)
 
     assert_nil result
   end

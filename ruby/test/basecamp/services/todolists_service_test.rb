@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# Tests for the TodolistsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Uses :id instead of :todolist_id for single-resource operations
+# - No .json extension for single-resource paths
+
 require "test_helper"
 
 class TodolistsServiceTest < Minitest::Test
@@ -31,12 +37,13 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_get
-    response = { "id" => 1, "name" => "Sprint Tasks" }
+    response = { "id" => 2, "name" => "Sprint Tasks" }
 
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/todolists/\d+})
+    # Generated service uses /todolists/{id} without .json
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/todolists/\d+$})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.todolists.get(project_id: 1, todolist_id: 2)
+    result = @account.todolists.get(project_id: 1, id: 2)
     assert_equal "Sprint Tasks", result["name"]
   end
 
@@ -51,12 +58,13 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_update
-    response = { "id" => 1, "name" => "Updated List" }
+    response = { "id" => 2, "name" => "Updated List" }
 
-    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/todolists/\d+})
+    # Generated service uses /todolists/{id} without .json
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/todolists/\d+$})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.todolists.update(project_id: 1, todolist_id: 2, name: "Updated List")
+    result = @account.todolists.update(project_id: 1, id: 2, name: "Updated List")
     assert_equal "Updated List", result["name"]
   end
 end

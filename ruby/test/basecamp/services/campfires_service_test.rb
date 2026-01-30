@@ -1,5 +1,12 @@
 # frozen_string_literal: true
 
+# Tests for the CampfiresService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (get, get_chatbot, get_line, etc.)
+# - Collection/create paths with .json
+# - No client-side validation (API validates)
+
 require "test_helper"
 
 class CampfiresServiceTest < Minitest::Test
@@ -45,7 +52,8 @@ class CampfiresServiceTest < Minitest::Test
   end
 
   def test_get_campfire
-    stub_get("/12345/buckets/100/chats/200.json", response_body: sample_campfire(id: 200))
+    # Generated service: /chats/{id} without .json
+    stub_get("/12345/buckets/100/chats/200", response_body: sample_campfire(id: 200))
 
     campfire = @account.campfires.get(project_id: 100, campfire_id: 200)
 
@@ -65,7 +73,8 @@ class CampfiresServiceTest < Minitest::Test
   end
 
   def test_get_line
-    stub_get("/12345/buckets/100/chats/200/lines/300.json", response_body: sample_line(id: 300))
+    # Generated service: /lines/{id} without .json
+    stub_get("/12345/buckets/100/chats/200/lines/300", response_body: sample_line(id: 300))
 
     line = @account.campfires.get_line(project_id: 100, campfire_id: 200, line_id: 300)
 
@@ -84,7 +93,8 @@ class CampfiresServiceTest < Minitest::Test
   end
 
   def test_delete_line
-    stub_delete("/12345/buckets/100/chats/200/lines/300.json")
+    # Generated service: /lines/{id} without .json
+    stub_delete("/12345/buckets/100/chats/200/lines/300")
 
     result = @account.campfires.delete_line(project_id: 100, campfire_id: 200, line_id: 300)
 
@@ -102,7 +112,8 @@ class CampfiresServiceTest < Minitest::Test
   end
 
   def test_get_chatbot
-    stub_get("/12345/buckets/100/chats/200/integrations/300.json", response_body: sample_chatbot(id: 300))
+    # Generated service: /integrations/{id} without .json
+    stub_get("/12345/buckets/100/chats/200/integrations/300", response_body: sample_chatbot(id: 300))
 
     chatbot = @account.campfires.get_chatbot(project_id: 100, campfire_id: 200, chatbot_id: 300)
 
@@ -126,8 +137,9 @@ class CampfiresServiceTest < Minitest::Test
   end
 
   def test_update_chatbot
+    # Generated service: /integrations/{id} without .json
     updated_chatbot = sample_chatbot(id: 300, service_name: "UpdatedBot")
-    stub_put("/12345/buckets/100/chats/200/integrations/300.json", response_body: updated_chatbot)
+    stub_put("/12345/buckets/100/chats/200/integrations/300", response_body: updated_chatbot)
 
     chatbot = @account.campfires.update_chatbot(
       project_id: 100,
@@ -140,7 +152,8 @@ class CampfiresServiceTest < Minitest::Test
   end
 
   def test_delete_chatbot
-    stub_delete("/12345/buckets/100/chats/200/integrations/300.json")
+    # Generated service: /integrations/{id} without .json
+    stub_delete("/12345/buckets/100/chats/200/integrations/300")
 
     result = @account.campfires.delete_chatbot(project_id: 100, campfire_id: 200, chatbot_id: 300)
 

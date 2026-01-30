@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Tests for the ClientRepliesService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (get)
+
 require "test_helper"
 
 class ClientRepliesServiceTest < Minitest::Test
@@ -30,7 +35,8 @@ class ClientRepliesServiceTest < Minitest::Test
   end
 
   def test_get_reply
-    stub_get("/12345/buckets/100/client/recordings/200/replies/300.json", response_body: sample_reply(id: 300))
+    # Generated service: /replies/{id} without .json
+    stub_get("/12345/buckets/100/client/recordings/200/replies/300", response_body: sample_reply(id: 300))
 
     reply = @account.client_replies.get(project_id: 100, recording_id: 200, reply_id: 300)
 

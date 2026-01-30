@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Tests for the CardColumnsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (get, update)
+
 require "test_helper"
 
 class CardColumnsServiceTest < Minitest::Test
@@ -20,7 +25,8 @@ class CardColumnsServiceTest < Minitest::Test
   end
 
   def test_get_column
-    stub_get("/12345/buckets/100/card_tables/columns/200.json", response_body: sample_column(id: 200))
+    # Generated service: /card_tables/columns/{id} without .json
+    stub_get("/12345/buckets/100/card_tables/columns/200", response_body: sample_column(id: 200))
 
     column = @account.card_columns.get(project_id: 100, column_id: 200)
 
@@ -44,8 +50,9 @@ class CardColumnsServiceTest < Minitest::Test
   end
 
   def test_update_column
+    # Generated service: /card_tables/columns/{id} without .json
     updated_column = sample_column(id: 200, title: "Updated Title")
-    stub_put("/12345/buckets/100/card_tables/columns/200.json", response_body: updated_column)
+    stub_put("/12345/buckets/100/card_tables/columns/200", response_body: updated_column)
 
     column = @account.card_columns.update(
       project_id: 100,
