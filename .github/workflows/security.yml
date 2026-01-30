@@ -102,7 +102,7 @@ jobs:
       - name: Run gosec
         uses: securego/gosec@v2.22.11
         with:
-          args: '-no-fail -fmt sarif -out gosec-results.sarif ./go/...'
+          args: '-fmt sarif -out gosec-results.sarif ./go/...'
 
       - name: Upload gosec scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
@@ -183,4 +183,3 @@ jobs:
 
       - name: Run bundler-audit
         run: bundle-audit check
-
