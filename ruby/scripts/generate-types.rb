@@ -7,6 +7,7 @@
 # Usage: ruby scripts/ruby/generate-types.rb > lib/basecamp/generated/types.rb
 
 require 'json'
+require 'time'
 
 # Schemas to skip (internal/generated response wrappers)
 SKIP_PATTERNS = [
