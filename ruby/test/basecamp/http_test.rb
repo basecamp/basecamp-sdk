@@ -121,8 +121,12 @@ class HTTPTest < Minitest::Test
     stub_request(:get, "https://3.basecampapi.com/test.json")
       .to_return(status: 429, body: "{}", headers: { "Retry-After" => "30" })
 
+    # Use single-attempt config to test error classification without sleeping
+    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com", max_retries: 1)
+    http = Basecamp::Http.new(config: config, token_provider: @token_provider)
+
     error = assert_raises(Basecamp::RateLimitError) do
-      @http.get("/test.json")
+      http.get("/test.json")
     end
 
     assert_equal 30, error.retry_after
