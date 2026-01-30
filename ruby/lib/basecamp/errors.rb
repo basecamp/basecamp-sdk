@@ -274,9 +274,14 @@ module Basecamp
   def self.parse_error_message(body)
     return nil if body.nil? || body.empty?
 
+    # Guard against oversized error bodies before parsing
+    Basecamp::Security.check_body_size!(body, Basecamp::Security::MAX_ERROR_BODY_BYTES, "Error")
+
     data = JSON.parse(body)
-    data["error"] || data["message"]
-  rescue JSON::ParserError
+    msg = data["error"] || data["message"]
+    msg ? Basecamp::Security.truncate(msg) : nil
+  rescue JSON::ParserError, Basecamp::APIError
+    # Return nil on parse errors or oversized bodies to preserve normal error type mapping
     nil
   end
 end
