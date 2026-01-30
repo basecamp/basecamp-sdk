@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 )
@@ -394,10 +395,14 @@ func (h *followPaginationHandler) getPageCount() int {
 // makeFirstPageResponse creates a mock HTTP response simulating the generated client's first page.
 // The path is always /items.json for these tests.
 func makeFirstPageResponse(serverURL string, pageSize, totalItems int) *http.Response {
+	// Parse the server URL to create the request URL
+	firstPageURL, _ := url.Parse(serverURL + "/items.json")
+
 	resp := &http.Response{
 		StatusCode: 200,
 		Header:     make(http.Header),
 		Body:       io.NopCloser(strings.NewReader("[]")), // Empty array body for bodyclose linter
+		Request:    &http.Request{URL: firstPageURL},      // Required for same-origin validation
 	}
 
 	// Set Link header if there are more pages
@@ -458,9 +463,11 @@ func TestFollowPagination_NoLinkHeader(t *testing.T) {
 	client := NewClient(cfg, &mockTokenProvider{})
 	ctx := context.Background()
 
+	firstPageURL, _ := url.Parse("https://example.com/items.json")
 	resp := &http.Response{
 		StatusCode: 200,
 		Header:     make(http.Header), // No Link header
+		Request:    &http.Request{URL: firstPageURL},
 	}
 
 	results, err := client.FollowPagination(ctx, resp, 5, 10)
@@ -682,10 +689,10 @@ func TestResolveURL(t *testing.T) {
 			expected: "http://other.example.com/items?page=2",
 		},
 		{
-			name:     "mixed-case scheme returned as-is",
+			name:     "mixed-case scheme normalized to lowercase per RFC 3986",
 			base:     "https://api.example.com/items?page=1",
 			ref:      "HTTP://other.example.com/items?page=2",
-			expected: "HTTP://other.example.com/items?page=2",
+			expected: "http://other.example.com/items?page=2",
 		},
 		{
 			name:     "scheme-relative resolved against base",
@@ -872,6 +879,84 @@ func TestGetAllWithLimit_RelativePathLink(t *testing.T) {
 	}
 }
 
+// TestGetAllWithLimit_PathRelativeResolution_VerifiesExactURLs proves that GetAllWithLimit
+// resolves path-relative Link headers against the current page URL, not the initial baseURL.
+// This test captures the actual requested URLs to verify the resolution is correct.
+func TestGetAllWithLimit_PathRelativeResolution_VerifiesExactURLs(t *testing.T) {
+	// Capture the actual URLs requested
+	var requestedURLs []string
+	var mu sync.Mutex
+
+	// Handler that returns path-relative Link headers like "page2.json", "page3.json"
+	// These MUST be resolved against the current page's directory to work correctly.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requestedURLs = append(requestedURLs, r.URL.Path)
+		mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+
+		// Return Link headers with truly path-relative URLs (no leading slash)
+		switch r.URL.Path {
+		case "/api/v2/items/page1.json":
+			// Link to page2.json - relative to /api/v2/items/
+			w.Header().Set("Link", `<page2.json>; rel="next"`)
+			w.Write([]byte(`[{"id":1},{"id":2}]`))
+		case "/api/v2/items/page2.json":
+			// Link to page3.json - relative to /api/v2/items/
+			w.Header().Set("Link", `<page3.json>; rel="next"`)
+			w.Write([]byte(`[{"id":3},{"id":4}]`))
+		case "/api/v2/items/page3.json":
+			// No more pages
+			w.Write([]byte(`[{"id":5}]`))
+		default:
+			t.Errorf("Unexpected URL requested: %s", r.URL.Path)
+			w.WriteHeader(404)
+		}
+	})
+
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// Start at page1.json - subsequent pages use path-relative links
+	results, err := client.GetAllWithLimit(ctx, "/api/v2/items/page1.json", 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have fetched 5 items total from pages 1-3 (2 + 2 + 1)
+	if len(results) != 5 {
+		t.Errorf("expected 5 items, got %d", len(results))
+	}
+
+	// Verify the exact URLs that were requested
+	// This proves that "page2.json" was resolved to "/api/v2/items/page2.json"
+	// (against page1.json's directory) and "page3.json" was resolved to
+	// "/api/v2/items/page3.json" (against page2.json's directory)
+	expectedURLs := []string{
+		"/api/v2/items/page1.json",
+		"/api/v2/items/page2.json",
+		"/api/v2/items/page3.json",
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(requestedURLs) != len(expectedURLs) {
+		t.Fatalf("expected %d requests, got %d: %v", len(expectedURLs), len(requestedURLs), requestedURLs)
+	}
+
+	for i, expected := range expectedURLs {
+		if requestedURLs[i] != expected {
+			t.Errorf("request %d: expected %q, got %q", i, expected, requestedURLs[i])
+		}
+	}
+}
+
 // TestFollowPagination_RelativePathAbsoluteLink tests FollowPagination with path-absolute Link URLs.
 func TestFollowPagination_RelativePathAbsoluteLink(t *testing.T) {
 	h := &relativePaginationHandler{pageSize: 3, totalItems: 9, linkStyle: "path-absolute"}
@@ -946,14 +1031,11 @@ func TestFollowPagination_RelativeQueryOnlyLink(t *testing.T) {
 	}
 }
 
-// TestFollowPagination_NoRequestURL_AbsoluteLink tests FollowPagination when httpResp.Request is nil but Link is absolute.
-func TestFollowPagination_NoRequestURL_AbsoluteLink(t *testing.T) {
-	h := &paginationHandler{pageSize: 3, totalItems: 9}
-	server := httptest.NewServer(h)
-	defer server.Close()
-	h.serverURL = server.URL
-
-	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+// TestFollowPagination_NoRequestURL_FailsClosed tests that FollowPagination fails closed
+// when httpResp.Request is nil, even for absolute Links. This is a security requirement:
+// without the original request URL, we cannot validate same-origin, so we must reject.
+func TestFollowPagination_NoRequestURL_FailsClosed(t *testing.T) {
+	cfg := &Config{BaseURL: "https://example.com", CacheEnabled: false}
 	client := NewClient(cfg, &mockTokenProvider{})
 	ctx := context.Background()
 
@@ -962,45 +1044,162 @@ func TestFollowPagination_NoRequestURL_AbsoluteLink(t *testing.T) {
 		StatusCode: 200,
 		Header:     make(http.Header),
 		Body:       io.NopCloser(strings.NewReader("[]")),
-		// No Request field
+		// No Request field - cannot validate same-origin
 	}
-	firstPageResp.Header.Set("Link", fmt.Sprintf(`<%s/items.json?page=2>; rel="next"`, server.URL))
-	defer firstPageResp.Body.Close()
-
-	results, err := client.FollowPagination(ctx, firstPageResp, 3, 0)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Should still work with absolute URLs
-	if len(results) != 6 {
-		t.Errorf("expected 6 items, got %d", len(results))
-	}
-}
-
-// TestFollowPagination_NoRequestURL_RelativeLink tests FollowPagination returns error for relative Link with nil Request.
-func TestFollowPagination_NoRequestURL_RelativeLink(t *testing.T) {
-	cfg := &Config{BaseURL: "https://example.com", CacheEnabled: false}
-	client := NewClient(cfg, &mockTokenProvider{})
-	ctx := context.Background()
-
-	// Create a response with relative URL in Link header but no Request
-	firstPageResp := &http.Response{
-		StatusCode: 200,
-		Header:     make(http.Header),
-		Body:       io.NopCloser(strings.NewReader("[]")),
-		// No Request field - can't resolve relative URL
-	}
-	firstPageResp.Header.Set("Link", `</items.json?page=2>; rel="next"`)
+	firstPageResp.Header.Set("Link", `<https://example.com/items.json?page=2>; rel="next"`)
 	defer firstPageResp.Body.Close()
 
 	_, err := client.FollowPagination(ctx, firstPageResp, 3, 0)
 	if err == nil {
-		t.Fatal("expected error for relative Link with no request URL")
+		t.Fatal("expected error when Request is nil (fail closed for security)")
 	}
 
-	if !strings.Contains(err.Error(), "cannot resolve relative Link header URL") {
-		t.Errorf("expected error about resolving relative URL, got: %v", err)
+	if !strings.Contains(err.Error(), "no request URL") {
+		t.Errorf("expected error about missing request URL, got: %v", err)
+	}
+}
+
+// TestFollowPagination_RejectsCrossOriginFirstLink verifies that the FIRST Link header
+// is validated against the original request origin before any follow-up request is made.
+// This prevents token leakage to malicious servers via poisoned Link headers.
+func TestFollowPagination_RejectsCrossOriginFirstLink(t *testing.T) {
+	// Evil server that would receive the token if validation fails
+	evilServerCalled := false
+	evilServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		evilServerCalled = true
+		// Check if bearer token was leaked
+		if auth := r.Header.Get("Authorization"); auth != "" {
+			t.Errorf("SECURITY FAILURE: Bearer token leaked to evil server: %s", auth)
+		}
+		w.WriteHeader(200)
+		w.Write([]byte(`[{"id":999}]`))
+	}))
+	defer evilServer.Close()
+
+	// Legitimate server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte(`[{"id":1}]`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// Create first page response from legitimate server with Link pointing to evil server
+	firstPageResp := &http.Response{
+		StatusCode: 200,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(`[{"id":1}]`)),
+		Request: &http.Request{
+			URL: mustParseURL(server.URL + "/items.json"),
+		},
+	}
+	// Malicious Link header pointing to a different origin
+	firstPageResp.Header.Set("Link", fmt.Sprintf(`<%s/steal-token>; rel="next"`, evilServer.URL))
+	defer firstPageResp.Body.Close()
+
+	_, err := client.FollowPagination(ctx, firstPageResp, 1, 0)
+
+	// Must return error for cross-origin Link
+	if err == nil {
+		t.Fatal("Expected error for cross-origin first Link header, got nil")
+	}
+	if !strings.Contains(err.Error(), "different origin") {
+		t.Errorf("Expected 'different origin' error, got: %v", err)
+	}
+
+	// Most importantly: evil server must NOT have been called
+	if evilServerCalled {
+		t.Error("SECURITY FAILURE: Evil server was called - token could have been leaked")
+	}
+}
+
+// TestFollowPagination_PathRelativeResolution_VerifiesExactURLs proves that path-relative
+// Link headers are resolved against the current page URL, not some fixed base.
+// This test captures the actual requested URLs to verify the resolution is correct.
+func TestFollowPagination_PathRelativeResolution_VerifiesExactURLs(t *testing.T) {
+	// Capture the actual URLs requested
+	var requestedURLs []string
+	var mu sync.Mutex
+
+	// Handler that returns path-relative Link headers like "page2.json", "page3.json"
+	// These MUST be resolved against the current page's directory to work correctly.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requestedURLs = append(requestedURLs, r.URL.Path)
+		mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+
+		// Return Link headers with truly path-relative URLs (no leading slash)
+		switch r.URL.Path {
+		case "/api/v2/items/page1.json":
+			// Link to page2.json - relative to /api/v2/items/
+			w.Header().Set("Link", `<page2.json>; rel="next"`)
+			w.Write([]byte(`[{"id":1},{"id":2}]`))
+		case "/api/v2/items/page2.json":
+			// Link to page3.json - relative to /api/v2/items/
+			w.Header().Set("Link", `<page3.json>; rel="next"`)
+			w.Write([]byte(`[{"id":3},{"id":4}]`))
+		case "/api/v2/items/page3.json":
+			// No more pages
+			w.Write([]byte(`[{"id":5}]`))
+		default:
+			t.Errorf("Unexpected URL requested: %s", r.URL.Path)
+			w.WriteHeader(404)
+		}
+	})
+
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// Create first page response with relative Link header
+	firstPageResp := &http.Response{
+		StatusCode: 200,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(`[{"id":0}]`)),
+		Request: &http.Request{
+			URL: mustParseURL(server.URL + "/api/v2/items/page1.json"),
+		},
+	}
+	firstPageResp.Header.Set("Link", `<page2.json>; rel="next"`)
+	defer firstPageResp.Body.Close()
+
+	results, err := client.FollowPagination(ctx, firstPageResp, 1, 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have fetched 3 more items from pages 2 and 3 (2 + 1)
+	if len(results) != 3 {
+		t.Errorf("expected 3 items from pages 2-3, got %d", len(results))
+	}
+
+	// Verify the exact URLs that were requested
+	// This proves that "page2.json" was resolved to "/api/v2/items/page2.json"
+	// and "page3.json" was resolved to "/api/v2/items/page3.json"
+	expectedURLs := []string{
+		"/api/v2/items/page2.json",
+		"/api/v2/items/page3.json",
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(requestedURLs) != len(expectedURLs) {
+		t.Fatalf("expected %d requests, got %d: %v", len(expectedURLs), len(requestedURLs), requestedURLs)
+	}
+
+	for i, expected := range expectedURLs {
+		if requestedURLs[i] != expected {
+			t.Errorf("request %d: expected %q, got %q", i, expected, requestedURLs[i])
+		}
 	}
 }
 

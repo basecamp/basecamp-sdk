@@ -63,3 +63,10 @@ export {
   isTokenExpired,
   type TokenOptions,
 } from "./exchange.js";
+
+// PKCE utilities
+export {
+  generatePKCE,
+  generateState,
+  type PKCE,
+} from "./pkce.js";

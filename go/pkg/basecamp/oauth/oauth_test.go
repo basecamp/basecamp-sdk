@@ -3,8 +3,10 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -160,7 +162,7 @@ func TestExchanger_Exchange(t *testing.T) {
 		{
 			name: "missing code",
 			req: ExchangeRequest{
-				TokenEndpoint: "http://example.com/token",
+				TokenEndpoint: "https://example.com/token",
 				RedirectURI:   "http://localhost/callback",
 				ClientID:      "client123",
 			},
@@ -173,7 +175,7 @@ func TestExchanger_Exchange(t *testing.T) {
 			var receivedType string
 			var receivedGrantType string
 
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_ = r.ParseForm()
 				receivedType = r.FormValue("type")
 				receivedGrantType = r.FormValue("grant_type")
@@ -262,7 +264,7 @@ func TestExchanger_Refresh(t *testing.T) {
 		{
 			name: "missing refresh token",
 			req: RefreshRequest{
-				TokenEndpoint: "http://example.com/token",
+				TokenEndpoint: "https://example.com/token",
 			},
 			wantErr: true,
 		},
@@ -273,7 +275,7 @@ func TestExchanger_Refresh(t *testing.T) {
 			var receivedType string
 			var receivedGrantType string
 
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_ = r.ParseForm()
 				receivedType = r.FormValue("type")
 				receivedGrantType = r.FormValue("grant_type")
@@ -314,7 +316,7 @@ func TestExchanger_Refresh(t *testing.T) {
 }
 
 func TestToken_ExpiresAt(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"access_token": "access123",
 			"expires_in":   3600,
@@ -343,5 +345,101 @@ func TestToken_ExpiresAt(t *testing.T) {
 
 	if token.ExpiresAt.Before(expectedMin) || token.ExpiresAt.After(expectedMax) {
 		t.Errorf("ExpiresAt = %v, expected between %v and %v", token.ExpiresAt, expectedMin, expectedMax)
+	}
+}
+
+// =============================================================================
+// Security Tests
+// =============================================================================
+
+func TestExchanger_Exchange_RejectsHTTPEndpoint(t *testing.T) {
+	e := NewExchanger(http.DefaultClient)
+	_, err := e.Exchange(context.Background(), ExchangeRequest{
+		TokenEndpoint: "http://example.com/token",
+		Code:          "code",
+		RedirectURI:   "http://localhost/callback",
+		ClientID:      "client",
+	})
+	if err == nil {
+		t.Fatal("Expected error for HTTP token endpoint")
+	}
+	if !strings.Contains(err.Error(), "HTTPS") {
+		t.Errorf("Expected HTTPS error, got: %v", err)
+	}
+}
+
+func TestExchanger_Refresh_RejectsHTTPEndpoint(t *testing.T) {
+	e := NewExchanger(http.DefaultClient)
+	_, err := e.Refresh(context.Background(), RefreshRequest{
+		TokenEndpoint: "http://example.com/token",
+		RefreshToken:  "refresh123",
+	})
+	if err == nil {
+		t.Fatal("Expected error for HTTP token endpoint")
+	}
+	if !strings.Contains(err.Error(), "HTTPS") {
+		t.Errorf("Expected HTTPS error, got: %v", err)
+	}
+}
+
+func TestExchanger_Exchange_TruncatesLargeErrorBody(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		// Write a large error body (not valid JSON, falls through to raw body path)
+		largeBody := strings.Repeat("x", 10000)
+		fmt.Fprint(w, largeBody)
+	}))
+	defer server.Close()
+
+	e := NewExchanger(server.Client())
+	_, err := e.Exchange(context.Background(), ExchangeRequest{
+		TokenEndpoint: server.URL,
+		Code:          "bad_code",
+		RedirectURI:   "http://localhost/callback",
+		ClientID:      "client123",
+	})
+	if err == nil {
+		t.Fatal("Expected error")
+	}
+	errMsg := err.Error()
+	// The truncated body portion must be at most maxErrorMessageLen (500).
+	// Full message includes prefix "token request failed with status 400: " (38 chars) + body (<=500).
+	if len(errMsg) > 600 {
+		t.Errorf("Error message too long (%d chars), truncated body should be at most %d", len(errMsg), maxErrorMessageLen)
+	}
+	if !strings.Contains(errMsg, "...") {
+		t.Error("Expected '...' suffix in truncated error")
+	}
+}
+
+func TestExchanger_Exchange_TruncatesLargeErrorDescription(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		largeDesc := strings.Repeat("y", 10000)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":             "invalid_grant",
+			"error_description": largeDesc,
+		})
+	}))
+	defer server.Close()
+
+	e := NewExchanger(server.Client())
+	_, err := e.Exchange(context.Background(), ExchangeRequest{
+		TokenEndpoint: server.URL,
+		Code:          "bad_code",
+		RedirectURI:   "http://localhost/callback",
+		ClientID:      "client123",
+	})
+	if err == nil {
+		t.Fatal("Expected error")
+	}
+	errMsg := err.Error()
+	// The truncated description portion must be at most maxErrorMessageLen (500).
+	// Full message: "token error: invalid_grant - " (29 chars) + desc (<=500).
+	if len(errMsg) > 600 {
+		t.Errorf("Error message too long (%d chars), truncated description should be at most %d", len(errMsg), maxErrorMessageLen)
+	}
+	if !strings.Contains(errMsg, "...") {
+		t.Error("Expected '...' suffix in truncated error description")
 	}
 }

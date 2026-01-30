@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 )
@@ -77,6 +76,10 @@ func (s *AuthorizationService) GetInfo(ctx context.Context, opts *GetInfoOptions
 	endpoint := "https://launchpad.37signals.com/authorization.json"
 	if opts != nil && opts.Endpoint != "" {
 		endpoint = opts.Endpoint
+		// Validate custom endpoint uses HTTPS (allow localhost for testing)
+		if err := requireHTTPSUnlessLocalhost(endpoint); err != nil {
+			return nil, fmt.Errorf("authorization endpoint validation failed: %w", err)
+		}
 	}
 
 	// Get access token
@@ -102,14 +105,14 @@ func (s *AuthorizationService) GetInfo(ctx context.Context, opts *GetInfoOptions
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
 		if resp.StatusCode == http.StatusUnauthorized {
 			return nil, ErrAuth("Authorization failed: invalid or expired token")
 		}
-		return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("authorization request failed: %s", string(body)))
+		return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("authorization request failed: %s", truncateString(string(body), MaxErrorMessageBytes)))
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := limitedReadAll(resp.Body, MaxResponseBodyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("reading authorization response: %w", err)
 	}

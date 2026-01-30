@@ -140,6 +140,8 @@ module Basecamp
       end
 
       def do_token_request(token_endpoint, params)
+        Basecamp::Security.require_https_unless_localhost!(token_endpoint, "token endpoint")
+
         response = @http_client.post(token_endpoint) do |req|
           req.headers["Content-Type"] = "application/x-www-form-urlencoded"
           req.headers["Accept"] = "application/json"
@@ -154,6 +156,8 @@ module Basecamp
       end
 
       def parse_token_response(response)
+        Basecamp::Security.check_body_size!(response.body, Basecamp::Security::MAX_ERROR_BODY_BYTES, "Token")
+
         data = JSON.parse(response.body)
 
         handle_error_response(response.status, data) unless response.success?
@@ -170,13 +174,13 @@ module Basecamp
       rescue JSON::ParserError
         raise OAuthError.new(
           "api_error",
-          "Failed to parse token response: #{response.body}",
+          "Failed to parse token response: #{Basecamp::Security.truncate(response.body)}",
           http_status: response.status
         )
       end
 
       def handle_error_response(status, data)
-        error_msg = data["error_description"] || data["error"] || "Token request failed"
+        error_msg = Basecamp::Security.truncate(data["error_description"] || data["error"] || "Token request failed")
 
         if status == 401 || data["error"] == "invalid_grant"
           raise OAuthError.new(

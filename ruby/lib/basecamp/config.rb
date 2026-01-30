@@ -66,6 +66,11 @@ module Basecamp
       @base_delay = base_delay
       @max_jitter = max_jitter
       @max_pages = max_pages
+
+      unless @base_url == normalize_url(DEFAULT_BASE_URL) || localhost?(@base_url)
+        Basecamp::Security.require_https!(@base_url, "base URL")
+      end
+      validate!
     end
 
     # Creates a Config from environment variables.
@@ -107,6 +112,8 @@ module Basecamp
       @base_url = normalize_url(ENV["BASECAMP_BASE_URL"]) if ENV["BASECAMP_BASE_URL"]
       @timeout = ENV["BASECAMP_TIMEOUT"].to_i if ENV["BASECAMP_TIMEOUT"]
       @max_retries = ENV["BASECAMP_MAX_RETRIES"].to_i if ENV["BASECAMP_MAX_RETRIES"]
+      Basecamp::Security.require_https!(@base_url, "base URL") unless localhost?(@base_url)
+      validate!
       self
     end
 
@@ -119,8 +126,24 @@ module Basecamp
 
     private
 
+    def validate!
+      raise ArgumentError, "timeout must be positive" unless @timeout.is_a?(Numeric) && @timeout > 0
+      raise ArgumentError, "max_retries must be non-negative" unless @max_retries.is_a?(Integer) && @max_retries >= 0
+      raise ArgumentError, "max_pages must be positive" unless @max_pages.is_a?(Integer) && @max_pages > 0
+    end
+
     def normalize_url(url)
       url&.chomp("/")
+    end
+
+    def localhost?(url)
+      return false if url.nil?
+
+      uri = URI.parse(url)
+      host = uri.host&.downcase
+      host == "localhost" || host == "127.0.0.1" || host == "::1"
+    rescue URI::InvalidURIError
+      false
     end
   end
 end

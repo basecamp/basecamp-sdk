@@ -166,9 +166,12 @@ func WithCache(cache *Cache) ClientOption {
 //   - WithTransport(t)    - Custom http.RoundTripper
 //   - WithLogger(l)       - slog.Logger for debug output
 func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *Client {
+	// Deep-copy the config to prevent post-construction mutation.
+	// The client captures configuration at construction time.
+	cfgCopy := *cfg
 	c := &Client{
 		tokenProvider: tokenProvider,
-		cfg:           cfg,
+		cfg:           &cfgCopy,
 		userAgent:     DefaultUserAgent,
 		logger:        slog.New(discardHandler{}),
 		hooks:         NoopHooks{},
@@ -192,6 +195,34 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	c.httpClient = &http.Client{
 		Timeout:   c.httpOpts.Timeout,
 		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			// Strip Authorization header when redirecting to a different origin
+			// to prevent credential leakage to third-party hosts.
+			if len(via) > 0 && !isSameOrigin(req.URL.String(), via[0].URL.String()) {
+				req.Header.Del("Authorization")
+			}
+			return nil
+		},
+	}
+
+	// Validate configuration
+	// Skip HTTPS validation for localhost (used in tests)
+	if c.cfg.BaseURL != "" && !isLocalhost(c.cfg.BaseURL) {
+		if err := requireHTTPS(c.cfg.BaseURL); err != nil {
+			panic("basecamp: base URL must use HTTPS: " + c.cfg.BaseURL)
+		}
+	}
+	if c.httpOpts.Timeout <= 0 {
+		panic("basecamp: timeout must be positive")
+	}
+	if c.httpOpts.MaxRetries < 0 {
+		panic("basecamp: max retries must be non-negative")
+	}
+	if c.httpOpts.MaxPages <= 0 {
+		panic("basecamp: max pages must be positive")
 	}
 
 	// Initialize cache if enabled and not overridden
@@ -364,7 +395,11 @@ func (c *Client) GetAll(ctx context.Context, path string) ([]json.RawMessage, er
 // If limit > 0, it stops after collecting at least limit items.
 func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([]json.RawMessage, error) {
 	var allResults []json.RawMessage
-	url := c.buildURL(path)
+	baseURL, err := c.buildURL(path)
+	if err != nil {
+		return nil, err
+	}
+	url := baseURL
 	var page int
 
 	for page = 1; page <= c.httpOpts.MaxPages; page++ {
@@ -388,11 +423,17 @@ func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([
 		}
 
 		// Check for next page
-		nextLink := parseNextLink(resp.Headers.Get("Link"))
-		if nextLink == "" {
+		nextURL := parseNextLink(resp.Headers.Get("Link"))
+		if nextURL == "" {
 			break
 		}
-		url = resolveURL(url, nextLink)
+		// Resolve relative URLs against the current page URL (handles path-relative links)
+		nextURL = resolveURL(url, nextURL)
+		// Validate same-origin against initial baseURL to prevent SSRF / token leakage
+		if !isSameOrigin(nextURL, baseURL) {
+			return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
+		}
+		url = nextURL
 	}
 
 	if page > c.httpOpts.MaxPages {
@@ -408,6 +449,14 @@ func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([
 // firstPageCount is the number of items already collected from the first page.
 // limit is the maximum total items to return (0 = unlimited).
 // Returns raw JSON items from subsequent pages only (first page items are handled by caller).
+//
+// Request URL requirement: httpResp.Request.URL is required for same-origin validation.
+// If the response has no Request (e.g., manually constructed), pagination returns an
+// error even for absolute Link headers. This fail-closed behavior prevents SSRF and
+// token leakage when the original request origin cannot be verified.
+//
+// Security: Link headers are resolved against the current page URL and validated
+// for same-origin against the original request to prevent SSRF and token leakage.
 func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, firstPageCount, limit int) ([]json.RawMessage, error) {
 	if httpResp == nil {
 		return nil, nil
@@ -418,23 +467,33 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 		return nil, nil
 	}
 
-	// Get base URL from the response's Request URL
-	var baseURL string
-	if httpResp.Request != nil && httpResp.Request.URL != nil {
-		baseURL = httpResp.Request.URL.String()
-	}
-
 	// Get next page URL from Link header
 	nextLink := parseNextLink(httpResp.Header.Get("Link"))
 	if nextLink == "" {
 		return nil, nil
 	}
+
+	// Security: Require httpResp.Request.URL for same-origin validation.
+	// Without the original request URL, we cannot verify Link headers are same-origin,
+	// which could allow SSRF or token leakage to malicious servers.
+	if httpResp.Request == nil || httpResp.Request.URL == nil {
+		return nil, fmt.Errorf("cannot follow pagination: response has no request URL (required for same-origin validation)")
+	}
+	baseURL := httpResp.Request.URL.String()
+
+	// Resolve relative Link URLs against the current page
 	nextURL := resolveURL(baseURL, nextLink)
 
-	// Guard against relative URLs that couldn't be resolved (no base URL available)
+	// Guard against resolution failures (shouldn't happen with valid baseURL, but be safe)
 	parsedURL, err := url.Parse(nextURL)
 	if err != nil || !parsedURL.IsAbs() {
-		return nil, fmt.Errorf("cannot resolve relative Link header URL %q: response has no request URL", nextLink)
+		return nil, fmt.Errorf("failed to resolve Link header URL %q against %q", nextLink, baseURL)
+	}
+
+	// Validate same-origin for the FIRST Link header before making any request.
+	// This prevents the first Link header from redirecting to a malicious origin.
+	if !isSameOrigin(baseURL, nextURL) {
+		return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
 	}
 
 	var allResults []json.RawMessage
@@ -442,6 +501,9 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 	var page int
 
 	for page = 2; page <= c.httpOpts.MaxPages && nextURL != ""; page++ {
+		// Track current page URL for relative URL resolution in this iteration
+		currentPageURL := nextURL
+
 		resp, err := c.doRequestURL(ctx, "GET", nextURL, nil)
 		if err != nil {
 			return nil, err
@@ -465,11 +527,16 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 			break
 		}
 
-		// Get next page URL
-		if nextLink := parseNextLink(resp.Headers.Get("Link")); nextLink != "" {
-			nextURL = resolveURL(nextURL, nextLink)
-		} else {
-			nextURL = ""
+		// Get next page URL, resolved against current page
+		nextLink = parseNextLink(resp.Headers.Get("Link"))
+		if nextLink == "" {
+			break
+		}
+		nextURL = resolveURL(currentPageURL, nextLink)
+
+		// Validate same-origin against original request
+		if !isSameOrigin(baseURL, nextURL) {
+			return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
 		}
 	}
 
@@ -481,7 +548,10 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 }
 
 func (c *Client) doRequest(ctx context.Context, method, path string, body any) (*Response, error) {
-	url := c.buildURL(path)
+	url, err := c.buildURL(path)
+	if err != nil {
+		return nil, err
+	}
 	return c.doRequestURL(ctx, method, url, body)
 }
 
@@ -620,7 +690,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		return nil, ErrAPI(304, "304 received but no cached response available")
 
 	case http.StatusOK, http.StatusCreated, http.StatusNoContent:
-		respBody, err := io.ReadAll(resp.Body)
+		respBody, err := limitedReadAll(resp.Body, MaxResponseBodyBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read response: %w", err)
 		}
@@ -681,7 +751,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		}
 
 	default:
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
 		var apiErr struct {
 			Error   string `json:"error"`
 			Message string `json:"message"`
@@ -692,17 +762,21 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 				msg = apiErr.Message
 			}
 			if msg != "" {
-				return nil, ErrAPI(resp.StatusCode, msg)
+				// Truncate error messages to prevent information leakage and unbounded memory growth
+				return nil, ErrAPI(resp.StatusCode, truncateString(msg, MaxErrorMessageBytes))
 			}
 		}
 		return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("Request failed (HTTP %d)", resp.StatusCode))
 	}
 }
 
-func (c *Client) buildURL(path string) string {
-	// Absolute URLs are returned as-is (e.g., pagination Link headers)
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		return path
+func (c *Client) buildURL(path string) (string, error) {
+	// Absolute URLs: enforce HTTPS and return as-is (e.g., pagination Link headers)
+	if strings.HasPrefix(path, "https://") {
+		return path, nil
+	}
+	if strings.HasPrefix(path, "http://") {
+		return "", fmt.Errorf("URL must use HTTPS, got: %s", path)
 	}
 	// Ensure path starts with /
 	if !strings.HasPrefix(path, "/") {
@@ -710,7 +784,7 @@ func (c *Client) buildURL(path string) string {
 	}
 	// Normalize BaseURL to avoid double slashes when concatenating
 	base := strings.TrimSuffix(c.cfg.BaseURL, "/")
-	return base + path
+	return base + path, nil
 }
 
 func (c *Client) backoffDelay(attempt int) time.Duration {
@@ -742,28 +816,6 @@ func parseNextLink(linkHeader string) string {
 	}
 
 	return ""
-}
-
-// resolveURL resolves a potentially relative URL against a base URL.
-// Absolute URLs (any scheme, including mixed-case) are returned as-is.
-func resolveURL(base, ref string) string {
-	refURL, err := url.Parse(ref)
-	if err != nil {
-		return ref
-	}
-
-	// If ref is absolute (has a scheme), return as-is
-	if refURL.IsAbs() {
-		return ref
-	}
-
-	// Otherwise, resolve against base
-	baseURL, err := url.Parse(base)
-	if err != nil {
-		return ref
-	}
-
-	return baseURL.ResolveReference(refURL).String()
 }
 
 // parseRetryAfter parses the Retry-After header value.
@@ -806,12 +858,12 @@ func (c *Client) RequireProject() error {
 	return nil
 }
 
-// Config returns the client configuration.
+// Config returns a copy of the client configuration.
 //
-// The returned pointer is the client's internal config. Do not modify it
-// after the client is in use by multiple goroutines.
-func (c *Client) Config() *Config {
-	return c.cfg
+// Modifying the returned Config has no effect on the client.
+// This prevents race conditions from post-construction modification.
+func (c *Client) Config() Config {
+	return *c.cfg
 }
 
 // Authorization returns the AuthorizationService for authorization operations.

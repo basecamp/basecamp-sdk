@@ -255,6 +255,10 @@ module Minitest
     def assert_not_includes(collection, object, message = nil)
       refute_includes(collection, object, message)
     end
+
+    def assert_no_match(pattern, string, message = nil)
+      refute_match(pattern, string, message)
+    end
   end
   # rubocop:enable Rails/RefuteMethods
 

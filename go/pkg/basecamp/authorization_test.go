@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -114,6 +115,65 @@ func TestAuthorizationService_GetInfo(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAuthorizationService_GetInfo_RejectsHTTPEndpoint(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.BaseURL = "https://api.basecamp.com"
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+	// HTTP endpoint to a non-localhost host should be rejected
+	_, err := client.Authorization().GetInfo(t.Context(), &GetInfoOptions{
+		Endpoint: "http://evil.com/authorization.json",
+	})
+
+	if err == nil {
+		t.Fatal("Expected error for HTTP authorization endpoint, got nil")
+	}
+
+	// Check that it's specifically an HTTPS validation error
+	if !containsStr(err.Error(), "HTTPS") && !containsStr(err.Error(), "https") {
+		t.Errorf("Expected HTTPS-related error, got: %v", err)
+	}
+}
+
+func TestAuthorizationService_GetInfo_AllowsLocalhostHTTP(t *testing.T) {
+	// Start a test server (which runs on localhost/127.0.0.1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"identity": map[string]interface{}{"id": 123},
+			"accounts": []map[string]interface{}{},
+		})
+	}))
+	defer server.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}, WithHTTPClient(server.Client()))
+
+	// HTTP localhost endpoint should be allowed
+	_, err := client.Authorization().GetInfo(t.Context(), &GetInfoOptions{
+		Endpoint: server.URL + "/authorization.json",
+	})
+
+	if err != nil {
+		t.Errorf("HTTP localhost endpoint should be allowed, got error: %v", err)
+	}
+}
+
+// containsStr checks if s contains substr (case-insensitive)
+func containsStr(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsStrHelper(s, substr))
+}
+
+func containsStrHelper(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if strings.EqualFold(s[i:i+len(substr)], substr) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestAuthorizationInfo_Unmarshal(t *testing.T) {

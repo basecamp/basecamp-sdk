@@ -25,6 +25,19 @@
  */
 
 /**
+ * Maximum length for error messages to prevent information leakage and memory issues.
+ */
+const MAX_ERROR_MESSAGE_LENGTH = 500;
+
+/**
+ * Truncates a string to maxLen characters, appending "..." if truncated.
+ */
+function truncateErrorMessage(s: string, maxLen: number = MAX_ERROR_MESSAGE_LENGTH): string {
+  if (s.length <= maxLen) return s;
+  return s.slice(0, maxLen - 3) + "...";
+}
+
+/**
  * Error codes for categorizing Basecamp API errors.
  */
 export type ErrorCode =
@@ -34,7 +47,8 @@ export type ErrorCode =
   | "rate_limit"
   | "validation"
   | "network"
-  | "api_error";
+  | "api_error"
+  | "usage";
 
 /**
  * Options for creating a BasecampError.
@@ -59,6 +73,7 @@ export interface BasecampErrorOptions {
  * Follows common Unix conventions where possible.
  */
 const EXIT_CODES: Record<ErrorCode, number> = {
+  usage: 1, // Usage error (invalid arguments, config)
   validation: 1, // General error
   not_found: 2, // Not found
   auth: 3, // Authentication error
@@ -252,10 +267,11 @@ export async function errorFromResponse(
     const body = await response.json();
     if (typeof body === "object" && body !== null) {
       if ("error" in body && typeof body.error === "string") {
-        message = body.error;
+        // Truncate error messages to prevent information leakage and unbounded memory growth
+        message = truncateErrorMessage(body.error);
       }
       if ("error_description" in body && typeof body.error_description === "string") {
-        hint = body.error_description;
+        hint = truncateErrorMessage(body.error_description);
       }
     }
   } catch {

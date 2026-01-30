@@ -165,6 +165,112 @@ export async function refreshToken(
 }
 
 /**
+ * Validates that a URL uses the HTTPS scheme (allows localhost for testing).
+ */
+function requireHTTPS(url: string, label: string): void {
+  try {
+    const parsed = new URL(url);
+    const isLocalhost = parsed.hostname === "localhost" ||
+                        parsed.hostname === "127.0.0.1" ||
+                        parsed.hostname === "::1";
+    if (parsed.protocol !== "https:" && !isLocalhost) {
+      throw new BasecampError("validation", `${label} must use HTTPS: ${url}`);
+    }
+  } catch (err) {
+    if (err instanceof BasecampError) throw err;
+    throw new BasecampError("validation", `Invalid ${label}: ${url}`);
+  }
+}
+
+/**
+ * Parses Content-Length header, returning null for missing/invalid values.
+ * Treats non-numeric or negative values as invalid (fail closed).
+ */
+function parseContentLength(header: string | null): number | null {
+  if (!header) return null;
+  const parsed = parseInt(header, 10);
+  // NaN, negative, or non-integer values are invalid
+  if (!Number.isInteger(parsed) || parsed < 0) return null;
+  // Reject if the header contains non-digit characters (e.g., "123abc")
+  if (!/^\d+$/.test(header.trim())) return null;
+  return parsed;
+}
+
+/**
+ * Reads a response body with streaming byte limit.
+ * Uses true byte counting even when Content-Length is absent or inaccurate.
+ */
+async function readResponseWithByteLimit(
+  response: Response,
+  maxBytes: number,
+  httpStatus: number
+): Promise<string> {
+  // Parse Content-Length, treating invalid values as missing (fail closed)
+  const contentLengthBytes = parseContentLength(
+    response.headers.get("Content-Length")
+  );
+
+  // Fast path: reject if Content-Length exceeds limit
+  if (contentLengthBytes !== null && contentLengthBytes > maxBytes) {
+    throw new BasecampError(
+      "api_error",
+      `Token response too large (Content-Length: ${contentLengthBytes} bytes, max ${maxBytes})`,
+      { httpStatus }
+    );
+  }
+
+  // If no body or body isn't streamable, require valid Content-Length
+  if (!response.body) {
+    // If Content-Length is missing or invalid, we cannot protect against DoS - fail closed.
+    // If it was valid and within limits, we can safely read.
+    if (contentLengthBytes === null) {
+      throw new BasecampError(
+        "api_error",
+        "Cannot safely read token response: no valid Content-Length header and streaming unavailable",
+        { httpStatus }
+      );
+    }
+    // Content-Length was valid and within limits, safe to read
+    return response.text();
+  }
+
+  // Stream with byte counting
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      totalBytes += value.length;
+      if (totalBytes > maxBytes) {
+        reader.cancel();
+        throw new BasecampError(
+          "api_error",
+          `Token response too large (${totalBytes}+ bytes, max ${maxBytes})`,
+          { httpStatus }
+        );
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  // Concatenate and decode
+  const combined = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return new TextDecoder().decode(combined);
+}
+
+/**
  * Performs the actual HTTP token request.
  */
 async function doTokenRequest(
@@ -172,6 +278,8 @@ async function doTokenRequest(
   body: URLSearchParams,
   options: TokenOptions
 ): Promise<OAuthToken> {
+  requireHTTPS(tokenEndpoint, "token endpoint");
+
   const { fetch: customFetch = globalThis.fetch, timeoutMs = 30000 } = options;
 
   // Create abort controller for timeout
@@ -189,15 +297,26 @@ async function doTokenRequest(
       signal: controller.signal,
     });
 
-    const responseText = await response.text();
+    const MAX_TOKEN_RESPONSE_BYTES = 1 * 1024 * 1024; // 1 MB
+
+    // Use streaming reader with true byte-level limit enforcement.
+    // This handles cases where Content-Length is absent or inaccurate.
+    const responseText = await readResponseWithByteLimit(
+      response,
+      MAX_TOKEN_RESPONSE_BYTES,
+      response.status
+    );
+
     let data: RawTokenResponse | OAuthErrorResponse;
 
     try {
       data = JSON.parse(responseText);
     } catch {
+      // Truncate response text to avoid leaking sensitive data in error messages
+      const truncated = responseText.length > 500 ? responseText.slice(0, 497) + "..." : responseText;
       throw new BasecampError(
         "api_error",
-        `Failed to parse token response: ${responseText}`,
+        `Failed to parse token response: ${truncated}`,
         { httpStatus: response.status }
       );
     }
@@ -205,7 +324,8 @@ async function doTokenRequest(
     // Check for error response
     if (!response.ok) {
       const errorData = data as OAuthErrorResponse;
-      const message = errorData.error_description || errorData.error || "Token request failed";
+      const rawMessage = errorData.error_description || errorData.error || "Token request failed";
+      const message = rawMessage.length > 500 ? rawMessage.slice(0, 497) + "..." : rawMessage;
 
       if (response.status === 401 || errorData.error === "invalid_grant") {
         throw new BasecampError("auth", message, {
