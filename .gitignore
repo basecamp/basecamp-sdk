@@ -9,3 +9,12 @@ conformance/runner/go/conformance-runner
 
 # Claude Code session files
 .claude/
+
+# Ruby SDK build artifacts
+ruby/.yardoc/
+ruby/doc/
+ruby/coverage/
+ruby/.bundle/
+ruby/vendor/
+ruby/pkg/
+ruby/*.gem

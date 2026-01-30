@@ -128,6 +128,46 @@ ts-clean:
 	rm -rf typescript/dist typescript/node_modules
 
 #------------------------------------------------------------------------------
+# Ruby SDK targets
+#------------------------------------------------------------------------------
+
+.PHONY: rb-generate rb-build rb-test rb-check rb-doc rb-clean
+
+# Generate Ruby types and metadata from OpenAPI
+rb-generate:
+	@echo "==> Generating Ruby SDK types and metadata..."
+	cd ruby && ruby scripts/generate-metadata.rb > lib/basecamp/generated/metadata.json
+	cd ruby && ruby scripts/generate-types.rb > lib/basecamp/generated/types.rb
+	@echo "Generated lib/basecamp/generated/metadata.json and types.rb"
+
+# Build Ruby SDK (install deps)
+rb-build:
+	@echo "==> Building Ruby SDK..."
+	cd ruby && bundle install
+
+# Run Ruby tests
+rb-test:
+	@echo "==> Running Ruby tests..."
+	cd ruby && bundle exec rake test
+
+# Run all Ruby checks
+rb-check: rb-test
+	@echo "==> Running Ruby linter..."
+	cd ruby && bundle exec rubocop
+	@echo "==> Ruby SDK checks passed"
+
+# Generate Ruby documentation
+rb-doc:
+	@echo "==> Generating Ruby documentation..."
+	cd ruby && bundle exec rake doc
+	@echo "Documentation generated in ruby/doc/"
+
+# Clean Ruby build artifacts
+rb-clean:
+	@echo "==> Cleaning Ruby SDK..."
+	rm -rf ruby/.bundle ruby/vendor ruby/doc ruby/coverage
+
+#------------------------------------------------------------------------------
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
@@ -151,12 +191,12 @@ conformance: conformance-go
 # Combined targets
 #------------------------------------------------------------------------------
 
-# Run all checks (Smithy + Go + TypeScript + Behavior Model + Conformance)
-check: smithy-check behavior-model-check go-check ts-check conformance
+# Run all checks (Smithy + Go + TypeScript + Ruby + Behavior Model + Conformance)
+check: smithy-check behavior-model-check go-check ts-check rb-check conformance
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
-clean: smithy-clean go-clean ts-clean
+clean: smithy-clean go-clean ts-clean rb-clean
 
 # Help
 help:
@@ -194,7 +234,15 @@ help:
 	@echo "  conformance-go   Run Go conformance tests"
 	@echo "  conformance-build Build conformance test runner"
 	@echo ""
+	@echo "Ruby SDK:"
+	@echo "  rb-generate      Generate types and metadata from OpenAPI"
+	@echo "  rb-build         Build Ruby SDK (install deps)"
+	@echo "  rb-test          Run Ruby tests (with coverage)"
+	@echo "  rb-check         Run all Ruby checks"
+	@echo "  rb-doc           Generate YARD documentation"
+	@echo "  rb-clean         Remove Ruby build artifacts"
+	@echo ""
 	@echo "Combined:"
-	@echo "  check            Run all checks (Smithy + Go + TypeScript + Conformance)"
+	@echo "  check            Run all checks (Smithy + Go + TypeScript + Ruby + Conformance)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"

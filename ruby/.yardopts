@@ -1,0 +1,6 @@
+--output-dir doc
+--protected
+--no-private
+--embed-mixins
+--title "Basecamp Ruby SDK"
+lib/**/*.rb

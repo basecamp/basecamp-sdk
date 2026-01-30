@@ -1,0 +1,152 @@
+name: Release Ruby SDK
+
+on:
+  push:
+    tags:
+      - 'ruby/v*'
+  workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
+
+permissions:
+  contents: write
+
+jobs:
+  smithy:
+    name: Verify Smithy spec
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spec
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Smithy CLI
+        run: |
+          curl -L -o smithy-cli.zip https://github.com/smithy-lang/smithy/releases/download/1.66.0/smithy-cli-linux-x86_64.zip
+          unzip -q smithy-cli.zip
+          echo "$PWD/smithy-cli-1.66.0/bin" >> $GITHUB_PATH
+
+      - name: Validate Smithy spec
+        run: smithy validate
+
+      - name: Verify OpenAPI is up to date
+        run: |
+          smithy build
+          diff -q ../openapi.json build/smithy/openapi/openapi/Basecamp.openapi.json || \
+            (echo "::error::openapi.json is stale" && exit 1)
+
+  test:
+    name: Test Ruby SDK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ruby
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: ruby
+
+      - name: Lint
+        run: bundle exec rubocop
+
+      - name: Run tests
+        run: bundle exec rake test
+
+  publish:
+    name: Publish to RubyGems
+    needs: [smithy, test]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ruby
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: ruby
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger (dry-run): read from version.rb
+            VERSION=$(ruby -e "require_relative 'lib/basecamp/version'; puts Basecamp::VERSION")
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Rehearsal for version: $VERSION"
+          else
+            # Tag trigger: extract from tag and verify match
+            VERSION="${GITHUB_REF#refs/tags/ruby/v}"
+            GEM_VERSION=$(ruby -e "require_relative 'lib/basecamp/version'; puts Basecamp::VERSION")
+            if [ "$GEM_VERSION" != "$VERSION" ]; then
+              echo "::error::Gem version ($GEM_VERSION) does not match tag version ($VERSION)"
+              exit 1
+            fi
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Releasing version: $VERSION"
+          fi
+
+      - name: Build gem
+        run: gem build basecamp-sdk.gemspec
+
+      - name: Publish to RubyGems
+        run: |
+          mkdir -p ~/.gem
+          echo -e "---\n:rubygems_api_key: ${{ secrets.RUBYGEMS_API_KEY }}" > ~/.gem/credentials
+          chmod 0600 ~/.gem/credentials
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            gem push basecamp-sdk-${{ steps.version.outputs.version }}.gem
+          else
+            echo "::notice::Dry run mode - not actually publishing"
+            echo "Would publish: basecamp-sdk-${{ steps.version.outputs.version }}.gem"
+          fi
+
+      - name: Generate changelog
+        if: github.event_name == 'push'
+        id: changelog
+        run: |
+          cd ..
+          # Get the previous tag for this module
+          PREV_TAG=$(git describe --tags --match 'ruby/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -z "$PREV_TAG" ]; then
+            # First release, get all commits affecting ruby/
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -- ruby/)
+          else
+            # Get commits since previous tag
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- ruby/)
+          fi
+
+          # Write to file for multiline output
+          echo "## Changes" > changelog.md
+          echo "" >> changelog.md
+          if [ -z "$COMMITS" ]; then
+            echo "- Initial release" >> changelog.md
+          else
+            echo "$COMMITS" >> changelog.md
+          fi
+          echo "" >> changelog.md
+          echo "## Installation" >> changelog.md
+          echo "" >> changelog.md
+          echo '```' >> changelog.md
+          echo "gem install basecamp-sdk -v ${{ steps.version.outputs.version }}" >> changelog.md
+          echo '```' >> changelog.md
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Ruby SDK v${{ steps.version.outputs.version }}
+          body_path: changelog.md
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
