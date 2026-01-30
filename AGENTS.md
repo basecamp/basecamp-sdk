@@ -5,7 +5,7 @@
 ### NEVER Do These (Hard Rules)
 
 1. **NEVER edit files under `*/generated/`** - They get overwritten by generators
-2. **NEVER add API endpoints to hand-written services without ALSO adding them to `spec/basecamp.smithy`** - Creates spec drift
+2. **NEVER add hand-written service methods for API operations** - All API ops come from generators
 3. **NEVER skip running `make smithy-build` after Smithy changes** - Keeps OpenAPI in sync
 4. **NEVER construct API paths manually in SDK code** - Use the generated client methods
 
@@ -13,8 +13,7 @@
 
 1. **All new API coverage starts in `spec/basecamp.smithy`**
 2. **Run generators after spec changes**: `make smithy-build` then SDK-specific generators
-3. **Update hand-written services (TypeScript/Ruby) when adding new operations** - They're the runtime implementation
-4. **Fix generators when output is wrong** - Don't patch generated files directly
+3. **Fix generators when output is wrong** - Don't patch generated files directly
 
 ### SDK Architecture
 
@@ -31,7 +30,7 @@ Smithy Spec → OpenAPI → Generated Client → Service Layer → User
 
 **All three SDKs have complete generated service layers** covering 167 operations across 37 services.
 
-**TypeScript/Ruby runtime**: Currently wired to hand-written services (`src/services/`, `lib/basecamp/services/`) which serve as a quality benchmark. Switchover to generated services is a one-line import path change when ready.
+**TypeScript/Ruby runtime**: Wired to generated services (`src/generated/services/`, `lib/basecamp/generated/services/`). Hand-written services remain only for infrastructure (`base.ts`/`base_service.rb`) and OAuth (`authorization.ts`/`authorization_service.rb`).
 
 ### Required Workflow for Adding API Coverage
 
@@ -43,10 +42,9 @@ Every new API endpoint MUST follow this sequence:
    - `cd go && make generate`
    - `make ts-generate-services`
    - `make rb-generate-services`
-4. **Update hand-written services** (TypeScript/Ruby) - Match the generated services
-5. **Run `make`** - Verifies all SDKs build and pass tests
+4. **Run `make`** - Verifies all SDKs build and pass tests
 
-Skipping steps 1-3 and only updating hand-written services creates spec drift.
+That's it. Generated services are the runtime—no hand-written service updates needed.
 
 ---
 
@@ -144,25 +142,13 @@ Reuse these common shapes throughout the spec:
 
 ---
 
-## TypeScript/Ruby Switchover
+## TypeScript/Ruby Service Layer
 
-Generated services are complete. Switchover from hand-written to generated is pending quality validation.
+**Switchover complete.** Both SDKs use generated services at runtime.
 
-| Implementation | Location | Status |
-|---------------|----------|--------|
-| **Generated** | `src/generated/services/` (TS), `lib/basecamp/generated/services/` (Ruby) | ✅ Complete (167 ops) |
-| **Hand-written** | `src/services/` (TS), `lib/basecamp/services/` (Ruby) | Current runtime (quality benchmark) |
+| SDK | Runtime Services | Infrastructure |
+|-----|-----------------|----------------|
+| **TypeScript** | `src/generated/services/*.ts` | `src/services/base.ts`, `src/services/authorization.ts` |
+| **Ruby** | `lib/basecamp/generated/services/*.rb` | `lib/basecamp/services/base_service.rb`, `lib/basecamp/services/authorization_service.rb` |
 
-### To Switch Over
-
-**TypeScript**: Change imports in `client.ts` from `./services/*` to `./generated/services/*`
-
-**Ruby**: Remove `loader.ignore("#{__dir__}/basecamp/generated")` from `basecamp.rb`
-
-### Quality Checklist Before Switchover
-
-- [ ] Generated services have adequate JSDoc/YARD comments
-- [ ] Error messages are clear and actionable
-- [ ] Pagination works correctly
-- [ ] Type safety is equivalent or better
-- [ ] No regressions in usability
+Hand-written API services in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) are NOT loaded at runtime. They exist only as reference implementations.
