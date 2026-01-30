@@ -427,9 +427,9 @@ func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([
 		if nextURL == "" {
 			break
 		}
-		// Resolve relative URLs against the base URL
-		nextURL = resolveURL(baseURL, nextURL)
-		// Validate that the next URL is same-origin to prevent SSRF / token leakage
+		// Resolve relative URLs against the current page URL (handles path-relative links)
+		nextURL = resolveURL(url, nextURL)
+		// Validate same-origin against initial baseURL to prevent SSRF / token leakage
 		if !isSameOrigin(nextURL, baseURL) {
 			return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
 		}

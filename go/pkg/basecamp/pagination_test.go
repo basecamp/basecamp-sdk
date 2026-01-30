@@ -879,6 +879,84 @@ func TestGetAllWithLimit_RelativePathLink(t *testing.T) {
 	}
 }
 
+// TestGetAllWithLimit_PathRelativeResolution_VerifiesExactURLs proves that GetAllWithLimit
+// resolves path-relative Link headers against the current page URL, not the initial baseURL.
+// This test captures the actual requested URLs to verify the resolution is correct.
+func TestGetAllWithLimit_PathRelativeResolution_VerifiesExactURLs(t *testing.T) {
+	// Capture the actual URLs requested
+	var requestedURLs []string
+	var mu sync.Mutex
+
+	// Handler that returns path-relative Link headers like "page2.json", "page3.json"
+	// These MUST be resolved against the current page's directory to work correctly.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requestedURLs = append(requestedURLs, r.URL.Path)
+		mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+
+		// Return Link headers with truly path-relative URLs (no leading slash)
+		switch r.URL.Path {
+		case "/api/v2/items/page1.json":
+			// Link to page2.json - relative to /api/v2/items/
+			w.Header().Set("Link", `<page2.json>; rel="next"`)
+			w.Write([]byte(`[{"id":1},{"id":2}]`))
+		case "/api/v2/items/page2.json":
+			// Link to page3.json - relative to /api/v2/items/
+			w.Header().Set("Link", `<page3.json>; rel="next"`)
+			w.Write([]byte(`[{"id":3},{"id":4}]`))
+		case "/api/v2/items/page3.json":
+			// No more pages
+			w.Write([]byte(`[{"id":5}]`))
+		default:
+			t.Errorf("Unexpected URL requested: %s", r.URL.Path)
+			w.WriteHeader(404)
+		}
+	})
+
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// Start at page1.json - subsequent pages use path-relative links
+	results, err := client.GetAllWithLimit(ctx, "/api/v2/items/page1.json", 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have fetched 5 items total from pages 1-3 (2 + 2 + 1)
+	if len(results) != 5 {
+		t.Errorf("expected 5 items, got %d", len(results))
+	}
+
+	// Verify the exact URLs that were requested
+	// This proves that "page2.json" was resolved to "/api/v2/items/page2.json"
+	// (against page1.json's directory) and "page3.json" was resolved to
+	// "/api/v2/items/page3.json" (against page2.json's directory)
+	expectedURLs := []string{
+		"/api/v2/items/page1.json",
+		"/api/v2/items/page2.json",
+		"/api/v2/items/page3.json",
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(requestedURLs) != len(expectedURLs) {
+		t.Fatalf("expected %d requests, got %d: %v", len(expectedURLs), len(requestedURLs), requestedURLs)
+	}
+
+	for i, expected := range expectedURLs {
+		if requestedURLs[i] != expected {
+			t.Errorf("request %d: expected %q, got %q", i, expected, requestedURLs[i])
+		}
+	}
+}
+
 // TestFollowPagination_RelativePathAbsoluteLink tests FollowPagination with path-absolute Link URLs.
 func TestFollowPagination_RelativePathAbsoluteLink(t *testing.T) {
 	h := &relativePaginationHandler{pageSize: 3, totalItems: 9, linkStyle: "path-absolute"}
