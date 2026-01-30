@@ -177,6 +177,10 @@ module Basecamp
           raise e unless e.retryable?
 
           last_error = e
+
+          # Don't sleep if this was the last attempt
+          break if attempt >= @config.max_retries
+
           delay = calculate_delay(attempt, e.retry_after)
 
           @hooks.on_retry(RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt), attempt + 1, e,
