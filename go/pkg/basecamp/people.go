@@ -51,6 +51,14 @@ type PeopleListOptions struct {
 	Page int
 }
 
+// PeopleListResult contains the results from listing people.
+type PeopleListResult struct {
+	// People is the list of people returned.
+	People []Person
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // PeopleService handles people operations.
 type PeopleService struct {
 	client *AccountClient
@@ -66,7 +74,10 @@ func NewPeopleService(client *AccountClient) *PeopleService {
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (result []Person, err error) {
+//
+// The returned PeopleListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (result *PeopleListResult, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "List",
 		ResourceType: "person", IsMutation: false,
@@ -89,6 +100,9 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var people []Person
 	if resp.JSON200 != nil {
@@ -99,7 +113,7 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return people, nil
+		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for people)
@@ -110,7 +124,7 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 
 	// Check if we already have enough items
 	if limit > 0 && len(people) >= limit {
-		return people[:limit], nil
+		return &PeopleListResult{People: people[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -128,7 +142,7 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 		people = append(people, personFromGenerated(gp))
 	}
 
-	return people, nil
+	return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a person by ID.
@@ -200,7 +214,10 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, opts *PeopleListOptions) (result []Person, err error) {
+//
+// The returned PeopleListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, opts *PeopleListOptions) (result *PeopleListResult, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "ListProjectPeople",
 		ResourceType: "person", IsMutation: false,
@@ -224,6 +241,9 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, o
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var people []Person
 	if resp.JSON200 != nil {
@@ -234,7 +254,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, o
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return people, nil
+		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for people)
@@ -245,7 +265,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, o
 
 	// Check if we already have enough items
 	if limit > 0 && len(people) >= limit {
-		return people[:limit], nil
+		return &PeopleListResult{People: people[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -263,7 +283,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, o
 		people = append(people, personFromGenerated(gp))
 	}
 
-	return people, nil
+	return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Pingable returns all account users who can be pinged.

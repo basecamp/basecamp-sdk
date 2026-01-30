@@ -79,6 +79,14 @@ type RecordingsListOptions struct {
 	Page int
 }
 
+// RecordingListResult contains the results from listing recordings.
+type RecordingListResult struct {
+	// Recordings is the list of recordings returned.
+	Recordings []Recording
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // SetClientVisibilityRequest specifies the parameters for setting client visibility.
 type SetClientVisibilityRequest struct {
 	VisibleToClients bool `json:"visible_to_clients"`
@@ -104,7 +112,10 @@ func NewRecordingsService(client *AccountClient) *RecordingsService {
 // Pagination options:
 //   - Limit: maximum number of recordings to return (0 = 100, -1 = unlimited)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *RecordingsService) List(ctx context.Context, recordingType RecordingType, opts *RecordingsListOptions) (result []Recording, err error) {
+//
+// The returned RecordingListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *RecordingsService) List(ctx context.Context, recordingType RecordingType, opts *RecordingsListOptions) (result *RecordingListResult, err error) {
 	op := OperationInfo{
 		Service: "Recordings", Operation: "List",
 		ResourceType: "recording", IsMutation: false,
@@ -156,6 +167,9 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var recordings []Recording
 	if resp.JSON200 != nil {
@@ -166,7 +180,7 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return recordings, nil
+		return &RecordingListResult{Recordings: recordings, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
@@ -181,7 +195,7 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 
 	// Check if we already have enough items
 	if limit > 0 && len(recordings) >= limit {
-		return recordings[:limit], nil
+		return &RecordingListResult{Recordings: recordings[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -199,7 +213,7 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		recordings = append(recordings, recordingFromGenerated(gr))
 	}
 
-	return recordings, nil
+	return &RecordingListResult{Recordings: recordings, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a recording by ID.

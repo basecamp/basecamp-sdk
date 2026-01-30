@@ -27,6 +27,14 @@ type ClientReply struct {
 	Content          string    `json:"content"`
 }
 
+// ClientReplyListResult contains the results from listing client replies.
+type ClientReplyListResult struct {
+	// Replies is the list of client replies returned.
+	Replies []ClientReply
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // ClientRepliesService handles client reply operations.
 type ClientRepliesService struct {
 	client *AccountClient
@@ -39,7 +47,10 @@ func NewClientRepliesService(client *AccountClient) *ClientRepliesService {
 
 // List returns all replies for a client recording (correspondence or approval).
 // bucketID is the project ID, recordingID is the parent correspondence/approval ID.
-func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID int64) (result []ClientReply, err error) {
+//
+// The returned ClientReplyListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID int64) (result *ClientReplyListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientReplies", Operation: "List",
 		ResourceType: "client_reply", IsMutation: false,
@@ -61,8 +72,12 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
+
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	if resp.JSON200 == nil {
-		return nil, nil
+		return &ClientReplyListResult{Replies: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	replies := make([]ClientReply, 0, len(*resp.JSON200))
@@ -70,7 +85,7 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 		replies = append(replies, clientReplyFromGenerated(gr))
 	}
 
-	return replies, nil
+	return &ClientReplyListResult{Replies: replies, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a specific client reply.

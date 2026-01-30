@@ -157,6 +157,22 @@ type updateAnswerRequestWrapper struct {
 	QuestionAnswer *UpdateAnswerRequest `json:"question_answer"`
 }
 
+// QuestionListResult contains the results from listing questions.
+type QuestionListResult struct {
+	// Questions is the list of questions returned.
+	Questions []Question
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
+// AnswerListResult contains the results from listing answers.
+type AnswerListResult struct {
+	// Answers is the list of answers returned.
+	Answers []QuestionAnswer
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // CheckinsService handles automatic check-in operations.
 type CheckinsService struct {
 	client *AccountClient
@@ -208,7 +224,10 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questi
 // Pagination options:
 //   - Limit: maximum number of questions to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionnaireID int64, opts *QuestionListOptions) (result []Question, err error) {
+//
+// The returned QuestionListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionnaireID int64, opts *QuestionListOptions) (result *QuestionListResult, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "ListQuestions",
 		ResourceType: "question", IsMutation: false,
@@ -232,6 +251,9 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var questions []Question
 	if resp.JSON200 != nil {
@@ -242,7 +264,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return questions, nil
+		return &QuestionListResult{Questions: questions, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for questions), >0 = specific limit
@@ -253,7 +275,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 
 	// Check if we already have enough items
 	if limit > 0 && len(questions) >= limit {
-		return questions[:limit], nil
+		return &QuestionListResult{Questions: questions[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -271,7 +293,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 		questions = append(questions, questionFromGenerated(gq))
 	}
 
-	return questions, nil
+	return &QuestionListResult{Questions: questions, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // GetQuestion returns a question by ID.
@@ -413,7 +435,10 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 // Pagination options:
 //   - Limit: maximum number of answers to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID int64, opts *AnswerListOptions) (result []QuestionAnswer, err error) {
+//
+// The returned AnswerListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID int64, opts *AnswerListOptions) (result *AnswerListResult, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "ListAnswers",
 		ResourceType: "answer", IsMutation: false,
@@ -437,6 +462,9 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var answers []QuestionAnswer
 	if resp.JSON200 != nil {
@@ -447,7 +475,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return answers, nil
+		return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for answers), >0 = specific limit
@@ -458,7 +486,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 
 	// Check if we already have enough items
 	if limit > 0 && len(answers) >= limit {
-		return answers[:limit], nil
+		return &AnswerListResult{Answers: answers[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -476,7 +504,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 		answers = append(answers, questionAnswerFromGenerated(ga))
 	}
 
-	return answers, nil
+	return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // GetAnswer returns a question answer by ID.

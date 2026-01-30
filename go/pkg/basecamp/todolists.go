@@ -57,6 +57,14 @@ type TodolistListOptions struct {
 	Page int
 }
 
+// TodolistListResult contains the results from listing todolists.
+type TodolistListResult struct {
+	// Todolists is the list of todolists returned.
+	Todolists []Todolist
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // CreateTodolistRequest specifies the parameters for creating a todolist.
 type CreateTodolistRequest struct {
 	// Name is the todolist name (required).
@@ -91,7 +99,10 @@ func NewTodolistsService(client *AccountClient) *TodolistsService {
 // Pagination options:
 //   - Limit: maximum number of todolists to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, opts *TodolistListOptions) (result []Todolist, err error) {
+//
+// The returned TodolistListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, opts *TodolistListOptions) (result *TodolistListResult, err error) {
 	op := OperationInfo{
 		Service: "Todolists", Operation: "List",
 		ResourceType: "todolist", IsMutation: false,
@@ -121,6 +132,9 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var todolists []Todolist
 	if resp.JSON200 != nil {
@@ -131,7 +145,7 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return todolists, nil
+		return &TodolistListResult{Todolists: todolists, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for todolists), >0 = specific limit
@@ -142,7 +156,7 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 
 	// Check if we already have enough items
 	if limit > 0 && len(todolists) >= limit {
-		return todolists[:limit], nil
+		return &TodolistListResult{Todolists: todolists[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -160,7 +174,7 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 		todolists = append(todolists, todolistFromGenerated(gtl))
 	}
 
-	return todolists, nil
+	return &TodolistListResult{Todolists: todolists, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a todolist by ID.

@@ -41,6 +41,14 @@ type UpdateWebhookRequest struct {
 	Active *bool `json:"active,omitempty"`
 }
 
+// WebhookListResult contains the results from listing webhooks.
+type WebhookListResult struct {
+	// Webhooks is the list of webhooks returned.
+	Webhooks []Webhook
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // WebhooksService handles webhook operations.
 type WebhooksService struct {
 	client *AccountClient
@@ -53,7 +61,10 @@ func NewWebhooksService(client *AccountClient) *WebhooksService {
 
 // List returns all webhooks for a project (bucket).
 // bucketID is the project ID.
-func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result []Webhook, err error) {
+//
+// The returned WebhookListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result *WebhookListResult, err error) {
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "List",
 		ResourceType: "webhook", IsMutation: false,
@@ -75,8 +86,12 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result []We
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
+
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	if resp.JSON200 == nil {
-		return nil, nil
+		return &WebhookListResult{Webhooks: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	webhooks := make([]Webhook, 0, len(*resp.JSON200))
@@ -84,7 +99,7 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result []We
 		webhooks = append(webhooks, webhookFromGenerated(gw))
 	}
 
-	return webhooks, nil
+	return &WebhookListResult{Webhooks: webhooks, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a webhook by ID.

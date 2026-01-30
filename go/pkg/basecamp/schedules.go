@@ -115,6 +115,14 @@ type UpdateScheduleSettingsRequest struct {
 	IncludeDueAssignments bool `json:"include_due_assignments"`
 }
 
+// ScheduleEntryListResult contains the results from listing schedule entries.
+type ScheduleEntryListResult struct {
+	// Entries is the list of schedule entries returned.
+	Entries []ScheduleEntry
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // SchedulesService handles schedule operations.
 type SchedulesService struct {
 	client *AccountClient
@@ -166,7 +174,10 @@ func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) 
 // Pagination options:
 //   - Limit: maximum number of entries to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID int64, opts *ScheduleEntryListOptions) (result []ScheduleEntry, err error) {
+//
+// The returned ScheduleEntryListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID int64, opts *ScheduleEntryListOptions) (result *ScheduleEntryListResult, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "ListEntries",
 		ResourceType: "schedule_entry", IsMutation: false,
@@ -198,6 +209,9 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var entries []ScheduleEntry
 	if resp.JSON200 != nil {
@@ -208,7 +222,7 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return entries, nil
+		return &ScheduleEntryListResult{Entries: entries, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for entries), >0 = specific limit
@@ -219,7 +233,7 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 
 	// Check if we already have enough items
 	if limit > 0 && len(entries) >= limit {
-		return entries[:limit], nil
+		return &ScheduleEntryListResult{Entries: entries[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -237,7 +251,7 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 		entries = append(entries, scheduleEntryFromGenerated(ge))
 	}
 
-	return entries, nil
+	return &ScheduleEntryListResult{Entries: entries, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // GetEntry returns a schedule entry by ID.

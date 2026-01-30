@@ -65,6 +65,14 @@ type MessageListOptions struct {
 	Page int
 }
 
+// MessageListResult contains the results from listing messages.
+type MessageListResult struct {
+	// Messages is the list of messages returned.
+	Messages []Message
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // MessagesService handles message operations.
 type MessagesService struct {
 	client *AccountClient
@@ -83,7 +91,10 @@ func NewMessagesService(client *AccountClient) *MessagesService {
 // Pagination options:
 //   - Limit: maximum number of messages to return (0 = 100, -1 = unlimited)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opts *MessageListOptions) (result []Message, err error) {
+//
+// The returned MessageListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opts *MessageListOptions) (result *MessageListResult, err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "List",
 		ResourceType: "message", IsMutation: false,
@@ -107,6 +118,9 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opt
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var messages []Message
 	if resp.JSON200 != nil {
@@ -117,7 +131,7 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opt
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return messages, nil
+		return &MessageListResult{Messages: messages, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
@@ -132,7 +146,7 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opt
 
 	// Check if we already have enough items
 	if limit > 0 && len(messages) >= limit {
-		return messages[:limit], nil
+		return &MessageListResult{Messages: messages[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -150,7 +164,7 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opt
 		messages = append(messages, messageFromGenerated(gm))
 	}
 
-	return messages, nil
+	return &MessageListResult{Messages: messages, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a message by ID.

@@ -33,6 +33,14 @@ type UpdateMessageTypeRequest struct {
 	Icon string `json:"icon,omitempty"`
 }
 
+// MessageTypeListResult contains the results from listing message types.
+type MessageTypeListResult struct {
+	// MessageTypes is the list of message types returned.
+	MessageTypes []MessageType
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // MessageTypesService handles message type operations.
 type MessageTypesService struct {
 	client *AccountClient
@@ -45,7 +53,10 @@ func NewMessageTypesService(client *AccountClient) *MessageTypesService {
 
 // List returns all message types in a project.
 // bucketID is the project ID.
-func (s *MessageTypesService) List(ctx context.Context, bucketID int64) (result []MessageType, err error) {
+//
+// The returned MessageTypeListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *MessageTypesService) List(ctx context.Context, bucketID int64) (result *MessageTypeListResult, err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "List",
 		ResourceType: "message_type", IsMutation: false,
@@ -67,15 +78,19 @@ func (s *MessageTypesService) List(ctx context.Context, bucketID int64) (result 
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
+
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	if resp.JSON200 == nil {
-		return nil, nil
+		return &MessageTypeListResult{MessageTypes: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	types := make([]MessageType, 0, len(*resp.JSON200))
 	for _, gt := range *resp.JSON200 {
 		types = append(types, messageTypeFromGenerated(gt))
 	}
-	return types, nil
+	return &MessageTypeListResult{MessageTypes: types, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a message type by ID.

@@ -54,6 +54,14 @@ type ClientApprovalResponse struct {
 	Approved         bool      `json:"approved"`
 }
 
+// ClientApprovalListResult contains the results from listing client approvals.
+type ClientApprovalListResult struct {
+	// Approvals is the list of client approvals returned.
+	Approvals []ClientApproval
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // ClientApprovalsService handles client approval operations.
 type ClientApprovalsService struct {
 	client *AccountClient
@@ -66,7 +74,10 @@ func NewClientApprovalsService(client *AccountClient) *ClientApprovalsService {
 
 // List returns all client approvals in a project.
 // bucketID is the project ID.
-func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (result []ClientApproval, err error) {
+//
+// The returned ClientApprovalListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (result *ClientApprovalListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientApprovals", Operation: "List",
 		ResourceType: "client_approval", IsMutation: false,
@@ -88,8 +99,12 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (resu
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
+
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	if resp.JSON200 == nil {
-		return nil, nil
+		return &ClientApprovalListResult{Approvals: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	approvals := make([]ClientApproval, 0, len(*resp.JSON200))
@@ -97,7 +112,7 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (resu
 		approvals = append(approvals, clientApprovalFromGenerated(ga))
 	}
 
-	return approvals, nil
+	return &ClientApprovalListResult{Approvals: approvals, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a client approval by ID.

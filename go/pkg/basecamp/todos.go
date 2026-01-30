@@ -103,6 +103,14 @@ type TodoListOptions struct {
 	Page int
 }
 
+// TodoListResult contains the results from listing todos.
+type TodoListResult struct {
+	// Todos is the list of todos returned.
+	Todos []Todo
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // CreateTodoRequest specifies the parameters for creating a todo.
 type CreateTodoRequest struct {
 	// Content is the todo text (required).
@@ -157,7 +165,10 @@ func NewTodosService(client *AccountClient) *TodosService {
 // Pagination options:
 //   - Limit: maximum number of todos to return (0 = 100, -1 = unlimited)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opts *TodoListOptions) (result []Todo, err error) {
+//
+// The returned TodoListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opts *TodoListOptions) (result *TodoListResult, err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "List",
 		ResourceType: "todo", IsMutation: false,
@@ -187,6 +198,9 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var todos []Todo
 	if resp.JSON200 != nil {
@@ -197,7 +211,7 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return todos, nil
+		return &TodoListResult{Todos: todos, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
@@ -212,7 +226,7 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 
 	// Check if we already have enough items
 	if limit > 0 && len(todos) >= limit {
-		return todos[:limit], nil
+		return &TodoListResult{Todos: todos[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -230,7 +244,7 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 		todos = append(todos, todoFromGenerated(gt))
 	}
 
-	return todos, nil
+	return &TodoListResult{Todos: todos, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a todo by ID.
