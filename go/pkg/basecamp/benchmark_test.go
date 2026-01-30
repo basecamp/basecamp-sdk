@@ -223,7 +223,7 @@ func BenchmarkBuildURL(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		path := paths[i%len(paths)]
-		_ = client.buildURL(path)
+		_, _ = client.buildURL(path)
 	}
 }
 
