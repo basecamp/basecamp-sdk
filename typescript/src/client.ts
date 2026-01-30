@@ -10,6 +10,7 @@ import createClient, { type Middleware } from "openapi-fetch";
 import { createRequire } from "node:module";
 import type { paths } from "./generated/schema.js";
 import type { BasecampHooks, RequestInfo, RequestResult } from "./hooks.js";
+import { BasecampError } from "./errors.js";
 
 // Use createRequire for JSON import (Node 18+ compatible)
 const require = createRequire(import.meta.url);
@@ -206,6 +207,22 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     enableRetry = true,
     hooks,
   } = options;
+
+  // Validate configuration (skip HTTPS check for localhost in dev/test)
+  if (baseUrl) {
+    try {
+      const parsed = new URL(baseUrl);
+      const isLocalhost = parsed.hostname === "localhost" ||
+                          parsed.hostname === "127.0.0.1" ||
+                          parsed.hostname === "::1";
+      if (parsed.protocol !== "https:" && !isLocalhost) {
+        throw new BasecampError("usage", `Base URL must use HTTPS: ${baseUrl}`);
+      }
+    } catch (err) {
+      if (err instanceof BasecampError) throw err;
+      throw new BasecampError("usage", `Invalid base URL: ${baseUrl}`);
+    }
+  }
 
   const client = createClient<paths>({ baseUrl });
 
@@ -411,6 +428,27 @@ function createCacheMiddleware(): Middleware {
   // Use Map for insertion-order iteration (approximates LRU)
   const cache = new Map<string, CacheEntry>();
 
+  // Store cache keys per-request without leaking them onto the wire.
+  const cacheKeyStore = new WeakMap<Request, string>();
+
+  // Derive a short token hash from the Authorization header for cache key isolation.
+  // Different auth contexts must not share cached responses.
+  // Re-computed per request so refreshed tokens produce new cache keys.
+  const hashTokenMap = new Map<string, string>();
+  const getTokenHash = async (authHeader: string | null): Promise<string> => {
+    if (!authHeader) return "";
+    const cached = hashTokenMap.get(authHeader);
+    if (cached) return cached;
+    const data = new TextEncoder().encode(authHeader);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hash = Array.from(hashArray.slice(0, 8))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    hashTokenMap.set(authHeader, hash);
+    return hash;
+  };
+
   const evictOldest = () => {
     if (cache.size >= MAX_CACHE_ENTRIES) {
       // Delete oldest entry (first key in insertion order)
@@ -423,12 +461,16 @@ function createCacheMiddleware(): Middleware {
     async onRequest({ request }) {
       if (request.method !== "GET") return request;
 
-      const cacheKey = getCacheKey(request.url);
+      const tokenHash = await getTokenHash(request.headers.get("Authorization"));
+      const cacheKey = getCacheKey(request.url, tokenHash);
       const entry = cache.get(cacheKey);
 
       if (entry?.etag) {
         request.headers.set("If-None-Match", entry.etag);
       }
+
+      // Store cache key internally — not on the wire
+      cacheKeyStore.set(request, cacheKey);
 
       return request;
     },
@@ -436,7 +478,11 @@ function createCacheMiddleware(): Middleware {
     async onResponse({ request, response }) {
       if (request.method !== "GET") return response;
 
-      const cacheKey = getCacheKey(request.url);
+      // Prefer stored key; fall back to recomputing from the Authorization header
+      // (handles cases where middleware clones the Request, breaking WeakMap identity).
+      const cacheKey =
+        cacheKeyStore.get(request) ??
+        getCacheKey(request.url, await getTokenHash(request.headers.get("Authorization")));
 
       // Handle 304 Not Modified - return cached body with cache indicator
       if (response.status === 304) {
@@ -466,8 +512,8 @@ function createCacheMiddleware(): Middleware {
   };
 }
 
-function getCacheKey(url: string): string {
-  return url;
+function getCacheKey(url: string, tokenHash: string): string {
+  return `${tokenHash}:${url}`;
 }
 
 // =============================================================================
@@ -1022,8 +1068,16 @@ export async function fetchAllPages<T>(
     const items = await parse(response.clone());
     results.push(...items);
 
-    const nextUrl = parseNextLink(response.headers.get("Link"));
-    if (!nextUrl) break;
+    const rawNextUrl = parseNextLink(response.headers.get("Link"));
+    if (!rawNextUrl) break;
+
+    // Resolve relative URLs against the current page URL (handles path-relative links)
+    const nextUrl = resolveURL(response.url, rawNextUrl);
+
+    // Validate same-origin to prevent SSRF / token leakage via poisoned Link headers
+    if (!isSameOrigin(nextUrl, initialResponse.url)) {
+      throw new Error(`Pagination Link header points to different origin: ${nextUrl}`);
+    }
 
     const headers: Record<string, string> = { Accept: "application/json" };
     if (authHeader) {
@@ -1058,8 +1112,16 @@ export async function* paginateAll<T>(
     const items = await parse(response.clone());
     yield items;
 
-    const nextUrl = parseNextLink(response.headers.get("Link"));
-    if (!nextUrl) break;
+    const rawNextUrl = parseNextLink(response.headers.get("Link"));
+    if (!rawNextUrl) break;
+
+    // Resolve relative URLs against the current page URL (handles path-relative links)
+    const nextUrl = resolveURL(response.url, rawNextUrl);
+
+    // Validate same-origin to prevent SSRF / token leakage via poisoned Link headers
+    if (!isSameOrigin(nextUrl, initialResponse.url)) {
+      throw new Error(`Pagination Link header points to different origin: ${nextUrl}`);
+    }
 
     const headers: Record<string, string> = { Accept: "application/json" };
     if (authHeader) {
@@ -1082,4 +1144,31 @@ function parseNextLink(linkHeader: string | null): string | null {
   }
 
   return null;
+}
+
+/**
+ * Resolves a possibly-relative URL against a base URL.
+ * If target is already absolute, it is returned unchanged.
+ */
+function resolveURL(base: string, target: string): string {
+  try {
+    return new URL(target, base).href;
+  } catch {
+    return target;
+  }
+}
+
+/**
+ * Checks whether two absolute URLs share the same origin (scheme + host + port).
+ * Handles default port normalization (e.g. https://example.com:443 === https://example.com).
+ * Relative URLs should be resolved with resolveURL before calling this function.
+ */
+function isSameOrigin(a: string, b: string): boolean {
+  try {
+    const urlA = new URL(a);
+    const urlB = new URL(b);
+    return urlA.origin === urlB.origin;
+  } catch {
+    return false;
+  }
 }

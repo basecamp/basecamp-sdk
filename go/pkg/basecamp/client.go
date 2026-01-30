@@ -192,6 +192,34 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	c.httpClient = &http.Client{
 		Timeout:   c.httpOpts.Timeout,
 		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			// Strip Authorization header when redirecting to a different origin
+			// to prevent credential leakage to third-party hosts.
+			if len(via) > 0 && !isSameOrigin(req.URL.String(), via[0].URL.String()) {
+				req.Header.Del("Authorization")
+			}
+			return nil
+		},
+	}
+
+	// Validate configuration
+	// Skip HTTPS validation for localhost (used in tests)
+	if c.cfg.BaseURL != "" && !isLocalhost(c.cfg.BaseURL) {
+		if err := requireHTTPS(c.cfg.BaseURL); err != nil {
+			panic("basecamp: base URL must use HTTPS: " + c.cfg.BaseURL)
+		}
+	}
+	if c.httpOpts.Timeout <= 0 {
+		panic("basecamp: timeout must be positive")
+	}
+	if c.httpOpts.MaxRetries < 0 {
+		panic("basecamp: max retries must be non-negative")
+	}
+	if c.httpOpts.MaxPages <= 0 {
+		panic("basecamp: max pages must be positive")
 	}
 
 	// Initialize cache if enabled and not overridden
@@ -364,7 +392,11 @@ func (c *Client) GetAll(ctx context.Context, path string) ([]json.RawMessage, er
 // If limit > 0, it stops after collecting at least limit items.
 func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([]json.RawMessage, error) {
 	var allResults []json.RawMessage
-	url := c.buildURL(path)
+	baseURL, err := c.buildURL(path)
+	if err != nil {
+		return nil, err
+	}
+	url := baseURL
 	var page int
 
 	for page = 1; page <= c.httpOpts.MaxPages; page++ {
@@ -391,6 +423,12 @@ func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([
 		nextLink := parseNextLink(resp.Headers.Get("Link"))
 		if nextLink == "" {
 			break
+		}
+		// Resolve relative URLs against the base URL
+		nextURL = resolveURL(baseURL, nextURL)
+		// Validate that the next URL is same-origin to prevent SSRF / token leakage
+		if !isSameOrigin(nextURL, baseURL) {
+			return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
 		}
 		url = resolveURL(url, nextLink)
 	}
@@ -481,7 +519,10 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 }
 
 func (c *Client) doRequest(ctx context.Context, method, path string, body any) (*Response, error) {
-	url := c.buildURL(path)
+	url, err := c.buildURL(path)
+	if err != nil {
+		return nil, err
+	}
 	return c.doRequestURL(ctx, method, url, body)
 }
 
@@ -620,7 +661,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		return nil, ErrAPI(304, "304 received but no cached response available")
 
 	case http.StatusOK, http.StatusCreated, http.StatusNoContent:
-		respBody, err := io.ReadAll(resp.Body)
+		respBody, err := limitedReadAll(resp.Body, MaxResponseBodyBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read response: %w", err)
 		}
@@ -681,7 +722,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		}
 
 	default:
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
 		var apiErr struct {
 			Error   string `json:"error"`
 			Message string `json:"message"`
@@ -699,10 +740,13 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 	}
 }
 
-func (c *Client) buildURL(path string) string {
-	// Absolute URLs are returned as-is (e.g., pagination Link headers)
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		return path
+func (c *Client) buildURL(path string) (string, error) {
+	// Absolute URLs: enforce HTTPS and return as-is (e.g., pagination Link headers)
+	if strings.HasPrefix(path, "https://") {
+		return path, nil
+	}
+	if strings.HasPrefix(path, "http://") {
+		return "", fmt.Errorf("URL must use HTTPS, got: %s", path)
 	}
 	// Ensure path starts with /
 	if !strings.HasPrefix(path, "/") {
@@ -710,7 +754,7 @@ func (c *Client) buildURL(path string) string {
 	}
 	// Normalize BaseURL to avoid double slashes when concatenating
 	base := strings.TrimSuffix(c.cfg.BaseURL, "/")
-	return base + path
+	return base + path, nil
 }
 
 func (c *Client) backoffDelay(attempt int) time.Duration {
