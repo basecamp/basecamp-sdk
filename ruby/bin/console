@@ -11,7 +11,7 @@ if ENV["BASECAMP_ACCESS_TOKEN"] && ENV["BASECAMP_ACCOUNT_ID"]
   puts "Basecamp SDK Console"
   puts "===================="
   puts "Client available as @client"
-  puts "Account client available as @account (account: #{ENV['BASECAMP_ACCOUNT_ID']})"
+  puts "Account client available as @account (account: #{ENV["BASECAMP_ACCOUNT_ID"]})"
   puts ""
   puts "Try: @account.projects.list.first(5).each { |p| puts p['name'] }"
   puts ""

@@ -214,7 +214,7 @@ module Basecamp
     def initialize(resource, matches: [])
       @matches = matches
       hint = if matches.any? && matches.length <= 5
-               "Did you mean: #{matches.join(', ')}"
+               "Did you mean: #{matches.join(", ")}"
       else
                "Be more specific"
       end

@@ -120,7 +120,7 @@ if __FILE__ == $PROGRAM_NAME
     puts '      include TypeHelpers'
 
     attr_names = properties.keys.map { |k| k.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, '') }
-    puts "      attr_accessor #{attr_names.map { |n| ":#{n}" }.join(', ')}"
+    puts "      attr_accessor #{attr_names.map { |n| ":#{n}" }.join(", ")}"
     puts ''
 
     puts '      def initialize(data = {})'

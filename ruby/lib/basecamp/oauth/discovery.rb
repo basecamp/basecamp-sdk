@@ -82,7 +82,7 @@ module Basecamp
 
         raise OAuthError.new(
           "api_error",
-          "Invalid OAuth discovery response: missing required fields: #{missing.join(', ')}"
+          "Invalid OAuth discovery response: missing required fields: #{missing.join(", ")}"
         )
       end
     end

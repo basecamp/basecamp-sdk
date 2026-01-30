@@ -37,7 +37,7 @@ module Basecamp
           # Try OAuth discovery on the configured base URL
           config = Oauth.discover(http.base_url)
           # Use issuer as base for authorization.json
-          "#{config.issuer.chomp('/')}/authorization.json"
+          "#{config.issuer.chomp("/")}/authorization.json"
         rescue Oauth::OAuthError
           # Fall back to Launchpad
           LAUNCHPAD_AUTHORIZATION_URL

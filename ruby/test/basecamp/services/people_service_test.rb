@@ -13,7 +13,7 @@ class PeopleServiceTest < Minitest::Test
     {
       "id" => id,
       "name" => name,
-      "email_address" => "#{name.downcase.tr(' ', '.')}@example.com",
+      "email_address" => "#{name.downcase.tr(" ", ".")}@example.com",
       "admin" => false
     }
   end
