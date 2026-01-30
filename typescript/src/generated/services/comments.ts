@@ -1,21 +1,52 @@
 /**
- * Service for Comments operations
+ * Comments service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Comment entity from the Basecamp API. */
+export type Comment = components["schemas"]["Comment"];
+
 /**
- * Service for Comments operations
+ * Request parameters for update.
+ */
+export interface UpdateCommentRequest {
+  /** content */
+  content: string;
+}
+
+/**
+ * Request parameters for create.
+ */
+export interface CreateCommentRequest {
+  /** content */
+  content: string;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Comments operations.
  */
 export class CommentsService extends BaseService {
 
   /**
    * Get a single comment by id
+   * @param projectId - The project ID
+   * @param commentId - The comment ID
+   * @returns The Comment
    */
-  async get(projectId: number, commentId: number): Promise<components["schemas"]["GetCommentResponseContent"]> {
+  async get(projectId: number, commentId: number): Promise<Comment> {
     const response = await this.request(
       {
         service: "Comments",
@@ -37,8 +68,12 @@ export class CommentsService extends BaseService {
 
   /**
    * Update an existing comment
+   * @param projectId - The project ID
+   * @param commentId - The comment ID
+   * @param req - Request parameters
+   * @returns The Comment
    */
-  async update(projectId: number, commentId: number, req: components["schemas"]["UpdateCommentRequestContent"]): Promise<components["schemas"]["UpdateCommentResponseContent"]> {
+  async update(projectId: number, commentId: number, req: UpdateCommentRequest): Promise<Comment> {
     const response = await this.request(
       {
         service: "Comments",
@@ -53,7 +88,7 @@ export class CommentsService extends BaseService {
           params: {
             path: { projectId, commentId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -61,8 +96,11 @@ export class CommentsService extends BaseService {
 
   /**
    * List comments on a recording
+   * @param projectId - The project ID
+   * @param recordingId - The recording ID
+   * @returns Array of Comment
    */
-  async list(projectId: number, recordingId: number): Promise<components["schemas"]["ListCommentsResponseContent"]> {
+  async list(projectId: number, recordingId: number): Promise<Comment[]> {
     const response = await this.request(
       {
         service: "Comments",
@@ -84,8 +122,17 @@ export class CommentsService extends BaseService {
 
   /**
    * Create a new comment on a recording
+   * @param projectId - The project ID
+   * @param recordingId - The recording ID
+   * @param req - Request parameters
+   * @returns The Comment
+   *
+   * @example
+   * ```ts
+   * const result = await client.comments.create(123, 123, { ... });
+   * ```
    */
-  async create(projectId: number, recordingId: number, req: components["schemas"]["CreateCommentRequestContent"]): Promise<components["schemas"]["CreateCommentResponseContent"]> {
+  async create(projectId: number, recordingId: number, req: CreateCommentRequest): Promise<Comment> {
     const response = await this.request(
       {
         service: "Comments",
@@ -100,7 +147,7 @@ export class CommentsService extends BaseService {
           params: {
             path: { projectId, recordingId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;

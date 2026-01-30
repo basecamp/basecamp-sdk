@@ -1,21 +1,55 @@
 /**
- * Service for MessageTypes operations
+ * MessageTypes service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** MessageType entity from the Basecamp API. */
+export type MessageType = components["schemas"]["MessageType"];
+
 /**
- * Service for MessageTypes operations
+ * Request parameters for create.
+ */
+export interface CreateMessageTypeRequest {
+  /** name */
+  name: string;
+  /** icon */
+  icon: string;
+}
+
+/**
+ * Request parameters for update.
+ */
+export interface UpdateMessageTypeRequest {
+  /** name */
+  name?: string;
+  /** icon */
+  icon?: string;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for MessageTypes operations.
  */
 export class MessageTypesService extends BaseService {
 
   /**
    * List message types in a project
+   * @param projectId - The project ID
+   * @returns Array of MessageType
    */
-  async list(projectId: number): Promise<components["schemas"]["ListMessageTypesResponseContent"]> {
+  async list(projectId: number): Promise<MessageType[]> {
     const response = await this.request(
       {
         service: "MessageTypes",
@@ -36,8 +70,16 @@ export class MessageTypesService extends BaseService {
 
   /**
    * Create a new message type in a project
+   * @param projectId - The project ID
+   * @param req - Request parameters
+   * @returns The MessageType
+   *
+   * @example
+   * ```ts
+   * const result = await client.messageTypes.create(123, { ... });
+   * ```
    */
-  async create(projectId: number, req: components["schemas"]["CreateMessageTypeRequestContent"]): Promise<components["schemas"]["CreateMessageTypeResponseContent"]> {
+  async create(projectId: number, req: CreateMessageTypeRequest): Promise<MessageType> {
     const response = await this.request(
       {
         service: "MessageTypes",
@@ -51,7 +93,7 @@ export class MessageTypesService extends BaseService {
           params: {
             path: { projectId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -59,8 +101,11 @@ export class MessageTypesService extends BaseService {
 
   /**
    * Get a single message type by id
+   * @param projectId - The project ID
+   * @param typeId - The type ID
+   * @returns The MessageType
    */
-  async get(projectId: number, typeId: number): Promise<components["schemas"]["GetMessageTypeResponseContent"]> {
+  async get(projectId: number, typeId: number): Promise<MessageType> {
     const response = await this.request(
       {
         service: "MessageTypes",
@@ -82,8 +127,12 @@ export class MessageTypesService extends BaseService {
 
   /**
    * Update an existing message type
+   * @param projectId - The project ID
+   * @param typeId - The type ID
+   * @param req - Request parameters
+   * @returns The MessageType
    */
-  async update(projectId: number, typeId: number, req: components["schemas"]["UpdateMessageTypeRequestContent"]): Promise<components["schemas"]["UpdateMessageTypeResponseContent"]> {
+  async update(projectId: number, typeId: number, req: UpdateMessageTypeRequest): Promise<MessageType> {
     const response = await this.request(
       {
         service: "MessageTypes",
@@ -98,7 +147,7 @@ export class MessageTypesService extends BaseService {
           params: {
             path: { projectId, typeId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -106,6 +155,9 @@ export class MessageTypesService extends BaseService {
 
   /**
    * Delete a message type
+   * @param projectId - The project ID
+   * @param typeId - The type ID
+   * @returns void
    */
   async delete(projectId: number, typeId: number): Promise<void> {
     await this.request(

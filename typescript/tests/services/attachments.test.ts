@@ -1,11 +1,14 @@
 /**
- * Tests for the Attachments service
+ * Tests for the Attachments service (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - create() signature: create(data, contentType, name) - not create({ filename, contentType, data })
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
-import { AttachmentsService } from "../../src/services/attachments.js";
-import { BasecampError } from "../../src/errors.js";
+import type { AttachmentsService } from "../../src/generated/services/attachments.js";
 import { createBasecampClient } from "../../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -32,13 +35,14 @@ describe("AttachmentsService", () => {
         })
       );
 
-      const result = await service.create({
-        filename: "test.pdf",
-        contentType: "application/pdf",
-        data: new Uint8Array([1, 2, 3, 4]),
-      });
+      // Generated signature: create(data, contentType, name)
+      const result = await service.create(
+        new Uint8Array([1, 2, 3, 4]),
+        "application/pdf",
+        "test.pdf"
+      );
 
-      expect(result.attachableSgid).toBe(sgid);
+      expect(result.attachable_sgid).toBe(sgid);
     });
 
     it("should include filename in query params", async () => {
@@ -51,11 +55,11 @@ describe("AttachmentsService", () => {
         })
       );
 
-      await service.create({
-        filename: "report.xlsx",
-        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        data: new Uint8Array([1, 2, 3]),
-      });
+      await service.create(
+        new Uint8Array([1, 2, 3]),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "report.xlsx"
+      );
 
       expect(capturedUrl).toContain("name=report.xlsx");
     });
@@ -70,77 +74,16 @@ describe("AttachmentsService", () => {
         })
       );
 
-      await service.create({
-        filename: "image.png",
-        contentType: "image/png",
-        data: new Uint8Array([1, 2, 3, 4]),
-      });
+      await service.create(
+        new Uint8Array([1, 2, 3, 4]),
+        "image/png",
+        "image.png"
+      );
 
       expect(capturedContentType).toBe("image/png");
     });
 
-    it("should throw validation error when filename is missing", async () => {
-      await expect(
-        service.create({
-          filename: "",
-          contentType: "image/png",
-          data: new Uint8Array([1]),
-        })
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.create({
-          filename: "",
-          contentType: "image/png",
-          data: new Uint8Array([1]),
-        });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("filename");
-      }
-    });
-
-    it("should throw validation error when content type is missing", async () => {
-      await expect(
-        service.create({
-          filename: "test.pdf",
-          contentType: "",
-          data: new Uint8Array([1]),
-        })
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.create({
-          filename: "test.pdf",
-          contentType: "",
-          data: new Uint8Array([1]),
-        });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("content type");
-      }
-    });
-
-    it("should throw validation error when data is empty", async () => {
-      await expect(
-        service.create({
-          filename: "test.pdf",
-          contentType: "application/pdf",
-          data: new Uint8Array([]),
-        })
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.create({
-          filename: "test.pdf",
-          contentType: "application/pdf",
-          data: new Uint8Array([]),
-        });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("empty");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
 
     it("should work with ArrayBuffer data", async () => {
       server.use(
@@ -152,31 +95,13 @@ describe("AttachmentsService", () => {
       const buffer = new ArrayBuffer(4);
       new Uint8Array(buffer).set([1, 2, 3, 4]);
 
-      const result = await service.create({
-        filename: "test.bin",
-        contentType: "application/octet-stream",
-        data: buffer,
-      });
-
-      expect(result.attachableSgid).toBe("buffer-sgid");
-    });
-
-    it("should work with Blob data", async () => {
-      server.use(
-        http.post(`${BASE_URL}/attachments.json`, () => {
-          return HttpResponse.json({ attachable_sgid: "blob-sgid" });
-        })
+      const result = await service.create(
+        buffer,
+        "application/octet-stream",
+        "test.bin"
       );
 
-      const blob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "image/png" });
-
-      const result = await service.create({
-        filename: "image.png",
-        contentType: "image/png",
-        data: blob,
-      });
-
-      expect(result.attachableSgid).toBe("blob-sgid");
+      expect(result.attachable_sgid).toBe("buffer-sgid");
     });
   });
 });

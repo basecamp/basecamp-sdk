@@ -1,5 +1,8 @@
 /**
- * Tests for the TemplatesService
+ * Tests for the TemplatesService (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -109,11 +112,7 @@ describe("TemplatesService", () => {
       expect(template.name).toBe("New Template");
     });
 
-    it("should throw validation error for missing name", async () => {
-      await expect(
-        client.templates.create({ name: "" })
-      ).rejects.toThrow("Template name is required");
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("update", () => {
@@ -140,11 +139,7 @@ describe("TemplatesService", () => {
       expect(template.name).toBe("Updated Template");
     });
 
-    it("should throw validation error for missing name", async () => {
-      await expect(
-        client.templates.update(123, { name: "" })
-      ).rejects.toThrow("Template name is required");
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("delete", () => {
@@ -189,11 +184,7 @@ describe("TemplatesService", () => {
       expect(construction.status).toBe("pending");
     });
 
-    it("should throw validation error for missing project name", async () => {
-      await expect(
-        client.templates.createProject(123, { name: "" })
-      ).rejects.toThrow("Project name is required");
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("getConstruction", () => {

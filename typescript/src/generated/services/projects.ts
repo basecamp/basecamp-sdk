@@ -1,21 +1,67 @@
 /**
- * Service for Projects operations
+ * Projects service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Project entity from the Basecamp API. */
+export type Project = components["schemas"]["Project"];
+
 /**
- * Service for Projects operations
+ * Options for list.
+ */
+export interface ListProjectOptions {
+  /** active|archived|trashed */
+  status?: string;
+}
+
+/**
+ * Request parameters for create.
+ */
+export interface CreateProjectRequest {
+  /** name */
+  name: string;
+  /** description */
+  description?: string;
+}
+
+/**
+ * Request parameters for update.
+ */
+export interface UpdateProjectRequest {
+  /** name */
+  name: string;
+  /** description */
+  description?: string;
+  /** invite|employee|team */
+  admissions?: string;
+  /** schedule attributes */
+  scheduleAttributes?: components["schemas"]["ScheduleAttributes"];
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Projects operations.
  */
 export class ProjectsService extends BaseService {
 
   /**
    * List projects (active by default; optionally archived/trashed)
+   * @param options - Optional parameters
+   * @returns Array of Project
    */
-  async list(options?: { status?: string }): Promise<components["schemas"]["ListProjectsResponseContent"]> {
+  async list(options?: ListProjectOptions): Promise<Project[]> {
     const response = await this.request(
       {
         service: "Projects",
@@ -35,8 +81,15 @@ export class ProjectsService extends BaseService {
 
   /**
    * Create a new project
+   * @param req - Request parameters
+   * @returns The Project
+   *
+   * @example
+   * ```ts
+   * const result = await client.projects.create({ ... });
+   * ```
    */
-  async create(req: components["schemas"]["CreateProjectRequestContent"]): Promise<components["schemas"]["CreateProjectResponseContent"]> {
+  async create(req: CreateProjectRequest): Promise<Project> {
     const response = await this.request(
       {
         service: "Projects",
@@ -46,7 +99,7 @@ export class ProjectsService extends BaseService {
       },
       () =>
         this.client.POST("/projects.json", {
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -54,8 +107,10 @@ export class ProjectsService extends BaseService {
 
   /**
    * Get a single project by id
+   * @param projectId - The project ID
+   * @returns The Project
    */
-  async get(projectId: number): Promise<components["schemas"]["GetProjectResponseContent"]> {
+  async get(projectId: number): Promise<Project> {
     const response = await this.request(
       {
         service: "Projects",
@@ -76,8 +131,11 @@ export class ProjectsService extends BaseService {
 
   /**
    * Update an existing project
+   * @param projectId - The project ID
+   * @param req - Request parameters
+   * @returns The Project
    */
-  async update(projectId: number, req: components["schemas"]["UpdateProjectRequestContent"]): Promise<components["schemas"]["UpdateProjectResponseContent"]> {
+  async update(projectId: number, req: UpdateProjectRequest): Promise<Project> {
     const response = await this.request(
       {
         service: "Projects",
@@ -91,7 +149,12 @@ export class ProjectsService extends BaseService {
           params: {
             path: { projectId },
           },
-          body: req,
+          body: {
+            name: req.name,
+            description: req.description,
+            admissions: req.admissions,
+            schedule_attributes: req.scheduleAttributes,
+          },
         })
     );
     return response;
@@ -99,6 +162,8 @@ export class ProjectsService extends BaseService {
 
   /**
    * Trash a project (returns 204 No Content)
+   * @param projectId - The project ID
+   * @returns void
    */
   async trash(projectId: number): Promise<void> {
     await this.request(

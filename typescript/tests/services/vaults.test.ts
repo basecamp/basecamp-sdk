@@ -1,10 +1,13 @@
 /**
- * Tests for the Vaults service
+ * Tests for the Vaults service (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
-import { VaultsService } from "../../src/services/vaults.js";
+import type { VaultsService } from "../../src/generated/services/vaults.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
 
@@ -132,16 +135,7 @@ describe("VaultsService", () => {
       expect(capturedBody?.title).toBe("My New Folder");
     });
 
-    it("should throw validation error when title is missing", async () => {
-      await expect(service.create(123, 1001, { title: "" })).rejects.toThrow(BasecampError);
-
-      try {
-        await service.create(123, 1001, { title: "" });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("title");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("update", () => {

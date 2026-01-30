@@ -1,21 +1,59 @@
 /**
- * Service for Webhooks operations
+ * Webhooks service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Webhook entity from the Basecamp API. */
+export type Webhook = components["schemas"]["Webhook"];
+
 /**
- * Service for Webhooks operations
+ * Request parameters for create.
+ */
+export interface CreateWebhookRequest {
+  /** payload url */
+  payloadUrl: string;
+  /** types */
+  types: string[];
+  /** active */
+  active?: boolean;
+}
+
+/**
+ * Request parameters for update.
+ */
+export interface UpdateWebhookRequest {
+  /** payload url */
+  payloadUrl?: string;
+  /** types */
+  types?: string[];
+  /** active */
+  active?: boolean;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Webhooks operations.
  */
 export class WebhooksService extends BaseService {
 
   /**
    * List all webhooks for a project
+   * @param projectId - The project ID
+   * @returns Array of Webhook
    */
-  async list(projectId: number): Promise<components["schemas"]["ListWebhooksResponseContent"]> {
+  async list(projectId: number): Promise<Webhook[]> {
     const response = await this.request(
       {
         service: "Webhooks",
@@ -36,8 +74,16 @@ export class WebhooksService extends BaseService {
 
   /**
    * Create a new webhook for a project
+   * @param projectId - The project ID
+   * @param req - Request parameters
+   * @returns The Webhook
+   *
+   * @example
+   * ```ts
+   * const result = await client.webhooks.create(123, { ... });
+   * ```
    */
-  async create(projectId: number, req: components["schemas"]["CreateWebhookRequestContent"]): Promise<components["schemas"]["CreateWebhookResponseContent"]> {
+  async create(projectId: number, req: CreateWebhookRequest): Promise<Webhook> {
     const response = await this.request(
       {
         service: "Webhooks",
@@ -51,7 +97,11 @@ export class WebhooksService extends BaseService {
           params: {
             path: { projectId },
           },
-          body: req,
+          body: {
+            payload_url: req.payloadUrl,
+            types: req.types,
+            active: req.active,
+          },
         })
     );
     return response;
@@ -59,8 +109,11 @@ export class WebhooksService extends BaseService {
 
   /**
    * Get a single webhook by id
+   * @param projectId - The project ID
+   * @param webhookId - The webhook ID
+   * @returns The Webhook
    */
-  async get(projectId: number, webhookId: number): Promise<components["schemas"]["GetWebhookResponseContent"]> {
+  async get(projectId: number, webhookId: number): Promise<Webhook> {
     const response = await this.request(
       {
         service: "Webhooks",
@@ -82,8 +135,12 @@ export class WebhooksService extends BaseService {
 
   /**
    * Update an existing webhook
+   * @param projectId - The project ID
+   * @param webhookId - The webhook ID
+   * @param req - Request parameters
+   * @returns The Webhook
    */
-  async update(projectId: number, webhookId: number, req: components["schemas"]["UpdateWebhookRequestContent"]): Promise<components["schemas"]["UpdateWebhookResponseContent"]> {
+  async update(projectId: number, webhookId: number, req: UpdateWebhookRequest): Promise<Webhook> {
     const response = await this.request(
       {
         service: "Webhooks",
@@ -98,7 +155,11 @@ export class WebhooksService extends BaseService {
           params: {
             path: { projectId, webhookId },
           },
-          body: req,
+          body: {
+            payload_url: req.payloadUrl,
+            types: req.types,
+            active: req.active,
+          },
         })
     );
     return response;
@@ -106,6 +167,9 @@ export class WebhooksService extends BaseService {
 
   /**
    * Delete a webhook
+   * @param projectId - The project ID
+   * @param webhookId - The webhook ID
+   * @returns void
    */
   async delete(projectId: number, webhookId: number): Promise<void> {
     await this.request(

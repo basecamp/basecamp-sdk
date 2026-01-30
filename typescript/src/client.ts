@@ -16,44 +16,51 @@ import { BasecampError } from "./errors.js";
 const require = createRequire(import.meta.url);
 const metadata = require("./generated/metadata.json") as OperationMetadata;
 
-// Services
-import { ProjectsService } from "./services/projects.js";
-import { TodosService } from "./services/todos.js";
-import { TodolistsService } from "./services/todolists.js";
-import { TodosetsService } from "./services/todosets.js";
-import { PeopleService } from "./services/people.js";
+// ============================================================================
+// Services - Generated from OpenAPI spec (spec-driven, not hand-written)
+// ============================================================================
+import { ProjectsService } from "./generated/services/projects.js";
+import { TodosService } from "./generated/services/todos.js";
+import { TodolistsService } from "./generated/services/todolists.js";
+import { TodosetsService } from "./generated/services/todosets.js";
+import { PeopleService } from "./generated/services/people.js";
+import { MessagesService } from "./generated/services/messages.js";
+import { CommentsService } from "./generated/services/comments.js";
+import { CampfiresService } from "./generated/services/campfires.js";
+import { CardTablesService } from "./generated/services/card-tables.js";
+import { CardsService } from "./generated/services/cards.js";
+import { CardColumnsService } from "./generated/services/card-columns.js";
+import { CardStepsService } from "./generated/services/card-steps.js";
+import { MessageBoardsService } from "./generated/services/message-boards.js";
+import { MessageTypesService } from "./generated/services/message-types.js";
+import { ForwardsService } from "./generated/services/forwards.js";
+import { CheckinsService } from "./generated/services/checkins.js";
+import { ClientApprovalsService } from "./generated/services/client-approvals.js";
+import { ClientCorrespondencesService } from "./generated/services/client-correspondences.js";
+import { ClientRepliesService } from "./generated/services/client-replies.js";
+import { WebhooksService } from "./generated/services/webhooks.js";
+import { SubscriptionsService } from "./generated/services/subscriptions.js";
+import { AttachmentsService } from "./generated/services/attachments.js";
+import { VaultsService } from "./generated/services/vaults.js";
+import { DocumentsService } from "./generated/services/documents.js";
+import { UploadsService } from "./generated/services/uploads.js";
+import { SchedulesService } from "./generated/services/schedules.js";
+import { EventsService } from "./generated/services/events.js";
+import { RecordingsService } from "./generated/services/recordings.js";
+import { SearchService } from "./generated/services/search.js";
+import { ReportsService } from "./generated/services/reports.js";
+import { TemplatesService } from "./generated/services/templates.js";
+import { LineupService } from "./generated/services/lineup.js";
+import { TodolistGroupsService } from "./generated/services/todolist-groups.js";
+import { ToolsService } from "./generated/services/tools.js";
+import { TimesheetsService } from "./generated/services/timesheets.js";
+import { TimelineService } from "./generated/services/timeline.js";
+import { ClientVisibilityService } from "./generated/services/client-visibility.js";
+
+// ============================================================================
+// Services - Hand-written (not spec-driven, e.g., OAuth flows)
+// ============================================================================
 import { AuthorizationService } from "./services/authorization.js";
-import { MessagesService } from "./services/messages.js";
-import { CommentsService } from "./services/comments.js";
-import { CampfiresService } from "./services/campfires.js";
-import {
-  CardTablesService,
-  CardsService,
-  CardColumnsService,
-  CardStepsService,
-} from "./services/cards.js";
-import { MessageBoardsService } from "./services/message-boards.js";
-import { MessageTypesService } from "./services/message-types.js";
-import { ForwardsService } from "./services/forwards.js";
-import { CheckinsService } from "./services/checkins.js";
-import { ClientApprovalsService } from "./services/client-approvals.js";
-import { ClientCorrespondencesService } from "./services/client-correspondences.js";
-import { ClientRepliesService } from "./services/client-replies.js";
-import { WebhooksService } from "./services/webhooks.js";
-import { SubscriptionsService } from "./services/subscriptions.js";
-import { AttachmentsService } from "./services/attachments.js";
-import { VaultsService } from "./services/vaults.js";
-import { DocumentsService } from "./services/documents.js";
-import { UploadsService } from "./services/uploads.js";
-import { SchedulesService } from "./services/schedules.js";
-import { EventsService } from "./services/events.js";
-import { RecordingsService } from "./services/recordings.js";
-import { SearchService } from "./services/search.js";
-import { ReportsService } from "./services/reports.js";
-import { TemplatesService } from "./services/templates.js";
-import { LineupService } from "./services/lineup.js";
-import { TodolistGroupsService } from "./services/todolistGroups.js";
-import { ToolsService } from "./services/tools.js";
 
 // Re-export types for consumer convenience
 export type { paths };
@@ -148,6 +155,12 @@ export interface BasecampClient extends RawClient {
   readonly todolistGroups: TodolistGroupsService;
   /** Tools service - manage project dock tools */
   readonly tools: ToolsService;
+  /** Timesheets service - get timesheet data */
+  readonly timesheets: TimesheetsService;
+  /** Timeline service - get project timeline */
+  readonly timeline: TimelineService;
+  /** Client visibility service - manage client visibility */
+  readonly clientVisibility: ClientVisibilityService;
 }
 
 /**
@@ -306,6 +319,9 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("lineup", () => new LineupService(client, hooks));
   defineService("todolistGroups", () => new TodolistGroupsService(client, hooks));
   defineService("tools", () => new ToolsService(client, hooks));
+  defineService("timesheets", () => new TimesheetsService(client, hooks));
+  defineService("timeline", () => new TimelineService(client, hooks));
+  defineService("clientVisibility", () => new ClientVisibilityService(client, hooks));
 
   return enhancedClient;
 }

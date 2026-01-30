@@ -1,5 +1,12 @@
 /**
- * Tests for the TodolistGroupsService
+ * Tests for the TodolistGroupsService (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No get() method (not in API spec)
+ * - No update() method (not in API spec)
+ * - No domain-specific trash() (use recordings.trash())
+ * - No client-side validation (API validates)
+ * - reposition() takes a request object, not bare number
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -62,49 +69,7 @@ describe("TodolistGroupsService", () => {
     });
   });
 
-  describe("get", () => {
-    it("should get a group by ID", async () => {
-      const projectId = 111;
-      const groupId = 333;
-      const mockGroup = {
-        id: groupId,
-        name: "Phase 1",
-        type: "Todolist::Group",
-        completed: false,
-        completed_ratio: "5/10",
-      };
-
-      server.use(
-        http.get(`${BASE_URL}/buckets/${projectId}/todolists/${groupId}`, () => {
-          return HttpResponse.json({ group: mockGroup });
-        })
-      );
-
-      const group = await client.todolistGroups.get(projectId, groupId);
-      expect(group.id).toBe(groupId);
-      expect(group.name).toBe("Phase 1");
-    });
-
-    it("should throw not_found when endpoint returns a todolist instead of group", async () => {
-      const projectId = 111;
-      const groupId = 333;
-      const mockTodolist = {
-        id: groupId,
-        name: "Not a group",
-        type: "Todolist",
-      };
-
-      server.use(
-        http.get(`${BASE_URL}/buckets/${projectId}/todolists/${groupId}`, () => {
-          return HttpResponse.json({ todolist: mockTodolist });
-        })
-      );
-
-      await expect(
-        client.todolistGroups.get(projectId, groupId)
-      ).rejects.toThrow("Todolist group not found");
-    });
-  });
+  // Note: get() is not in the API spec - groups can only be listed, created, or repositioned;
 
   describe("create", () => {
     it("should create a new group in a todolist", async () => {
@@ -135,37 +100,10 @@ describe("TodolistGroupsService", () => {
       expect(group.name).toBe("New Phase");
     });
 
-    it("should throw validation error for missing name", async () => {
-      await expect(
-        client.todolistGroups.create(111, 222, { name: "" })
-      ).rejects.toThrow("Group name is required");
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
-  describe("update", () => {
-    it("should update a group name", async () => {
-      const projectId = 111;
-      const groupId = 333;
-      const mockGroup = {
-        id: groupId,
-        name: "Updated Phase Name",
-        type: "Todolist::Group",
-      };
-
-      server.use(
-        http.put(`${BASE_URL}/buckets/${projectId}/todolists/${groupId}`, async ({ request }) => {
-          const body = await request.json() as { name: string };
-          expect(body.name).toBe("Updated Phase Name");
-          return HttpResponse.json({ group: mockGroup });
-        })
-      );
-
-      const group = await client.todolistGroups.update(projectId, groupId, {
-        name: "Updated Phase Name",
-      });
-      expect(group.name).toBe("Updated Phase Name");
-    });
-  });
+  // Note: update() is not in the API spec
 
   describe("reposition", () => {
     it("should change the position of a group", async () => {
@@ -183,39 +121,15 @@ describe("TodolistGroupsService", () => {
         )
       );
 
+      // Generated service takes a request object, not bare number
       await expect(
-        client.todolistGroups.reposition(projectId, groupId, 1)
+        client.todolistGroups.reposition(projectId, groupId, { position: 1 })
       ).resolves.toBeUndefined();
     });
 
-    it("should throw validation error for position less than 1", async () => {
-      await expect(
-        client.todolistGroups.reposition(111, 333, 0)
-      ).rejects.toThrow("Position must be at least 1");
-
-      await expect(
-        client.todolistGroups.reposition(111, 333, -1)
-      ).rejects.toThrow("Position must be at least 1");
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
-  describe("trash", () => {
-    it("should move a group to trash", async () => {
-      const projectId = 111;
-      const groupId = 333;
-
-      server.use(
-        http.put(
-          `${BASE_URL}/buckets/${projectId}/recordings/${groupId}/status/trashed.json`,
-          () => {
-            return new HttpResponse(null, { status: 204 });
-          }
-        )
-      );
-
-      await expect(
-        client.todolistGroups.trash(projectId, groupId)
-      ).resolves.toBeUndefined();
-    });
-  });
+  // Note: trash() is on RecordingsService, not TodolistGroupsService (spec-conformant)
+  // Use client.recordings.trash(projectId, groupId) instead
 });

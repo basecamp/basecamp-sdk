@@ -1,21 +1,73 @@
 /**
- * Service for Templates operations
+ * Templates service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Template entity from the Basecamp API. */
+export type Template = components["schemas"]["Template"];
+
 /**
- * Service for Templates operations
+ * Options for list.
+ */
+export interface ListTemplateOptions {
+  /** active|archived|trashed */
+  status?: string;
+}
+
+/**
+ * Request parameters for create.
+ */
+export interface CreateTemplateRequest {
+  /** name */
+  name: string;
+  /** description */
+  description?: string;
+}
+
+/**
+ * Request parameters for update.
+ */
+export interface UpdateTemplateRequest {
+  /** name */
+  name?: string;
+  /** description */
+  description?: string;
+}
+
+/**
+ * Request parameters for createProject.
+ */
+export interface CreateProjectTemplateRequest {
+  /** name */
+  name: string;
+  /** description */
+  description?: string;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Templates operations.
  */
 export class TemplatesService extends BaseService {
 
   /**
    * List all templates visible to the current user
+   * @param options - Optional parameters
+   * @returns Array of Template
    */
-  async list(options?: { status?: string }): Promise<components["schemas"]["ListTemplatesResponseContent"]> {
+  async list(options?: ListTemplateOptions): Promise<Template[]> {
     const response = await this.request(
       {
         service: "Templates",
@@ -35,8 +87,15 @@ export class TemplatesService extends BaseService {
 
   /**
    * Create a new template
+   * @param req - Request parameters
+   * @returns The Template
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.create({ ... });
+   * ```
    */
-  async create(req: components["schemas"]["CreateTemplateRequestContent"]): Promise<components["schemas"]["CreateTemplateResponseContent"]> {
+  async create(req: CreateTemplateRequest): Promise<Template> {
     const response = await this.request(
       {
         service: "Templates",
@@ -46,7 +105,7 @@ export class TemplatesService extends BaseService {
       },
       () =>
         this.client.POST("/templates.json", {
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -54,8 +113,10 @@ export class TemplatesService extends BaseService {
 
   /**
    * Get a single template by id
+   * @param templateId - The template ID
+   * @returns The Template
    */
-  async get(templateId: number): Promise<components["schemas"]["GetTemplateResponseContent"]> {
+  async get(templateId: number): Promise<Template> {
     const response = await this.request(
       {
         service: "Templates",
@@ -76,8 +137,11 @@ export class TemplatesService extends BaseService {
 
   /**
    * Update an existing template
+   * @param templateId - The template ID
+   * @param req - Request parameters
+   * @returns The Template
    */
-  async update(templateId: number, req: components["schemas"]["UpdateTemplateRequestContent"]): Promise<components["schemas"]["UpdateTemplateResponseContent"]> {
+  async update(templateId: number, req: UpdateTemplateRequest): Promise<Template> {
     const response = await this.request(
       {
         service: "Templates",
@@ -91,7 +155,7 @@ export class TemplatesService extends BaseService {
           params: {
             path: { templateId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -99,6 +163,8 @@ export class TemplatesService extends BaseService {
 
   /**
    * Delete a template (trash it)
+   * @param templateId - The template ID
+   * @returns void
    */
   async delete(templateId: number): Promise<void> {
     await this.request(
@@ -120,8 +186,16 @@ export class TemplatesService extends BaseService {
 
   /**
    * Create a project from a template (asynchronous)
+   * @param templateId - The template ID
+   * @param req - Request parameters
+   * @returns The project_from_template
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.createProject(123, { ... });
+   * ```
    */
-  async createProject(templateId: number, req: components["schemas"]["CreateProjectFromTemplateRequestContent"]): Promise<components["schemas"]["CreateProjectFromTemplateResponseContent"]> {
+  async createProject(templateId: number, req: CreateProjectTemplateRequest): Promise<components["schemas"]["CreateProjectFromTemplateResponseContent"]> {
     const response = await this.request(
       {
         service: "Templates",
@@ -135,7 +209,7 @@ export class TemplatesService extends BaseService {
           params: {
             path: { templateId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -143,6 +217,9 @@ export class TemplatesService extends BaseService {
 
   /**
    * Get the status of a project construction
+   * @param templateId - The template ID
+   * @param constructionId - The construction ID
+   * @returns The project_construction
    */
   async getConstruction(templateId: number, constructionId: number): Promise<components["schemas"]["GetProjectConstructionResponseContent"]> {
     const response = await this.request(

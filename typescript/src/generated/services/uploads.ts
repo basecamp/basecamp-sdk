@@ -1,21 +1,58 @@
 /**
- * Service for Uploads operations
+ * Uploads service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Upload entity from the Basecamp API. */
+export type Upload = components["schemas"]["Upload"];
+
 /**
- * Service for Uploads operations
+ * Request parameters for update.
+ */
+export interface UpdateUploadRequest {
+  /** description */
+  description?: string;
+  /** base name */
+  baseName?: string;
+}
+
+/**
+ * Request parameters for create.
+ */
+export interface CreateUploadRequest {
+  /** attachable sgid */
+  attachableSgid: string;
+  /** description */
+  description?: string;
+  /** base name */
+  baseName?: string;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Uploads operations.
  */
 export class UploadsService extends BaseService {
 
   /**
    * Get a single upload by id
+   * @param projectId - The project ID
+   * @param uploadId - The upload ID
+   * @returns The Upload
    */
-  async get(projectId: number, uploadId: number): Promise<components["schemas"]["GetUploadResponseContent"]> {
+  async get(projectId: number, uploadId: number): Promise<Upload> {
     const response = await this.request(
       {
         service: "Uploads",
@@ -37,8 +74,12 @@ export class UploadsService extends BaseService {
 
   /**
    * Update an existing upload
+   * @param projectId - The project ID
+   * @param uploadId - The upload ID
+   * @param req - Request parameters
+   * @returns The Upload
    */
-  async update(projectId: number, uploadId: number, req: components["schemas"]["UpdateUploadRequestContent"]): Promise<components["schemas"]["UpdateUploadResponseContent"]> {
+  async update(projectId: number, uploadId: number, req: UpdateUploadRequest): Promise<Upload> {
     const response = await this.request(
       {
         service: "Uploads",
@@ -53,7 +94,10 @@ export class UploadsService extends BaseService {
           params: {
             path: { projectId, uploadId },
           },
-          body: req,
+          body: {
+            description: req.description,
+            base_name: req.baseName,
+          },
         })
     );
     return response;
@@ -61,8 +105,11 @@ export class UploadsService extends BaseService {
 
   /**
    * List versions of an upload
+   * @param projectId - The project ID
+   * @param uploadId - The upload ID
+   * @returns Array of Upload
    */
-  async listVersions(projectId: number, uploadId: number): Promise<components["schemas"]["ListUploadVersionsResponseContent"]> {
+  async listVersions(projectId: number, uploadId: number): Promise<Upload[]> {
     const response = await this.request(
       {
         service: "Uploads",
@@ -84,8 +131,11 @@ export class UploadsService extends BaseService {
 
   /**
    * List uploads in a vault
+   * @param projectId - The project ID
+   * @param vaultId - The vault ID
+   * @returns Array of Upload
    */
-  async list(projectId: number, vaultId: number): Promise<components["schemas"]["ListUploadsResponseContent"]> {
+  async list(projectId: number, vaultId: number): Promise<Upload[]> {
     const response = await this.request(
       {
         service: "Uploads",
@@ -107,8 +157,17 @@ export class UploadsService extends BaseService {
 
   /**
    * Create a new upload in a vault
+   * @param projectId - The project ID
+   * @param vaultId - The vault ID
+   * @param req - Request parameters
+   * @returns The Upload
+   *
+   * @example
+   * ```ts
+   * const result = await client.uploads.create(123, 123, { ... });
+   * ```
    */
-  async create(projectId: number, vaultId: number, req: components["schemas"]["CreateUploadRequestContent"]): Promise<components["schemas"]["CreateUploadResponseContent"]> {
+  async create(projectId: number, vaultId: number, req: CreateUploadRequest): Promise<Upload> {
     const response = await this.request(
       {
         service: "Uploads",
@@ -123,7 +182,11 @@ export class UploadsService extends BaseService {
           params: {
             path: { projectId, vaultId },
           },
-          body: req,
+          body: {
+            attachable_sgid: req.attachableSgid,
+            description: req.description,
+            base_name: req.baseName,
+          },
         })
     );
     return response;

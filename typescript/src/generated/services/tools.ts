@@ -1,21 +1,52 @@
 /**
- * Service for Tools operations
+ * Tools service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Tool entity from the Basecamp API. */
+export type Tool = components["schemas"]["Tool"];
+
 /**
- * Service for Tools operations
+ * Request parameters for update.
+ */
+export interface UpdateToolRequest {
+  /** title */
+  title: string;
+}
+
+/**
+ * Request parameters for reposition.
+ */
+export interface RepositionToolRequest {
+  /** position */
+  position: number;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Tools operations.
  */
 export class ToolsService extends BaseService {
 
   /**
    * Clone an existing tool to create a new one
+   * @param projectId - The project ID
+   * @param sourceToolId - The source tool ID
+   * @returns The Tool
    */
-  async clone(projectId: number, sourceToolId: number): Promise<components["schemas"]["CloneToolResponseContent"]> {
+  async clone(projectId: number, sourceToolId: number): Promise<Tool> {
     const response = await this.request(
       {
         service: "Tools",
@@ -37,8 +68,11 @@ export class ToolsService extends BaseService {
 
   /**
    * Get a dock tool by id
+   * @param projectId - The project ID
+   * @param toolId - The tool ID
+   * @returns The Tool
    */
-  async get(projectId: number, toolId: number): Promise<components["schemas"]["GetToolResponseContent"]> {
+  async get(projectId: number, toolId: number): Promise<Tool> {
     const response = await this.request(
       {
         service: "Tools",
@@ -60,8 +94,12 @@ export class ToolsService extends BaseService {
 
   /**
    * Update (rename) an existing tool
+   * @param projectId - The project ID
+   * @param toolId - The tool ID
+   * @param req - Request parameters
+   * @returns The Tool
    */
-  async update(projectId: number, toolId: number, req: components["schemas"]["UpdateToolRequestContent"]): Promise<components["schemas"]["UpdateToolResponseContent"]> {
+  async update(projectId: number, toolId: number, req: UpdateToolRequest): Promise<Tool> {
     const response = await this.request(
       {
         service: "Tools",
@@ -76,7 +114,7 @@ export class ToolsService extends BaseService {
           params: {
             path: { projectId, toolId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -84,6 +122,9 @@ export class ToolsService extends BaseService {
 
   /**
    * Delete a tool (trash it)
+   * @param projectId - The project ID
+   * @param toolId - The tool ID
+   * @returns void
    */
   async delete(projectId: number, toolId: number): Promise<void> {
     await this.request(
@@ -106,6 +147,9 @@ export class ToolsService extends BaseService {
 
   /**
    * Enable a tool (show it on the project dock)
+   * @param projectId - The project ID
+   * @param toolId - The tool ID
+   * @returns void
    */
   async enable(projectId: number, toolId: number): Promise<void> {
     await this.request(
@@ -128,8 +172,12 @@ export class ToolsService extends BaseService {
 
   /**
    * Reposition a tool on the project dock
+   * @param projectId - The project ID
+   * @param toolId - The tool ID
+   * @param req - Request parameters
+   * @returns void
    */
-  async reposition(projectId: number, toolId: number, req: components["schemas"]["RepositionToolRequestContent"]): Promise<void> {
+  async reposition(projectId: number, toolId: number, req: RepositionToolRequest): Promise<void> {
     await this.request(
       {
         service: "Tools",
@@ -144,13 +192,16 @@ export class ToolsService extends BaseService {
           params: {
             path: { projectId, toolId },
           },
-          body: req,
+          body: req as any,
         })
     );
   }
 
   /**
    * Disable a tool (hide it from the project dock)
+   * @param projectId - The project ID
+   * @param toolId - The tool ID
+   * @returns void
    */
   async disable(projectId: number, toolId: number): Promise<void> {
     await this.request(

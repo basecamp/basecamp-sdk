@@ -1,5 +1,8 @@
 /**
- * Tests for the SubscriptionsService class
+ * Tests for the SubscriptionsService class (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -167,27 +170,6 @@ describe("SubscriptionsService", () => {
       expect(subscription.count).toBe(2);
     });
 
-    it("should throw validation error when neither subscriptions nor unsubscriptions provided", async () => {
-      try {
-        await client.subscriptions.update(1, 100, {});
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
-
-    it("should throw validation error when both are empty arrays", async () => {
-      try {
-        await client.subscriptions.update(1, 100, {
-          subscriptions: [],
-          unsubscriptions: [],
-        });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 });

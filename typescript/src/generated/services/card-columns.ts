@@ -1,21 +1,76 @@
 /**
- * Service for CardColumns operations
+ * CardColumns service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** CardColumn entity from the Basecamp API. */
+export type CardColumn = components["schemas"]["CardColumn"];
+
 /**
- * Service for CardColumns operations
+ * Request parameters for update.
+ */
+export interface UpdateCardColumnRequest {
+  /** title */
+  title?: string;
+  /** description */
+  description?: string;
+}
+
+/**
+ * Request parameters for setColor.
+ */
+export interface SetColorCardColumnRequest {
+  /** Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown */
+  color: string;
+}
+
+/**
+ * Request parameters for create.
+ */
+export interface CreateCardColumnRequest {
+  /** title */
+  title: string;
+  /** description */
+  description?: string;
+}
+
+/**
+ * Request parameters for move.
+ */
+export interface MoveCardColumnRequest {
+  /** source id */
+  sourceId: number;
+  /** target id */
+  targetId: number;
+  /** position */
+  position?: number;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for CardColumns operations.
  */
 export class CardColumnsService extends BaseService {
 
   /**
    * Get a card column by ID
+   * @param projectId - The project ID
+   * @param columnId - The column ID
+   * @returns The CardColumn
    */
-  async get(projectId: number, columnId: number): Promise<components["schemas"]["GetCardColumnResponseContent"]> {
+  async get(projectId: number, columnId: number): Promise<CardColumn> {
     const response = await this.request(
       {
         service: "CardColumns",
@@ -37,8 +92,12 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Update an existing column
+   * @param projectId - The project ID
+   * @param columnId - The column ID
+   * @param req - Request parameters
+   * @returns The CardColumn
    */
-  async update(projectId: number, columnId: number, req: components["schemas"]["UpdateCardColumnRequestContent"]): Promise<components["schemas"]["UpdateCardColumnResponseContent"]> {
+  async update(projectId: number, columnId: number, req: UpdateCardColumnRequest): Promise<CardColumn> {
     const response = await this.request(
       {
         service: "CardColumns",
@@ -53,7 +112,7 @@ export class CardColumnsService extends BaseService {
           params: {
             path: { projectId, columnId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -61,8 +120,12 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Set the color of a column
+   * @param projectId - The project ID
+   * @param columnId - The column ID
+   * @param req - Request parameters
+   * @returns The CardColumn
    */
-  async setColor(projectId: number, columnId: number, req: components["schemas"]["SetCardColumnColorRequestContent"]): Promise<components["schemas"]["SetCardColumnColorResponseContent"]> {
+  async setColor(projectId: number, columnId: number, req: SetColorCardColumnRequest): Promise<CardColumn> {
     const response = await this.request(
       {
         service: "CardColumns",
@@ -77,7 +140,7 @@ export class CardColumnsService extends BaseService {
           params: {
             path: { projectId, columnId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -85,8 +148,11 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Enable on-hold section in a column
+   * @param projectId - The project ID
+   * @param columnId - The column ID
+   * @returns The CardColumn
    */
-  async enableOnHold(projectId: number, columnId: number): Promise<components["schemas"]["EnableCardColumnOnHoldResponseContent"]> {
+  async enableOnHold(projectId: number, columnId: number): Promise<CardColumn> {
     const response = await this.request(
       {
         service: "CardColumns",
@@ -108,8 +174,11 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Disable on-hold section in a column
+   * @param projectId - The project ID
+   * @param columnId - The column ID
+   * @returns The CardColumn
    */
-  async disableOnHold(projectId: number, columnId: number): Promise<components["schemas"]["DisableCardColumnOnHoldResponseContent"]> {
+  async disableOnHold(projectId: number, columnId: number): Promise<CardColumn> {
     const response = await this.request(
       {
         service: "CardColumns",
@@ -131,6 +200,9 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Subscribe to a card column (watch for changes)
+   * @param projectId - The project ID
+   * @param columnId - The column ID
+   * @returns void
    */
   async subscribeToColumn(projectId: number, columnId: number): Promise<void> {
     await this.request(
@@ -153,6 +225,9 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Unsubscribe from a card column (stop watching for changes)
+   * @param projectId - The project ID
+   * @param columnId - The column ID
+   * @returns void
    */
   async unsubscribeFromColumn(projectId: number, columnId: number): Promise<void> {
     await this.request(
@@ -175,8 +250,17 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Create a column in a card table
+   * @param projectId - The project ID
+   * @param cardTableId - The card table ID
+   * @param req - Request parameters
+   * @returns The CardColumn
+   *
+   * @example
+   * ```ts
+   * const result = await client.cardColumns.create(123, 123, { ... });
+   * ```
    */
-  async create(projectId: number, cardTableId: number, req: components["schemas"]["CreateCardColumnRequestContent"]): Promise<components["schemas"]["CreateCardColumnResponseContent"]> {
+  async create(projectId: number, cardTableId: number, req: CreateCardColumnRequest): Promise<CardColumn> {
     const response = await this.request(
       {
         service: "CardColumns",
@@ -191,7 +275,7 @@ export class CardColumnsService extends BaseService {
           params: {
             path: { projectId, cardTableId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -199,8 +283,12 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Move a column within a card table
+   * @param projectId - The project ID
+   * @param cardTableId - The card table ID
+   * @param req - Request parameters
+   * @returns void
    */
-  async move(projectId: number, cardTableId: number, req: components["schemas"]["MoveCardColumnRequestContent"]): Promise<void> {
+  async move(projectId: number, cardTableId: number, req: MoveCardColumnRequest): Promise<void> {
     await this.request(
       {
         service: "CardColumns",
@@ -215,7 +303,11 @@ export class CardColumnsService extends BaseService {
           params: {
             path: { projectId, cardTableId },
           },
-          body: req,
+          body: {
+            source_id: req.sourceId,
+            target_id: req.targetId,
+            position: req.position,
+          },
         })
     );
   }

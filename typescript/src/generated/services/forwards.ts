@@ -1,21 +1,48 @@
 /**
- * Service for Forwards operations
+ * Forwards service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Forward entity from the Basecamp API. */
+export type Forward = components["schemas"]["Forward"];
+/** ForwardReply entity from the Basecamp API. */
+export type ForwardReply = components["schemas"]["ForwardReply"];
+/** Inbox entity from the Basecamp API. */
+export type Inbox = components["schemas"]["Inbox"];
+
 /**
- * Service for Forwards operations
+ * Request parameters for createReply.
+ */
+export interface CreateReplyForwardRequest {
+  /** content */
+  content: string;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Forwards operations.
  */
 export class ForwardsService extends BaseService {
 
   /**
    * Get a forward by ID
+   * @param projectId - The project ID
+   * @param forwardId - The forward ID
+   * @returns The Forward
    */
-  async get(projectId: number, forwardId: number): Promise<components["schemas"]["GetForwardResponseContent"]> {
+  async get(projectId: number, forwardId: number): Promise<Forward> {
     const response = await this.request(
       {
         service: "Forwards",
@@ -37,8 +64,11 @@ export class ForwardsService extends BaseService {
 
   /**
    * List all replies to a forward
+   * @param projectId - The project ID
+   * @param forwardId - The forward ID
+   * @returns Array of ForwardReply
    */
-  async listReplies(projectId: number, forwardId: number): Promise<components["schemas"]["ListForwardRepliesResponseContent"]> {
+  async listReplies(projectId: number, forwardId: number): Promise<ForwardReply[]> {
     const response = await this.request(
       {
         service: "Forwards",
@@ -60,8 +90,17 @@ export class ForwardsService extends BaseService {
 
   /**
    * Create a reply to a forward
+   * @param projectId - The project ID
+   * @param forwardId - The forward ID
+   * @param req - Request parameters
+   * @returns The ForwardReply
+   *
+   * @example
+   * ```ts
+   * const result = await client.forwards.createReply(123, 123, { ... });
+   * ```
    */
-  async createReply(projectId: number, forwardId: number, req: components["schemas"]["CreateForwardReplyRequestContent"]): Promise<components["schemas"]["CreateForwardReplyResponseContent"]> {
+  async createReply(projectId: number, forwardId: number, req: CreateReplyForwardRequest): Promise<ForwardReply> {
     const response = await this.request(
       {
         service: "Forwards",
@@ -76,7 +115,7 @@ export class ForwardsService extends BaseService {
           params: {
             path: { projectId, forwardId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -84,8 +123,12 @@ export class ForwardsService extends BaseService {
 
   /**
    * Get a forward reply by ID
+   * @param projectId - The project ID
+   * @param forwardId - The forward ID
+   * @param replyId - The reply ID
+   * @returns The ForwardReply
    */
-  async getReply(projectId: number, forwardId: number, replyId: number): Promise<components["schemas"]["GetForwardReplyResponseContent"]> {
+  async getReply(projectId: number, forwardId: number, replyId: number): Promise<ForwardReply> {
     const response = await this.request(
       {
         service: "Forwards",
@@ -107,8 +150,11 @@ export class ForwardsService extends BaseService {
 
   /**
    * Get an inbox by ID
+   * @param projectId - The project ID
+   * @param inboxId - The inbox ID
+   * @returns The Inbox
    */
-  async getInbox(projectId: number, inboxId: number): Promise<components["schemas"]["GetInboxResponseContent"]> {
+  async getInbox(projectId: number, inboxId: number): Promise<Inbox> {
     const response = await this.request(
       {
         service: "Forwards",
@@ -130,8 +176,11 @@ export class ForwardsService extends BaseService {
 
   /**
    * List all forwards in an inbox
+   * @param projectId - The project ID
+   * @param inboxId - The inbox ID
+   * @returns Array of Forward
    */
-  async list(projectId: number, inboxId: number): Promise<components["schemas"]["ListForwardsResponseContent"]> {
+  async list(projectId: number, inboxId: number): Promise<Forward[]> {
     const response = await this.request(
       {
         service: "Forwards",

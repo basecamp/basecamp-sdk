@@ -1,5 +1,8 @@
 /**
- * Tests for the ForwardsService class
+ * Tests for the ForwardsService class (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -203,14 +206,6 @@ describe("ForwardsService", () => {
       expect(reply.content).toBe("<p>New reply content</p>");
     });
 
-    it("should throw validation error when content is missing", async () => {
-      try {
-        await client.forwards.createReply(1, 1, { content: "" });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 });

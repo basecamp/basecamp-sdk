@@ -1,21 +1,72 @@
 /**
- * Service for Cards operations
+ * Cards service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Card entity from the Basecamp API. */
+export type Card = components["schemas"]["Card"];
+
 /**
- * Service for Cards operations
+ * Request parameters for update.
+ */
+export interface UpdateCardRequest {
+  /** title */
+  title?: string;
+  /** content */
+  content?: string;
+  /** due on (YYYY-MM-DD) */
+  dueOn?: string;
+  /** assignee ids */
+  assigneeIds?: number[];
+}
+
+/**
+ * Request parameters for move.
+ */
+export interface MoveCardRequest {
+  /** column id */
+  columnId: number;
+}
+
+/**
+ * Request parameters for create.
+ */
+export interface CreateCardRequest {
+  /** title */
+  title: string;
+  /** content */
+  content?: string;
+  /** due on (YYYY-MM-DD) */
+  dueOn?: string;
+  /** notify */
+  notify?: boolean;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Cards operations.
  */
 export class CardsService extends BaseService {
 
   /**
    * Get a card by ID
+   * @param projectId - The project ID
+   * @param cardId - The card ID
+   * @returns The Card
    */
-  async get(projectId: number, cardId: number): Promise<components["schemas"]["GetCardResponseContent"]> {
+  async get(projectId: number, cardId: number): Promise<Card> {
     const response = await this.request(
       {
         service: "Cards",
@@ -37,8 +88,12 @@ export class CardsService extends BaseService {
 
   /**
    * Update an existing card
+   * @param projectId - The project ID
+   * @param cardId - The card ID
+   * @param req - Request parameters
+   * @returns The Card
    */
-  async update(projectId: number, cardId: number, req: components["schemas"]["UpdateCardRequestContent"]): Promise<components["schemas"]["UpdateCardResponseContent"]> {
+  async update(projectId: number, cardId: number, req: UpdateCardRequest): Promise<Card> {
     const response = await this.request(
       {
         service: "Cards",
@@ -53,7 +108,12 @@ export class CardsService extends BaseService {
           params: {
             path: { projectId, cardId },
           },
-          body: req,
+          body: {
+            title: req.title,
+            content: req.content,
+            due_on: req.dueOn,
+            assignee_ids: req.assigneeIds,
+          },
         })
     );
     return response;
@@ -61,8 +121,12 @@ export class CardsService extends BaseService {
 
   /**
    * Move a card to a different column
+   * @param projectId - The project ID
+   * @param cardId - The card ID
+   * @param req - Request parameters
+   * @returns void
    */
-  async move(projectId: number, cardId: number, req: components["schemas"]["MoveCardRequestContent"]): Promise<void> {
+  async move(projectId: number, cardId: number, req: MoveCardRequest): Promise<void> {
     await this.request(
       {
         service: "Cards",
@@ -77,15 +141,20 @@ export class CardsService extends BaseService {
           params: {
             path: { projectId, cardId },
           },
-          body: req,
+          body: {
+            column_id: req.columnId,
+          },
         })
     );
   }
 
   /**
    * List cards in a column
+   * @param projectId - The project ID
+   * @param columnId - The column ID
+   * @returns Array of Card
    */
-  async list(projectId: number, columnId: number): Promise<components["schemas"]["ListCardsResponseContent"]> {
+  async list(projectId: number, columnId: number): Promise<Card[]> {
     const response = await this.request(
       {
         service: "Cards",
@@ -107,8 +176,17 @@ export class CardsService extends BaseService {
 
   /**
    * Create a card in a column
+   * @param projectId - The project ID
+   * @param columnId - The column ID
+   * @param req - Request parameters
+   * @returns The Card
+   *
+   * @example
+   * ```ts
+   * const result = await client.cards.create(123, 123, { ... });
+   * ```
    */
-  async create(projectId: number, columnId: number, req: components["schemas"]["CreateCardRequestContent"]): Promise<components["schemas"]["CreateCardResponseContent"]> {
+  async create(projectId: number, columnId: number, req: CreateCardRequest): Promise<Card> {
     const response = await this.request(
       {
         service: "Cards",
@@ -123,7 +201,12 @@ export class CardsService extends BaseService {
           params: {
             path: { projectId, columnId },
           },
-          body: req,
+          body: {
+            title: req.title,
+            content: req.content,
+            due_on: req.dueOn,
+            notify: req.notify,
+          },
         })
     );
     return response;

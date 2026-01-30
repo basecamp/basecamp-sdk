@@ -1,21 +1,46 @@
 /**
- * Service for Subscriptions operations
+ * Subscriptions service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Subscription entity from the Basecamp API. */
+export type Subscription = components["schemas"]["Subscription"];
+
 /**
- * Service for Subscriptions operations
+ * Request parameters for update.
+ */
+export interface UpdateSubscriptionRequest {
+  /** subscriptions */
+  subscriptions?: number[];
+  /** unsubscriptions */
+  unsubscriptions?: number[];
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Subscriptions operations.
  */
 export class SubscriptionsService extends BaseService {
 
   /**
    * Get subscription information for a recording
+   * @param projectId - The project ID
+   * @param recordingId - The recording ID
+   * @returns The Subscription
    */
-  async get(projectId: number, recordingId: number): Promise<components["schemas"]["GetSubscriptionResponseContent"]> {
+  async get(projectId: number, recordingId: number): Promise<Subscription> {
     const response = await this.request(
       {
         service: "Subscriptions",
@@ -37,8 +62,11 @@ export class SubscriptionsService extends BaseService {
 
   /**
    * Subscribe the current user to a recording
+   * @param projectId - The project ID
+   * @param recordingId - The recording ID
+   * @returns The Subscription
    */
-  async subscribe(projectId: number, recordingId: number): Promise<components["schemas"]["SubscribeResponseContent"]> {
+  async subscribe(projectId: number, recordingId: number): Promise<Subscription> {
     const response = await this.request(
       {
         service: "Subscriptions",
@@ -60,8 +88,12 @@ export class SubscriptionsService extends BaseService {
 
   /**
    * Update subscriptions by adding or removing specific users
+   * @param projectId - The project ID
+   * @param recordingId - The recording ID
+   * @param req - Request parameters
+   * @returns The Subscription
    */
-  async update(projectId: number, recordingId: number, req: components["schemas"]["UpdateSubscriptionRequestContent"]): Promise<components["schemas"]["UpdateSubscriptionResponseContent"]> {
+  async update(projectId: number, recordingId: number, req: UpdateSubscriptionRequest): Promise<Subscription> {
     const response = await this.request(
       {
         service: "Subscriptions",
@@ -76,7 +108,7 @@ export class SubscriptionsService extends BaseService {
           params: {
             path: { projectId, recordingId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -84,6 +116,9 @@ export class SubscriptionsService extends BaseService {
 
   /**
    * Unsubscribe the current user from a recording
+   * @param projectId - The project ID
+   * @param recordingId - The recording ID
+   * @returns void
    */
   async unsubscribe(projectId: number, recordingId: number): Promise<void> {
     await this.request(

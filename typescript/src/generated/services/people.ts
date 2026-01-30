@@ -1,21 +1,46 @@
 /**
- * Service for People operations
+ * People service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Person entity from the Basecamp API. */
+export type Person = components["schemas"]["Person"];
+
 /**
- * Service for People operations
+ * Request parameters for updateProjectAccess.
+ */
+export interface UpdateProjectAccessPeopleRequest {
+  /** grant */
+  grant?: number[];
+  /** revoke */
+  revoke?: number[];
+  /** create */
+  create?: components["schemas"]["CreatePersonRequest"][];
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for People operations.
  */
 export class PeopleService extends BaseService {
 
   /**
    * List all account users who can be pinged
+   * @returns Array of Person
    */
-  async listPingable(): Promise<components["schemas"]["ListPingablePeopleResponseContent"]> {
+  async listPingable(): Promise<Person[]> {
     const response = await this.request(
       {
         service: "People",
@@ -32,8 +57,9 @@ export class PeopleService extends BaseService {
 
   /**
    * Get the current authenticated user's profile
+   * @returns The Person
    */
-  async myProfile(): Promise<components["schemas"]["GetMyProfileResponseContent"]> {
+  async me(): Promise<Person> {
     const response = await this.request(
       {
         service: "People",
@@ -50,8 +76,9 @@ export class PeopleService extends BaseService {
 
   /**
    * List all people visible to the current user
+   * @returns Array of Person
    */
-  async list(): Promise<components["schemas"]["ListPeopleResponseContent"]> {
+  async list(): Promise<Person[]> {
     const response = await this.request(
       {
         service: "People",
@@ -68,8 +95,10 @@ export class PeopleService extends BaseService {
 
   /**
    * Get a person by ID
+   * @param personId - The person ID
+   * @returns The Person
    */
-  async get(personId: number): Promise<components["schemas"]["GetPersonResponseContent"]> {
+  async get(personId: number): Promise<Person> {
     const response = await this.request(
       {
         service: "People",
@@ -90,8 +119,10 @@ export class PeopleService extends BaseService {
 
   /**
    * List all active people on a project
+   * @param projectId - The project ID
+   * @returns Array of Person
    */
-  async listForProject(projectId: number): Promise<components["schemas"]["ListProjectPeopleResponseContent"]> {
+  async listForProject(projectId: number): Promise<Person[]> {
     const response = await this.request(
       {
         service: "People",
@@ -112,8 +143,11 @@ export class PeopleService extends BaseService {
 
   /**
    * Update project access (grant/revoke/create people)
+   * @param projectId - The project ID
+   * @param req - Request parameters
+   * @returns The project_access
    */
-  async updateProjectAccess(projectId: number, req: components["schemas"]["UpdateProjectAccessRequestContent"]): Promise<components["schemas"]["UpdateProjectAccessResponseContent"]> {
+  async updateProjectAccess(projectId: number, req: UpdateProjectAccessPeopleRequest): Promise<components["schemas"]["UpdateProjectAccessResponseContent"]> {
     const response = await this.request(
       {
         service: "People",
@@ -127,7 +161,7 @@ export class PeopleService extends BaseService {
           params: {
             path: { projectId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -135,8 +169,9 @@ export class PeopleService extends BaseService {
 
   /**
    * List people who can be assigned todos
+   * @returns Array of Person
    */
-  async listAssignable(): Promise<components["schemas"]["ListAssignablePeopleResponseContent"]> {
+  async listAssignable(): Promise<Person[]> {
     const response = await this.request(
       {
         service: "People",

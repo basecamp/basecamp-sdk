@@ -1,21 +1,92 @@
 /**
- * Service for Checkins operations
+ * Checkins service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Answer entity from the Basecamp API. */
+export type Answer = components["schemas"]["QuestionAnswer"];
+/** Questionnaire entity from the Basecamp API. */
+export type Questionnaire = components["schemas"]["Questionnaire"];
+/** Question entity from the Basecamp API. */
+export type Question = components["schemas"]["Question"];
+/** Person entity from the Basecamp API. */
+export type Person = components["schemas"]["Person"];
+
 /**
- * Service for Checkins operations
+ * Request parameters for updateAnswer.
+ */
+export interface UpdateAnswerCheckinRequest {
+  /** content */
+  content: string;
+}
+
+/**
+ * Request parameters for createQuestion.
+ */
+export interface CreateQuestionCheckinRequest {
+  /** title */
+  title: string;
+  /** schedule */
+  schedule: components["schemas"]["QuestionSchedule"];
+}
+
+/**
+ * Request parameters for updateQuestion.
+ */
+export interface UpdateQuestionCheckinRequest {
+  /** title */
+  title?: string;
+  /** schedule */
+  schedule?: components["schemas"]["QuestionSchedule"];
+  /** paused */
+  paused?: boolean;
+}
+
+/**
+ * Request parameters for createAnswer.
+ */
+export interface CreateAnswerCheckinRequest {
+  /** content */
+  content: string;
+  /** group on (YYYY-MM-DD) */
+  groupOn?: string;
+}
+
+/**
+ * Request parameters for updateNotificationSettings.
+ */
+export interface UpdateNotificationSettingsCheckinRequest {
+  /** Notify when someone answers */
+  notifyOnAnswer?: boolean;
+  /** Include unanswered in digest */
+  digestIncludeUnanswered?: boolean;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Checkins operations.
  */
 export class CheckinsService extends BaseService {
 
   /**
    * Get a single answer by id
+   * @param projectId - The project ID
+   * @param answerId - The answer ID
+   * @returns The Answer
    */
-  async getAnswer(projectId: number, answerId: number): Promise<components["schemas"]["GetAnswerResponseContent"]> {
+  async getAnswer(projectId: number, answerId: number): Promise<Answer> {
     const response = await this.request(
       {
         service: "Checkins",
@@ -37,8 +108,12 @@ export class CheckinsService extends BaseService {
 
   /**
    * Update an existing answer
+   * @param projectId - The project ID
+   * @param answerId - The answer ID
+   * @param req - Request parameters
+   * @returns The Answer
    */
-  async updateAnswer(projectId: number, answerId: number, req: components["schemas"]["QuestionAnswerUpdatePayload"]): Promise<components["schemas"]["UpdateAnswerResponseContent"]> {
+  async updateAnswer(projectId: number, answerId: number, req: UpdateAnswerCheckinRequest): Promise<Answer> {
     const response = await this.request(
       {
         service: "Checkins",
@@ -53,7 +128,7 @@ export class CheckinsService extends BaseService {
           params: {
             path: { projectId, answerId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -61,8 +136,11 @@ export class CheckinsService extends BaseService {
 
   /**
    * Get a questionnaire (automatic check-ins container) by id
+   * @param projectId - The project ID
+   * @param questionnaireId - The questionnaire ID
+   * @returns The Questionnaire
    */
-  async getQuestionnaire(projectId: number, questionnaireId: number): Promise<components["schemas"]["GetQuestionnaireResponseContent"]> {
+  async getQuestionnaire(projectId: number, questionnaireId: number): Promise<Questionnaire> {
     const response = await this.request(
       {
         service: "Checkins",
@@ -84,8 +162,11 @@ export class CheckinsService extends BaseService {
 
   /**
    * List all questions in a questionnaire
+   * @param projectId - The project ID
+   * @param questionnaireId - The questionnaire ID
+   * @returns Array of Question
    */
-  async listQuestions(projectId: number, questionnaireId: number): Promise<components["schemas"]["ListQuestionsResponseContent"]> {
+  async listQuestions(projectId: number, questionnaireId: number): Promise<Question[]> {
     const response = await this.request(
       {
         service: "Checkins",
@@ -107,8 +188,17 @@ export class CheckinsService extends BaseService {
 
   /**
    * Create a new question in a questionnaire
+   * @param projectId - The project ID
+   * @param questionnaireId - The questionnaire ID
+   * @param req - Request parameters
+   * @returns The Question
+   *
+   * @example
+   * ```ts
+   * const result = await client.checkins.createQuestion(123, 123, { ... });
+   * ```
    */
-  async createQuestion(projectId: number, questionnaireId: number, req: components["schemas"]["CreateQuestionRequestContent"]): Promise<components["schemas"]["CreateQuestionResponseContent"]> {
+  async createQuestion(projectId: number, questionnaireId: number, req: CreateQuestionCheckinRequest): Promise<Question> {
     const response = await this.request(
       {
         service: "Checkins",
@@ -123,7 +213,7 @@ export class CheckinsService extends BaseService {
           params: {
             path: { projectId, questionnaireId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -131,8 +221,11 @@ export class CheckinsService extends BaseService {
 
   /**
    * Get a single question by id
+   * @param projectId - The project ID
+   * @param questionId - The question ID
+   * @returns The Question
    */
-  async getQuestion(projectId: number, questionId: number): Promise<components["schemas"]["GetQuestionResponseContent"]> {
+  async getQuestion(projectId: number, questionId: number): Promise<Question> {
     const response = await this.request(
       {
         service: "Checkins",
@@ -154,8 +247,12 @@ export class CheckinsService extends BaseService {
 
   /**
    * Update an existing question
+   * @param projectId - The project ID
+   * @param questionId - The question ID
+   * @param req - Request parameters
+   * @returns The Question
    */
-  async updateQuestion(projectId: number, questionId: number, req: components["schemas"]["UpdateQuestionRequestContent"]): Promise<components["schemas"]["UpdateQuestionResponseContent"]> {
+  async updateQuestion(projectId: number, questionId: number, req: UpdateQuestionCheckinRequest): Promise<Question> {
     const response = await this.request(
       {
         service: "Checkins",
@@ -170,7 +267,7 @@ export class CheckinsService extends BaseService {
           params: {
             path: { projectId, questionId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -178,8 +275,11 @@ export class CheckinsService extends BaseService {
 
   /**
    * List all answers for a question
+   * @param projectId - The project ID
+   * @param questionId - The question ID
+   * @returns Array of Answer
    */
-  async listAnswers(projectId: number, questionId: number): Promise<components["schemas"]["ListAnswersResponseContent"]> {
+  async listAnswers(projectId: number, questionId: number): Promise<Answer[]> {
     const response = await this.request(
       {
         service: "Checkins",
@@ -201,8 +301,17 @@ export class CheckinsService extends BaseService {
 
   /**
    * Create a new answer for a question
+   * @param projectId - The project ID
+   * @param questionId - The question ID
+   * @param req - Request parameters
+   * @returns The Answer
+   *
+   * @example
+   * ```ts
+   * const result = await client.checkins.createAnswer(123, 123, { ... });
+   * ```
    */
-  async createAnswer(projectId: number, questionId: number, req: components["schemas"]["QuestionAnswerPayload"]): Promise<components["schemas"]["CreateAnswerResponseContent"]> {
+  async createAnswer(projectId: number, questionId: number, req: CreateAnswerCheckinRequest): Promise<Answer> {
     const response = await this.request(
       {
         service: "Checkins",
@@ -217,7 +326,10 @@ export class CheckinsService extends BaseService {
           params: {
             path: { projectId, questionId },
           },
-          body: req,
+          body: {
+            content: req.content,
+            group_on: req.groupOn,
+          },
         })
     );
     return response;
@@ -225,8 +337,11 @@ export class CheckinsService extends BaseService {
 
   /**
    * List all people who have answered a question (answerers)
+   * @param projectId - The project ID
+   * @param questionId - The question ID
+   * @returns Array of Person
    */
-  async answerers(projectId: number, questionId: number): Promise<components["schemas"]["ListQuestionAnswerersResponseContent"]> {
+  async answerers(projectId: number, questionId: number): Promise<Person[]> {
     const response = await this.request(
       {
         service: "Checkins",
@@ -248,8 +363,12 @@ export class CheckinsService extends BaseService {
 
   /**
    * Get all answers from a specific person for a question
+   * @param projectId - The project ID
+   * @param questionId - The question ID
+   * @param personId - The person ID
+   * @returns Array of Answer
    */
-  async byPerson(projectId: number, questionId: number, personId: number): Promise<components["schemas"]["GetAnswersByPersonResponseContent"]> {
+  async byPerson(projectId: number, questionId: number, personId: number): Promise<Answer[]> {
     const response = await this.request(
       {
         service: "Checkins",
@@ -266,13 +385,17 @@ export class CheckinsService extends BaseService {
           },
         })
     );
-    return response;
+    return response ?? [];
   }
 
   /**
    * Update notification settings for a check-in question
+   * @param projectId - The project ID
+   * @param questionId - The question ID
+   * @param req - Request parameters
+   * @returns void
    */
-  async updateNotificationSettings(projectId: number, questionId: number, req: components["schemas"]["UpdateQuestionNotificationSettingsRequestContent"]): Promise<void> {
+  async updateNotificationSettings(projectId: number, questionId: number, req: UpdateNotificationSettingsCheckinRequest): Promise<void> {
     await this.request(
       {
         service: "Checkins",
@@ -287,13 +410,19 @@ export class CheckinsService extends BaseService {
           params: {
             path: { projectId, questionId },
           },
-          body: req,
+          body: {
+            notify_on_answer: req.notifyOnAnswer,
+            digest_include_unanswered: req.digestIncludeUnanswered,
+          },
         })
     );
   }
 
   /**
    * Pause a check-in question (stops sending reminders)
+   * @param projectId - The project ID
+   * @param questionId - The question ID
+   * @returns void
    */
   async pause(projectId: number, questionId: number): Promise<void> {
     await this.request(
@@ -316,6 +445,9 @@ export class CheckinsService extends BaseService {
 
   /**
    * Resume a paused check-in question (resumes sending reminders)
+   * @param projectId - The project ID
+   * @param questionId - The question ID
+   * @returns void
    */
   async resume(projectId: number, questionId: number): Promise<void> {
     await this.request(
@@ -338,6 +470,7 @@ export class CheckinsService extends BaseService {
 
   /**
    * Get pending check-in reminders for the current user
+   * @returns Array of results
    */
   async reminders(): Promise<components["schemas"]["GetQuestionRemindersResponseContent"]> {
     const response = await this.request(
@@ -351,6 +484,6 @@ export class CheckinsService extends BaseService {
         this.client.GET("/my/question_reminders.json", {
         })
     );
-    return response;
+    return response ?? [];
   }
 }

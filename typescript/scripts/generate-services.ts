@@ -4,11 +4,11 @@
  *
  * Usage: npx tsx scripts/generate-services.ts [--openapi ../openapi.json] [--output src/generated/services]
  *
- * This generator:
- * 1. Parses openapi.json
- * 2. Groups operations by tag
- * 3. Maps operationIds to method names
- * 4. Generates TypeScript service files
+ * This generator produces Go-SDK-quality output:
+ * 1. Type exports for response and request types
+ * 2. Documented interfaces for requests/options
+ * 3. Clean method signatures with proper types
+ * 4. Rich JSDoc documentation
  */
 
 import * as fs from "fs";
@@ -34,6 +34,7 @@ interface PathItem {
 interface Operation {
   operationId: string;
   description?: string;
+  summary?: string;
   tags?: string[];
   parameters?: Parameter[];
   requestBody?: RequestBody;
@@ -71,10 +72,12 @@ interface Response {
 interface Schema {
   type?: string;
   format?: string;
+  description?: string;
   $ref?: string;
   properties?: Record<string, Schema>;
   required?: string[];
   items?: Schema;
+  "x-go-type"?: string;
 }
 
 interface ParsedOperation {
@@ -85,20 +88,21 @@ interface ParsedOperation {
   description: string;
   pathParams: PathParam[];
   queryParams: QueryParam[];
-  bodySchema?: Schema;
+  bodySchemaRef?: string;
+  bodyProperties: BodyProperty[];
   bodyRequired: boolean;
   bodyContentType?: "json" | "octet-stream";
-  responseSchema?: Schema;
+  responseSchemaRef?: string;
   returnsArray: boolean;
   returnsVoid: boolean;
   isMutation: boolean;
   resourceType: string;
-  wrapperKey?: string;
 }
 
 interface PathParam {
   name: string;
   type: string;
+  description?: string;
 }
 
 interface QueryParam {
@@ -108,12 +112,27 @@ interface QueryParam {
   description?: string;
 }
 
+interface BodyProperty {
+  name: string;
+  type: string;
+  required: boolean;
+  description?: string;
+  formatHint?: string;
+}
+
 interface ServiceDefinition {
   name: string;
   className: string;
   description: string;
   operations: ParsedOperation[];
-  types: Set<string>;
+  types: Map<string, TypeDefinition>;
+}
+
+interface TypeDefinition {
+  name: string;
+  schemaRef: string;
+  description?: string;
+  isArray?: boolean;
 }
 
 // =============================================================================
@@ -122,7 +141,6 @@ interface ServiceDefinition {
 
 /**
  * Tag to service name mapping overrides.
- * By default, tag name is used directly.
  */
 const TAG_TO_SERVICE: Record<string, string> = {
   "Card Tables": "CardTables",
@@ -140,183 +158,68 @@ const TAG_TO_SERVICE: Record<string, string> = {
 };
 
 /**
- * Service split configuration.
- * Some tags map to multiple service classes.
+ * Service split configuration - some tags map to multiple service classes.
  */
 const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
   Campfire: {
     Campfires: [
-      "GetCampfire",
-      "ListCampfires",
-      "ListChatbots",
-      "CreateChatbot",
-      "GetChatbot",
-      "UpdateChatbot",
-      "DeleteChatbot",
-      "ListCampfireLines",
-      "CreateCampfireLine",
-      "GetCampfireLine",
-      "DeleteCampfireLine",
+      "GetCampfire", "ListCampfires",
+      "ListChatbots", "CreateChatbot", "GetChatbot", "UpdateChatbot", "DeleteChatbot",
+      "ListCampfireLines", "CreateCampfireLine", "GetCampfireLine", "DeleteCampfireLine",
     ],
   },
   "Card Tables": {
     CardTables: ["GetCardTable"],
-    Cards: [
-      "GetCard",
-      "UpdateCard",
-      "MoveCard",
-      "CreateCard",
-      "ListCards",
-    ],
+    Cards: ["GetCard", "UpdateCard", "MoveCard", "CreateCard", "ListCards"],
     CardColumns: [
-      "GetCardColumn",
-      "UpdateCardColumn",
-      "SetCardColumnColor",
-      "EnableCardColumnOnHold",
-      "DisableCardColumnOnHold",
-      "CreateCardColumn",
-      "MoveCardColumn",
-      "SubscribeToCardColumn",
-      "UnsubscribeFromCardColumn",
+      "GetCardColumn", "UpdateCardColumn", "SetCardColumnColor",
+      "EnableCardColumnOnHold", "DisableCardColumnOnHold",
+      "CreateCardColumn", "MoveCardColumn",
+      "SubscribeToCardColumn", "UnsubscribeFromCardColumn",
     ],
     CardSteps: [
-      "CreateCardStep",
-      "UpdateCardStep",
-      "CompleteCardStep",
-      "UncompleteCardStep",
-      "RepositionCardStep",
+      "CreateCardStep", "UpdateCardStep", "CompleteCardStep",
+      "UncompleteCardStep", "RepositionCardStep",
     ],
   },
   Files: {
     Attachments: ["CreateAttachment"],
-    Uploads: [
-      "GetUpload",
-      "UpdateUpload",
-      "ListUploads",
-      "CreateUpload",
-      "ListUploadVersions",
-    ],
-    Vaults: [
-      "GetVault",
-      "UpdateVault",
-      "ListVaults",
-      "CreateVault",
-    ],
-    Documents: [
-      "GetDocument",
-      "UpdateDocument",
-      "ListDocuments",
-      "CreateDocument",
-    ],
+    Uploads: ["GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions"],
+    Vaults: ["GetVault", "UpdateVault", "ListVaults", "CreateVault"],
+    Documents: ["GetDocument", "UpdateDocument", "ListDocuments", "CreateDocument"],
   },
   Automation: {
-    Tools: [
-      "GetTool",
-      "UpdateTool",
-      "DeleteTool",
-      "CloneTool",
-      "EnableTool",
-      "DisableTool",
-      "RepositionTool",
-    ],
-    Recordings: [
-      "GetRecording",
-      "ArchiveRecording",
-      "UnarchiveRecording",
-      "TrashRecording",
-      "ListRecordings",
-    ],
-    Webhooks: [
-      "ListWebhooks",
-      "CreateWebhook",
-      "GetWebhook",
-      "UpdateWebhook",
-      "DeleteWebhook",
-    ],
+    Tools: ["GetTool", "UpdateTool", "DeleteTool", "CloneTool", "EnableTool", "DisableTool", "RepositionTool"],
+    Recordings: ["GetRecording", "ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings"],
+    Webhooks: ["ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"],
     Events: ["ListEvents"],
-    Lineup: [
-      "CreateLineupMarker",
-      "UpdateLineupMarker",
-      "DeleteLineupMarker",
-    ],
+    Lineup: ["CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"],
     Search: ["Search", "GetSearchMetadata"],
     Templates: [
-      "ListTemplates",
-      "CreateTemplate",
-      "GetTemplate",
-      "UpdateTemplate",
-      "DeleteTemplate",
-      "CreateProjectFromTemplate",
-      "GetProjectConstruction",
+      "ListTemplates", "CreateTemplate", "GetTemplate", "UpdateTemplate",
+      "DeleteTemplate", "CreateProjectFromTemplate", "GetProjectConstruction",
     ],
     Checkins: [
-      "GetQuestionnaire",
-      "ListQuestions",
-      "CreateQuestion",
-      "GetQuestion",
-      "UpdateQuestion",
-      "ListAnswers",
-      "CreateAnswer",
-      "GetAnswer",
-      "UpdateAnswer",
+      "GetQuestionnaire", "ListQuestions", "CreateQuestion", "GetQuestion",
+      "UpdateQuestion", "ListAnswers", "CreateAnswer", "GetAnswer", "UpdateAnswer",
     ],
   },
   Messages: {
-    Messages: [
-      "GetMessage",
-      "UpdateMessage",
-      "CreateMessage",
-      "ListMessages",
-      "PinMessage",
-      "UnpinMessage",
-    ],
+    Messages: ["GetMessage", "UpdateMessage", "CreateMessage", "ListMessages", "PinMessage", "UnpinMessage"],
     MessageBoards: ["GetMessageBoard"],
-    MessageTypes: [
-      "ListMessageTypes",
-      "CreateMessageType",
-      "GetMessageType",
-      "UpdateMessageType",
-      "DeleteMessageType",
-    ],
-    Comments: [
-      "GetComment",
-      "UpdateComment",
-      "ListComments",
-      "CreateComment",
-    ],
+    MessageTypes: ["ListMessageTypes", "CreateMessageType", "GetMessageType", "UpdateMessageType", "DeleteMessageType"],
+    Comments: ["GetComment", "UpdateComment", "ListComments", "CreateComment"],
   },
   People: {
-    People: [
-      "GetMyProfile",
-      "ListPeople",
-      "GetPerson",
-      "ListProjectPeople",
-      "UpdateProjectAccess",
-      "ListPingablePeople",
-      "ListAssignablePeople",
-    ],
-    Subscriptions: [
-      "GetSubscription",
-      "Subscribe",
-      "Unsubscribe",
-      "UpdateSubscription",
-    ],
+    People: ["GetMyProfile", "ListPeople", "GetPerson", "ListProjectPeople", "UpdateProjectAccess", "ListPingablePeople", "ListAssignablePeople"],
+    Subscriptions: ["GetSubscription", "Subscribe", "Unsubscribe", "UpdateSubscription"],
   },
   Schedule: {
     Schedules: [
-      "GetSchedule",
-      "UpdateScheduleSettings",
-      "ListScheduleEntries",
-      "CreateScheduleEntry",
-      "GetScheduleEntry",
-      "UpdateScheduleEntry",
-      "GetScheduleEntryOccurrence",
+      "GetSchedule", "UpdateScheduleSettings", "ListScheduleEntries",
+      "CreateScheduleEntry", "GetScheduleEntry", "UpdateScheduleEntry", "GetScheduleEntryOccurrence",
     ],
-    Timesheets: [
-      "GetRecordingTimesheet",
-      "GetProjectTimesheet",
-      "GetTimesheetReport",
-    ],
+    Timesheets: ["GetRecordingTimesheet", "GetProjectTimesheet", "GetTimesheetReport"],
   },
   ClientFeatures: {
     ClientApprovals: ["ListClientApprovals", "GetClientApproval"],
@@ -325,55 +228,21 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
     ClientVisibility: ["SetClientVisibility"],
   },
   Todos: {
-    Todos: [
-      "ListTodos",
-      "CreateTodo",
-      "GetTodo",
-      "UpdateTodo",
-      "CompleteTodo",
-      "UncompleteTodo",
-      "TrashTodo",
-    ],
-    Todolists: [
-      "GetTodolistOrGroup",
-      "UpdateTodolistOrGroup",
-      "ListTodolists",
-      "CreateTodolist",
-    ],
+    Todos: ["ListTodos", "CreateTodo", "GetTodo", "UpdateTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
+    Todolists: ["GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist"],
     Todosets: ["GetTodoset"],
-    TodolistGroups: [
-      "ListTodolistGroups",
-      "CreateTodolistGroup",
-      "RepositionTodolistGroup",
-    ],
+    TodolistGroups: ["ListTodolistGroups", "CreateTodolistGroup", "RepositionTodolistGroup"],
   },
   Untagged: {
     Timeline: ["GetProjectTimeline"],
-    Reports: [
-      "GetProgressReport",
-      "GetUpcomingSchedule",
-      "GetAssignedTodos",
-      "GetOverdueTodos",
-      "GetPersonProgress",
-    ],
+    Reports: ["GetProgressReport", "GetUpcomingSchedule", "GetAssignedTodos", "GetOverdueTodos", "GetPersonProgress"],
     Checkins: [
-      "GetQuestionReminders",
-      "ListQuestionAnswerers",
-      "GetAnswersByPerson",
-      "UpdateQuestionNotificationSettings",
-      "PauseQuestion",
-      "ResumeQuestion",
+      "GetQuestionReminders", "ListQuestionAnswerers", "GetAnswersByPerson",
+      "UpdateQuestionNotificationSettings", "PauseQuestion", "ResumeQuestion",
     ],
-    Todos: [
-      "RepositionTodo",
-    ],
-    People: [
-      "ListAssignablePeople",
-    ],
-    CardColumns: [
-      "SubscribeToCardColumn",
-      "UnsubscribeFromCardColumn",
-    ],
+    Todos: ["RepositionTodo"],
+    People: ["ListAssignablePeople"],
+    CardColumns: ["SubscribeToCardColumn", "UnsubscribeFromCardColumn"],
   },
 };
 
@@ -410,7 +279,7 @@ const VERB_PATTERNS = [
  * Method name overrides for specific operationIds.
  */
 const METHOD_NAME_OVERRIDES: Record<string, string> = {
-  GetMyProfile: "myProfile",
+  GetMyProfile: "me",
   GetTodolistOrGroup: "get",
   UpdateTodolistOrGroup: "update",
   SetCardColumnColor: "setColor",
@@ -421,7 +290,6 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   UpdateCardStep: "update",
   CompleteCardStep: "complete",
   UncompleteCardStep: "uncomplete",
-  // Checkins - use specific names to avoid conflicts
   GetQuestionnaire: "getQuestionnaire",
   GetQuestion: "getQuestion",
   GetAnswer: "getAnswer",
@@ -437,28 +305,21 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   UpdateQuestionNotificationSettings: "updateNotificationSettings",
   PauseQuestion: "pause",
   ResumeQuestion: "resume",
-  // Search
   GetSearchMetadata: "metadata",
   Search: "search",
-  // Templates
   CreateProjectFromTemplate: "createProject",
   GetProjectConstruction: "getConstruction",
-  // Timesheets
   GetRecordingTimesheet: "forRecording",
   GetProjectTimesheet: "forProject",
   GetTimesheetReport: "report",
-  // Reports
   GetProgressReport: "progress",
   GetUpcomingSchedule: "upcoming",
   GetAssignedTodos: "assigned",
   GetOverdueTodos: "overdue",
   GetPersonProgress: "personProgress",
-  // Card columns
   SubscribeToCardColumn: "subscribeToColumn",
   UnsubscribeFromCardColumn: "unsubscribeFromColumn",
-  // Client features
   SetClientVisibility: "setVisibility",
-  // Campfires - use specific names to avoid conflicts between campfire, chatbots, and lines
   GetCampfire: "get",
   ListCampfires: "list",
   ListChatbots: "listChatbots",
@@ -470,44 +331,36 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   CreateCampfireLine: "createLine",
   GetCampfireLine: "getLine",
   DeleteCampfireLine: "deleteLine",
-  // Forwards - use specific names to avoid conflicts between forwards, replies, and inbox
   GetForward: "get",
   ListForwards: "list",
   GetForwardReply: "getReply",
   ListForwardReplies: "listReplies",
   CreateForwardReply: "createReply",
   GetInbox: "getInbox",
-  // Uploads - use specific names to avoid conflicts with versions
   GetUpload: "get",
   UpdateUpload: "update",
   ListUploads: "list",
   CreateUpload: "create",
   ListUploadVersions: "listVersions",
-  // Messages
   GetMessage: "get",
   UpdateMessage: "update",
   CreateMessage: "create",
   ListMessages: "list",
   PinMessage: "pin",
   UnpinMessage: "unpin",
-  // Message board
   GetMessageBoard: "get",
-  // Message types
   GetMessageType: "get",
   UpdateMessageType: "update",
   CreateMessageType: "create",
   ListMessageTypes: "list",
   DeleteMessageType: "delete",
-  // Comments
   GetComment: "get",
   UpdateComment: "update",
   CreateComment: "create",
   ListComments: "list",
-  // People
   ListProjectPeople: "listForProject",
   ListPingablePeople: "listPingable",
   ListAssignablePeople: "listAssignable",
-  // Schedules
   GetSchedule: "get",
   UpdateScheduleSettings: "updateSettings",
   GetScheduleEntry: "getEntry",
@@ -518,233 +371,175 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
 };
 
 /**
- * Response wrapper keys to unwrap.
+ * Maps actual OpenAPI schema names to friendly type names.
+ * Format: SchemaName -> [TypeAlias, kind]
+ * These are the actual entity schemas, not ResponseContent wrappers.
  */
-const RESPONSE_WRAPPER_KEYS: Record<string, string> = {
-  todo: "todo",
-  todos: "todos",
-  todolist: "todolist",
-  todolists: "todolists",
-  todoset: "todoset",
-  message: "message",
-  messages: "messages",
-  comment: "comment",
-  comments: "comments",
-  card: "card",
-  cards: "cards",
-  card_table: "card_table",
-  column: "column",
-  step: "step",
-  project: "project",
-  projects: "projects",
-  person: "person",
-  people: "people",
-  campfire: "campfire",
-  campfires: "campfires",
-  line: "line",
-  lines: "lines",
-  chatbot: "chatbot",
-  chatbots: "chatbots",
-  webhook: "webhook",
-  webhooks: "webhooks",
-  vault: "vault",
-  vaults: "vaults",
-  document: "document",
-  documents: "documents",
-  upload: "upload",
-  uploads: "uploads",
-  schedule: "schedule",
-  schedules: "schedules",
-  entry: "entry",
-  entries: "entries",
-  event: "event",
-  events: "events",
-  recording: "recording",
-  recordings: "recordings",
-  template: "template",
-  templates: "templates",
-  attachment: "attachment",
-  question: "question",
-  questions: "questions",
-  answer: "answer",
-  answers: "answers",
-  questionnaire: "questionnaire",
-  subscription: "subscription",
-  forward: "forward",
-  forwards: "forwards",
-  inbox: "inbox",
-  message_board: "message_board",
-  message_type: "message_type",
-  message_types: "message_types",
-  tool: "tool",
-  marker: "marker",
-  correspondence: "correspondence",
-  correspondences: "correspondences",
-  approval: "approval",
-  approvals: "approvals",
-  reply: "reply",
-  replies: "replies",
-  group: "group",
-  groups: "groups",
-  todolist_group: "todolist_group",
+const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> = {
+  // Core entity types (matching actual OpenAPI schema names)
+  Todo: ["Todo", "entity"],
+  Person: ["Person", "entity"],
+  Project: ["Project", "entity"],
+  Message: ["Message", "entity"],
+  Comment: ["Comment", "entity"],
+  Card: ["Card", "entity"],
+  CardTable: ["CardTable", "entity"],
+  CardColumn: ["CardColumn", "entity"],
+  CardStep: ["CardStep", "entity"],
+  Campfire: ["Campfire", "entity"],
+  CampfireLine: ["CampfireLine", "entity"],
+  Chatbot: ["Chatbot", "entity"],
+  Webhook: ["Webhook", "entity"],
+  Vault: ["Vault", "entity"],
+  Document: ["Document", "entity"],
+  Upload: ["Upload", "entity"],
+  Schedule: ["Schedule", "entity"],
+  ScheduleEntry: ["ScheduleEntry", "entity"],
+  Recording: ["Recording", "entity"],
+  Template: ["Template", "entity"],
+  Todolist: ["Todolist", "entity"],
+  Todoset: ["Todoset", "entity"],
+  TodolistGroup: ["TodolistGroup", "entity"],
+  Questionnaire: ["Questionnaire", "entity"],
+  Question: ["Question", "entity"],
+  QuestionAnswer: ["Answer", "entity"], // Schema is QuestionAnswer, type alias is Answer
+  Subscription: ["Subscription", "entity"],
+  Forward: ["Forward", "entity"],
+  ForwardReply: ["ForwardReply", "entity"],
+  Inbox: ["Inbox", "entity"],
+  MessageBoard: ["MessageBoard", "entity"],
+  MessageType: ["MessageType", "entity"],
+  Event: ["Event", "entity"],
+  Tool: ["Tool", "entity"],
+  LineupMarker: ["LineupMarker", "entity"],
+  ClientApproval: ["ClientApproval", "entity"],
+  ClientCorrespondence: ["ClientCorrespondence", "entity"],
+  ClientReply: ["ClientReply", "entity"],
 };
+
+// =============================================================================
+// Schema Utilities
+// =============================================================================
+
+let globalSchemas: Record<string, Schema> = {};
+
+function setSchemas(schemas: Record<string, Schema>) {
+  globalSchemas = schemas;
+}
+
+function resolveRef(ref: string): string {
+  return ref.split("/").pop() || "";
+}
+
+function resolveSchema(schemaOrRef: Schema): Schema | undefined {
+  if (schemaOrRef.$ref) {
+    const refName = resolveRef(schemaOrRef.$ref);
+    return globalSchemas[refName];
+  }
+  return schemaOrRef;
+}
+
+function getSchemaProperties(schemaRef: string): { properties: Record<string, Schema>; required: string[] } {
+  const schema = globalSchemas[schemaRef];
+  if (!schema) return { properties: {}, required: [] };
+  return {
+    properties: schema.properties || {},
+    required: schema.required || [],
+  };
+}
+
+function schemaToTsType(schema: Schema, forInterface = false): string {
+  if (schema.$ref) {
+    const refName = resolveRef(schema.$ref);
+    // For interface properties, use full component reference since we don't import all types
+    return forInterface ? `components["schemas"]["${refName}"]` : refName;
+  }
+  switch (schema.type) {
+    case "integer":
+      return "number";
+    case "boolean":
+      return "boolean";
+    case "array":
+      return schema.items ? `${schemaToTsType(schema.items, forInterface)}[]` : "unknown[]";
+    case "object":
+      return "Record<string, unknown>";
+    default:
+      return "string";
+  }
+}
+
+function getFormatHint(schema: Schema): string | undefined {
+  if (schema["x-go-type"] === "types.Date") return "YYYY-MM-DD";
+  if (schema["x-go-type"] === "time.Time" || schema["x-go-type"] === "types.DateTime") {
+    return "RFC3339 (e.g., 2024-12-15T09:00:00Z)";
+  }
+  if (schema.format === "date") return "YYYY-MM-DD";
+  if (schema.format === "date-time") return "RFC3339";
+  return undefined;
+}
 
 // =============================================================================
 // Parsing Functions
 // =============================================================================
 
-/**
- * Extracts method name from operationId.
- */
 function extractMethodName(operationId: string): string {
-  // Check for override first
   if (METHOD_NAME_OVERRIDES[operationId]) {
     return METHOD_NAME_OVERRIDES[operationId];
   }
 
-  // Find matching verb pattern
   for (const { prefix, method } of VERB_PATTERNS) {
     if (operationId.startsWith(prefix)) {
       const remainder = operationId.slice(prefix.length);
-      if (!remainder) {
-        return method;
-      }
-      // Handle compound names like "GetOverdueTodos" -> "overdueTodos"
-      // But simple ones like "GetTodo" -> "get"
+      if (!remainder) return method;
       const resource = remainder.charAt(0).toLowerCase() + remainder.slice(1);
-      // If the resource is just the entity type, return the verb
-      // Otherwise return the combined name
-      if (isSimpleResource(resource, operationId)) {
-        return method;
-      }
+      if (isSimpleResource(resource)) return method;
       return method === "get" ? resource : method + remainder;
     }
   }
 
-  // Fallback: just lowercase first letter
   return operationId.charAt(0).toLowerCase() + operationId.slice(1);
 }
 
-/**
- * Check if resource is a simple entity (should just use the verb).
- */
-function isSimpleResource(resource: string, operationId: string): boolean {
+function isSimpleResource(resource: string): boolean {
   const simpleResources = [
-    "todo",
-    "todos",
-    "todolist",
-    "todolists",
-    "todoset",
-    "message",
-    "messages",
-    "comment",
-    "comments",
-    "card",
-    "cards",
-    "cardtable",
-    "cardcolumn",
-    "cardstep",
-    "column",
-    "step",
-    "project",
-    "projects",
-    "person",
-    "people",
-    "campfire",
-    "campfires",
-    "chatbot",
-    "chatbots",
-    "webhook",
-    "webhooks",
-    "vault",
-    "vaults",
-    "document",
-    "documents",
-    "upload",
-    "uploads",
-    "schedule",
-    "scheduleentry",
-    "scheduleentries",
-    "event",
-    "events",
-    "recording",
-    "recordings",
-    "template",
-    "templates",
-    "attachment",
-    "question",
-    "questions",
-    "answer",
-    "answers",
-    "questionnaire",
-    "subscription",
-    "forward",
-    "forwards",
-    "inbox",
-    "messageboard",
-    "messagetype",
-    "messagetypes",
-    "tool",
-    "lineupmarker",
-    "clientapproval",
-    "clientapprovals",
-    "clientcorrespondence",
-    "clientcorrespondences",
-    "clientreply",
-    "clientreplies",
-    "forwardreply",
-    "forwardreplies",
-    "campfireline",
-    "campfirelines",
-    "todolistgroup",
-    "todolistgroups",
-    "todolistorgroup",
-    "uploadversions",
+    "todo", "todos", "todolist", "todolists", "todoset",
+    "message", "messages", "comment", "comments",
+    "card", "cards", "cardtable", "cardcolumn", "cardstep", "column", "step",
+    "project", "projects", "person", "people",
+    "campfire", "campfires", "chatbot", "chatbots",
+    "webhook", "webhooks", "vault", "vaults", "document", "documents",
+    "upload", "uploads", "schedule", "scheduleentry", "scheduleentries",
+    "event", "events", "recording", "recordings", "template", "templates",
+    "attachment", "question", "questions", "answer", "answers", "questionnaire",
+    "subscription", "forward", "forwards", "inbox", "messageboard",
+    "messagetype", "messagetypes", "tool", "lineupmarker",
+    "clientapproval", "clientapprovals", "clientcorrespondence", "clientcorrespondences",
+    "clientreply", "clientreplies", "forwardreply", "forwardreplies",
+    "campfireline", "campfirelines", "todolistgroup", "todolistgroups",
+    "todolistorgroup", "uploadversions",
   ];
   return simpleResources.includes(resource.toLowerCase());
 }
 
-/**
- * Extracts resource type from operationId.
- */
 function extractResourceType(operationId: string): string {
   for (const { prefix } of VERB_PATTERNS) {
     if (operationId.startsWith(prefix)) {
       const remainder = operationId.slice(prefix.length);
       if (!remainder) return "resource";
-      // Convert to snake_case
       const snakeCase = remainder
         .replace(/([A-Z])/g, "_$1")
         .toLowerCase()
         .replace(/^_/, "");
-      // Singularize: remove trailing 's' but not for words ending in 'ss' (progress, address, etc.)
       return snakeCase.replace(/([^s])s$/, "$1");
     }
   }
   return "resource";
 }
 
-/**
- * Resolves a $ref to the schema name.
- */
-function resolveRef(ref: string): string {
-  // #/components/schemas/Todo -> Todo
-  return ref.split("/").pop() || "";
-}
-
-/**
- * Converts OpenAPI path to TypeScript path template.
- * Removes {accountId} prefix since it's included in the baseUrl.
- * This matches the hand-written service patterns.
- */
 function convertPath(path: string): string {
-  // Remove /{accountId} prefix since baseUrl includes it
   return path.replace(/^\/{accountId}/, "");
 }
 
-/**
- * Determines if a response is void (no content).
- */
 function isVoidResponse(responses: Record<string, Response> | undefined): boolean {
   if (!responses) return true;
   const successResponse = responses["200"] || responses["201"] || responses["204"];
@@ -752,63 +547,26 @@ function isVoidResponse(responses: Record<string, Response> | undefined): boolea
   return !successResponse.content?.["application/json"];
 }
 
-/**
- * Determines if a response is an array.
- */
-function isArrayResponse(schema: Schema | undefined): boolean {
-  if (!schema) return false;
-  if (schema.type === "array") return true;
-  if (schema.$ref) {
-    // Will need to look up the schema
-    const refName = resolveRef(schema.$ref);
-    return refName.endsWith("ResponseContent") && refName.includes("List");
-  }
-  return false;
-}
-
-/**
- * Extracts wrapper key from response schema.
- */
-function extractWrapperKey(
-  schemaName: string,
-  schemas: Record<string, Schema>
-): string | undefined {
-  const schema = schemas[schemaName];
-  if (!schema?.properties) return undefined;
-
-  const keys = Object.keys(schema.properties);
-  if (keys.length === 1) {
-    const key = keys[0];
-    if (RESPONSE_WRAPPER_KEYS[key]) {
-      return key;
-    }
-  }
-  return undefined;
-}
-
-/**
- * Parses a single operation.
- */
 function parseOperation(
   path: string,
   method: string,
   operation: Operation,
-  schemas: Record<string, Schema>
 ): ParsedOperation {
   const httpMethod = method.toUpperCase() as "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   const operationId = operation.operationId;
   const methodName = extractMethodName(operationId);
-  const description = operation.description || `${methodName} operation`;
+  const description = operation.description || operation.summary || `${methodName} operation`;
 
-  // Extract path parameters (excluding accountId)
+  // Path parameters
   const pathParams: PathParam[] = (operation.parameters || [])
     .filter((p) => p.in === "path" && p.name !== "accountId")
     .map((p) => ({
       name: p.name,
       type: p.schema.type === "integer" ? "number" : "string",
+      description: p.description,
     }));
 
-  // Extract query parameters
+  // Query parameters
   const queryParams: QueryParam[] = (operation.parameters || [])
     .filter((p) => p.in === "query")
     .map((p) => ({
@@ -818,36 +576,52 @@ function parseOperation(
       description: p.description,
     }));
 
-  // Extract request body schema
-  let bodySchema: Schema | undefined;
+  // Request body
+  let bodySchemaRef: string | undefined;
+  let bodyProperties: BodyProperty[] = [];
   let bodyRequired = false;
   let bodyContentType: "json" | "octet-stream" | undefined;
+
   if (operation.requestBody?.content?.["application/json"]?.schema) {
-    bodySchema = operation.requestBody.content["application/json"].schema;
+    const schema = operation.requestBody.content["application/json"].schema;
     bodyRequired = operation.requestBody.required || false;
     bodyContentType = "json";
+    if (schema.$ref) {
+      bodySchemaRef = resolveRef(schema.$ref);
+      const { properties, required } = getSchemaProperties(bodySchemaRef);
+      bodyProperties = Object.entries(properties).map(([name, prop]) => ({
+        name,
+        type: schemaToTsType(prop, true), // forInterface=true to use full schema refs
+        required: required.includes(name),
+        description: prop.description,
+        formatHint: getFormatHint(prop),
+      }));
+    }
   } else if (operation.requestBody?.content?.["application/octet-stream"]?.schema) {
-    bodySchema = operation.requestBody.content["application/octet-stream"].schema;
     bodyRequired = operation.requestBody.required || false;
     bodyContentType = "octet-stream";
   }
 
-  // Extract response schema
-  let responseSchema: Schema | undefined;
-  let wrapperKey: string | undefined;
-  const successResponse =
-    operation.responses?.["200"] || operation.responses?.["201"];
+  // Response
+  let responseSchemaRef: string | undefined;
+  let returnsArray = false;
+  const successResponse = operation.responses?.["200"] || operation.responses?.["201"];
   if (successResponse?.content?.["application/json"]?.schema) {
-    responseSchema = successResponse.content["application/json"].schema;
-    if (responseSchema.$ref) {
-      const refName = resolveRef(responseSchema.$ref);
-      wrapperKey = extractWrapperKey(refName, schemas);
+    const schema = successResponse.content["application/json"].schema;
+    if (schema.$ref) {
+      responseSchemaRef = resolveRef(schema.$ref);
+      // Check if the referenced schema is an array type
+      const resolvedSchema = globalSchemas[responseSchemaRef];
+      if (resolvedSchema?.type === "array") {
+        returnsArray = true;
+      }
+    }
+    if (schema.type === "array") {
+      returnsArray = true;
     }
   }
 
   const returnsVoid = isVoidResponse(operation.responses);
-  const returnsArray =
-    !returnsVoid && (responseSchema?.type === "array" || isArrayResponse(responseSchema));
   const isMutation = httpMethod !== "GET";
   const resourceType = extractResourceType(operationId);
 
@@ -859,53 +633,20 @@ function parseOperation(
     description,
     pathParams,
     queryParams,
-    bodySchema,
+    bodySchemaRef,
+    bodyProperties,
     bodyRequired,
     bodyContentType,
-    responseSchema,
+    responseSchemaRef,
     returnsArray,
     returnsVoid,
     isMutation,
     resourceType,
-    wrapperKey,
   };
 }
 
-/**
- * Converts schema to TypeScript type.
- */
-function schemaToTsType(schema: Schema): string {
-  if (schema.$ref) {
-    return resolveRef(schema.$ref);
-  }
-  switch (schema.type) {
-    case "integer":
-      return "number";
-    case "boolean":
-      return "boolean";
-    case "array":
-      return schema.items ? `${schemaToTsType(schema.items)}[]` : "unknown[]";
-    case "object":
-      return "Record<string, unknown>";
-    default:
-      return "string";
-  }
-}
-
-/**
- * Groups operations into services.
- */
-function groupOperations(
-  spec: OpenAPISpec
-): Map<string, ServiceDefinition> {
+function groupOperations(spec: OpenAPISpec): Map<string, ServiceDefinition> {
   const services = new Map<string, ServiceDefinition>();
-
-  // Parse all operations first
-  const operations: Array<{
-    op: ParsedOperation;
-    tag: string;
-    operationId: string;
-  }> = [];
 
   for (const [path, pathItem] of Object.entries(spec.paths)) {
     for (const method of ["get", "post", "put", "patch", "delete"]) {
@@ -913,93 +654,123 @@ function groupOperations(
       if (!operation) continue;
 
       const tag = operation.tags?.[0] || "Untagged";
-      const parsed = parseOperation(path, method, operation, spec.components.schemas);
-      operations.push({ op: parsed, tag, operationId: operation.operationId });
-    }
-  }
+      const parsed = parseOperation(path, method, operation);
 
-  // Group into services
-  for (const { op, tag, operationId } of operations) {
-    // Determine which service this operation belongs to
-    let serviceName: string;
-
-    // Check if this tag has splits
-    if (SERVICE_SPLITS[tag]) {
-      // Find the service for this operationId
-      let found = false;
-      for (const [svc, opIds] of Object.entries(SERVICE_SPLITS[tag])) {
-        if (opIds.includes(operationId)) {
-          serviceName = svc;
-          found = true;
-          break;
+      // Determine service
+      let serviceName: string;
+      if (SERVICE_SPLITS[tag]) {
+        let found = false;
+        for (const [svc, opIds] of Object.entries(SERVICE_SPLITS[tag])) {
+          if (opIds.includes(operation.operationId)) {
+            serviceName = svc;
+            found = true;
+            break;
+          }
         }
-      }
-      if (!found) {
-        // Default to tag name
+        if (!found) {
+          serviceName = TAG_TO_SERVICE[tag] || tag.replace(/\s+/g, "");
+        }
+      } else {
         serviceName = TAG_TO_SERVICE[tag] || tag.replace(/\s+/g, "");
       }
-    } else {
-      serviceName = TAG_TO_SERVICE[tag] || tag.replace(/\s+/g, "");
-    }
 
-    if (!services.has(serviceName)) {
-      services.set(serviceName, {
-        name: serviceName,
-        className: `${serviceName}Service`,
-        description: `Service for ${serviceName} operations`,
-        operations: [],
-        types: new Set(),
-      });
-    }
+      if (!services.has(serviceName)) {
+        services.set(serviceName, {
+          name: serviceName,
+          className: `${serviceName}Service`,
+          description: `Service for ${serviceName} operations`,
+          operations: [],
+          types: new Map(),
+        });
+      }
 
-    services.get(serviceName)!.operations.push(op);
+      const service = services.get(serviceName)!;
+      service.operations.push(parsed);
+
+      // Collect types used by this service
+      if (parsed.responseSchemaRef) {
+        const entityName = getEntityTypeName(parsed.responseSchemaRef);
+        if (entityName) {
+          service.types.set(entityName, {
+            name: entityName,
+            schemaRef: parsed.responseSchemaRef,
+            isArray: parsed.returnsArray,
+          });
+        }
+      }
+    }
   }
 
   return services;
+}
+
+function getEntityTypeName(schemaRef: string): string | null {
+  // Direct entity reference - check if schema is in TYPE_ALIASES
+  if (TYPE_ALIASES[schemaRef]) {
+    return TYPE_ALIASES[schemaRef][0];
+  }
+
+  // For ResponseContent types, resolve to the underlying entity schema
+  const entitySchema = findUnderlyingEntitySchema(schemaRef);
+  if (entitySchema && TYPE_ALIASES[entitySchema]) {
+    return TYPE_ALIASES[entitySchema][0];
+  }
+
+  return null;
 }
 
 // =============================================================================
 // Code Generation
 // =============================================================================
 
-/**
- * Generates TypeScript code for a service.
- */
 function generateService(service: ServiceDefinition): string {
   const lines: string[] = [];
+  const serviceName = service.name;
 
   // File header
   lines.push(`/**`);
-  lines.push(` * ${service.description}`);
+  lines.push(` * ${serviceName} service for the Basecamp API.`);
   lines.push(` *`);
-  lines.push(` * @generated from OpenAPI spec`);
+  lines.push(` * @generated from OpenAPI spec - do not edit directly`);
   lines.push(` */`);
   lines.push(``);
   lines.push(`import { BaseService } from "../../services/base.js";`);
   lines.push(`import type { components } from "../schema.js";`);
   lines.push(``);
 
-  // Type exports (collect unique response types)
-  const types = new Set<string>();
-  for (const op of service.operations) {
-    if (op.responseSchema?.$ref) {
-      const refName = resolveRef(op.responseSchema.$ref);
-      // Get the inner type if it's a response content wrapper
-      if (refName.endsWith("ResponseContent")) {
-        types.add(refName);
-      }
-    }
+  // Type exports
+  lines.push(`// =============================================================================`);
+  lines.push(`// Types`);
+  lines.push(`// =============================================================================`);
+  lines.push(``);
+
+  // Collect all unique types needed
+  const typeExports = collectTypeExports(service);
+  for (const typeExport of typeExports) {
+    lines.push(typeExport);
+  }
+
+  // Request/Options interfaces
+  const requestInterfaces = generateRequestInterfaces(service);
+  if (requestInterfaces.length > 0) {
+    lines.push(``);
+    lines.push(...requestInterfaces);
   }
 
   // Service class
+  lines.push(``);
+  lines.push(`// =============================================================================`);
+  lines.push(`// Service`);
+  lines.push(`// =============================================================================`);
+  lines.push(``);
   lines.push(`/**`);
-  lines.push(` * ${service.description}`);
+  lines.push(` * Service for ${serviceName} operations.`);
   lines.push(` */`);
   lines.push(`export class ${service.className} extends BaseService {`);
 
   for (const op of service.operations) {
     lines.push(``);
-    lines.push(...generateMethod(op, service.name));
+    lines.push(...generateMethod(op, serviceName));
   }
 
   lines.push(`}`);
@@ -1007,25 +778,181 @@ function generateService(service: ServiceDefinition): string {
   return lines.join("\n");
 }
 
-/**
- * Generates method code for an operation.
- */
+function collectTypeExports(service: ServiceDefinition): string[] {
+  const exports: string[] = [];
+  const added = new Set<string>();
+
+  // Collect response types
+  for (const op of service.operations) {
+    if (op.responseSchemaRef && !op.returnsVoid) {
+      // Find the underlying entity schema (e.g., "Todo" from "GetTodoResponseContent")
+      const entitySchema = findUnderlyingEntitySchema(op.responseSchemaRef);
+      if (entitySchema && TYPE_ALIASES[entitySchema]) {
+        const [typeName] = TYPE_ALIASES[entitySchema];
+        if (!added.has(typeName)) {
+          exports.push(`/** ${typeName} entity from the Basecamp API. */`);
+          exports.push(`export type ${typeName} = components["schemas"]["${entitySchema}"];`);
+          added.add(typeName);
+        }
+      }
+    }
+  }
+
+  return exports;
+}
+
+function findUnderlyingEntitySchema(responseSchemaRef: string): string | null {
+  // ResponseContent types often alias entity types
+  const schema = globalSchemas[responseSchemaRef];
+  if (!schema) return null;
+
+  // Check if it's a direct $ref to a known entity
+  if (schema.$ref) {
+    const refName = resolveRef(schema.$ref);
+    // Only return if it's a known entity type
+    if (TYPE_ALIASES[refName]) {
+      return refName;
+    }
+  }
+
+  // If it's an array, get item type (only if it's a known entity)
+  if (schema.type === "array" && schema.items?.$ref) {
+    const refName = resolveRef(schema.items.$ref);
+    if (TYPE_ALIASES[refName]) {
+      return refName;
+    }
+  }
+
+  // Don't fall back to response schema - it may not be a true entity type
+  return null;
+}
+
+function generateRequestInterfaces(service: ServiceDefinition): string[] {
+  const lines: string[] = [];
+  const generated = new Set<string>();
+
+  for (const op of service.operations) {
+    // Generate request interfaces for create/update operations
+    if (op.bodySchemaRef && op.bodyProperties.length > 0) {
+      const interfaceName = `${capitalize(op.methodName)}${capitalize(service.name.replace(/s$/, ""))}Request`;
+      if (generated.has(interfaceName)) continue;
+      generated.add(interfaceName);
+
+      lines.push(`/**`);
+      lines.push(` * Request parameters for ${op.methodName}.`);
+      lines.push(` */`);
+      lines.push(`export interface ${interfaceName} {`);
+
+      for (const prop of op.bodyProperties) {
+        const optional = prop.required ? "" : "?";
+        const desc = prop.description || toHumanReadable(prop.name);
+        const format = prop.formatHint ? ` (${prop.formatHint})` : "";
+        lines.push(`  /** ${desc}${format} */`);
+        lines.push(`  ${toCamelCase(prop.name)}${optional}: ${mapPropertyType(prop.type)};`);
+      }
+
+      lines.push(`}`);
+      lines.push(``);
+    }
+
+    // Generate options interfaces for query params
+    const optionalQueryParams = op.queryParams.filter((q) => !q.required);
+    if (optionalQueryParams.length > 0) {
+      const interfaceName = `${capitalize(op.methodName)}${capitalize(service.name.replace(/s$/, ""))}Options`;
+      if (generated.has(interfaceName)) continue;
+      generated.add(interfaceName);
+
+      lines.push(`/**`);
+      lines.push(` * Options for ${op.methodName}.`);
+      lines.push(` */`);
+      lines.push(`export interface ${interfaceName} {`);
+
+      for (const param of optionalQueryParams) {
+        const desc = param.description || toHumanReadable(param.name);
+        lines.push(`  /** ${desc} */`);
+        lines.push(`  ${toCamelCase(param.name)}?: ${param.type};`);
+      }
+
+      lines.push(`}`);
+      lines.push(``);
+    }
+  }
+
+  return lines;
+}
+
+function mapPropertyType(type: string): string {
+  // Map schema types to cleaner TypeScript types
+  switch (type) {
+    case "Array":
+      return "number[]"; // Usually IDs
+    default:
+      return type;
+  }
+}
+
 function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   const lines: string[] = [];
+  const resourceName = serviceName.replace(/s$/, "");
 
-  // Method signature
-  const params = buildParams(op);
-  const returnType = buildReturnType(op);
+  // Build param string and types
+  const { paramString, hasOptions, hasRequest, requestInterfaceName, optionsInterfaceName } = buildMethodSignature(op, resourceName);
 
+  // Return type
+  const returnType = buildReturnType(op, serviceName);
+
+  // JSDoc
   lines.push(`  /**`);
   lines.push(`   * ${op.description.split("\n")[0]}`);
+
+  // @param tags
+  for (const p of op.pathParams) {
+    lines.push(`   * @param ${p.name} - The ${toHumanReadable(p.name)}`);
+  }
+  if (hasRequest) {
+    lines.push(`   * @param req - Request parameters`);
+  }
+  if (op.bodyContentType === "octet-stream") {
+    lines.push(`   * @param data - Binary file data to upload`);
+    lines.push(`   * @param contentType - MIME type of the file (e.g., "image/png", "application/pdf")`);
+  }
+  // Required query params
+  const requiredQueryParams = op.queryParams.filter((q) => q.required);
+  for (const q of requiredQueryParams) {
+    const desc = q.description || toHumanReadable(q.name);
+    lines.push(`   * @param ${toCamelCase(q.name)} - ${desc}`);
+  }
+  if (hasOptions) {
+    lines.push(`   * @param options - Optional parameters`);
+  }
+
+  // @returns
+  if (op.returnsVoid) {
+    lines.push(`   * @returns void`);
+  } else if (op.returnsArray) {
+    const entityType = getEntityTypeName(op.responseSchemaRef || "");
+    lines.push(`   * @returns Array of ${entityType || "results"}`);
+  } else {
+    const entityType = getEntityTypeName(op.responseSchemaRef || "");
+    lines.push(`   * @returns The ${entityType || op.resourceType}`);
+  }
+
+  // @example for create methods
+  if (op.methodName.startsWith("create") || op.methodName === "create") {
+    lines.push(`   *`);
+    lines.push(`   * @example`);
+    lines.push(`   * \`\`\`ts`);
+    const exampleArgs = generateExampleArgs(op, hasRequest);
+    lines.push(`   * const result = await client.${camelCase(serviceName)}.${op.methodName}(${exampleArgs});`);
+    lines.push(`   * \`\`\``);
+  }
+
   lines.push(`   */`);
-  lines.push(`  async ${op.methodName}(${params}): Promise<${returnType}> {`);
 
-  // Request body handling
-  const bodyMapping = buildBodyMapping(op);
+  // Method signature
+  lines.push(`  async ${op.methodName}(${paramString}): Promise<${returnType}> {`);
 
-  // Build the request call
+  // Method body
   if (op.returnsVoid) {
     lines.push(`    await this.request(`);
   } else {
@@ -1034,20 +961,16 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
 
   lines.push(`      {`);
   lines.push(`        service: "${serviceName}",`);
-  lines.push(`        operation: "${op.operationId.replace(/^(Get|List|Create|Update|Delete|Trash)/, "$1")}",`);
+  lines.push(`        operation: "${op.operationId}",`);
   lines.push(`        resourceType: "${op.resourceType}",`);
   lines.push(`        isMutation: ${op.isMutation},`);
 
-  // Add projectId if present
   const projectParam = op.pathParams.find((p) => p.name === "projectId");
   if (projectParam) {
     lines.push(`        projectId,`);
   }
 
-  // Add resourceId if present (first non-project path param)
-  const resourceParam = op.pathParams.find(
-    (p) => p.name !== "projectId" && p.name.endsWith("Id")
-  );
+  const resourceParam = op.pathParams.find((p) => p.name !== "projectId" && p.name.endsWith("Id"));
   if (resourceParam) {
     lines.push(`        resourceId: ${resourceParam.name},`);
   }
@@ -1056,15 +979,13 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   lines.push(`      () =>`);
   lines.push(`        this.client.${op.httpMethod}("${op.path}", {`);
 
-  // Path and query params
+  // Params object
   const pathParamNames = op.pathParams.map((p) => p.name);
   const hasPathParams = pathParamNames.length > 0;
   const hasQueryParams = op.queryParams.length > 0;
-
   const isOctetStream = op.bodyContentType === "octet-stream";
-  const hasParams = hasPathParams || hasQueryParams || isOctetStream;
 
-  if (hasParams) {
+  if (hasPathParams || hasQueryParams || isOctetStream) {
     lines.push(`          params: {`);
 
     if (hasPathParams) {
@@ -1075,14 +996,12 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
       const queryParts = op.queryParams.map((q) => {
         const camelName = toCamelCase(q.name);
         const key = q.name.includes("_") ? `"${q.name}"` : q.name;
-        // Required params are direct, optional use options?.
         const value = q.required ? camelName : `options?.${camelName}`;
         return `${key}: ${value}`;
       });
       lines.push(`            query: { ${queryParts.join(", ")} },`);
     }
 
-    // For octet-stream uploads, add Content-Type header
     if (isOctetStream) {
       lines.push(`            // eslint-disable-next-line @typescript-eslint/no-explicit-any`);
       lines.push(`            header: { "Content-Type": contentType } as any,`);
@@ -1092,21 +1011,18 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   }
 
   // Body
-  if (bodyMapping) {
-    if (isOctetStream) {
-      // For binary uploads, bypass JSON serialization
-      lines.push(`          body: ${bodyMapping} as unknown as string,`);
-      lines.push(`          // eslint-disable-next-line @typescript-eslint/no-explicit-any`);
-      lines.push(`          bodySerializer: (body: unknown) => body as any,`);
-    } else {
-      lines.push(`          body: ${bodyMapping},`);
-    }
+  if (op.bodySchemaRef && op.bodyContentType === "json") {
+    // Convert camelCase request to snake_case API body
+    lines.push(`          body: ${buildBodyMapping(op)},`);
+  } else if (isOctetStream) {
+    lines.push(`          body: data as unknown as string,`);
+    lines.push(`          // eslint-disable-next-line @typescript-eslint/no-explicit-any`);
+    lines.push(`          bodySerializer: (body: unknown) => body as any,`);
   }
 
   lines.push(`        })`);
   lines.push(`    );`);
 
-  // Return statement - return full response, let caller access wrapper properties
   if (!op.returnsVoid) {
     if (op.returnsArray) {
       lines.push(`    return response ?? [];`);
@@ -1120,38 +1036,37 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   return lines;
 }
 
-/**
- * Builds method parameter list.
- */
-function buildParams(op: ParsedOperation): string {
+function buildMethodSignature(op: ParsedOperation, resourceName: string): {
+  paramString: string;
+  hasOptions: boolean;
+  hasRequest: boolean;
+  requestInterfaceName: string;
+  optionsInterfaceName: string;
+} {
   const params: string[] = [];
+  let hasOptions = false;
+  let hasRequest = false;
+  const requestInterfaceName = `${capitalize(op.methodName)}${capitalize(resourceName)}Request`;
+  const optionsInterfaceName = `${capitalize(op.methodName)}${capitalize(resourceName)}Options`;
 
-  // Path params (except accountId)
+  // Path params
   for (const p of op.pathParams) {
     params.push(`${p.name}: ${p.type}`);
   }
 
-  // Request body params
-  if (op.bodySchema) {
-    if (op.bodyContentType === "octet-stream") {
-      // File upload - body is raw binary data, plus contentType header
-      const refName = op.bodySchema.$ref ? resolveRef(op.bodySchema.$ref) : null;
-      if (refName) {
-        params.push(`data: components["schemas"]["${refName}"]`);
-      } else {
-        params.push(`data: ArrayBuffer | Uint8Array | string`);
-      }
-      // Add contentType parameter for binary uploads
-      params.push(`contentType: string`);
-    } else {
-      const refName = op.bodySchema.$ref ? resolveRef(op.bodySchema.$ref) : null;
-      if (refName) {
-        params.push(`req: components["schemas"]["${refName}"]`);
-      }
-    }
+  // Body params (use generated interface)
+  if (op.bodySchemaRef && op.bodyProperties.length > 0 && op.bodyContentType === "json") {
+    params.push(`req: ${requestInterfaceName}`);
+    hasRequest = true;
   }
 
-  // Required query params as direct parameters
+  // Binary upload
+  if (op.bodyContentType === "octet-stream") {
+    params.push(`data: ArrayBuffer | Uint8Array | string`);
+    params.push(`contentType: string`);
+  }
+
+  // Query params (required first, then options)
   const requiredQueryParams = op.queryParams.filter((q) => q.required);
   const optionalQueryParams = op.queryParams.filter((q) => !q.required);
 
@@ -1159,56 +1074,115 @@ function buildParams(op: ParsedOperation): string {
     params.push(`${toCamelCase(q.name)}: ${q.type}`);
   }
 
-  // Optional query params as options object
   if (optionalQueryParams.length > 0) {
-    const optionsType = optionalQueryParams
-      .map((q) => `${toCamelCase(q.name)}?: ${q.type}`)
-      .join("; ");
-    params.push(`options?: { ${optionsType} }`);
+    params.push(`options?: ${optionsInterfaceName}`);
+    hasOptions = true;
   }
 
-  return params.join(", ");
+  return {
+    paramString: params.join(", "),
+    hasOptions,
+    hasRequest,
+    requestInterfaceName,
+    optionsInterfaceName,
+  };
 }
 
-/**
- * Builds return type.
- */
-function buildReturnType(op: ParsedOperation): string {
-  if (op.returnsVoid) {
-    return "void";
+function buildReturnType(op: ParsedOperation, serviceName: string): string {
+  if (op.returnsVoid) return "void";
+
+  // Try to get a friendly type name
+  if (op.responseSchemaRef) {
+    const entityName = getEntityTypeName(op.responseSchemaRef);
+    if (entityName) {
+      return op.returnsArray ? `${entityName}[]` : entityName;
+    }
+    // Fallback to schema ref
+    return `components["schemas"]["${op.responseSchemaRef}"]`;
   }
 
-  if (op.responseSchema?.$ref) {
-    const refName = resolveRef(op.responseSchema.$ref);
-    return `components["schemas"]["${refName}"]`;
-  }
-
-  if (op.returnsArray) {
-    return "unknown[]";
-  }
-
+  if (op.returnsArray) return "unknown[]";
   return "unknown";
 }
 
-/**
- * Builds body mapping.
- */
-function buildBodyMapping(op: ParsedOperation): string | null {
-  if (!op.bodySchema) return null;
+function buildBodyMapping(op: ParsedOperation): string {
+  if (!op.bodyProperties.length) return "req";
 
-  if (op.bodyContentType === "octet-stream") {
-    return "data";
-  }
+  // Check if any field names differ between camelCase and snake_case
+  const needsMapping = op.bodyProperties.some((p) => toCamelCase(p.name) !== p.name);
 
-  // JSON body - pass req directly
-  return "req";
+  // If all fields have same name in camelCase (no underscore conversion needed), just cast req
+  if (!needsMapping) return "req as any";
+
+  // Map camelCase request fields to snake_case API fields
+  const mappings = op.bodyProperties.map((prop) => {
+    const camelName = toCamelCase(prop.name);
+    // Always reference from req, and use snake_case key if different
+    if (camelName === prop.name) {
+      return `${prop.name}: req.${camelName}`;
+    }
+    return `${prop.name}: req.${camelName}`;
+  });
+
+  return `{\n            ${mappings.join(",\n            ")},\n          }`;
 }
 
-/**
- * Converts snake_case to camelCase.
- */
+function generateExampleArgs(op: ParsedOperation, hasRequest: boolean): string {
+  const args: string[] = [];
+
+  // Path params
+  for (const p of op.pathParams) {
+    args.push(p.type === "number" ? "123" : '"example"');
+  }
+
+  // Request body (JSON)
+  if (hasRequest) {
+    args.push("{ ... }");
+  }
+
+  // Binary upload
+  if (op.bodyContentType === "octet-stream") {
+    args.push("fileData");
+    args.push('"image/png"');
+  }
+
+  // Required query params
+  const requiredQueryParams = op.queryParams.filter((q) => q.required);
+  for (const q of requiredQueryParams) {
+    args.push(q.type === "number" ? "123" : `"${q.name}"`);
+  }
+
+  return args.join(", ");
+}
+
+// =============================================================================
+// Utility Functions
+// =============================================================================
+
 function toCamelCase(str: string): string {
   return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+function camelCase(str: string): string {
+  return str.charAt(0).toLowerCase() + str.slice(1);
+}
+
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function toHumanReadable(str: string): string {
+  if (str.endsWith("Id")) {
+    return str.slice(0, -2).replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase() + " ID";
+  }
+  return str.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+}
+
+function toKebabCase(str: string): string {
+  return str
+    .replace(/([a-z])([A-Z])/g, "$1-$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
+    .toLowerCase();
 }
 
 // =============================================================================
@@ -1216,7 +1190,6 @@ function toCamelCase(str: string): string {
 // =============================================================================
 
 function main() {
-  // Parse arguments
   const args = process.argv.slice(2);
   let openapiPath = "../openapi.json";
   let outputDir = "src/generated/services";
@@ -1229,27 +1202,23 @@ function main() {
     }
   }
 
-  // Resolve paths
   const resolvedOpenapiPath = path.resolve(openapiPath);
   const resolvedOutputDir = path.resolve(outputDir);
 
-  // Read OpenAPI spec
   if (!fs.existsSync(resolvedOpenapiPath)) {
     console.error(`Error: OpenAPI file not found: ${resolvedOpenapiPath}`);
     process.exit(1);
   }
 
   const spec: OpenAPISpec = JSON.parse(fs.readFileSync(resolvedOpenapiPath, "utf-8"));
+  setSchemas(spec.components.schemas);
 
-  // Group operations into services
   const services = groupOperations(spec);
 
-  // Create output directory
   if (!fs.existsSync(resolvedOutputDir)) {
     fs.mkdirSync(resolvedOutputDir, { recursive: true });
   }
 
-  // Generate service files
   const generatedFiles: string[] = [];
   for (const [name, service] of services) {
     const code = generateService(service);
@@ -1260,26 +1229,19 @@ function main() {
     console.log(`Generated ${fileName} (${service.operations.length} operations)`);
   }
 
-  // Generate index.ts barrel export
-  const indexCode = generatedFiles
-    .map((f) => `export * from "./${f.replace(".ts", ".js")}";`)
-    .join("\n");
-  fs.writeFileSync(path.join(resolvedOutputDir, "index.ts"), indexCode + "\n");
+  // Generate index.ts - only export service classes to avoid duplicate type exports
+  // Entity types are available via each service file or directly from schema.js
+  const indexLines: string[] = [];
+  for (const [name, service] of services) {
+    const fileName = toKebabCase(name);
+    indexLines.push(`export { ${service.className} } from "./${fileName}.js";`);
+  }
+  fs.writeFileSync(path.join(resolvedOutputDir, "index.ts"), indexLines.join("\n") + "\n");
   console.log(`Generated index.ts`);
 
   console.log(`\nGenerated ${services.size} services with ${
     Array.from(services.values()).reduce((sum, s) => sum + s.operations.length, 0)
   } operations total.`);
-}
-
-/**
- * Converts PascalCase to kebab-case.
- */
-function toKebabCase(str: string): string {
-  return str
-    .replace(/([a-z])([A-Z])/g, "$1-$2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
-    .toLowerCase();
 }
 
 main();

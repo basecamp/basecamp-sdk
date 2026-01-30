@@ -1,10 +1,14 @@
 /**
- * Tests for the Uploads service
+ * Tests for the Uploads service (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No domain-specific trash() method (use recordings.trash() instead)
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
-import { UploadsService } from "../../src/services/uploads.js";
+import type { UploadsService } from "../../src/generated/services/uploads.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
 
@@ -143,18 +147,7 @@ describe("UploadsService", () => {
       expect(capturedBody?.base_name).toBe("custom-name");
     });
 
-    it("should throw validation error when attachableSgid is missing", async () => {
-      await expect(
-        service.create(123, 1001, { attachableSgid: "" })
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.create(123, 1001, { attachableSgid: "" });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("attachable_sgid");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("update", () => {
@@ -232,25 +225,7 @@ describe("UploadsService", () => {
     });
   });
 
-  describe("trash", () => {
-    it("should move an upload to trash", async () => {
-      server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/7001/status/trashed.json`, () => {
-          return new HttpResponse(null, { status: 204 });
-        })
-      );
-
-      await expect(service.trash(123, 7001)).resolves.toBeUndefined();
-    });
-
-    it("should throw error for non-existent upload", async () => {
-      server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/9999/status/trashed.json`, () => {
-          return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
-      );
-
-      await expect(service.trash(123, 9999)).rejects.toThrow(BasecampError);
-    });
-  });
+  // Note: trash() is on RecordingsService, not UploadsService (spec-conformant)
+  // Use client.recordings.trash(projectId, uploadId) instead
 });
+

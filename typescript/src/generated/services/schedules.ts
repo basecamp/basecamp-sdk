@@ -1,21 +1,94 @@
 /**
- * Service for Schedules operations
+ * Schedules service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** ScheduleEntry entity from the Basecamp API. */
+export type ScheduleEntry = components["schemas"]["ScheduleEntry"];
+/** Schedule entity from the Basecamp API. */
+export type Schedule = components["schemas"]["Schedule"];
+
 /**
- * Service for Schedules operations
+ * Request parameters for updateEntry.
+ */
+export interface UpdateEntryScheduleRequest {
+  /** summary */
+  summary?: string;
+  /** starts at (RFC3339 (e.g., 2024-12-15T09:00:00Z)) */
+  startsAt?: string;
+  /** ends at (RFC3339 (e.g., 2024-12-15T09:00:00Z)) */
+  endsAt?: string;
+  /** description */
+  description?: string;
+  /** participant ids */
+  participantIds?: number[];
+  /** all day */
+  allDay?: boolean;
+  /** notify */
+  notify?: boolean;
+}
+
+/**
+ * Request parameters for updateSettings.
+ */
+export interface UpdateSettingsScheduleRequest {
+  /** include due assignments */
+  includeDueAssignments: boolean;
+}
+
+/**
+ * Options for listEntries.
+ */
+export interface ListEntriesScheduleOptions {
+  /** active|archived|trashed */
+  status?: string;
+}
+
+/**
+ * Request parameters for createEntry.
+ */
+export interface CreateEntryScheduleRequest {
+  /** summary */
+  summary: string;
+  /** starts at (RFC3339 (e.g., 2024-12-15T09:00:00Z)) */
+  startsAt: string;
+  /** ends at (RFC3339 (e.g., 2024-12-15T09:00:00Z)) */
+  endsAt: string;
+  /** description */
+  description?: string;
+  /** participant ids */
+  participantIds?: number[];
+  /** all day */
+  allDay?: boolean;
+  /** notify */
+  notify?: boolean;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Schedules operations.
  */
 export class SchedulesService extends BaseService {
 
   /**
    * Get a single schedule entry by id
+   * @param projectId - The project ID
+   * @param entryId - The entry ID
+   * @returns The ScheduleEntry
    */
-  async getEntry(projectId: number, entryId: number): Promise<components["schemas"]["GetScheduleEntryResponseContent"]> {
+  async getEntry(projectId: number, entryId: number): Promise<ScheduleEntry> {
     const response = await this.request(
       {
         service: "Schedules",
@@ -37,8 +110,12 @@ export class SchedulesService extends BaseService {
 
   /**
    * Update an existing schedule entry
+   * @param projectId - The project ID
+   * @param entryId - The entry ID
+   * @param req - Request parameters
+   * @returns The ScheduleEntry
    */
-  async updateEntry(projectId: number, entryId: number, req: components["schemas"]["UpdateScheduleEntryRequestContent"]): Promise<components["schemas"]["UpdateScheduleEntryResponseContent"]> {
+  async updateEntry(projectId: number, entryId: number, req: UpdateEntryScheduleRequest): Promise<ScheduleEntry> {
     const response = await this.request(
       {
         service: "Schedules",
@@ -53,7 +130,15 @@ export class SchedulesService extends BaseService {
           params: {
             path: { projectId, entryId },
           },
-          body: req,
+          body: {
+            summary: req.summary,
+            starts_at: req.startsAt,
+            ends_at: req.endsAt,
+            description: req.description,
+            participant_ids: req.participantIds,
+            all_day: req.allDay,
+            notify: req.notify,
+          },
         })
     );
     return response;
@@ -61,8 +146,12 @@ export class SchedulesService extends BaseService {
 
   /**
    * Get a specific occurrence of a recurring schedule entry
+   * @param projectId - The project ID
+   * @param entryId - The entry ID
+   * @param date - The date
+   * @returns The ScheduleEntry
    */
-  async getEntryOccurrence(projectId: number, entryId: number, date: string): Promise<components["schemas"]["GetScheduleEntryOccurrenceResponseContent"]> {
+  async getEntryOccurrence(projectId: number, entryId: number, date: string): Promise<ScheduleEntry> {
     const response = await this.request(
       {
         service: "Schedules",
@@ -84,8 +173,11 @@ export class SchedulesService extends BaseService {
 
   /**
    * Get a schedule
+   * @param projectId - The project ID
+   * @param scheduleId - The schedule ID
+   * @returns The Schedule
    */
-  async get(projectId: number, scheduleId: number): Promise<components["schemas"]["GetScheduleResponseContent"]> {
+  async get(projectId: number, scheduleId: number): Promise<Schedule> {
     const response = await this.request(
       {
         service: "Schedules",
@@ -107,8 +199,12 @@ export class SchedulesService extends BaseService {
 
   /**
    * Update schedule settings
+   * @param projectId - The project ID
+   * @param scheduleId - The schedule ID
+   * @param req - Request parameters
+   * @returns The Schedule
    */
-  async updateSettings(projectId: number, scheduleId: number, req: components["schemas"]["UpdateScheduleSettingsRequestContent"]): Promise<components["schemas"]["UpdateScheduleSettingsResponseContent"]> {
+  async updateSettings(projectId: number, scheduleId: number, req: UpdateSettingsScheduleRequest): Promise<Schedule> {
     const response = await this.request(
       {
         service: "Schedules",
@@ -123,7 +219,9 @@ export class SchedulesService extends BaseService {
           params: {
             path: { projectId, scheduleId },
           },
-          body: req,
+          body: {
+            include_due_assignments: req.includeDueAssignments,
+          },
         })
     );
     return response;
@@ -131,8 +229,12 @@ export class SchedulesService extends BaseService {
 
   /**
    * List entries on a schedule
+   * @param projectId - The project ID
+   * @param scheduleId - The schedule ID
+   * @param options - Optional parameters
+   * @returns Array of ScheduleEntry
    */
-  async listEntries(projectId: number, scheduleId: number, options?: { status?: string }): Promise<components["schemas"]["ListScheduleEntriesResponseContent"]> {
+  async listEntries(projectId: number, scheduleId: number, options?: ListEntriesScheduleOptions): Promise<ScheduleEntry[]> {
     const response = await this.request(
       {
         service: "Schedules",
@@ -155,8 +257,17 @@ export class SchedulesService extends BaseService {
 
   /**
    * Create a new schedule entry
+   * @param projectId - The project ID
+   * @param scheduleId - The schedule ID
+   * @param req - Request parameters
+   * @returns The ScheduleEntry
+   *
+   * @example
+   * ```ts
+   * const result = await client.schedules.createEntry(123, 123, { ... });
+   * ```
    */
-  async createEntry(projectId: number, scheduleId: number, req: components["schemas"]["CreateScheduleEntryRequestContent"]): Promise<components["schemas"]["CreateScheduleEntryResponseContent"]> {
+  async createEntry(projectId: number, scheduleId: number, req: CreateEntryScheduleRequest): Promise<ScheduleEntry> {
     const response = await this.request(
       {
         service: "Schedules",
@@ -171,7 +282,15 @@ export class SchedulesService extends BaseService {
           params: {
             path: { projectId, scheduleId },
           },
-          body: req,
+          body: {
+            summary: req.summary,
+            starts_at: req.startsAt,
+            ends_at: req.endsAt,
+            description: req.description,
+            participant_ids: req.participantIds,
+            all_day: req.allDay,
+            notify: req.notify,
+          },
         })
     );
     return response;

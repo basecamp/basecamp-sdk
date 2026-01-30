@@ -1,5 +1,8 @@
 /**
- * Tests for the CheckinsService class
+ * Tests for the CheckinsService (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates) class
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -193,31 +196,7 @@ describe("CheckinsService", () => {
       expect(question.title).toBe("What are your blockers?");
     });
 
-    it("should throw validation error when title is missing", async () => {
-      try {
-        await client.checkins.createQuestion(1, 100, {
-          title: "",
-          schedule: { frequency: "every_day", days: [1], hour: 9, minute: 0 },
-        });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
-
-    it("should throw validation error when schedule is missing", async () => {
-      try {
-        await client.checkins.createQuestion(1, 100, {
-          title: "Test question",
-          schedule: undefined as any,
-        });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("updateQuestion", () => {
@@ -380,15 +359,7 @@ describe("CheckinsService", () => {
       expect(answer.content).toBe("<p>Finished the feature!</p>");
     });
 
-    it("should throw validation error when content is missing", async () => {
-      try {
-        await client.checkins.createAnswer(1, 1, { content: "" });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("updateAnswer", () => {
@@ -405,14 +376,6 @@ describe("CheckinsService", () => {
       });
     });
 
-    it("should throw validation error when content is missing", async () => {
-      try {
-        await client.checkins.updateAnswer(1, 50, { content: "" });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 });

@@ -1,21 +1,71 @@
 /**
- * Service for Timesheets operations
+ * Timesheets service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+
 /**
- * Service for Timesheets operations
+ * Options for forRecording.
+ */
+export interface ForRecordingTimesheetOptions {
+  /** from */
+  from?: string;
+  /** to */
+  to?: string;
+  /** person id */
+  personId?: number;
+}
+
+/**
+ * Options for forProject.
+ */
+export interface ForProjectTimesheetOptions {
+  /** from */
+  from?: string;
+  /** to */
+  to?: string;
+  /** person id */
+  personId?: number;
+}
+
+/**
+ * Options for report.
+ */
+export interface ReportTimesheetOptions {
+  /** from */
+  from?: string;
+  /** to */
+  to?: string;
+  /** person id */
+  personId?: number;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Timesheets operations.
  */
 export class TimesheetsService extends BaseService {
 
   /**
    * Get timesheet for a specific recording
+   * @param projectId - The project ID
+   * @param recordingId - The recording ID
+   * @param options - Optional parameters
+   * @returns Array of results
    */
-  async forRecording(projectId: number, recordingId: number, options?: { from?: string; to?: string; personId?: number }): Promise<components["schemas"]["GetRecordingTimesheetResponseContent"]> {
+  async forRecording(projectId: number, recordingId: number, options?: ForRecordingTimesheetOptions): Promise<components["schemas"]["GetRecordingTimesheetResponseContent"]> {
     const response = await this.request(
       {
         service: "Timesheets",
@@ -33,13 +83,16 @@ export class TimesheetsService extends BaseService {
           },
         })
     );
-    return response;
+    return response ?? [];
   }
 
   /**
    * Get timesheet for a specific project
+   * @param projectId - The project ID
+   * @param options - Optional parameters
+   * @returns Array of results
    */
-  async forProject(projectId: number, options?: { from?: string; to?: string; personId?: number }): Promise<components["schemas"]["GetProjectTimesheetResponseContent"]> {
+  async forProject(projectId: number, options?: ForProjectTimesheetOptions): Promise<components["schemas"]["GetProjectTimesheetResponseContent"]> {
     const response = await this.request(
       {
         service: "Timesheets",
@@ -56,13 +109,15 @@ export class TimesheetsService extends BaseService {
           },
         })
     );
-    return response;
+    return response ?? [];
   }
 
   /**
    * Get account-wide timesheet report
+   * @param options - Optional parameters
+   * @returns Array of results
    */
-  async report(options?: { from?: string; to?: string; personId?: number }): Promise<components["schemas"]["GetTimesheetReportResponseContent"]> {
+  async report(options?: ReportTimesheetOptions): Promise<components["schemas"]["GetTimesheetReportResponseContent"]> {
     const response = await this.request(
       {
         service: "Timesheets",
@@ -77,6 +132,6 @@ export class TimesheetsService extends BaseService {
           },
         })
     );
-    return response;
+    return response ?? [];
   }
 }

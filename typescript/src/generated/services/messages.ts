@@ -1,21 +1,64 @@
 /**
- * Service for Messages operations
+ * Messages service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Message entity from the Basecamp API. */
+export type Message = components["schemas"]["Message"];
+
 /**
- * Service for Messages operations
+ * Request parameters for create.
+ */
+export interface CreateMessageRequest {
+  /** subject */
+  subject: string;
+  /** content */
+  content?: string;
+  /** active|drafted */
+  status?: string;
+  /** category id */
+  categoryId?: number;
+}
+
+/**
+ * Request parameters for update.
+ */
+export interface UpdateMessageRequest {
+  /** subject */
+  subject?: string;
+  /** content */
+  content?: string;
+  /** active|drafted */
+  status?: string;
+  /** category id */
+  categoryId?: number;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Messages operations.
  */
 export class MessagesService extends BaseService {
 
   /**
    * List messages on a message board
+   * @param projectId - The project ID
+   * @param boardId - The board ID
+   * @returns Array of Message
    */
-  async list(projectId: number, boardId: number): Promise<components["schemas"]["ListMessagesResponseContent"]> {
+  async list(projectId: number, boardId: number): Promise<Message[]> {
     const response = await this.request(
       {
         service: "Messages",
@@ -37,8 +80,17 @@ export class MessagesService extends BaseService {
 
   /**
    * Create a new message on a message board
+   * @param projectId - The project ID
+   * @param boardId - The board ID
+   * @param req - Request parameters
+   * @returns The Message
+   *
+   * @example
+   * ```ts
+   * const result = await client.messages.create(123, 123, { ... });
+   * ```
    */
-  async create(projectId: number, boardId: number, req: components["schemas"]["CreateMessageRequestContent"]): Promise<components["schemas"]["CreateMessageResponseContent"]> {
+  async create(projectId: number, boardId: number, req: CreateMessageRequest): Promise<Message> {
     const response = await this.request(
       {
         service: "Messages",
@@ -53,7 +105,12 @@ export class MessagesService extends BaseService {
           params: {
             path: { projectId, boardId },
           },
-          body: req,
+          body: {
+            subject: req.subject,
+            content: req.content,
+            status: req.status,
+            category_id: req.categoryId,
+          },
         })
     );
     return response;
@@ -61,8 +118,11 @@ export class MessagesService extends BaseService {
 
   /**
    * Get a single message by id
+   * @param projectId - The project ID
+   * @param messageId - The message ID
+   * @returns The Message
    */
-  async get(projectId: number, messageId: number): Promise<components["schemas"]["GetMessageResponseContent"]> {
+  async get(projectId: number, messageId: number): Promise<Message> {
     const response = await this.request(
       {
         service: "Messages",
@@ -84,8 +144,12 @@ export class MessagesService extends BaseService {
 
   /**
    * Update an existing message
+   * @param projectId - The project ID
+   * @param messageId - The message ID
+   * @param req - Request parameters
+   * @returns The Message
    */
-  async update(projectId: number, messageId: number, req: components["schemas"]["UpdateMessageRequestContent"]): Promise<components["schemas"]["UpdateMessageResponseContent"]> {
+  async update(projectId: number, messageId: number, req: UpdateMessageRequest): Promise<Message> {
     const response = await this.request(
       {
         service: "Messages",
@@ -100,7 +164,12 @@ export class MessagesService extends BaseService {
           params: {
             path: { projectId, messageId },
           },
-          body: req,
+          body: {
+            subject: req.subject,
+            content: req.content,
+            status: req.status,
+            category_id: req.categoryId,
+          },
         })
     );
     return response;
@@ -108,6 +177,9 @@ export class MessagesService extends BaseService {
 
   /**
    * Pin a message to the top of the message board
+   * @param projectId - The project ID
+   * @param messageId - The message ID
+   * @returns void
    */
   async pin(projectId: number, messageId: number): Promise<void> {
     await this.request(
@@ -130,6 +202,9 @@ export class MessagesService extends BaseService {
 
   /**
    * Unpin a message from the message board
+   * @param projectId - The project ID
+   * @param messageId - The message ID
+   * @returns void
    */
   async unpin(projectId: number, messageId: number): Promise<void> {
     await this.request(

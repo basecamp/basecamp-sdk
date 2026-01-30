@@ -1,21 +1,53 @@
 /**
- * Service for TodolistGroups operations
+ * TodolistGroups service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** TodolistGroup entity from the Basecamp API. */
+export type TodolistGroup = components["schemas"]["TodolistGroup"];
+
 /**
- * Service for TodolistGroups operations
+ * Request parameters for reposition.
+ */
+export interface RepositionTodolistGroupRequest {
+  /** position */
+  position: number;
+}
+
+/**
+ * Request parameters for create.
+ */
+export interface CreateTodolistGroupRequest {
+  /** name */
+  name: string;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for TodolistGroups operations.
  */
 export class TodolistGroupsService extends BaseService {
 
   /**
    * Reposition a todolist group
+   * @param projectId - The project ID
+   * @param groupId - The group ID
+   * @param req - Request parameters
+   * @returns void
    */
-  async reposition(projectId: number, groupId: number, req: components["schemas"]["RepositionTodolistGroupRequestContent"]): Promise<void> {
+  async reposition(projectId: number, groupId: number, req: RepositionTodolistGroupRequest): Promise<void> {
     await this.request(
       {
         service: "TodolistGroups",
@@ -30,15 +62,18 @@ export class TodolistGroupsService extends BaseService {
           params: {
             path: { projectId, groupId },
           },
-          body: req,
+          body: req as any,
         })
     );
   }
 
   /**
    * List groups in a todolist
+   * @param projectId - The project ID
+   * @param todolistId - The todolist ID
+   * @returns Array of TodolistGroup
    */
-  async list(projectId: number, todolistId: number): Promise<components["schemas"]["ListTodolistGroupsResponseContent"]> {
+  async list(projectId: number, todolistId: number): Promise<TodolistGroup[]> {
     const response = await this.request(
       {
         service: "TodolistGroups",
@@ -60,8 +95,17 @@ export class TodolistGroupsService extends BaseService {
 
   /**
    * Create a new group in a todolist
+   * @param projectId - The project ID
+   * @param todolistId - The todolist ID
+   * @param req - Request parameters
+   * @returns The TodolistGroup
+   *
+   * @example
+   * ```ts
+   * const result = await client.todolistGroups.create(123, 123, { ... });
+   * ```
    */
-  async create(projectId: number, todolistId: number, req: components["schemas"]["CreateTodolistGroupRequestContent"]): Promise<components["schemas"]["CreateTodolistGroupResponseContent"]> {
+  async create(projectId: number, todolistId: number, req: CreateTodolistGroupRequest): Promise<TodolistGroup> {
     const response = await this.request(
       {
         service: "TodolistGroups",
@@ -76,7 +120,7 @@ export class TodolistGroupsService extends BaseService {
           params: {
             path: { projectId, todolistId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;

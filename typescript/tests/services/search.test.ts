@@ -1,5 +1,8 @@
 /**
- * Tests for the SearchService
+ * Tests for the SearchService (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -70,14 +73,7 @@ describe("SearchService", () => {
       expect(results).toHaveLength(0);
     });
 
-    it("should throw validation error for empty query", async () => {
-      await expect(client.search.search("")).rejects.toThrow(BasecampError);
-      await expect(client.search.search("")).rejects.toThrow("Search query is required");
-    });
-
-    it("should throw validation error for whitespace-only query", async () => {
-      await expect(client.search.search("   ")).rejects.toThrow(BasecampError);
-    });
+    // Note: Client-side validation removed - generated services let API validate
 
     it("should return empty array when no results", async () => {
       server.use(

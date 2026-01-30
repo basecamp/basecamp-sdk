@@ -1,21 +1,68 @@
 /**
- * Service for Campfires operations
+ * Campfires service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Campfire entity from the Basecamp API. */
+export type Campfire = components["schemas"]["Campfire"];
+/** Chatbot entity from the Basecamp API. */
+export type Chatbot = components["schemas"]["Chatbot"];
+/** CampfireLine entity from the Basecamp API. */
+export type CampfireLine = components["schemas"]["CampfireLine"];
+
 /**
- * Service for Campfires operations
+ * Request parameters for createChatbot.
+ */
+export interface CreateChatbotCampfireRequest {
+  /** service name */
+  serviceName: string;
+  /** command url */
+  commandUrl?: string;
+}
+
+/**
+ * Request parameters for updateChatbot.
+ */
+export interface UpdateChatbotCampfireRequest {
+  /** service name */
+  serviceName: string;
+  /** command url */
+  commandUrl?: string;
+}
+
+/**
+ * Request parameters for createLine.
+ */
+export interface CreateLineCampfireRequest {
+  /** content */
+  content: string;
+}
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
+/**
+ * Service for Campfires operations.
  */
 export class CampfiresService extends BaseService {
 
   /**
    * Get a campfire by ID
+   * @param projectId - The project ID
+   * @param campfireId - The campfire ID
+   * @returns The Campfire
    */
-  async get(projectId: number, campfireId: number): Promise<components["schemas"]["GetCampfireResponseContent"]> {
+  async get(projectId: number, campfireId: number): Promise<Campfire> {
     const response = await this.request(
       {
         service: "Campfires",
@@ -37,8 +84,11 @@ export class CampfiresService extends BaseService {
 
   /**
    * List all chatbots for a campfire
+   * @param projectId - The project ID
+   * @param campfireId - The campfire ID
+   * @returns Array of Chatbot
    */
-  async listChatbots(projectId: number, campfireId: number): Promise<components["schemas"]["ListChatbotsResponseContent"]> {
+  async listChatbots(projectId: number, campfireId: number): Promise<Chatbot[]> {
     const response = await this.request(
       {
         service: "Campfires",
@@ -60,8 +110,17 @@ export class CampfiresService extends BaseService {
 
   /**
    * Create a new chatbot for a campfire
+   * @param projectId - The project ID
+   * @param campfireId - The campfire ID
+   * @param req - Request parameters
+   * @returns The Chatbot
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.createChatbot(123, 123, { ... });
+   * ```
    */
-  async createChatbot(projectId: number, campfireId: number, req: components["schemas"]["CreateChatbotRequestContent"]): Promise<components["schemas"]["CreateChatbotResponseContent"]> {
+  async createChatbot(projectId: number, campfireId: number, req: CreateChatbotCampfireRequest): Promise<Chatbot> {
     const response = await this.request(
       {
         service: "Campfires",
@@ -76,7 +135,10 @@ export class CampfiresService extends BaseService {
           params: {
             path: { projectId, campfireId },
           },
-          body: req,
+          body: {
+            service_name: req.serviceName,
+            command_url: req.commandUrl,
+          },
         })
     );
     return response;
@@ -84,8 +146,12 @@ export class CampfiresService extends BaseService {
 
   /**
    * Get a chatbot by ID
+   * @param projectId - The project ID
+   * @param campfireId - The campfire ID
+   * @param chatbotId - The chatbot ID
+   * @returns The Chatbot
    */
-  async getChatbot(projectId: number, campfireId: number, chatbotId: number): Promise<components["schemas"]["GetChatbotResponseContent"]> {
+  async getChatbot(projectId: number, campfireId: number, chatbotId: number): Promise<Chatbot> {
     const response = await this.request(
       {
         service: "Campfires",
@@ -107,8 +173,13 @@ export class CampfiresService extends BaseService {
 
   /**
    * Update an existing chatbot
+   * @param projectId - The project ID
+   * @param campfireId - The campfire ID
+   * @param chatbotId - The chatbot ID
+   * @param req - Request parameters
+   * @returns The Chatbot
    */
-  async updateChatbot(projectId: number, campfireId: number, chatbotId: number, req: components["schemas"]["UpdateChatbotRequestContent"]): Promise<components["schemas"]["UpdateChatbotResponseContent"]> {
+  async updateChatbot(projectId: number, campfireId: number, chatbotId: number, req: UpdateChatbotCampfireRequest): Promise<Chatbot> {
     const response = await this.request(
       {
         service: "Campfires",
@@ -123,7 +194,10 @@ export class CampfiresService extends BaseService {
           params: {
             path: { projectId, campfireId, chatbotId },
           },
-          body: req,
+          body: {
+            service_name: req.serviceName,
+            command_url: req.commandUrl,
+          },
         })
     );
     return response;
@@ -131,6 +205,10 @@ export class CampfiresService extends BaseService {
 
   /**
    * Delete a chatbot
+   * @param projectId - The project ID
+   * @param campfireId - The campfire ID
+   * @param chatbotId - The chatbot ID
+   * @returns void
    */
   async deleteChatbot(projectId: number, campfireId: number, chatbotId: number): Promise<void> {
     await this.request(
@@ -153,8 +231,11 @@ export class CampfiresService extends BaseService {
 
   /**
    * List all lines (messages) in a campfire
+   * @param projectId - The project ID
+   * @param campfireId - The campfire ID
+   * @returns Array of CampfireLine
    */
-  async listLines(projectId: number, campfireId: number): Promise<components["schemas"]["ListCampfireLinesResponseContent"]> {
+  async listLines(projectId: number, campfireId: number): Promise<CampfireLine[]> {
     const response = await this.request(
       {
         service: "Campfires",
@@ -176,8 +257,17 @@ export class CampfiresService extends BaseService {
 
   /**
    * Create a new line (message) in a campfire
+   * @param projectId - The project ID
+   * @param campfireId - The campfire ID
+   * @param req - Request parameters
+   * @returns The CampfireLine
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.createLine(123, 123, { ... });
+   * ```
    */
-  async createLine(projectId: number, campfireId: number, req: components["schemas"]["CreateCampfireLineRequestContent"]): Promise<components["schemas"]["CreateCampfireLineResponseContent"]> {
+  async createLine(projectId: number, campfireId: number, req: CreateLineCampfireRequest): Promise<CampfireLine> {
     const response = await this.request(
       {
         service: "Campfires",
@@ -192,7 +282,7 @@ export class CampfiresService extends BaseService {
           params: {
             path: { projectId, campfireId },
           },
-          body: req,
+          body: req as any,
         })
     );
     return response;
@@ -200,8 +290,12 @@ export class CampfiresService extends BaseService {
 
   /**
    * Get a campfire line by ID
+   * @param projectId - The project ID
+   * @param campfireId - The campfire ID
+   * @param lineId - The line ID
+   * @returns The CampfireLine
    */
-  async getLine(projectId: number, campfireId: number, lineId: number): Promise<components["schemas"]["GetCampfireLineResponseContent"]> {
+  async getLine(projectId: number, campfireId: number, lineId: number): Promise<CampfireLine> {
     const response = await this.request(
       {
         service: "Campfires",
@@ -223,6 +317,10 @@ export class CampfiresService extends BaseService {
 
   /**
    * Delete a campfire line
+   * @param projectId - The project ID
+   * @param campfireId - The campfire ID
+   * @param lineId - The line ID
+   * @returns void
    */
   async deleteLine(projectId: number, campfireId: number, lineId: number): Promise<void> {
     await this.request(
@@ -245,8 +343,9 @@ export class CampfiresService extends BaseService {
 
   /**
    * List all campfires across the account
+   * @returns Array of Campfire
    */
-  async list(): Promise<components["schemas"]["ListCampfiresResponseContent"]> {
+  async list(): Promise<Campfire[]> {
     const response = await this.request(
       {
         service: "Campfires",

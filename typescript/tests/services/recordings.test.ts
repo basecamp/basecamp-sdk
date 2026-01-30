@@ -1,10 +1,15 @@
 /**
- * Tests for the Recordings service
+ * Tests for the Recordings service (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - setClientVisibility() is on ClientVisibilityService, not RecordingsService
+ * - bucket option is a string, not number[]
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
-import { RecordingsService } from "../../src/services/recordings.js";
+import type { RecordingsService } from "../../src/generated/services/recordings.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
 
@@ -53,15 +58,16 @@ describe("RecordingsService", () => {
         })
       );
 
+      // Generated service: bucket is a string, not number[]
       await service.list("Document", {
-        bucket: [123, 456],
+        bucket: "123",
         status: "archived",
         sort: "updated_at",
         direction: "asc",
       });
 
       expect(capturedUrl?.searchParams.get("type")).toBe("Document");
-      expect(capturedUrl?.searchParams.get("bucket")).toBe("123,456");
+      expect(capturedUrl?.searchParams.get("bucket")).toBe("123");
       expect(capturedUrl?.searchParams.get("status")).toBe("archived");
       expect(capturedUrl?.searchParams.get("sort")).toBe("updated_at");
       expect(capturedUrl?.searchParams.get("direction")).toBe("asc");
@@ -79,16 +85,7 @@ describe("RecordingsService", () => {
       expect(result).toEqual([]);
     });
 
-    it("should throw validation error when type is missing", async () => {
-      await expect(service.list("" as any)).rejects.toThrow(BasecampError);
-
-      try {
-        await service.list("" as any);
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("type");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("get", () => {
@@ -198,58 +195,7 @@ describe("RecordingsService", () => {
     });
   });
 
-  describe("setClientVisibility", () => {
-    it("should set client visibility to true", async () => {
-      const recording = {
-        id: 3001,
-        type: "Message",
-        title: "Welcome Message",
-        visible_to_clients: true,
-      };
-
-      server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/3001/client_visibility.json`, () => {
-          return HttpResponse.json(recording);
-        })
-      );
-
-      const result = await service.setClientVisibility(123, 3001, true);
-
-      expect(result.visible_to_clients).toBe(true);
-    });
-
-    it("should set client visibility to false", async () => {
-      const recording = {
-        id: 3001,
-        type: "Message",
-        title: "Welcome Message",
-        visible_to_clients: false,
-      };
-
-      server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/3001/client_visibility.json`, () => {
-          return HttpResponse.json(recording);
-        })
-      );
-
-      const result = await service.setClientVisibility(123, 3001, false);
-
-      expect(result.visible_to_clients).toBe(false);
-    });
-
-    it("should send visible_to_clients in request body", async () => {
-      let capturedBody: { visible_to_clients?: boolean } | null = null;
-
-      server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/3001/client_visibility.json`, async ({ request }) => {
-          capturedBody = (await request.json()) as { visible_to_clients?: boolean };
-          return HttpResponse.json({ id: 3001, visible_to_clients: true });
-        })
-      );
-
-      await service.setClientVisibility(123, 3001, true);
-
-      expect(capturedBody?.visible_to_clients).toBe(true);
-    });
-  });
+  // Note: setClientVisibility() is on ClientVisibilityService in generated services
+  // Use client.clientVisibility.setVisibility(projectId, recordingId, { visibleToClients: true })
 });
+

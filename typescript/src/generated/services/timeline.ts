@@ -1,19 +1,30 @@
 /**
- * Service for Timeline operations
+ * Timeline service for the Basecamp API.
  *
- * @generated from OpenAPI spec
+ * @generated from OpenAPI spec - do not edit directly
  */
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 
+// =============================================================================
+// Types
+// =============================================================================
+
+
+// =============================================================================
+// Service
+// =============================================================================
+
 /**
- * Service for Timeline operations
+ * Service for Timeline operations.
  */
 export class TimelineService extends BaseService {
 
   /**
    * Get project timeline
+   * @param projectId - The project ID
+   * @returns Array of results
    */
   async projectTimeline(projectId: number): Promise<components["schemas"]["GetProjectTimelineResponseContent"]> {
     const response = await this.request(
@@ -31,6 +42,6 @@ export class TimelineService extends BaseService {
           },
         })
     );
-    return response;
+    return response ?? [];
   }
 }

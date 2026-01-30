@@ -1,5 +1,8 @@
 /**
- * Tests for the WebhooksService class
+ * Tests for the WebhooksService class (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -152,28 +155,7 @@ describe("WebhooksService", () => {
       expect(webhook.payload_url).toBe("https://example.com/new-webhook");
     });
 
-    it("should throw validation error when payloadUrl is missing", async () => {
-      try {
-        await client.webhooks.create(1, { payloadUrl: "", types: ["Todo"] });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
-
-    it("should throw validation error when types is empty", async () => {
-      try {
-        await client.webhooks.create(1, {
-          payloadUrl: "https://example.com/webhook",
-          types: [],
-        });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("update", () => {

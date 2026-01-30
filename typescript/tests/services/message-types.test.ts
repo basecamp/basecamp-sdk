@@ -1,5 +1,8 @@
 /**
- * Tests for the MessageTypesService class
+ * Tests for the MessageTypesService class (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -104,25 +107,7 @@ describe("MessageTypesService", () => {
       expect(type.name).toBe("Update");
     });
 
-    it("should throw validation error when name is missing", async () => {
-      try {
-        await client.messageTypes.create(1, { name: "", icon: "🔄" });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
-
-    it("should throw validation error when icon is missing", async () => {
-      try {
-        await client.messageTypes.create(1, { name: "Test", icon: "" });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("update", () => {
