@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# Error types and codes for the Basecamp SDK.
 module Basecamp
   # Error codes for API responses
   module ErrorCode
@@ -214,7 +215,7 @@ module Basecamp
     def initialize(resource, matches: [])
       @matches = matches
       hint = if matches.any? && matches.length <= 5
-               "Did you mean: #{matches.join(', ')}"
+               "Did you mean: #{matches.join(", ")}"
       else
                "Be more specific"
       end

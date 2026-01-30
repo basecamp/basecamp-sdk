@@ -28,14 +28,14 @@ class HooksTest < Minitest::Test
   def test_request_result_failure
     result = Basecamp::RequestResult.new(status_code: 500, duration: 0.1)
 
-    refute result.success?
+    assert_not result.success?
   end
 
   def test_request_result_with_error
     error = StandardError.new("test error")
     result = Basecamp::RequestResult.new(error: error, duration: 0.1)
 
-    refute result.success?
+    assert_not result.success?
     assert_equal error, result.error
   end
 

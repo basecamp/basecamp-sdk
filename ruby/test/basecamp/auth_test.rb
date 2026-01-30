@@ -24,8 +24,8 @@ class StaticTokenProviderTest < Minitest::Test
   def test_not_refreshable
     provider = Basecamp::StaticTokenProvider.new("my-token")
 
-    refute provider.refreshable?
-    refute provider.refresh
+    assert_not provider.refreshable?
+    assert_not provider.refresh
   end
 end
 
@@ -60,7 +60,7 @@ class OauthTokenProviderTest < Minitest::Test
       client_secret: "client-secret"
     )
 
-    refute provider.refreshable?
+    assert_not provider.refreshable?
   end
 
   def test_expired_with_past_time
@@ -84,7 +84,7 @@ class OauthTokenProviderTest < Minitest::Test
       expires_at: Time.now + 3600
     )
 
-    refute provider.expired?
+    assert_not provider.expired?
   end
 
   def test_not_expired_without_expiration
@@ -95,7 +95,7 @@ class OauthTokenProviderTest < Minitest::Test
       client_secret: "client-secret"
     )
 
-    refute provider.expired?
+    assert_not provider.expired?
   end
 
   def test_refresh_success

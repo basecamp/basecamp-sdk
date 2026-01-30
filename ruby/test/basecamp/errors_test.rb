@@ -31,7 +31,7 @@ class ErrorsTest < Minitest::Test
 
     assert_equal "Authentication required", error.message
     assert_equal 401, error.http_status
-    refute error.retryable?
+    assert_not error.retryable?
   end
 
   def test_forbidden_error
@@ -74,7 +74,7 @@ class ErrorsTest < Minitest::Test
   def test_api_error_4xx_not_retryable
     error = Basecamp::APIError.from_status(400)
 
-    refute error.retryable?
+    assert_not error.retryable?
   end
 
   def test_validation_error

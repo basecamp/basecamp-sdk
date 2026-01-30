@@ -67,7 +67,7 @@ class CardStepsServiceTest < Minitest::Test
 
     step = @account.card_steps.uncomplete(project_id: 100, step_id: 200)
 
-    refute step["completed"]
+    assert_not step["completed"]
   end
 
   def test_reposition_step

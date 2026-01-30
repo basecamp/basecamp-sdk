@@ -5,8 +5,9 @@ require "json"
 require "uri"
 
 module Basecamp
+  # OAuth 2 helpers for Basecamp authentication.
   module Oauth
-    # Exchanger handles OAuth 2.0 token exchange and refresh operations.
+    # Exchanger handles OAuth 2 token exchange and refresh operations.
     class Exchanger
       # @param http_client [Faraday::Connection, nil] HTTP client (uses default if nil)
       # @param timeout [Integer] Request timeout in seconds (default: 30)
@@ -16,14 +17,14 @@ module Basecamp
 
       # Exchanges an authorization code for access and refresh tokens.
       #
-      # Supports both standard OAuth 2.0 and Basecamp's Launchpad legacy format.
+      # Supports both standard OAuth 2 and Basecamp's Launchpad legacy format.
       # Use `use_legacy_format: true` for Launchpad compatibility.
       #
       # @param request [ExchangeRequest] Exchange request parameters
       # @return [Token] The token response
       # @raise [OAuthError] on validation, network, or authentication errors
       #
-      # @example Standard OAuth 2.0
+      # @example Standard OAuth 2
       #   token = exchanger.exchange(ExchangeRequest.new(
       #     token_endpoint: config.token_endpoint,
       #     code: "auth_code_from_callback",
@@ -50,14 +51,14 @@ module Basecamp
 
       # Refreshes an access token using a refresh token.
       #
-      # Supports both standard OAuth 2.0 and Basecamp's Launchpad legacy format.
+      # Supports both standard OAuth 2 and Basecamp's Launchpad legacy format.
       # Use `use_legacy_format: true` for Launchpad compatibility.
       #
       # @param request [RefreshRequest] Refresh request parameters
       # @return [Token] The new token response
       # @raise [OAuthError] on validation, network, or authentication errors
       #
-      # @example Standard OAuth 2.0
+      # @example Standard OAuth 2
       #   new_token = exchanger.refresh(RefreshRequest.new(
       #     token_endpoint: config.token_endpoint,
       #     refresh_token: old_token.refresh_token,
@@ -107,7 +108,7 @@ module Basecamp
           # Launchpad uses non-standard "type" parameter
           params["type"] = "web_server"
         else
-          # Standard OAuth 2.0
+          # Standard OAuth 2
           params["grant_type"] = "authorization_code"
         end
 
@@ -127,7 +128,7 @@ module Basecamp
           # Launchpad uses non-standard "type" parameter
           params["type"] = "refresh"
         else
-          # Standard OAuth 2.0
+          # Standard OAuth 2
           params["grant_type"] = "refresh_token"
         end
 

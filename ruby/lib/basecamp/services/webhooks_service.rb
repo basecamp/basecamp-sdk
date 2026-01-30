@@ -9,7 +9,7 @@ module Basecamp
     #
     # @example List webhooks
     #   account.webhooks.list(project_id: 123).each do |webhook|
-    #     puts "#{webhook["url"]} - #{webhook["active"]}"
+    #     puts "#{webhook["payload_url"]} - #{webhook["active"]}"
     #   end
     #
     # @example Create a webhook

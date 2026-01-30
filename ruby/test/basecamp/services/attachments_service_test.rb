@@ -43,7 +43,7 @@ class AttachmentsServiceTest < Minitest::Test
       "filename" => "my report (1).pdf"
     }
 
-    stub_request(:post, "https://3.basecampapi.com/12345/attachments.json?name=my%20report%20(1).pdf")
+    stub_request(:post, "https://3.basecampapi.com/12345/attachments.json?name=my+report+%281%29.pdf")
       .to_return(
         status: 200,
         body: attachment_response.to_json,

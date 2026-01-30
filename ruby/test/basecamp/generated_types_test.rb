@@ -109,6 +109,6 @@ class GeneratedTypesTest < Minitest::Test
     hash = project.to_h
 
     assert_equal 123, hash["id"]
-    refute hash.key?("name")
+    assert_not hash.key?("name")
   end
 end

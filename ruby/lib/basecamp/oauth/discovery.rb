@@ -4,11 +4,12 @@ require "faraday"
 require "json"
 
 module Basecamp
+  # OAuth 2 helpers for Basecamp authentication.
   module Oauth
     # Default Basecamp/Launchpad OAuth server URL.
     LAUNCHPAD_BASE_URL = "https://launchpad.37signals.com"
 
-    # Discoverer fetches OAuth 2.0 server configuration from discovery endpoints.
+    # Discoverer fetches OAuth 2 server configuration from discovery endpoints.
     class Discoverer
       # @param http_client [Faraday::Connection, nil] HTTP client (uses default if nil)
       # @param timeout [Integer] Request timeout in seconds (default: 10)
@@ -18,7 +19,7 @@ module Basecamp
 
       # Discovers OAuth configuration from the well-known endpoint.
       #
-      # Fetches the OAuth 2.0 Authorization Server Metadata from:
+      # Fetches the OAuth 2 Authorization Server Metadata from:
       # `{base_url}/.well-known/oauth-authorization-server`
       #
       # @param base_url [String] The OAuth server's base URL (e.g., "https://launchpad.37signals.com")
@@ -82,7 +83,7 @@ module Basecamp
 
         raise OAuthError.new(
           "api_error",
-          "Invalid OAuth discovery response: missing required fields: #{missing.join(', ')}"
+          "Invalid OAuth discovery response: missing required fields: #{missing.join(", ")}"
         )
       end
     end

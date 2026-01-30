@@ -233,7 +233,33 @@ end
 TestHelper = TestHelpers
 
 module Minitest
+  # Assertion aliases for readable tests (like ActiveSupport provides).
+  # rubocop:disable Rails/RefuteMethods
+  module AssertNotAliases
+    def assert_not(object, message = nil)
+      refute(object, message)
+    end
+
+    def assert_not_nil(object, message = nil)
+      refute_nil(object, message)
+    end
+
+    def assert_not_equal(expected, actual, message = nil)
+      refute_equal(expected, actual, message)
+    end
+
+    def assert_not_empty(object, message = nil)
+      refute_empty(object, message)
+    end
+
+    def assert_not_includes(collection, object, message = nil)
+      refute_includes(collection, object, message)
+    end
+  end
+  # rubocop:enable Rails/RefuteMethods
+
   class Test
     include TestHelpers
+    include AssertNotAliases
   end
 end
