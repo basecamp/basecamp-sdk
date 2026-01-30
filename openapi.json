@@ -42,8 +42,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateAttachment 200 response",
+          "201": {
+            "description": "CreateAttachment 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -385,8 +385,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "MoveCard 200 response"
+          "204": {
+            "description": "MoveCard 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -613,8 +613,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateCardStep 200 response",
+          "201": {
+            "description": "CreateCardStep 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -1397,8 +1397,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateCard 200 response",
+          "201": {
+            "description": "CreateCard 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -2154,8 +2154,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateCardColumn 200 response",
+          "201": {
+            "description": "CreateCardColumn 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -2475,8 +2475,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateMessageType 200 response",
+          "201": {
+            "description": "CreateMessageType 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -2586,8 +2586,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteMessageType 200 response"
+          "204": {
+            "description": "DeleteMessageType 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -3118,8 +3118,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateChatbot 200 response",
+          "201": {
+            "description": "CreateChatbot 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -3238,8 +3238,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteChatbot 200 response"
+          "204": {
+            "description": "DeleteChatbot 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -3688,8 +3688,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateCampfireLine 200 response",
+          "201": {
+            "description": "CreateCampfireLine 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -4959,8 +4959,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteTool 200 response"
+          "204": {
+            "description": "DeleteTool 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -6028,8 +6028,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateForwardReply 200 response",
+          "201": {
+            "description": "CreateForwardReply 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -6671,8 +6671,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateMessage 200 response",
+          "201": {
+            "description": "CreateMessage 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -7442,8 +7442,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateQuestion 200 response",
+          "201": {
+            "description": "CreateQuestion 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -7889,8 +7889,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateAnswer 200 response",
+          "201": {
+            "description": "CreateAnswer 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -9080,8 +9080,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateComment 200 response",
+          "201": {
+            "description": "CreateComment 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -9297,8 +9297,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "UnarchiveRecording 200 response"
+          "204": {
+            "description": "UnarchiveRecording 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -9404,8 +9404,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "ArchiveRecording 200 response"
+          "204": {
+            "description": "ArchiveRecording 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -9532,8 +9532,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "TrashRecording 200 response"
+          "204": {
+            "description": "TrashRecording 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -9639,8 +9639,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Unsubscribe 200 response"
+          "204": {
+            "description": "Unsubscribe 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -10934,8 +10934,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateScheduleEntry 200 response",
+          "201": {
+            "description": "CreateScheduleEntry 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -11779,8 +11779,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateTodolistGroup 200 response",
+          "201": {
+            "description": "CreateTodolistGroup 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -12020,8 +12020,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateTodo 200 response",
+          "201": {
+            "description": "CreateTodo 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -12448,8 +12448,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "UncompleteTodo 200 response"
+          "204": {
+            "description": "UncompleteTodo 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -12543,8 +12543,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CompleteTodo 200 response"
+          "204": {
+            "description": "CompleteTodo 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -12988,8 +12988,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateTodolist 200 response",
+          "201": {
+            "description": "CreateTodolist 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -13763,8 +13763,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateDocument 200 response",
+          "201": {
+            "description": "CreateDocument 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -13988,8 +13988,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateUpload 200 response",
+          "201": {
+            "description": "CreateUpload 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -14213,8 +14213,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateVault 200 response",
+          "201": {
+            "description": "CreateVault 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -14420,8 +14420,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateWebhook 200 response",
+          "201": {
+            "description": "CreateWebhook 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -14531,8 +14531,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteWebhook 200 response"
+          "204": {
+            "description": "DeleteWebhook 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -15016,8 +15016,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateLineupMarker 200 response",
+          "201": {
+            "description": "CreateLineupMarker 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -15118,8 +15118,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteLineupMarker 200 response"
+          "204": {
+            "description": "DeleteLineupMarker 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -15761,8 +15761,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateProject 200 response",
+          "201": {
+            "description": "CreateProject 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -17561,8 +17561,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateTemplate 200 response",
+          "201": {
+            "description": "CreateTemplate 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -17963,8 +17963,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateProjectFromTemplate 200 response",
+          "201": {
+            "description": "CreateProjectFromTemplate 201 response",
             "content": {
               "application/json": {
                 "schema": {
