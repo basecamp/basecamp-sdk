@@ -16060,7 +16060,7 @@ type ClientWithResponsesInterface interface {
 type CreateAttachmentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateAttachmentResponseContent
+	JSON201      *CreateAttachmentResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -16192,7 +16192,7 @@ func (r RepositionCardStepResponse) StatusCode() int {
 type CreateCardStepResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateCardStepResponseContent
+	JSON201      *CreateCardStepResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -16378,7 +16378,7 @@ func (r ListCardsResponse) StatusCode() int {
 type CreateCardResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateCardResponseContent
+	JSON201      *CreateCardResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -16562,7 +16562,7 @@ func (r GetCardTableResponse) StatusCode() int {
 type CreateCardColumnResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateCardColumnResponseContent
+	JSON201      *CreateCardColumnResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -16641,7 +16641,7 @@ func (r ListMessageTypesResponse) StatusCode() int {
 type CreateMessageTypeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateMessageTypeResponseContent
+	JSON201      *CreateMessageTypeResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -16798,7 +16798,7 @@ func (r ListChatbotsResponse) StatusCode() int {
 type CreateChatbotResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateChatbotResponseContent
+	JSON201      *CreateChatbotResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -16929,7 +16929,7 @@ func (r ListCampfireLinesResponse) StatusCode() int {
 type CreateCampfireLineResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateCampfireLineResponseContent
+	JSON201      *CreateCampfireLineResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -17503,7 +17503,7 @@ func (r ListForwardRepliesResponse) StatusCode() int {
 type CreateForwardReplyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateForwardReplyResponseContent
+	JSON201      *CreateForwardReplyResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -17660,7 +17660,7 @@ func (r ListMessagesResponse) StatusCode() int {
 type CreateMessageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateMessageResponseContent
+	JSON201      *CreateMessageResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -17845,7 +17845,7 @@ func (r ListQuestionsResponse) StatusCode() int {
 type CreateQuestionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateQuestionResponseContent
+	JSON201      *CreateQuestionResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -17951,7 +17951,7 @@ func (r ListAnswersResponse) StatusCode() int {
 type CreateAnswerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateAnswerResponseContent
+	JSON201      *CreateAnswerResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -18239,7 +18239,7 @@ func (r ListCommentsResponse) StatusCode() int {
 type CreateCommentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateCommentResponseContent
+	JSON201      *CreateCommentResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -18659,7 +18659,7 @@ func (r ListScheduleEntriesResponse) StatusCode() int {
 type CreateScheduleEntryResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateScheduleEntryResponseContent
+	JSON201      *CreateScheduleEntryResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -18844,7 +18844,7 @@ func (r ListTodolistGroupsResponse) StatusCode() int {
 type CreateTodolistGroupResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateTodolistGroupResponseContent
+	JSON201      *CreateTodolistGroupResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -18897,7 +18897,7 @@ func (r ListTodosResponse) StatusCode() int {
 type CreateTodoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateTodoResponseContent
+	JSON201      *CreateTodoResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19131,7 +19131,7 @@ func (r ListTodolistsResponse) StatusCode() int {
 type CreateTodolistResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateTodolistResponseContent
+	JSON201      *CreateTodolistResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19316,7 +19316,7 @@ func (r ListDocumentsResponse) StatusCode() int {
 type CreateDocumentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateDocumentResponseContent
+	JSON201      *CreateDocumentResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19369,7 +19369,7 @@ func (r ListUploadsResponse) StatusCode() int {
 type CreateUploadResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateUploadResponseContent
+	JSON201      *CreateUploadResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19422,7 +19422,7 @@ func (r ListVaultsResponse) StatusCode() int {
 type CreateVaultResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateVaultResponseContent
+	JSON201      *CreateVaultResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19475,7 +19475,7 @@ func (r ListWebhooksResponse) StatusCode() int {
 type CreateWebhookResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateWebhookResponseContent
+	JSON201      *CreateWebhookResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19632,7 +19632,7 @@ func (r ListPingablePeopleResponse) StatusCode() int {
 type CreateLineupMarkerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateLineupMarkerResponseContent
+	JSON201      *CreateLineupMarkerResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19841,7 +19841,7 @@ func (r ListProjectsResponse) StatusCode() int {
 type CreateProjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateProjectResponseContent
+	JSON201      *CreateProjectResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -20287,7 +20287,7 @@ func (r ListTemplatesResponse) StatusCode() int {
 type CreateTemplateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateTemplateResponseContent
+	JSON201      *CreateTemplateResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -20392,7 +20392,7 @@ func (r UpdateTemplateResponse) StatusCode() int {
 type CreateProjectFromTemplateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateProjectFromTemplateResponseContent
+	JSON201      *CreateProjectFromTemplateResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -22399,12 +22399,12 @@ func ParseCreateAttachmentResponse(rsp *http.Response) (*CreateAttachmentRespons
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateAttachmentResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -22683,12 +22683,12 @@ func ParseCreateCardStepResponse(rsp *http.Response) (*CreateCardStepResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateCardStepResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -23089,12 +23089,12 @@ func ParseCreateCardResponse(rsp *http.Response) (*CreateCardResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateCardResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -23481,12 +23481,12 @@ func ParseCreateCardColumnResponse(rsp *http.Response) (*CreateCardColumnRespons
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateCardColumnResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -23650,12 +23650,12 @@ func ParseCreateMessageTypeResponse(rsp *http.Response) (*CreateMessageTypeRespo
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateMessageTypeResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -23981,12 +23981,12 @@ func ParseCreateChatbotResponse(rsp *http.Response) (*CreateChatbotResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateChatbotResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -24258,12 +24258,12 @@ func ParseCreateCampfireLineResponse(rsp *http.Response) (*CreateCampfireLineRes
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateCampfireLineResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -25460,12 +25460,12 @@ func ParseCreateForwardReplyResponse(rsp *http.Response) (*CreateForwardReplyRes
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateForwardReplyResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -25791,12 +25791,12 @@ func ParseCreateMessageResponse(rsp *http.Response) (*CreateMessageResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateMessageResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -26190,12 +26190,12 @@ func ParseCreateQuestionResponse(rsp *http.Response) (*CreateQuestionResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateQuestionResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -26420,12 +26420,12 @@ func ParseCreateAnswerResponse(rsp *http.Response) (*CreateAnswerResponse, error
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateAnswerResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -27028,12 +27028,12 @@ func ParseCreateCommentResponse(rsp *http.Response) (*CreateCommentResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateCommentResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -27920,12 +27920,12 @@ func ParseCreateScheduleEntryResponse(rsp *http.Response) (*CreateScheduleEntryR
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateScheduleEntryResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -28319,12 +28319,12 @@ func ParseCreateTodolistGroupResponse(rsp *http.Response) (*CreateTodolistGroupR
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateTodolistGroupResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -28434,12 +28434,12 @@ func ParseCreateTodoResponse(rsp *http.Response) (*CreateTodoResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateTodoResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -28920,12 +28920,12 @@ func ParseCreateTodolistResponse(rsp *http.Response) (*CreateTodolistResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateTodolistResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -29319,12 +29319,12 @@ func ParseCreateDocumentResponse(rsp *http.Response) (*CreateDocumentResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateDocumentResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -29434,12 +29434,12 @@ func ParseCreateUploadResponse(rsp *http.Response) (*CreateUploadResponse, error
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateUploadResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -29549,12 +29549,12 @@ func ParseCreateVaultResponse(rsp *http.Response) (*CreateVaultResponse, error) 
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateVaultResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -29664,12 +29664,12 @@ func ParseCreateWebhookResponse(rsp *http.Response) (*CreateWebhookResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateWebhookResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -29995,12 +29995,12 @@ func ParseCreateLineupMarkerResponse(rsp *http.Response) (*CreateLineupMarkerRes
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateLineupMarkerResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -30434,12 +30434,12 @@ func ParseCreateProjectResponse(rsp *http.Response) (*CreateProjectResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateProjectResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -31380,12 +31380,12 @@ func ParseCreateTemplateResponse(rsp *http.Response) (*CreateTemplateResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateTemplateResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -31603,12 +31603,12 @@ func ParseCreateProjectFromTemplateResponse(rsp *http.Response) (*CreateProjectF
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateProjectFromTemplateResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
