@@ -605,6 +605,8 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "DELETE:/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json": "DisableCardColumnOnHold",
   "GET:/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/cards.json": "ListCards",
   "POST:/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/cards.json": "CreateCard",
+  "POST:/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json": "SubscribeToCardColumn",
+  "DELETE:/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json": "UnsubscribeFromCardColumn",
   "PUT:/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}": "UpdateCardStep",
   "PUT:/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": "CompleteCardStep",
   "DELETE:/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": "UncompleteCardStep",
@@ -683,6 +685,11 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/{accountId}/buckets/{projectId}/questions/{questionId}": "UpdateQuestion",
   "GET:/{accountId}/buckets/{projectId}/questions/{questionId}/answers.json": "ListAnswers",
   "POST:/{accountId}/buckets/{projectId}/questions/{questionId}/answers.json": "CreateAnswer",
+  "GET:/{accountId}/buckets/{projectId}/questions/{questionId}/answers/by.json": "ListQuestionAnswerers",
+  "GET:/{accountId}/buckets/{projectId}/questions/{questionId}/answers/by/{personId}": "GetAnswersByPerson",
+  "PUT:/{accountId}/buckets/{projectId}/questions/{questionId}/notification_settings.json": "UpdateQuestionNotificationSettings",
+  "POST:/{accountId}/buckets/{projectId}/questions/{questionId}/pause.json": "PauseQuestion",
+  "DELETE:/{accountId}/buckets/{projectId}/questions/{questionId}/pause.json": "ResumeQuestion",
 
   // Recordings
   "POST:/{accountId}/buckets/{projectId}/recordings/{recordingId}/pin.json": "PinMessage",
@@ -766,6 +773,7 @@ const PATH_TO_OPERATION: Record<string, string> = {
   // People
   "GET:/{accountId}/circles/people.json": "ListPingablePeople",
   "GET:/{accountId}/my/profile.json": "GetMyProfile",
+  "GET:/{accountId}/my/question_reminders.json": "GetQuestionReminders",
   "GET:/{accountId}/people.json": "ListPeople",
   "GET:/{accountId}/people/{personId}": "GetPerson",
 
@@ -855,6 +863,7 @@ function normalizeUrlPath(url: string): string {
     question_answers: "{answerId}",
     questionnaires: "{questionnaireId}",
     questions: "{questionId}",
+    by: "{personId}",  // questions/{questionId}/answers/by/{personId}
     schedule_entries: "{entryId}",
     occurrences: "{date}",  // schedule_entries/{entryId}/occurrences/{date}
     schedules: "{scheduleId}",
