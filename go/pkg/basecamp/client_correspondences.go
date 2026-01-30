@@ -31,6 +31,14 @@ type ClientCorrespondence struct {
 	RepliesURL       string    `json:"replies_url"`
 }
 
+// ClientCorrespondenceListResult contains the results from listing client correspondences.
+type ClientCorrespondenceListResult struct {
+	// Correspondences is the list of client correspondences returned.
+	Correspondences []ClientCorrespondence
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // ClientCorrespondencesService handles client correspondence operations.
 type ClientCorrespondencesService struct {
 	client *AccountClient
@@ -43,7 +51,10 @@ func NewClientCorrespondencesService(client *AccountClient) *ClientCorrespondenc
 
 // List returns all client correspondences in a project.
 // bucketID is the project ID.
-func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64) (result []ClientCorrespondence, err error) {
+//
+// The returned ClientCorrespondenceListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64) (result *ClientCorrespondenceListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientCorrespondences", Operation: "List",
 		ResourceType: "client_correspondence", IsMutation: false,
@@ -65,8 +76,12 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64)
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
+
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	if resp.JSON200 == nil {
-		return nil, nil
+		return &ClientCorrespondenceListResult{Correspondences: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	correspondences := make([]ClientCorrespondence, 0, len(*resp.JSON200))
@@ -74,7 +89,7 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64)
 		correspondences = append(correspondences, clientCorrespondenceFromGenerated(gc))
 	}
 
-	return correspondences, nil
+	return &ClientCorrespondenceListResult{Correspondences: correspondences, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a client correspondence by ID.

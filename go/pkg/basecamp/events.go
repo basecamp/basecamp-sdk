@@ -24,6 +24,14 @@ type EventListOptions struct {
 	Page int
 }
 
+// EventListResult contains the results from listing events.
+type EventListResult struct {
+	// Events is the list of events returned.
+	Events []Event
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // Event represents a recording change event in Basecamp.
 // An event is created any time a recording changes.
 type Event struct {
@@ -63,7 +71,10 @@ func NewEventsService(client *AccountClient) *EventsService {
 // Pagination options:
 //   - Limit: maximum number of events to return (0 = 100, -1 = unlimited)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, opts *EventListOptions) (result []Event, err error) {
+//
+// The returned EventListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, opts *EventListOptions) (result *EventListResult, err error) {
 	op := OperationInfo{
 		Service: "Events", Operation: "List",
 		ResourceType: "event", IsMutation: false,
@@ -87,6 +98,9 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, o
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var events []Event
 	if resp.JSON200 != nil {
@@ -97,7 +111,7 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, o
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return events, nil
+		return &EventListResult{Events: events, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
@@ -112,7 +126,7 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, o
 
 	// Check if we already have enough items
 	if limit > 0 && len(events) >= limit {
-		return events[:limit], nil
+		return &EventListResult{Events: events[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -130,7 +144,7 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, o
 		events = append(events, eventFromGenerated(ge))
 	}
 
-	return events, nil
+	return &EventListResult{Events: events, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // eventFromGenerated converts a generated Event to our clean type.

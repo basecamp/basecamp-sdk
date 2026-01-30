@@ -21,6 +21,14 @@ type VaultListOptions struct {
 	Page int
 }
 
+// VaultListResult contains the results from listing vaults.
+type VaultListResult struct {
+	// Vaults is the list of vaults returned.
+	Vaults []Vault
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // DocumentListOptions specifies options for listing documents.
 type DocumentListOptions struct {
 	// Limit is the maximum number of documents to return.
@@ -33,6 +41,14 @@ type DocumentListOptions struct {
 	Page int
 }
 
+// DocumentListResult contains the results from listing documents.
+type DocumentListResult struct {
+	// Documents is the list of documents returned.
+	Documents []Document
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // UploadListOptions specifies options for listing uploads.
 type UploadListOptions struct {
 	// Limit is the maximum number of uploads to return.
@@ -43,6 +59,14 @@ type UploadListOptions struct {
 	// NOTE: The page number itself is not yet honored due to OpenAPI client
 	// limitations. Use 0 to paginate through all results up to Limit.
 	Page int
+}
+
+// UploadListResult contains the results from listing uploads.
+type UploadListResult struct {
+	// Uploads is the list of uploads returned.
+	Uploads []Upload
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
 }
 
 // Vault represents a Basecamp vault (folder) in the Files tool.
@@ -222,7 +246,10 @@ func (s *VaultsService) Get(ctx context.Context, bucketID, vaultID int64) (resul
 // Pagination options:
 //   - Limit: maximum number of vaults to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64, opts *VaultListOptions) (result []Vault, err error) {
+//
+// The returned VaultListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64, opts *VaultListOptions) (result *VaultListResult, err error) {
 	op := OperationInfo{
 		Service: "Vaults", Operation: "List",
 		ResourceType: "vault", IsMutation: false,
@@ -246,6 +273,9 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64, opts 
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var vaults []Vault
 	if resp.JSON200 != nil {
@@ -256,7 +286,7 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64, opts 
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return vaults, nil
+		return &VaultListResult{Vaults: vaults, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for vaults), >0 = specific limit
@@ -267,7 +297,7 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64, opts 
 
 	// Check if we already have enough items
 	if limit > 0 && len(vaults) >= limit {
-		return vaults[:limit], nil
+		return &VaultListResult{Vaults: vaults[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -285,7 +315,7 @@ func (s *VaultsService) List(ctx context.Context, bucketID, vaultID int64, opts 
 		vaults = append(vaults, vaultFromGenerated(gv))
 	}
 
-	return vaults, nil
+	return &VaultListResult{Vaults: vaults, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Create creates a new subfolder (child vault) in a vault.
@@ -425,7 +455,10 @@ func (s *DocumentsService) Get(ctx context.Context, bucketID, documentID int64) 
 // Pagination options:
 //   - Limit: maximum number of documents to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64, opts *DocumentListOptions) (result []Document, err error) {
+//
+// The returned DocumentListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64, opts *DocumentListOptions) (result *DocumentListResult, err error) {
 	op := OperationInfo{
 		Service: "Documents", Operation: "List",
 		ResourceType: "document", IsMutation: false,
@@ -449,6 +482,9 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64, op
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var documents []Document
 	if resp.JSON200 != nil {
@@ -459,7 +495,7 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64, op
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return documents, nil
+		return &DocumentListResult{Documents: documents, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for documents), >0 = specific limit
@@ -470,7 +506,7 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64, op
 
 	// Check if we already have enough items
 	if limit > 0 && len(documents) >= limit {
-		return documents[:limit], nil
+		return &DocumentListResult{Documents: documents[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -488,7 +524,7 @@ func (s *DocumentsService) List(ctx context.Context, bucketID, vaultID int64, op
 		documents = append(documents, documentFromGenerated(gd))
 	}
 
-	return documents, nil
+	return &DocumentListResult{Documents: documents, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Create creates a new document in a vault.
@@ -656,7 +692,10 @@ func (s *UploadsService) Get(ctx context.Context, bucketID, uploadID int64) (res
 // Pagination options:
 //   - Limit: maximum number of uploads to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64, opts *UploadListOptions) (result []Upload, err error) {
+//
+// The returned UploadListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64, opts *UploadListOptions) (result *UploadListResult, err error) {
 	op := OperationInfo{
 		Service: "Uploads", Operation: "List",
 		ResourceType: "upload", IsMutation: false,
@@ -680,6 +719,9 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64, opts
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var uploads []Upload
 	if resp.JSON200 != nil {
@@ -690,7 +732,7 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64, opts
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return uploads, nil
+		return &UploadListResult{Uploads: uploads, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for uploads), >0 = specific limit
@@ -701,7 +743,7 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64, opts
 
 	// Check if we already have enough items
 	if limit > 0 && len(uploads) >= limit {
-		return uploads[:limit], nil
+		return &UploadListResult{Uploads: uploads[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -719,7 +761,7 @@ func (s *UploadsService) List(ctx context.Context, bucketID, vaultID int64, opts
 		uploads = append(uploads, uploadFromGenerated(gu))
 	}
 
-	return uploads, nil
+	return &UploadListResult{Uploads: uploads, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Update updates an existing upload.

@@ -154,6 +154,14 @@ type CardListOptions struct {
 	Page int
 }
 
+// CardListResult contains the results from listing cards.
+type CardListResult struct {
+	// Cards is the list of cards returned.
+	Cards []Card
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // CreateColumnRequest specifies the parameters for creating a column.
 type CreateColumnRequest struct {
 	// Title is the column title (required).
@@ -268,7 +276,10 @@ func NewCardsService(client *AccountClient) *CardsService {
 // Pagination options:
 //   - Limit: maximum number of cards to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts *CardListOptions) (result []Card, err error) {
+//
+// The returned CardListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts *CardListOptions) (result *CardListResult, err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "List",
 		ResourceType: "card", IsMutation: false,
@@ -292,6 +303,9 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts 
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var cards []Card
 	if resp.JSON200 != nil {
@@ -302,7 +316,7 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts 
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return cards, nil
+		return &CardListResult{Cards: cards, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for cards), >0 = specific limit
@@ -313,7 +327,7 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts 
 
 	// Check if we already have enough items
 	if limit > 0 && len(cards) >= limit {
-		return cards[:limit], nil
+		return &CardListResult{Cards: cards[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -331,7 +345,7 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts 
 		cards = append(cards, cardFromGenerated(gc))
 	}
 
-	return cards, nil
+	return &CardListResult{Cards: cards, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a card by ID.

@@ -51,6 +51,14 @@ type CommentListOptions struct {
 	Page int
 }
 
+// CommentListResult contains the results from listing comments.
+type CommentListResult struct {
+	// Comments is the list of comments returned.
+	Comments []Comment
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // CommentsService handles comment operations.
 type CommentsService struct {
 	client *AccountClient
@@ -69,7 +77,10 @@ func NewCommentsService(client *AccountClient) *CommentsService {
 // Pagination options:
 //   - Limit: maximum number of comments to return (0 = 100, -1 = unlimited)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64, opts *CommentListOptions) (result []Comment, err error) {
+//
+// The returned CommentListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64, opts *CommentListOptions) (result *CommentListResult, err error) {
 	op := OperationInfo{
 		Service: "Comments", Operation: "List",
 		ResourceType: "comment", IsMutation: false,
@@ -93,6 +104,9 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64,
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var comments []Comment
 	if resp.JSON200 != nil {
@@ -103,7 +117,7 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64,
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return comments, nil
+		return &CommentListResult{Comments: comments, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
@@ -118,7 +132,7 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64,
 
 	// Check if we already have enough items
 	if limit > 0 && len(comments) >= limit {
-		return comments[:limit], nil
+		return &CommentListResult{Comments: comments[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -136,7 +150,7 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64,
 		comments = append(comments, commentFromGenerated(gc))
 	}
 
-	return comments, nil
+	return &CommentListResult{Comments: comments, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a comment by ID.

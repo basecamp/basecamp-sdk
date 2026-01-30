@@ -79,6 +79,22 @@ type UpdateChatbotRequest struct {
 	CommandURL string `json:"command_url,omitempty"`
 }
 
+// CampfireListResult contains the results from listing campfires.
+type CampfireListResult struct {
+	// Campfires is the list of campfires returned.
+	Campfires []Campfire
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
+// CampfireLineListResult contains the results from listing campfire lines.
+type CampfireLineListResult struct {
+	// Lines is the list of campfire lines returned.
+	Lines []CampfireLine
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // CampfiresService handles campfire operations.
 type CampfiresService struct {
 	client *AccountClient
@@ -90,7 +106,10 @@ func NewCampfiresService(client *AccountClient) *CampfiresService {
 }
 
 // List returns all campfires across the account.
-func (s *CampfiresService) List(ctx context.Context) (result []Campfire, err error) {
+//
+// The returned CampfireListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *CampfiresService) List(ctx context.Context) (result *CampfireListResult, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "List",
 		ResourceType: "campfire", IsMutation: false,
@@ -111,15 +130,19 @@ func (s *CampfiresService) List(ctx context.Context) (result []Campfire, err err
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
+
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	if resp.JSON200 == nil {
-		return nil, nil
+		return &CampfireListResult{Campfires: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	campfires := make([]Campfire, 0, len(*resp.JSON200))
 	for _, gc := range *resp.JSON200 {
 		campfires = append(campfires, campfireFromGenerated(gc))
 	}
-	return campfires, nil
+	return &CampfireListResult{Campfires: campfires, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a campfire by ID.
@@ -157,7 +180,10 @@ func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) 
 
 // ListLines returns all lines (messages) in a campfire.
 // bucketID is the project ID, campfireID is the campfire ID.
-func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID int64) (result []CampfireLine, err error) {
+//
+// The returned CampfireLineListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID int64) (result *CampfireLineListResult, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "ListLines",
 		ResourceType: "campfire_line", IsMutation: false,
@@ -179,15 +205,19 @@ func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID i
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
+
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	if resp.JSON200 == nil {
-		return nil, nil
+		return &CampfireLineListResult{Lines: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	lines := make([]CampfireLine, 0, len(*resp.JSON200))
 	for _, gl := range *resp.JSON200 {
 		lines = append(lines, campfireLineFromGenerated(gl))
 	}
-	return lines, nil
+	return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // GetLine returns a single line (message) from a campfire.

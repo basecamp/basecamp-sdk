@@ -135,12 +135,12 @@ func ExampleTodosService_List() {
 	todolistID := int64(789012)
 
 	// List all todos in a todolist
-	todos, err := client.ForAccount("12345").Todos().List(ctx, projectID, todolistID, nil)
+	todosResult, err := client.ForAccount("12345").Todos().List(ctx, projectID, todolistID, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, t := range todos {
+	for _, t := range todosResult.Todos {
 		status := "[ ]"
 		if t.Completed {
 			status = "[x]"
@@ -258,12 +258,12 @@ func ExamplePeopleService_List() {
 	ctx := context.Background()
 
 	// List all people in the account
-	people, err := client.ForAccount("12345").People().List(ctx, nil)
+	peopleResult, err := client.ForAccount("12345").People().List(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, p := range people {
+	for _, p := range peopleResult.People {
 		fmt.Printf("%s <%s>\n", p.Name, p.EmailAddress)
 	}
 }

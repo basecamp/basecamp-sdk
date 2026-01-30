@@ -33,6 +33,22 @@ type ForwardReplyListOptions struct {
 	Page int
 }
 
+// ForwardListResult contains the results from listing forwards.
+type ForwardListResult struct {
+	// Forwards is the list of forwards returned.
+	Forwards []Forward
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
+// ForwardReplyListResult contains the results from listing forward replies.
+type ForwardReplyListResult struct {
+	// Replies is the list of forward replies returned.
+	Replies []ForwardReply
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // Inbox represents a Basecamp email inbox (forwards tool).
 type Inbox struct {
 	ID        int64     `json:"id"`
@@ -136,7 +152,10 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 // Pagination options:
 //   - Limit: maximum number of forwards to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opts *ForwardListOptions) (result []Forward, err error) {
+//
+// The returned ForwardListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opts *ForwardListOptions) (result *ForwardListResult, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "List",
 		ResourceType: "forward", IsMutation: false,
@@ -160,6 +179,9 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opt
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var forwards []Forward
 	if resp.JSON200 != nil {
@@ -170,7 +192,7 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opt
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return forwards, nil
+		return &ForwardListResult{Forwards: forwards, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for forwards), >0 = specific limit
@@ -181,7 +203,7 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opt
 
 	// Check if we already have enough items
 	if limit > 0 && len(forwards) >= limit {
-		return forwards[:limit], nil
+		return &ForwardListResult{Forwards: forwards[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -199,7 +221,7 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opt
 		forwards = append(forwards, forwardFromGenerated(gf))
 	}
 
-	return forwards, nil
+	return &ForwardListResult{Forwards: forwards, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a forward by ID.
@@ -243,7 +265,10 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (r
 // Pagination options:
 //   - Limit: maximum number of replies to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID int64, opts *ForwardReplyListOptions) (result []ForwardReply, err error) {
+//
+// The returned ForwardReplyListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID int64, opts *ForwardReplyListOptions) (result *ForwardReplyListResult, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "ListReplies",
 		ResourceType: "forward_reply", IsMutation: false,
@@ -267,6 +292,9 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var replies []ForwardReply
 	if resp.JSON200 != nil {
@@ -277,7 +305,7 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return replies, nil
+		return &ForwardReplyListResult{Replies: replies, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for replies), >0 = specific limit
@@ -288,7 +316,7 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 
 	// Check if we already have enough items
 	if limit > 0 && len(replies) >= limit {
-		return replies[:limit], nil
+		return &ForwardReplyListResult{Replies: replies[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -306,7 +334,7 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 		replies = append(replies, forwardReplyFromGenerated(gr))
 	}
 
-	return replies, nil
+	return &ForwardReplyListResult{Replies: replies, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // GetReply returns a forward reply by ID.

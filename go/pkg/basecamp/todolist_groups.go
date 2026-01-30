@@ -47,6 +47,14 @@ type UpdateTodolistGroupRequest struct {
 	Name string `json:"name,omitempty"`
 }
 
+// TodolistGroupListResult contains the results from listing todolist groups.
+type TodolistGroupListResult struct {
+	// Groups is the list of todolist groups returned.
+	Groups []TodolistGroup
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // TodolistGroupsService handles todolist group operations.
 type TodolistGroupsService struct {
 	client *AccountClient
@@ -59,7 +67,10 @@ func NewTodolistGroupsService(client *AccountClient) *TodolistGroupsService {
 
 // List returns all groups in a todolist.
 // bucketID is the project ID, todolistID is the todolist ID.
-func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID int64) (result []TodolistGroup, err error) {
+//
+// The returned TodolistGroupListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID int64) (result *TodolistGroupListResult, err error) {
 	op := OperationInfo{
 		Service: "TodolistGroups", Operation: "List",
 		ResourceType: "todolist_group", IsMutation: false,
@@ -81,8 +92,12 @@ func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID i
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
+
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	if resp.JSON200 == nil {
-		return nil, nil
+		return &TodolistGroupListResult{Groups: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	groups := make([]TodolistGroup, 0, len(*resp.JSON200))
@@ -90,7 +105,7 @@ func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID i
 		groups = append(groups, todolistGroupFromGenerated(gg))
 	}
 
-	return groups, nil
+	return &TodolistGroupListResult{Groups: groups, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a todolist group by ID.

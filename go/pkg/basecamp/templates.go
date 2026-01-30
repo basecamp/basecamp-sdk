@@ -50,6 +50,14 @@ type CreateProjectFromTemplateRequest struct {
 	Description string `json:"description,omitempty"`
 }
 
+// TemplateListResult contains the results from listing templates.
+type TemplateListResult struct {
+	// Templates is the list of templates returned.
+	Templates []Template
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // TemplatesService handles template operations.
 type TemplatesService struct {
 	client *AccountClient
@@ -61,7 +69,10 @@ func NewTemplatesService(client *AccountClient) *TemplatesService {
 }
 
 // List returns all templates visible to the current user.
-func (s *TemplatesService) List(ctx context.Context) (result []Template, err error) {
+//
+// The returned TemplateListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *TemplatesService) List(ctx context.Context) (result *TemplateListResult, err error) {
 	op := OperationInfo{
 		Service: "Templates", Operation: "List",
 		ResourceType: "template", IsMutation: false,
@@ -82,8 +93,12 @@ func (s *TemplatesService) List(ctx context.Context) (result []Template, err err
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
+
+	// Capture total count from X-Total-Count header
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	if resp.JSON200 == nil {
-		return nil, nil
+		return &TemplateListResult{Templates: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	templates := make([]Template, 0, len(*resp.JSON200))
@@ -91,7 +106,7 @@ func (s *TemplatesService) List(ctx context.Context) (result []Template, err err
 		templates = append(templates, templateFromGenerated(gt))
 	}
 
-	return templates, nil
+	return &TemplateListResult{Templates: templates, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a template by ID.
