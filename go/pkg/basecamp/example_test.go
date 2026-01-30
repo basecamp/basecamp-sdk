@@ -76,12 +76,12 @@ func ExampleProjectsService_List() {
 	ctx := context.Background()
 
 	// List all active projects
-	projects, err := client.ForAccount("12345").Projects().List(ctx, nil)
+	result, err := client.ForAccount("12345").Projects().List(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, p := range projects {
+	for _, p := range result.Projects {
 		fmt.Printf("Project: %s (ID: %d)\n", p.Name, p.ID)
 	}
 }
@@ -94,14 +94,14 @@ func ExampleProjectsService_List_archived() {
 	ctx := context.Background()
 
 	// List archived projects
-	projects, err := client.ForAccount("12345").Projects().List(ctx, &basecamp.ProjectListOptions{
+	result, err := client.ForAccount("12345").Projects().List(ctx, &basecamp.ProjectListOptions{
 		Status: basecamp.ProjectStatusArchived,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, p := range projects {
+	for _, p := range result.Projects {
 		fmt.Printf("Archived: %s\n", p.Name)
 	}
 }

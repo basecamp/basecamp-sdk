@@ -76,6 +76,14 @@ type ProjectListOptions struct {
 	Page int
 }
 
+// ProjectListResult contains the results from listing projects.
+type ProjectListResult struct {
+	// Projects is the list of projects returned.
+	Projects []Project
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // CreateProjectRequest specifies the parameters for creating a project.
 type CreateProjectRequest struct {
 	// Name is the project name (required).
@@ -120,7 +128,10 @@ func NewProjectsService(client *AccountClient) *ProjectsService {
 // Pagination options:
 //   - Limit: maximum number of projects to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only
-func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (result []Project, err error) {
+//
+// The returned ProjectListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (result *ProjectListResult, err error) {
 	op := OperationInfo{
 		Service: "Projects", Operation: "List",
 		ResourceType: "project", IsMutation: false,
@@ -149,6 +160,9 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 		return nil, err
 	}
 
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
 	// Parse first page
 	var projects []Project
 	if resp.JSON200 != nil {
@@ -159,7 +173,7 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return projects, nil
+		return &ProjectListResult{Projects: projects, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Determine limit: 0 = all (default for projects)
@@ -170,7 +184,7 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 
 	// Check if we already have enough items
 	if limit > 0 && len(projects) >= limit {
-		return projects[:limit], nil
+		return &ProjectListResult{Projects: projects[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
@@ -188,7 +202,7 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 		projects = append(projects, projectFromGenerated(gp))
 	}
 
-	return projects, nil
+	return &ProjectListResult{Projects: projects, Meta: ListMeta{TotalCount: totalCount}}, nil
 }
 
 // Get returns a project by ID.

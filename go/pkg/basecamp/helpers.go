@@ -3,6 +3,7 @@ package basecamp
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 // checkResponse converts HTTP response errors to SDK errors for non-2xx responses.
@@ -40,4 +41,28 @@ func derefInt64(p *int64) int64 {
 		return 0
 	}
 	return *p
+}
+
+// ListMeta contains pagination metadata from list operations.
+type ListMeta struct {
+	// TotalCount is the total number of items available (from X-Total-Count header).
+	// Zero if the header was not present or could not be parsed.
+	TotalCount int
+}
+
+// parseTotalCount extracts the total count from X-Total-Count header.
+// Returns 0 if the header is missing or cannot be parsed.
+func parseTotalCount(resp *http.Response) int {
+	if resp == nil {
+		return 0
+	}
+	header := resp.Header.Get("X-Total-Count")
+	if header == "" {
+		return 0
+	}
+	count, err := strconv.Atoi(header)
+	if err != nil || count < 0 {
+		return 0
+	}
+	return count
 }
