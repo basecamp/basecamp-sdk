@@ -1,42 +1,52 @@
 # Basecamp SDK Agent Guidelines
 
-## CRITICAL: Never Write SDK Code Manually
+## SDK Development Rules
 
-**STOP. Do not write service methods by hand.**
+### NEVER Do These (Hard Rules)
 
-All SDK code MUST be generated from the Smithy spec. This applies to:
-- Go SDK service methods
-- TypeScript SDK service methods
-- Ruby SDK service methods
+1. **NEVER edit files under `*/generated/`** - They get overwritten by generators
+2. **NEVER add API endpoints to hand-written services without ALSO adding them to `spec/basecamp.smithy`** - Creates spec drift
+3. **NEVER skip running `make smithy-build` after Smithy changes** - Keeps OpenAPI in sync
+4. **NEVER construct API paths manually in SDK code** - Use the generated client methods
 
-### The Only Valid Workflow
+### Always Do These
 
-1. **Add endpoints to `spec/basecamp.smithy`** - This is the ONLY place you write API definitions
-2. **Run `make smithy-build`** - Generates OpenAPI spec
-3. **Run SDK-specific generators**:
-   - Go: `cd go && make generate`
-   - TypeScript: `make ts-generate`
-   - Ruby: `make rb-generate`
-4. **Verify generated code compiles/typechecks**
+1. **All new API coverage starts in `spec/basecamp.smithy`**
+2. **Run generators after spec changes**: `make smithy-build` then SDK-specific generators
+3. **Update hand-written services (TypeScript/Ruby) when adding new operations** - They're the runtime implementation
+4. **Fix generators when output is wrong** - Don't patch generated files directly
 
-### What "Generate From Spec" Means
+### SDK Architecture
 
-- **DO**: Add operations, structures, and shapes to `basecamp.smithy`
-- **DO**: Run generators to produce SDK code
-- **DO NOT**: Manually write `async function getResource()` in TypeScript
-- **DO NOT**: Manually write `def get_resource` in Ruby
-- **DO NOT**: Manually write Go service methods that call the generated client
+**Target architecture (all SDKs):**
+```
+Smithy Spec → OpenAPI → Generated Client → Service Layer → User
+```
 
-If the generators don't produce what you need, fix the generators or the spec - not the output.
+| SDK | Generated Client | Service Layer | Status |
+|-----|-----------------|---------------|--------|
+| **Go** | `pkg/generated/client.gen.go` | `pkg/basecamp/*.go` (wraps generated client) | ✅ Complete |
+| **TypeScript** | `openapi-fetch` + `schema.d.ts` | `src/generated/services/*.ts` | ✅ Complete |
+| **Ruby** | HTTP client | `lib/basecamp/generated/services/*.rb` | ✅ Complete |
 
-### Why This Matters
+**All three SDKs have complete generated service layers** covering 167 operations across 37 services.
 
-Manual SDK code:
-- Drifts from the spec
-- Has inconsistent error handling
-- Misses retry/pagination behaviors
-- Creates type mismatches
-- Is impossible to maintain across 3+ SDKs
+**TypeScript/Ruby runtime**: Currently wired to hand-written services (`src/services/`, `lib/basecamp/services/`) which serve as a quality benchmark. Switchover to generated services is a one-line import path change when ready.
+
+### Required Workflow for Adding API Coverage
+
+Every new API endpoint MUST follow this sequence:
+
+1. **Add operation to `spec/basecamp.smithy`** - This is mandatory, not optional
+2. **Run `make smithy-build`** - Regenerates `openapi.json`
+3. **Run SDK generators**:
+   - `cd go && make generate`
+   - `make ts-generate-services`
+   - `make rb-generate-services`
+4. **Update hand-written services** (TypeScript/Ruby) - Match the generated services
+5. **Run `make`** - Verifies all SDKs build and pass tests
+
+Skipping steps 1-3 and only updating hand-written services creates spec drift.
 
 ---
 
@@ -134,50 +144,25 @@ Reuse these common shapes throughout the spec:
 
 ---
 
-## Generated Services Reference Implementation
+## TypeScript/Ruby Switchover
 
-The SDK contains two sets of service implementations:
+Generated services are complete. Switchover from hand-written to generated is pending quality validation.
 
-### Hand-Written Services (Runtime)
+| Implementation | Location | Status |
+|---------------|----------|--------|
+| **Generated** | `src/generated/services/` (TS), `lib/basecamp/generated/services/` (Ruby) | ✅ Complete (167 ops) |
+| **Hand-written** | `src/services/` (TS), `lib/basecamp/services/` (Ruby) | Current runtime (quality benchmark) |
 
-Located in:
-- **TypeScript**: `typescript/src/services/*.ts`
-- **Ruby**: `ruby/lib/basecamp/services/*_service.rb`
+### To Switch Over
 
-These are the services actually wired into the SDK clients at runtime. They:
-- Have rich documentation and examples
-- Include client-side validation
-- Are imported by the client modules
+**TypeScript**: Change imports in `client.ts` from `./services/*` to `./generated/services/*`
 
-### Generated Services (Reference)
+**Ruby**: Remove `loader.ignore("#{__dir__}/basecamp/generated")` from `basecamp.rb`
 
-Located in:
-- **TypeScript**: `typescript/src/generated/services/*.ts`
-- **Ruby**: `ruby/lib/basecamp/generated/services/*_service.rb`
+### Quality Checklist Before Switchover
 
-These are auto-generated from the OpenAPI spec and serve as a **reference implementation**:
-- Always in sync with the OpenAPI spec (167 operations across 37 services)
-- Not wired into the SDK clients at runtime
-- Useful for verifying spec coverage and generator correctness
-- Can inform hand-written service development
-
-### Regenerating Services
-
-```bash
-# TypeScript
-make ts-generate-services
-
-# Ruby
-make rb-generate-services
-
-# Both (full build)
-make
-```
-
-### Why Keep Both?
-
-The hand-written services offer better developer experience (richer docs, validation), while generated services ensure spec conformance. Migration to fully generated services is deferred to avoid breaking changes.
-
-**Verification:**
-- TypeScript: `client.ts` imports from `./services/*`, not `./generated/services/*`
-- Ruby: `basecamp.rb` autoloads from `lib/basecamp/services/`, not `lib/basecamp/generated/services/`
+- [ ] Generated services have adequate JSDoc/YARD comments
+- [ ] Error messages are clear and actionable
+- [ ] Pagination works correctly
+- [ ] Type safety is equivalent or better
+- [ ] No regressions in usability
