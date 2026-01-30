@@ -1,18 +1,23 @@
 $version: "2"
 
 // =============================================================================
-// ARCHITECTURAL NOTE: List Response Format
+// ARCHITECTURAL NOTE: Response Format Mappers
 // =============================================================================
-// The BC3 API returns bare arrays for list endpoints (GET /projects.json returns
-// [...] not {"projects": [...]}). Smithy's AWS restJson1 protocol requires list
-// outputs to be modeled as wrapped structures because @httpPayload only supports
-// string, blob, structure, union, and document types—not arrays.
+// The BC3 API returns bare values—arrays for list endpoints and objects for
+// single-entity endpoints. Smithy's AWS restJson1 protocol requires outputs to
+// be modeled as wrapped structures because @httpPayload only supports string,
+// blob, structure, union, and document types—not arrays or bare references.
 //
 // As a result:
-//   - This Smithy model uses wrapped outputs (e.g., ListProjectsOutput.projects)
-//   - A custom OpenApiMapper (BareArrayResponseMapper) transforms List*ResponseContent
-//     schemas to bare arrays during OpenAPI generation, matching the actual wire format
-//   - Generated SDK clients correctly handle bare array responses
+//   - This Smithy model uses wrapped outputs (e.g., ListProjectsOutput.projects,
+//     GetProjectOutput.project)
+//   - Two custom OpenApiMappers transform schemas during OpenAPI generation:
+//     * BareArrayResponseMapper: List*ResponseContent → bare arrays
+//     * BareObjectResponseMapper: Get*ResponseContent (single property, non-array) → bare $ref
+//   - Generated SDK clients correctly handle bare responses
+//
+// Multi-field Get responses (e.g., GetAssignedTodosOutput) are left wrapped
+// because the API genuinely returns an object with multiple top-level keys.
 //
 // This is a known protocol limitation, not a modeling error.
 // =============================================================================

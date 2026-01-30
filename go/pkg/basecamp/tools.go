@@ -68,7 +68,7 @@ func (s *ToolsService) Get(ctx context.Context, bucketID, toolID int64) (result 
 		return nil, err
 	}
 
-	tool := toolFromGenerated(resp.JSON200.Tool)
+	tool := toolFromGenerated(*resp.JSON200)
 	return &tool, nil
 }
 

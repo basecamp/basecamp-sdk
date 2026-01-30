@@ -99,7 +99,7 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 		return nil, err
 	}
 
-	inbox := inboxFromGenerated(resp.JSON200.Inbox)
+	inbox := inboxFromGenerated(*resp.JSON200)
 	return &inbox, nil
 }
 
@@ -168,7 +168,7 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (r
 		return nil, err
 	}
 
-	forward := forwardFromGenerated(resp.JSON200.Forward)
+	forward := forwardFromGenerated(*resp.JSON200)
 	return &forward, nil
 }
 
@@ -237,7 +237,7 @@ func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, rep
 		return nil, err
 	}
 
-	reply := forwardReplyFromGenerated(resp.JSON200.Reply)
+	reply := forwardReplyFromGenerated(*resp.JSON200)
 	return &reply, nil
 }
 

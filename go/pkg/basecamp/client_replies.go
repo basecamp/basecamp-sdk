@@ -103,7 +103,7 @@ func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, r
 		return nil, err
 	}
 
-	reply := clientReplyFromGenerated(resp.JSON200.Reply)
+	reply := clientReplyFromGenerated(*resp.JSON200)
 	return &reply, nil
 }
 

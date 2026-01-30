@@ -19,6 +19,6 @@ public final class BareArrayExtension implements Smithy2OpenApiExtension {
 
     @Override
     public List<OpenApiMapper> getOpenApiMappers() {
-        return List.of(new BareArrayResponseMapper());
+        return List.of(new BareArrayResponseMapper(), new BareObjectResponseMapper());
     }
 }

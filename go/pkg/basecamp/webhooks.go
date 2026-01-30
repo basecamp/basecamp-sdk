@@ -116,7 +116,7 @@ func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (r
 		return nil, err
 	}
 
-	webhook := webhookFromGenerated(resp.JSON200.Webhook)
+	webhook := webhookFromGenerated(*resp.JSON200)
 	return &webhook, nil
 }
 

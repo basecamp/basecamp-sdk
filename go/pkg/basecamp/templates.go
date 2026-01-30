@@ -122,7 +122,7 @@ func (s *TemplatesService) Get(ctx context.Context, templateID int64) (result *T
 		return nil, err
 	}
 
-	template := templateFromGenerated(resp.JSON200.Template)
+	template := templateFromGenerated(*resp.JSON200)
 	return &template, nil
 }
 
@@ -305,7 +305,7 @@ func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, cons
 		return nil, err
 	}
 
-	construction := projectConstructionFromGenerated(resp.JSON200.Construction)
+	construction := projectConstructionFromGenerated(*resp.JSON200)
 	return &construction, nil
 }
 

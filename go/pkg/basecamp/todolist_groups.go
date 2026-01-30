@@ -124,7 +124,7 @@ func (s *TodolistGroupsService) Get(ctx context.Context, bucketID, groupID int64
 	}
 
 	// The response is a union type, try to extract as TodolistGroup
-	g, err := resp.JSON200.Result.AsTodolistOrGroup1()
+	g, err := resp.JSON200.AsTodolistOrGroup1()
 	if err != nil {
 		err = fmt.Errorf("response is not a todolist group: %w", err)
 		return nil, err

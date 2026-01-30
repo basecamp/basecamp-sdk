@@ -107,7 +107,7 @@ func (s *MessageTypesService) Get(ctx context.Context, bucketID, typeID int64) (
 		return nil, err
 	}
 
-	msgType := messageTypeFromGenerated(resp.JSON200.MessageType)
+	msgType := messageTypeFromGenerated(*resp.JSON200)
 	return &msgType, nil
 }
 

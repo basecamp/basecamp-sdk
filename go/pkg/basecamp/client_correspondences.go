@@ -106,7 +106,7 @@ func (s *ClientCorrespondencesService) Get(ctx context.Context, bucketID, corres
 		return nil, err
 	}
 
-	correspondence := clientCorrespondenceFromGenerated(resp.JSON200.Correspondence)
+	correspondence := clientCorrespondenceFromGenerated(*resp.JSON200)
 	return &correspondence, nil
 }
 

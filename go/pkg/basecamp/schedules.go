@@ -137,7 +137,7 @@ func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) 
 		return nil, err
 	}
 
-	schedule := scheduleFromGenerated(resp.JSON200.Schedule)
+	schedule := scheduleFromGenerated(*resp.JSON200)
 	return &schedule, nil
 }
 
@@ -206,7 +206,7 @@ func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64
 		return nil, err
 	}
 
-	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
+	entry := scheduleEntryFromGenerated(*resp.JSON200)
 	return &entry, nil
 }
 
@@ -375,7 +375,7 @@ func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, ent
 		return nil, err
 	}
 
-	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
+	entry := scheduleEntryFromGenerated(*resp.JSON200)
 	return &entry, nil
 }
 

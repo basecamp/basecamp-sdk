@@ -172,7 +172,7 @@ func (s *ProjectsService) Get(ctx context.Context, id int64) (result *Project, e
 		return nil, err
 	}
 
-	project := projectFromGenerated(resp.JSON200.Project)
+	project := projectFromGenerated(*resp.JSON200)
 	return &project, nil
 }
 

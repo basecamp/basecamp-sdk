@@ -129,7 +129,7 @@ func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID i
 		return nil, err
 	}
 
-	approval := clientApprovalFromGenerated(resp.JSON200.Approval)
+	approval := clientApprovalFromGenerated(*resp.JSON200)
 	return &approval, nil
 }
 

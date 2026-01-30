@@ -207,7 +207,7 @@ func (s *TodosService) Get(ctx context.Context, bucketID, todoID int64) (result 
 		return nil, err
 	}
 
-	todo := todoFromGenerated(resp.JSON200.Todo)
+	todo := todoFromGenerated(*resp.JSON200)
 	return &todo, nil
 }
 

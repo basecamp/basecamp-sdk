@@ -171,7 +171,7 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questi
 		return nil, err
 	}
 
-	questionnaire := questionnaireFromGenerated(resp.JSON200.Questionnaire)
+	questionnaire := questionnaireFromGenerated(*resp.JSON200)
 	return &questionnaire, nil
 }
 
@@ -240,7 +240,7 @@ func (s *CheckinsService) GetQuestion(ctx context.Context, bucketID, questionID 
 		return nil, err
 	}
 
-	question := questionFromGenerated(resp.JSON200.Question)
+	question := questionFromGenerated(*resp.JSON200)
 	return &question, nil
 }
 
@@ -407,7 +407,7 @@ func (s *CheckinsService) GetAnswer(ctx context.Context, bucketID, answerID int6
 		return nil, err
 	}
 
-	answer := questionAnswerFromGenerated(resp.JSON200.Answer)
+	answer := questionAnswerFromGenerated(*resp.JSON200)
 	return &answer, nil
 }
 

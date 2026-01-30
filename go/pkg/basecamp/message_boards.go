@@ -63,7 +63,7 @@ func (s *MessageBoardsService) Get(ctx context.Context, bucketID, boardID int64)
 		return nil, err
 	}
 
-	board := messageBoardFromGenerated(resp.JSON200.MessageBoard)
+	board := messageBoardFromGenerated(*resp.JSON200)
 	return &board, nil
 }
 
