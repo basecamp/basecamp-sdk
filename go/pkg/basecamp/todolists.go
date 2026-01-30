@@ -252,12 +252,12 @@ func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	todolist := todolistFromGenerated(*resp.JSON200)
+	todolist := todolistFromGenerated(*resp.JSON201)
 	return &todolist, nil
 }
 

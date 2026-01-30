@@ -429,12 +429,13 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	card := cardFromGenerated(*resp.JSON200)
+	card := cardFromGenerated(*resp.JSON201)
 	return &card, nil
 }
 
@@ -627,12 +628,13 @@ func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID i
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	column := cardColumnFromGenerated(*resp.JSON200)
+	column := cardColumnFromGenerated(*resp.JSON201)
 	return &column, nil
 }
 
@@ -939,12 +941,13 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	step := cardStepFromGenerated(*resp.JSON200)
+	step := cardStepFromGenerated(*resp.JSON201)
 	return &step, nil
 }
 

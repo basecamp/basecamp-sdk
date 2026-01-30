@@ -121,12 +121,12 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	marker := lineupMarkerFromGenerated(*resp.JSON200)
+	marker := lineupMarkerFromGenerated(*resp.JSON201)
 	return &marker, nil
 }
 

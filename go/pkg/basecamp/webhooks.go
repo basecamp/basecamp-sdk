@@ -184,12 +184,12 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	webhook := webhookFromGenerated(*resp.JSON200)
+	webhook := webhookFromGenerated(*resp.JSON201)
 	return &webhook, nil
 }
 

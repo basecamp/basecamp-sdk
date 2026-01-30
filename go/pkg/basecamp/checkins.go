@@ -368,12 +368,12 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, question
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	question := questionFromGenerated(*resp.JSON200)
+	question := questionFromGenerated(*resp.JSON201)
 	return &question, nil
 }
 
@@ -579,12 +579,12 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	answer := questionAnswerFromGenerated(*resp.JSON200)
+	answer := questionAnswerFromGenerated(*resp.JSON201)
 	return &answer, nil
 }
 

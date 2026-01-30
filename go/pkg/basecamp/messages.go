@@ -239,12 +239,13 @@ func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, r
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	message := messageFromGenerated(*resp.JSON200)
+	message := messageFromGenerated(*resp.JSON201)
 	return &message, nil
 }
 

@@ -335,12 +335,13 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	todo := todoFromGenerated(*resp.JSON200)
+	todo := todoFromGenerated(*resp.JSON201)
 	return &todo, nil
 }
 

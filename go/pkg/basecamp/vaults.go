@@ -352,12 +352,12 @@ func (s *VaultsService) Create(ctx context.Context, bucketID, vaultID int64, req
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	vault := vaultFromGenerated(*resp.JSON200)
+	vault := vaultFromGenerated(*resp.JSON201)
 	return &vault, nil
 }
 
@@ -563,12 +563,12 @@ func (s *DocumentsService) Create(ctx context.Context, bucketID, vaultID int64, 
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	document := documentFromGenerated(*resp.JSON200)
+	document := documentFromGenerated(*resp.JSON201)
 	return &document, nil
 }
 
@@ -845,12 +845,12 @@ func (s *UploadsService) Create(ctx context.Context, bucketID, vaultID int64, re
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	upload := uploadFromGenerated(*resp.JSON200)
+	upload := uploadFromGenerated(*resp.JSON201)
 	return &upload, nil
 }
 

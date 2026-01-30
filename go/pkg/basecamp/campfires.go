@@ -287,12 +287,12 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	line := campfireLineFromGenerated(*resp.JSON200)
+	line := campfireLineFromGenerated(*resp.JSON201)
 	return &line, nil
 }
 
@@ -427,12 +427,12 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfire
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	chatbot := chatbotFromGenerated(*resp.JSON200)
+	chatbot := chatbotFromGenerated(*resp.JSON201)
 	return &chatbot, nil
 }
 

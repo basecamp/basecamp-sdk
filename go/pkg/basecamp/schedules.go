@@ -346,12 +346,12 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	entry := scheduleEntryFromGenerated(*resp.JSON200)
+	entry := scheduleEntryFromGenerated(*resp.JSON201)
 	return &entry, nil
 }
 

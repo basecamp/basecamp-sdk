@@ -82,9 +82,9 @@ func TestAttachmentsService_Create_ContentType(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				capturedContentType = r.Header.Get("Content-Type")
 
-				// Return a successful attachment response
+				// Return a successful attachment response (201 Created)
 				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
+				w.WriteHeader(http.StatusCreated)
 				_ = json.NewEncoder(w).Encode(map[string]string{
 					"attachable_sgid": "test-sgid-123",
 				})

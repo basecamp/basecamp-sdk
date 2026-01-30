@@ -270,12 +270,12 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	project := projectFromGenerated(*resp.JSON200)
+	project := projectFromGenerated(*resp.JSON201)
 	return &project, nil
 }
 

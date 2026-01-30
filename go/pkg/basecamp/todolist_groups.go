@@ -183,12 +183,12 @@ func (s *TodolistGroupsService) Create(ctx context.Context, bucketID, todolistID
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	group := todolistGroupFromGenerated(*resp.JSON200)
+	group := todolistGroupFromGenerated(*resp.JSON201)
 	return &group, nil
 }
 

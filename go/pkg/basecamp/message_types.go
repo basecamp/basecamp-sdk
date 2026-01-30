@@ -165,12 +165,12 @@ func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *C
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	msgType := messageTypeFromGenerated(*resp.JSON200)
+	msgType := messageTypeFromGenerated(*resp.JSON201)
 	return &msgType, nil
 }
 
