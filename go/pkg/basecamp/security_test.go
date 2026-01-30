@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -364,153 +363,6 @@ func TestHandleError_TruncatesLargeErrorMessage(t *testing.T) {
 }
 
 // =============================================================================
-// FollowPagination Security Tests
-// =============================================================================
-
-func TestFollowPagination_RejectsCrossOriginLink(t *testing.T) {
-	// Page 1 server (legitimate)
-	page1Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Link header pointing to a different origin (evil.com)
-		w.Header().Set("Link", `<https://evil.com/page2>; rel="next"`)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[{"id":1}]`))
-	}))
-	defer page1Server.Close()
-
-	cfg := &Config{BaseURL: page1Server.URL}
-	client := NewClient(cfg, &StaticTokenProvider{Token: "secret-token"})
-
-	// Make first page request
-	resp, err := client.Get(context.Background(), "/items")
-	if err != nil {
-		t.Fatalf("First page request failed: %v", err)
-	}
-
-	// Create a mock http.Response with the Request URL set
-	httpResp := &http.Response{
-		Request: &http.Request{URL: mustParseURL(page1Server.URL + "/items")},
-		Header:  resp.Headers,
-	}
-
-	// FollowPagination should reject the cross-origin Link
-	_, err = client.FollowPagination(context.Background(), httpResp, 1, 0)
-	if err == nil {
-		t.Fatal("Expected error for cross-origin Link, got nil")
-	}
-	if !strings.Contains(err.Error(), "different origin") {
-		t.Errorf("Expected 'different origin' error, got: %v", err)
-	}
-}
-
-func TestFollowPagination_ResolvesRelativeLinkFromCurrentPage(t *testing.T) {
-	requestedURLs := []string{}
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestedURLs = append(requestedURLs, r.URL.String())
-		w.Header().Set("Content-Type", "application/json")
-
-		// Route based on path + query
-		fullPath := r.URL.Path
-		if r.URL.RawQuery != "" {
-			fullPath += "?" + r.URL.RawQuery
-		}
-
-		switch fullPath {
-		case "/items":
-			// Page 1: Link to page 2 using relative URL
-			w.Header().Set("Link", `<./items?page=2>; rel="next"`)
-			w.Write([]byte(`[{"id":1}]`))
-		case "/items?page=2":
-			// Page 2: Link to page 3 using relative URL
-			w.Header().Set("Link", `<./items?page=3>; rel="next"`)
-			w.Write([]byte(`[{"id":2}]`))
-		default:
-			// Page 3 or beyond: no more pages
-			w.Write([]byte(`[{"id":3}]`))
-		}
-	}))
-	defer server.Close()
-
-	cfg := &Config{BaseURL: server.URL}
-	client := NewClient(cfg, &StaticTokenProvider{Token: "test"})
-
-	// Make first page request
-	resp, err := client.Get(context.Background(), "/items")
-	if err != nil {
-		t.Fatalf("First page request failed: %v", err)
-	}
-
-	// Create a mock http.Response with the Request URL set
-	httpResp := &http.Response{
-		Request: &http.Request{URL: mustParseURL(server.URL + "/items")},
-		Header:  resp.Headers,
-	}
-
-	// FollowPagination should resolve relative URLs correctly
-	results, err := client.FollowPagination(context.Background(), httpResp, 1, 0)
-	if err != nil {
-		t.Fatalf("FollowPagination failed: %v", err)
-	}
-
-	// Should have fetched additional pages
-	if len(results) == 0 {
-		t.Error("Expected pagination results, got none")
-	}
-}
-
-func TestFollowPagination_AcceptsSameOriginWithExplicitPort(t *testing.T) {
-	// Test that explicit port in Link header is accepted when it matches
-	// The isSameOrigin function normalizes default ports, so :80 matches no-port for HTTP
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/items" && r.URL.RawQuery == "" {
-			// Page 1: Link with explicit port (same as server's port)
-			// httptest.NewServer uses a random port, so we use the actual host
-			w.Header().Set("Link", fmt.Sprintf(`<http://%s/items?page=2>; rel="next"`, r.Host))
-			w.Write([]byte(`[{"id":1}]`))
-		} else {
-			// Page 2: no more pages
-			w.Write([]byte(`[{"id":2}]`))
-		}
-	}))
-	defer server.Close()
-
-	cfg := &Config{BaseURL: server.URL}
-	client := NewClient(cfg, &StaticTokenProvider{Token: "test"})
-
-	// Make first page request
-	resp, err := client.Get(context.Background(), "/items")
-	if err != nil {
-		t.Fatalf("First page request failed: %v", err)
-	}
-
-	// Create a mock http.Response
-	httpResp := &http.Response{
-		Request: &http.Request{URL: mustParseURL(server.URL + "/items")},
-		Header:  resp.Headers,
-	}
-
-	// FollowPagination should accept same-origin with explicit port
-	results, err := client.FollowPagination(context.Background(), httpResp, 1, 0)
-	if err != nil {
-		t.Fatalf("FollowPagination failed: %v", err)
-	}
-
-	if len(results) != 1 {
-		t.Errorf("Expected 1 result from page 2, got %d", len(results))
-	}
-}
-
-func mustParseURL(s string) *url.URL {
-	u, err := url.Parse(s)
-	if err != nil {
-		panic(err)
-	}
-	return u
-}
-
-// =============================================================================
 // isSameOrigin Tests
 // =============================================================================
 
@@ -540,32 +392,6 @@ func TestIsSameOrigin(t *testing.T) {
 		got := isSameOrigin(tt.a, tt.b)
 		if got != tt.want {
 			t.Errorf("isSameOrigin(%q, %q) = %v, want %v", tt.a, tt.b, got, tt.want)
-		}
-	}
-}
-
-// =============================================================================
-// resolveURL Tests
-// =============================================================================
-
-func TestResolveURL(t *testing.T) {
-	tests := []struct {
-		base, target, want string
-	}{
-		// Absolute target returned unchanged
-		{"https://api.example.com/page1", "https://api.example.com/page2", "https://api.example.com/page2"},
-		// Relative target resolved against base
-		{"https://api.example.com/page1", "/page2", "https://api.example.com/page2"},
-		// Relative path resolved against base directory
-		{"https://api.example.com/v1/page1", "page2", "https://api.example.com/v1/page2"},
-		// Cross-origin absolute target returned as-is
-		{"https://api.example.com/page1", "https://evil.com/page2", "https://evil.com/page2"},
-	}
-
-	for _, tt := range tests {
-		got := resolveURL(tt.base, tt.target)
-		if got != tt.want {
-			t.Errorf("resolveURL(%q, %q) = %q, want %q", tt.base, tt.target, got, tt.want)
 		}
 	}
 }

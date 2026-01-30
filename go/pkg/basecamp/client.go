@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -449,10 +450,15 @@ func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([
 // limit is the maximum total items to return (0 = unlimited).
 // Returns raw JSON items from subsequent pages only (first page items are handled by caller).
 //
+// Request URL requirement: httpResp.Request.URL is required for same-origin validation.
+// If the response has no Request (e.g., manually constructed), pagination returns an
+// error even for absolute Link headers. This fail-closed behavior prevents SSRF and
+// token leakage when the original request origin cannot be verified.
+//
 // Security: Link headers are resolved against the current page URL and validated
-// for same-origin against the first page to prevent SSRF and token leakage.
+// for same-origin against the original request to prevent SSRF and token leakage.
 func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, firstPageCount, limit int) ([]json.RawMessage, error) {
-	if httpResp == nil || httpResp.Request == nil || httpResp.Request.URL == nil {
+	if httpResp == nil {
 		return nil, nil
 	}
 
@@ -461,21 +467,36 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 		return nil, nil
 	}
 
-	// The first page URL is the origin for same-origin validation
-	firstPageURL := httpResp.Request.URL.String()
-	currentPageURL := firstPageURL
-
-	// Get next page URL from Link header, resolved against current page
-	rawLink := parseNextLink(httpResp.Header.Get("Link"))
-	if rawLink == "" {
+	// Get next page URL from Link header
+	nextLink := parseNextLink(httpResp.Header.Get("Link"))
+	if nextLink == "" {
 		return nil, nil
 	}
-	nextURL := resolveURL(currentPageURL, rawLink)
 
-	// Validate same-origin against first page to prevent SSRF/token leakage
-	if !isSameOrigin(firstPageURL, nextURL) {
+	// Security: Require httpResp.Request.URL for same-origin validation.
+	// Without the original request URL, we cannot verify Link headers are same-origin,
+	// which could allow SSRF or token leakage to malicious servers.
+	if httpResp.Request == nil || httpResp.Request.URL == nil {
+		return nil, fmt.Errorf("cannot follow pagination: response has no request URL (required for same-origin validation)")
+	}
+	baseURL := httpResp.Request.URL.String()
+
+	// Resolve relative Link URLs against the current page
+	nextURL := resolveURL(baseURL, nextLink)
+
+	// Guard against resolution failures (shouldn't happen with valid baseURL, but be safe)
+	parsedURL, err := url.Parse(nextURL)
+	if err != nil || !parsedURL.IsAbs() {
+		return nil, fmt.Errorf("failed to resolve Link header URL %q against %q", nextLink, baseURL)
+	}
+
+	// Validate same-origin for the FIRST Link header before making any request.
+	// This prevents the first Link header from redirecting to a malicious origin.
+	if !isSameOrigin(baseURL, nextURL) {
 		return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
 	}
+
+	currentPageURL := nextURL
 
 	var allResults []json.RawMessage
 	currentCount := firstPageCount
@@ -509,14 +530,14 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 		}
 
 		// Get next page URL, resolved against current page
-		rawLink = parseNextLink(resp.Headers.Get("Link"))
-		if rawLink == "" {
+		nextLink = parseNextLink(resp.Headers.Get("Link"))
+		if nextLink == "" {
 			break
 		}
-		nextURL = resolveURL(currentPageURL, rawLink)
+		nextURL = resolveURL(currentPageURL, nextLink)
 
-		// Validate same-origin against first page
-		if !isSameOrigin(firstPageURL, nextURL) {
+		// Validate same-origin against original request
+		if !isSameOrigin(baseURL, nextURL) {
 			return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
 		}
 	}
