@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -658,4 +659,356 @@ func TestParseNextLink(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestResolveURL tests the URL resolution helper.
+func TestResolveURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		base     string
+		ref      string
+		expected string
+	}{
+		{
+			name:     "absolute URL returned as-is",
+			base:     "https://api.example.com/items?page=1",
+			ref:      "https://api.example.com/items?page=2",
+			expected: "https://api.example.com/items?page=2",
+		},
+		{
+			name:     "http absolute URL returned as-is",
+			base:     "https://api.example.com/items?page=1",
+			ref:      "http://other.example.com/items?page=2",
+			expected: "http://other.example.com/items?page=2",
+		},
+		{
+			name:     "mixed-case scheme returned as-is",
+			base:     "https://api.example.com/items?page=1",
+			ref:      "HTTP://other.example.com/items?page=2",
+			expected: "HTTP://other.example.com/items?page=2",
+		},
+		{
+			name:     "scheme-relative resolved against base",
+			base:     "https://api.example.com/items?page=1",
+			ref:      "//other.example.com/items?page=2",
+			expected: "https://other.example.com/items?page=2",
+		},
+		{
+			name:     "path-absolute resolved against base",
+			base:     "https://api.example.com/v1/items?page=1",
+			ref:      "/v1/items?page=2",
+			expected: "https://api.example.com/v1/items?page=2",
+		},
+		{
+			name:     "query-only resolved against current URL",
+			base:     "https://api.example.com/items?page=1",
+			ref:      "?page=2",
+			expected: "https://api.example.com/items?page=2",
+		},
+		{
+			name:     "relative path resolved against base",
+			base:     "https://api.example.com/v1/items?page=1",
+			ref:      "items?page=2",
+			expected: "https://api.example.com/v1/items?page=2",
+		},
+		{
+			name:     "invalid base returns ref as-is",
+			base:     "://invalid",
+			ref:      "/items?page=2",
+			expected: "/items?page=2",
+		},
+		{
+			name:     "empty base returns ref as-is",
+			base:     "",
+			ref:      "/items?page=2",
+			expected: "/items?page=2",
+		},
+		{
+			name:     "empty ref returns base",
+			base:     "https://api.example.com/items",
+			ref:      "",
+			expected: "https://api.example.com/items",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := resolveURL(tt.base, tt.ref)
+			if result != tt.expected {
+				t.Errorf("resolveURL(%q, %q) = %q, want %q", tt.base, tt.ref, result, tt.expected)
+			}
+		})
+	}
+}
+
+// relativePaginationHandler serves paginated responses with relative Link URLs.
+type relativePaginationHandler struct {
+	pageSize   int
+	totalItems int
+	pageCount  int32
+	linkStyle  string // "path-absolute", "query-only", or "relative"
+}
+
+func (h *relativePaginationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	atomic.AddInt32(&h.pageCount, 1)
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		page, _ = strconv.Atoi(p)
+	}
+
+	// Calculate items for this page
+	start := (page - 1) * h.pageSize
+	remaining := h.totalItems - start
+	if remaining <= 0 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]map[string]int{})
+		return
+	}
+
+	count := h.pageSize
+	if remaining < h.pageSize {
+		count = remaining
+	}
+
+	items := make([]map[string]int, count)
+	for i := 0; i < count; i++ {
+		items[i] = map[string]int{"id": start + i + 1}
+	}
+
+	// Set next link with relative URL based on linkStyle
+	if start+count < h.totalItems {
+		var nextURL string
+		switch h.linkStyle {
+		case "path-absolute":
+			nextURL = fmt.Sprintf("%s?page=%d", r.URL.Path, page+1)
+		case "query-only":
+			nextURL = fmt.Sprintf("?page=%d", page+1)
+		case "relative":
+			nextURL = fmt.Sprintf("items.json?page=%d", page+1)
+		}
+		w.Header().Set("Link", fmt.Sprintf(`<%s>; rel="next"`, nextURL))
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(items)
+}
+
+func (h *relativePaginationHandler) getPageCount() int {
+	return int(atomic.LoadInt32(&h.pageCount))
+}
+
+// TestGetAllWithLimit_RelativePathAbsoluteLink tests pagination with path-absolute Link URLs.
+func TestGetAllWithLimit_RelativePathAbsoluteLink(t *testing.T) {
+	h := &relativePaginationHandler{pageSize: 3, totalItems: 9, linkStyle: "path-absolute"}
+	server := httptest.NewServer(h)
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	results, err := client.GetAllWithLimit(ctx, "/items.json", 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 9 {
+		t.Errorf("expected 9 items, got %d", len(results))
+	}
+
+	if h.getPageCount() != 3 {
+		t.Errorf("expected 3 page requests, got %d", h.getPageCount())
+	}
+}
+
+// TestGetAllWithLimit_RelativeQueryOnlyLink tests pagination with query-only Link URLs.
+func TestGetAllWithLimit_RelativeQueryOnlyLink(t *testing.T) {
+	h := &relativePaginationHandler{pageSize: 3, totalItems: 9, linkStyle: "query-only"}
+	server := httptest.NewServer(h)
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	results, err := client.GetAllWithLimit(ctx, "/items.json", 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 9 {
+		t.Errorf("expected 9 items, got %d", len(results))
+	}
+
+	if h.getPageCount() != 3 {
+		t.Errorf("expected 3 page requests, got %d", h.getPageCount())
+	}
+}
+
+// TestGetAllWithLimit_RelativePathLink tests pagination with relative path Link URLs.
+// Uses a nested path to exercise directory resolution semantics.
+func TestGetAllWithLimit_RelativePathLink(t *testing.T) {
+	h := &relativePaginationHandler{pageSize: 3, totalItems: 9, linkStyle: "relative"}
+	server := httptest.NewServer(h)
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// Use nested path to verify directory resolution: "items.json?page=2" relative to
+	// "/api/v1/items.json" should resolve to "/api/v1/items.json?page=2"
+	results, err := client.GetAllWithLimit(ctx, "/api/v1/items.json", 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 9 {
+		t.Errorf("expected 9 items, got %d", len(results))
+	}
+
+	if h.getPageCount() != 3 {
+		t.Errorf("expected 3 page requests, got %d", h.getPageCount())
+	}
+}
+
+// TestFollowPagination_RelativePathAbsoluteLink tests FollowPagination with path-absolute Link URLs.
+func TestFollowPagination_RelativePathAbsoluteLink(t *testing.T) {
+	h := &relativePaginationHandler{pageSize: 3, totalItems: 9, linkStyle: "path-absolute"}
+	server := httptest.NewServer(h)
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// Create a mock first page response with relative Link header
+	firstPageResp := &http.Response{
+		StatusCode: 200,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader("[]")),
+		Request: &http.Request{
+			URL: mustParseURL(server.URL + "/items.json"),
+		},
+	}
+	firstPageResp.Header.Set("Link", `</items.json?page=2>; rel="next"`)
+	defer firstPageResp.Body.Close()
+
+	results, err := client.FollowPagination(ctx, firstPageResp, 3, 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have fetched 6 more items (pages 2 and 3)
+	if len(results) != 6 {
+		t.Errorf("expected 6 items, got %d", len(results))
+	}
+
+	if h.getPageCount() != 2 {
+		t.Errorf("expected 2 page requests, got %d", h.getPageCount())
+	}
+}
+
+// TestFollowPagination_RelativeQueryOnlyLink tests FollowPagination with query-only Link URLs.
+func TestFollowPagination_RelativeQueryOnlyLink(t *testing.T) {
+	h := &relativePaginationHandler{pageSize: 3, totalItems: 9, linkStyle: "query-only"}
+	server := httptest.NewServer(h)
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// Create a mock first page response with query-only Link header
+	firstPageResp := &http.Response{
+		StatusCode: 200,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader("[]")),
+		Request: &http.Request{
+			URL: mustParseURL(server.URL + "/items.json"),
+		},
+	}
+	firstPageResp.Header.Set("Link", `<?page=2>; rel="next"`)
+	defer firstPageResp.Body.Close()
+
+	results, err := client.FollowPagination(ctx, firstPageResp, 3, 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have fetched 6 more items (pages 2 and 3)
+	if len(results) != 6 {
+		t.Errorf("expected 6 items, got %d", len(results))
+	}
+
+	if h.getPageCount() != 2 {
+		t.Errorf("expected 2 page requests, got %d", h.getPageCount())
+	}
+}
+
+// TestFollowPagination_NoRequestURL_AbsoluteLink tests FollowPagination when httpResp.Request is nil but Link is absolute.
+func TestFollowPagination_NoRequestURL_AbsoluteLink(t *testing.T) {
+	h := &paginationHandler{pageSize: 3, totalItems: 9}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// Create a response with absolute URL in Link header but no Request
+	firstPageResp := &http.Response{
+		StatusCode: 200,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader("[]")),
+		// No Request field
+	}
+	firstPageResp.Header.Set("Link", fmt.Sprintf(`<%s/items.json?page=2>; rel="next"`, server.URL))
+	defer firstPageResp.Body.Close()
+
+	results, err := client.FollowPagination(ctx, firstPageResp, 3, 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should still work with absolute URLs
+	if len(results) != 6 {
+		t.Errorf("expected 6 items, got %d", len(results))
+	}
+}
+
+// TestFollowPagination_NoRequestURL_RelativeLink tests FollowPagination returns error for relative Link with nil Request.
+func TestFollowPagination_NoRequestURL_RelativeLink(t *testing.T) {
+	cfg := &Config{BaseURL: "https://example.com", CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ctx := context.Background()
+
+	// Create a response with relative URL in Link header but no Request
+	firstPageResp := &http.Response{
+		StatusCode: 200,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader("[]")),
+		// No Request field - can't resolve relative URL
+	}
+	firstPageResp.Header.Set("Link", `</items.json?page=2>; rel="next"`)
+	defer firstPageResp.Body.Close()
+
+	_, err := client.FollowPagination(ctx, firstPageResp, 3, 0)
+	if err == nil {
+		t.Fatal("expected error for relative Link with no request URL")
+	}
+
+	if !strings.Contains(err.Error(), "cannot resolve relative Link header URL") {
+		t.Errorf("expected error about resolving relative URL, got: %v", err)
+	}
+}
+
+// mustParseURL parses a URL and panics on error (for test setup).
+func mustParseURL(rawURL string) *url.URL {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		panic(err)
+	}
+	return u
 }

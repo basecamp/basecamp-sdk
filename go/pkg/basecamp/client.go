@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -387,11 +388,11 @@ func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([
 		}
 
 		// Check for next page
-		nextURL := parseNextLink(resp.Headers.Get("Link"))
-		if nextURL == "" {
+		nextLink := parseNextLink(resp.Headers.Get("Link"))
+		if nextLink == "" {
 			break
 		}
-		url = nextURL
+		url = resolveURL(url, nextLink)
 	}
 
 	if page > c.httpOpts.MaxPages {
@@ -417,10 +418,23 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 		return nil, nil
 	}
 
+	// Get base URL from the response's Request URL
+	var baseURL string
+	if httpResp.Request != nil && httpResp.Request.URL != nil {
+		baseURL = httpResp.Request.URL.String()
+	}
+
 	// Get next page URL from Link header
-	nextURL := parseNextLink(httpResp.Header.Get("Link"))
-	if nextURL == "" {
+	nextLink := parseNextLink(httpResp.Header.Get("Link"))
+	if nextLink == "" {
 		return nil, nil
+	}
+	nextURL := resolveURL(baseURL, nextLink)
+
+	// Guard against relative URLs that couldn't be resolved (no base URL available)
+	parsedURL, err := url.Parse(nextURL)
+	if err != nil || !parsedURL.IsAbs() {
+		return nil, fmt.Errorf("cannot resolve relative Link header URL %q: response has no request URL", nextLink)
 	}
 
 	var allResults []json.RawMessage
@@ -452,7 +466,11 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 		}
 
 		// Get next page URL
-		nextURL = parseNextLink(resp.Headers.Get("Link"))
+		if nextLink := parseNextLink(resp.Headers.Get("Link")); nextLink != "" {
+			nextURL = resolveURL(nextURL, nextLink)
+		} else {
+			nextURL = ""
+		}
 	}
 
 	if page > c.httpOpts.MaxPages {
@@ -724,6 +742,28 @@ func parseNextLink(linkHeader string) string {
 	}
 
 	return ""
+}
+
+// resolveURL resolves a potentially relative URL against a base URL.
+// Absolute URLs (any scheme, including mixed-case) are returned as-is.
+func resolveURL(base, ref string) string {
+	refURL, err := url.Parse(ref)
+	if err != nil {
+		return ref
+	}
+
+	// If ref is absolute (has a scheme), return as-is
+	if refURL.IsAbs() {
+		return ref
+	}
+
+	// Otherwise, resolve against base
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		return ref
+	}
+
+	return baseURL.ResolveReference(refURL).String()
 }
 
 // parseRetryAfter parses the Retry-After header value.
