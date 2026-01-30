@@ -89,7 +89,25 @@ func (e *Exchanger) Refresh(ctx context.Context, req RefreshRequest) (*Token, er
 	return e.doTokenRequest(ctx, req.TokenEndpoint, data)
 }
 
+// maxTokenResponseBytes is the maximum size for token endpoint response bodies (1 MB).
+const maxTokenResponseBytes int64 = 1 * 1024 * 1024
+
+// maxErrorMessageLen is the maximum length for error messages included in errors.
+const maxErrorMessageLen = 500
+
 func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, data url.Values) (*Token, error) {
+	// Validate HTTPS to prevent sending tokens/credentials over plaintext
+	// Allow localhost for testing against local mock OAuth servers
+	u, err := url.Parse(tokenEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid token endpoint URL: %w", err)
+	}
+	host := u.Hostname()
+	isLocalhost := host == "localhost" || host == "127.0.0.1" || host == "::1"
+	if !strings.EqualFold(u.Scheme, "https") && !isLocalhost {
+		return nil, fmt.Errorf("token endpoint must use HTTPS: %s", tokenEndpoint)
+	}
+
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", tokenEndpoint, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("creating token request: %w", err)
@@ -103,9 +121,14 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, err := io.ReadAll(resp.Body)
+	// Bounded read to prevent OOM from malicious/corrupted responses
+	lr := io.LimitReader(resp.Body, maxTokenResponseBytes+1)
+	body, err := io.ReadAll(lr)
 	if err != nil {
 		return nil, fmt.Errorf("reading token response: %w", err)
+	}
+	if int64(len(body)) > maxTokenResponseBytes {
+		return nil, fmt.Errorf("token response body exceeds %d byte limit", maxTokenResponseBytes)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -115,12 +138,20 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 			ErrorDescription string `json:"error_description"`
 		}
 		if json.Unmarshal(body, &errResp) == nil && errResp.Error != "" {
-			if errResp.ErrorDescription != "" {
-				return nil, fmt.Errorf("token error: %s - %s", errResp.Error, errResp.ErrorDescription)
+			desc := errResp.ErrorDescription
+			if len(desc) > maxErrorMessageLen {
+				desc = desc[:maxErrorMessageLen-3] + "..."
+			}
+			if desc != "" {
+				return nil, fmt.Errorf("token error: %s - %s", errResp.Error, desc)
 			}
 			return nil, fmt.Errorf("token error: %s", errResp.Error)
 		}
-		return nil, fmt.Errorf("token request failed with status %d: %s", resp.StatusCode, string(body))
+		bodyStr := string(body)
+		if len(bodyStr) > maxErrorMessageLen {
+			bodyStr = bodyStr[:maxErrorMessageLen-3] + "..."
+		}
+		return nil, fmt.Errorf("token request failed with status %d: %s", resp.StatusCode, bodyStr)
 	}
 
 	var token Token
