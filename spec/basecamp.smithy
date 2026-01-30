@@ -151,6 +151,8 @@ service Basecamp {
     SetCardColumnColor,
     EnableCardColumnOnHold,
     DisableCardColumnOnHold,
+    SubscribeToCardColumn,
+    UnsubscribeFromCardColumn,
     CreateCardStep,
     UpdateCardStep,
     CompleteCardStep,
@@ -199,10 +201,16 @@ service Basecamp {
     GetQuestion,
     CreateQuestion,
     UpdateQuestion,
+    PauseQuestion,
+    ResumeQuestion,
+    UpdateQuestionNotificationSettings,
     ListAnswers,
     GetAnswer,
     CreateAnswer,
     UpdateAnswer,
+    ListQuestionAnswerers,
+    GetAnswersByPerson,
+    GetQuestionReminders,
 
     // Batch 10 - Search, Templates, Tools, Lineup (Utilities)
     Search,
@@ -3982,7 +3990,58 @@ structure DisableCardColumnOnHoldOutput {
   column: CardColumn
 }
 
-// Note: Use Subscribe/Unsubscribe for card column subscriptions
+/// Subscribe to a card column (watch for changes)
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json")
+operation SubscribeToCardColumn {
+  input: SubscribeToCardColumnInput
+  output: SubscribeToCardColumnOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure SubscribeToCardColumnInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  columnId: CardColumnId
+}
+
+structure SubscribeToCardColumnOutput {}
+
+/// Unsubscribe from a card column (stop watching for changes)
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json")
+operation UnsubscribeFromCardColumn {
+  input: UnsubscribeFromCardColumnInput
+  output: UnsubscribeFromCardColumnOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure UnsubscribeFromCardColumnInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  columnId: CardColumnId
+}
+
+structure UnsubscribeFromCardColumnOutput {}
 
 // ===== CardStep Operations =====
 
@@ -5504,6 +5563,92 @@ structure UpdateQuestionOutput {
   question: Question
 }
 
+/// Pause a check-in question (stops sending reminders)
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/pause.json")
+operation PauseQuestion {
+  input: PauseQuestionInput
+  output: PauseQuestionOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure PauseQuestionInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  questionId: QuestionId
+}
+
+structure PauseQuestionOutput {}
+
+/// Resume a paused check-in question (resumes sending reminders)
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/pause.json")
+operation ResumeQuestion {
+  input: ResumeQuestionInput
+  output: ResumeQuestionOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure ResumeQuestionInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  questionId: QuestionId
+}
+
+structure ResumeQuestionOutput {}
+
+/// Update notification settings for a check-in question
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/notification_settings.json")
+operation UpdateQuestionNotificationSettings {
+  input: UpdateQuestionNotificationSettingsInput
+  output: UpdateQuestionNotificationSettingsOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure UpdateQuestionNotificationSettingsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  questionId: QuestionId
+
+  /// Notify when someone answers
+  notify_on_answer: Boolean
+
+  /// Include unanswered in digest
+  digest_include_unanswered: Boolean
+}
+
+structure UpdateQuestionNotificationSettingsOutput {}
+
 // ===== Answer Operations =====
 
 /// List all answers for a question
@@ -5644,6 +5789,116 @@ structure QuestionAnswerUpdatePayload {
 structure UpdateAnswerOutput {
 
   answer: QuestionAnswer
+}
+
+/// List all people who have answered a question (answerers)
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/answers/by.json")
+operation ListQuestionAnswerers {
+  input: ListQuestionAnswerersInput
+  output: ListQuestionAnswerersOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListQuestionAnswerersInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  questionId: QuestionId
+}
+
+structure ListQuestionAnswerersOutput {
+
+  people: PersonList
+}
+
+/// Get all answers from a specific person for a question
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/answers/by/{personId}")
+operation GetAnswersByPerson {
+  input: GetAnswersByPersonInput
+  output: GetAnswersByPersonOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetAnswersByPersonInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  questionId: QuestionId
+
+  @required
+  @httpLabel
+  personId: PersonId
+}
+
+structure GetAnswersByPersonOutput {
+
+  answers: QuestionAnswerList
+}
+
+/// Get pending check-in reminders for the current user
+///
+/// Returns questions that are pending a response from the authenticated user.
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/my/question_reminders.json")
+operation GetQuestionReminders {
+  input: GetQuestionRemindersInput
+  output: GetQuestionRemindersOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetQuestionRemindersInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure GetQuestionRemindersOutput {
+
+  reminders: QuestionReminderList
+}
+
+// ===== Question Reminder Shapes =====
+
+list QuestionReminderList {
+  member: QuestionReminder
+}
+
+structure QuestionReminder {
+  reminder_id: Long
+  remind_at: ISO8601Timestamp
+  group_on: ISO8601Date
+  question: Question
 }
 
 // ===== Questionnaire Shapes =====
@@ -6332,7 +6587,6 @@ structure GetProjectTimelineOutput {
 /// Get a person's activity timeline
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link_header", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/reports/users/progress/{personId}")
 operation GetPersonProgress {
   input: GetPersonProgressInput
