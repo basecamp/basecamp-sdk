@@ -155,8 +155,7 @@ service Basecamp {
     UnsubscribeFromCardColumn,
     CreateCardStep,
     UpdateCardStep,
-    CompleteCardStep,
-    UncompleteCardStep,
+    SetCardStepCompletion,
     RepositionCardStep,
 
     // Batch 6 - People, Subscriptions (People & Access)
@@ -4113,18 +4112,18 @@ structure UpdateCardStepOutput {
   step: CardStep
 }
 
-/// Mark a step as completed
+/// Set card step completion status (PUT with completion: "on" to complete, "" to uncomplete)
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions.json")
-operation CompleteCardStep {
-  input: CompleteCardStepInput
-  output: CompleteCardStepOutput
+operation SetCardStepCompletion {
+  input: SetCardStepCompletionInput
+  output: SetCardStepCompletionOutput
   errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
-structure CompleteCardStepInput {
+structure SetCardStepCompletionInput {
   @required
   @httpLabel
   accountId: AccountId
@@ -4136,39 +4135,13 @@ structure CompleteCardStepInput {
   @required
   @httpLabel
   stepId: CardStepId
-}
 
-structure CompleteCardStepOutput {
-
-  step: CardStep
-}
-
-/// Mark a step as incomplete
-@idempotent
-@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions.json")
-operation UncompleteCardStep {
-  input: UncompleteCardStepInput
-  output: UncompleteCardStepOutput
-  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
-}
-
-structure UncompleteCardStepInput {
+  /// Set to "on" to complete the step, "" (empty) to uncomplete
   @required
-  @httpLabel
-  accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  stepId: CardStepId
+  completion: String
 }
 
-structure UncompleteCardStepOutput {
+structure SetCardStepCompletionOutput {
 
   step: CardStep
 }
@@ -6467,16 +6440,10 @@ structure CreateLineupMarkerInput {
   accountId: AccountId
 
   @required
-  title: String
+  name: String
 
   @required
-  starts_on: ISO8601Date
-
-  @required
-  ends_on: ISO8601Date
-
-  color: String
-  description: String
+  date: ISO8601Date
 }
 
 structure CreateLineupMarkerOutput {}
@@ -6501,11 +6468,8 @@ structure UpdateLineupMarkerInput {
   @httpLabel
   markerId: MarkerId
 
-  title: String
-  starts_on: ISO8601Date
-  ends_on: ISO8601Date
-  color: String
-  description: String
+  name: String
+  date: ISO8601Date
 }
 
 structure UpdateLineupMarkerOutput {}
