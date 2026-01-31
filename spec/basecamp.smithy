@@ -414,7 +414,7 @@ structure UpdateProjectOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/projects/{projectId}")
+@http(method: "DELETE", uri: "/{accountId}/projects/{projectId}", code: 204)
 operation TrashProject {
   input: TrashProjectInput
   output: TrashProjectOutput
@@ -1541,7 +1541,7 @@ structure UpdateMessageOutput {
 
 /// Pin a message to the top of the message board
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{messageId}/pin.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{messageId}/pin.json", code: 204)
 operation PinMessage {
   input: PinMessageInput
   output: PinMessageOutput
@@ -1568,7 +1568,7 @@ structure PinMessageOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/recordings/{messageId}/pin.json")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/recordings/{messageId}/pin.json", code: 204)
 operation UnpinMessage {
   input: UnpinMessageInput
   output: UnpinMessageOutput
@@ -3038,7 +3038,7 @@ structure CreateCampfireLineOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines/{lineId}")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines/{lineId}", code: 204)
 operation DeleteCampfireLine {
   input: DeleteCampfireLineInput
   output: DeleteCampfireLineOutput
@@ -3867,7 +3867,7 @@ structure UpdateCardColumnOutput {
 
 /// Move a column within a card table
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}/moves.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}/moves.json", code: 204)
 operation MoveCardColumn {
   input: MoveCardColumnInput
   output: MoveCardColumnOutput
@@ -5283,6 +5283,9 @@ structure UnarchiveRecordingInput {
 structure UnarchiveRecordingOutput {}
 
 /// Set client visibility for a recording
+///
+/// WARNING: BC3 Rails controller only returns 302 redirect (HTML).
+/// JSON API format is not implemented. This operation may not work via API.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -5587,7 +5590,9 @@ structure PauseQuestionInput {
   questionId: QuestionId
 }
 
-structure PauseQuestionOutput {}
+structure PauseQuestionOutput {
+  paused: Boolean
+}
 
 /// Resume a paused check-in question (resumes sending reminders)
 @idempotent
@@ -5614,7 +5619,9 @@ structure ResumeQuestionInput {
   questionId: QuestionId
 }
 
-structure ResumeQuestionOutput {}
+structure ResumeQuestionOutput {
+  paused: Boolean
+}
 
 /// Update notification settings for a check-in question
 @idempotent
@@ -5647,7 +5654,10 @@ structure UpdateQuestionNotificationSettingsInput {
   digest_include_unanswered: Boolean
 }
 
-structure UpdateQuestionNotificationSettingsOutput {}
+structure UpdateQuestionNotificationSettingsOutput {
+  responding: Boolean
+  subscribed: Boolean
+}
 
 // ===== Answer Operations =====
 
@@ -5756,7 +5766,7 @@ structure CreateAnswerOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/question_answers/{answerId}")
+@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/question_answers/{answerId}", code: 204)
 operation UpdateAnswer {
   input: UpdateAnswerInput
   output: UpdateAnswerOutput
@@ -5786,10 +5796,7 @@ structure QuestionAnswerUpdatePayload {
   content: String
 }
 
-structure UpdateAnswerOutput {
-
-  answer: QuestionAnswer
-}
+structure UpdateAnswerOutput {}
 
 /// List all people who have answered a question (answerers)
 ///
@@ -6169,7 +6176,7 @@ structure UpdateTemplateOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/templates/{templateId}")
+@http(method: "DELETE", uri: "/{accountId}/templates/{templateId}", code: 204)
 operation DeleteTemplate {
   input: DeleteTemplateInput
   output: DeleteTemplateOutput
@@ -6279,7 +6286,7 @@ structure GetToolOutput {
 
 /// Clone an existing tool to create a new one
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/dock/tools/{sourceToolId}/clone.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/dock/tools.json", code: 201)
 operation CloneTool {
   input: CloneToolInput
   output: CloneToolOutput
@@ -6296,8 +6303,7 @@ structure CloneToolInput {
   projectId: ProjectId
 
   @required
-  @httpLabel
-  sourceToolId: ToolId
+  source_recording_id: ToolId
 }
 
 structure CloneToolOutput {
@@ -6367,7 +6373,7 @@ structure DeleteToolOutput {}
 
 /// Enable a tool (show it on the project dock)
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/dock/tools/{toolId}/position.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json", code: 201)
 operation EnableTool {
   input: EnableToolInput
   output: EnableToolOutput
@@ -6394,7 +6400,7 @@ structure EnableToolOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/dock/tools/{toolId}/position.json")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json", code: 204)
 operation DisableTool {
   input: DisableToolInput
   output: DisableToolOutput
@@ -6421,7 +6427,7 @@ structure DisableToolOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/dock/tools/{toolId}/position.json")
+@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json")
 operation RepositionTool {
   input: RepositionToolInput
   output: RepositionToolOutput
@@ -6476,10 +6482,7 @@ structure CreateLineupMarkerInput {
   description: String
 }
 
-structure CreateLineupMarkerOutput {
-
-  marker: LineupMarker
-}
+structure CreateLineupMarkerOutput {}
 
 /// Update an existing lineup marker
 @idempotent
@@ -6508,10 +6511,7 @@ structure UpdateLineupMarkerInput {
   description: String
 }
 
-structure UpdateLineupMarkerOutput {
-
-  marker: LineupMarker
-}
+structure UpdateLineupMarkerOutput {}
 
 /// Delete a lineup marker
 @idempotent
