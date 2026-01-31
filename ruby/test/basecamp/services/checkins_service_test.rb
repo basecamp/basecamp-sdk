@@ -137,16 +137,16 @@ class CheckinsServiceTest < Minitest::Test
   end
 
   def test_update_answer
-    # Generated service: /question_answers/{id} without .json
-    updated_answer = sample_answer(id: 200, content: "<p>Updated answer</p>")
-    stub_put("/12345/buckets/100/question_answers/200", response_body: updated_answer)
+    # UpdateAnswer now returns void (204 No Content)
+    stub_request(:put, "https://3.basecampapi.com/12345/buckets/100/question_answers/200")
+      .to_return(status: 204, body: "")
 
-    answer = @account.checkins.update_answer(
+    result = @account.checkins.update_answer(
       project_id: 100,
       answer_id: 200,
       content: "<p>Updated answer</p>"
     )
 
-    assert_equal "<p>Updated answer</p>", answer["content"]
+    assert_nil result
   end
 end

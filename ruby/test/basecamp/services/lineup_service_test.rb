@@ -16,8 +16,7 @@ class LineupServiceTest < Minitest::Test
   end
 
   def test_create
-    marker = { "id" => 1, "title" => "Launch Day", "starts_on" => "2024-03-01", "ends_on" => "2024-03-01" }
-    stub_post("/12345/lineup/markers.json", response_body: marker)
+    stub_post("/12345/lineup/markers.json", response_body: "", status: 201)
 
     result = @account.lineup.create(
       title: "Launch Day",
@@ -25,13 +24,11 @@ class LineupServiceTest < Minitest::Test
       ends_on: "2024-03-01"
     )
 
-    assert_equal "Launch Day", result["title"]
-    assert_equal "2024-03-01", result["starts_on"]
+    assert_nil result
   end
 
   def test_create_with_color_and_description
-    marker = { "id" => 2, "title" => "Milestone", "color" => "green", "description" => "<p>Big day!</p>" }
-    stub_post("/12345/lineup/markers.json", response_body: marker)
+    stub_post("/12345/lineup/markers.json", response_body: "", status: 201)
 
     result = @account.lineup.create(
       title: "Milestone",
@@ -41,18 +38,16 @@ class LineupServiceTest < Minitest::Test
       description: "<p>Big day!</p>"
     )
 
-    assert_equal "green", result["color"]
+    assert_nil result
   end
 
   def test_update
-    updated_marker = { "id" => 1, "title" => "Updated Launch", "color" => "blue" }
     stub_request(:put, "https://3.basecampapi.com/12345/lineup/markers/1")
-      .to_return(status: 200, body: updated_marker.to_json)
+      .to_return(status: 204, body: "")
 
     result = @account.lineup.update(marker_id: 1, title: "Updated Launch", color: "blue")
 
-    assert_equal "Updated Launch", result["title"]
-    assert_equal "blue", result["color"]
+    assert_nil result
   end
 
   def test_delete

@@ -9,10 +9,10 @@ module Basecamp
 
       # Clone an existing tool to create a new one
       # @param project_id [Integer] project id ID
-      # @param source_tool_id [Integer] source tool id ID
+      # @param source_recording_id [Integer] source recording id
       # @return [Hash] response data
-      def clone(project_id:, source_tool_id:)
-        http_post(bucket_path(project_id, "/dock/tools/#{source_tool_id}/clone.json")).json
+      def clone(project_id:, source_recording_id:)
+        http_post(bucket_path(project_id, "/dock/tools.json"), body: compact_params(source_recording_id: source_recording_id)).json
       end
 
       # Get a dock tool by id
@@ -46,7 +46,7 @@ module Basecamp
       # @param tool_id [Integer] tool id ID
       # @return [void]
       def enable(project_id:, tool_id:)
-        http_post(bucket_path(project_id, "/dock/tools/#{tool_id}/position.json"))
+        http_post(bucket_path(project_id, "/recordings/#{tool_id}/position.json"))
         nil
       end
 
@@ -56,7 +56,7 @@ module Basecamp
       # @param position [Integer] position
       # @return [void]
       def reposition(project_id:, tool_id:, position:)
-        http_put(bucket_path(project_id, "/dock/tools/#{tool_id}/position.json"), body: compact_params(position: position))
+        http_put(bucket_path(project_id, "/recordings/#{tool_id}/position.json"), body: compact_params(position: position))
         nil
       end
 
@@ -65,7 +65,7 @@ module Basecamp
       # @param tool_id [Integer] tool id ID
       # @return [void]
       def disable(project_id:, tool_id:)
-        http_delete(bucket_path(project_id, "/dock/tools/#{tool_id}/position.json"))
+        http_delete(bucket_path(project_id, "/recordings/#{tool_id}/position.json"))
         nil
       end
     end

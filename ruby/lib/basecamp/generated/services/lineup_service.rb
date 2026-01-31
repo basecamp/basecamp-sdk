@@ -13,9 +13,10 @@ module Basecamp
       # @param ends_on [String] ends on (YYYY-MM-DD)
       # @param color [String, nil] color
       # @param description [String, nil] description
-      # @return [Hash] response data
+      # @return [void]
       def create(title:, starts_on:, ends_on:, color: nil, description: nil)
-        http_post("/lineup/markers.json", body: compact_params(title: title, starts_on: starts_on, ends_on: ends_on, color: color, description: description)).json
+        http_post("/lineup/markers.json", body: compact_params(title: title, starts_on: starts_on, ends_on: ends_on, color: color, description: description))
+        nil
       end
 
       # Update an existing lineup marker
@@ -25,9 +26,10 @@ module Basecamp
       # @param ends_on [String, nil] ends on (YYYY-MM-DD)
       # @param color [String, nil] color
       # @param description [String, nil] description
-      # @return [Hash] response data
+      # @return [void]
       def update(marker_id:, title: nil, starts_on: nil, ends_on: nil, color: nil, description: nil)
-        http_put("/lineup/markers/#{marker_id}", body: compact_params(title: title, starts_on: starts_on, ends_on: ends_on, color: color, description: description)).json
+        http_put("/lineup/markers/#{marker_id}", body: compact_params(title: title, starts_on: starts_on, ends_on: ends_on, color: color, description: description))
+        nil
       end
 
       # Delete a lineup marker

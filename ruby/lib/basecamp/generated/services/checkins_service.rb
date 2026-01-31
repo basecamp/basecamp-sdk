@@ -19,9 +19,10 @@ module Basecamp
       # @param project_id [Integer] project id ID
       # @param answer_id [Integer] answer id ID
       # @param content [String] content
-      # @return [Hash] response data
+      # @return [void]
       def update_answer(project_id:, answer_id:, content:)
-        http_put(bucket_path(project_id, "/question_answers/#{answer_id}"), body: compact_params(content: content)).json
+        http_put(bucket_path(project_id, "/question_answers/#{answer_id}"), body: compact_params(content: content))
+        nil
       end
 
       # Get a questionnaire (automatic check-ins container) by id
@@ -109,28 +110,25 @@ module Basecamp
       # @param question_id [Integer] question id ID
       # @param notify_on_answer [Boolean, nil] Notify when someone answers
       # @param digest_include_unanswered [Boolean, nil] Include unanswered in digest
-      # @return [void]
+      # @return [Hash] response data
       def update_notification_settings(project_id:, question_id:, notify_on_answer: nil, digest_include_unanswered: nil)
-        http_put(bucket_path(project_id, "/questions/#{question_id}/notification_settings.json"), body: compact_params(notify_on_answer: notify_on_answer, digest_include_unanswered: digest_include_unanswered))
-        nil
+        http_put(bucket_path(project_id, "/questions/#{question_id}/notification_settings.json"), body: compact_params(notify_on_answer: notify_on_answer, digest_include_unanswered: digest_include_unanswered)).json
       end
 
       # Pause a check-in question (stops sending reminders)
       # @param project_id [Integer] project id ID
       # @param question_id [Integer] question id ID
-      # @return [void]
+      # @return [Hash] response data
       def pause(project_id:, question_id:)
-        http_post(bucket_path(project_id, "/questions/#{question_id}/pause.json"))
-        nil
+        http_post(bucket_path(project_id, "/questions/#{question_id}/pause.json")).json
       end
 
       # Resume a paused check-in question (resumes sending reminders)
       # @param project_id [Integer] project id ID
       # @param question_id [Integer] question id ID
-      # @return [void]
+      # @return [Hash] response data
       def resume(project_id:, question_id:)
-        http_delete(bucket_path(project_id, "/questions/#{question_id}/pause.json"))
-        nil
+        http_delete(bucket_path(project_id, "/questions/#{question_id}/pause.json")).json
       end
 
       # Get pending check-in reminders for the current user
