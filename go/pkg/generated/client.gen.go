@@ -292,6 +292,11 @@ type ClientSide struct {
 	Url    string `json:"url,omitempty"`
 }
 
+// CloneToolRequestContent defines model for CloneToolRequestContent.
+type CloneToolRequestContent struct {
+	SourceRecordingId int64 `json:"source_recording_id"`
+}
+
 // CloneToolResponseContent defines model for CloneToolResponseContent.
 type CloneToolResponseContent = Tool
 
@@ -411,9 +416,6 @@ type CreateLineupMarkerRequestContent struct {
 	StartsOn    types.Date `json:"starts_on"`
 	Title       string     `json:"title"`
 }
-
-// CreateLineupMarkerResponseContent defines model for CreateLineupMarkerResponseContent.
-type CreateLineupMarkerResponseContent = LineupMarker
 
 // CreateMessageRequestContent defines model for CreateMessageRequestContent.
 type CreateMessageRequestContent struct {
@@ -849,25 +851,6 @@ type InternalServerErrorResponseContent struct {
 	Message string `json:"message,omitempty"`
 }
 
-// LineupMarker defines model for LineupMarker.
-type LineupMarker struct {
-	AppUrl      string          `json:"app_url,omitempty"`
-	Bucket      RecordingBucket `json:"bucket,omitempty"`
-	Color       string          `json:"color,omitempty"`
-	CreatedAt   time.Time       `json:"created_at,omitempty"`
-	Creator     Person          `json:"creator,omitempty"`
-	Description string          `json:"description,omitempty"`
-	EndsOn      types.Date      `json:"ends_on,omitempty"`
-	Id          *int64          `json:"id,omitempty"`
-	Parent      RecordingParent `json:"parent,omitempty"`
-	StartsOn    types.Date      `json:"starts_on,omitempty"`
-	Status      string          `json:"status,omitempty"`
-	Title       string          `json:"title,omitempty"`
-	Type        string          `json:"type,omitempty"`
-	UpdatedAt   time.Time       `json:"updated_at,omitempty"`
-	Url         string          `json:"url,omitempty"`
-}
-
 // ListAnswersResponseContent defines model for ListAnswersResponseContent.
 type ListAnswersResponseContent = []QuestionAnswer
 
@@ -1034,6 +1017,11 @@ type MoveCardRequestContent struct {
 type NotFoundErrorResponseContent struct {
 	Error   string `json:"error"`
 	Message string `json:"message,omitempty"`
+}
+
+// PauseQuestionResponseContent defines model for PauseQuestionResponseContent.
+type PauseQuestionResponseContent struct {
+	Paused bool `json:"paused,omitempty"`
 }
 
 // Person defines model for Person.
@@ -1262,6 +1250,11 @@ type RepositionTodolistGroupRequestContent struct {
 // RepositionToolRequestContent defines model for RepositionToolRequestContent.
 type RepositionToolRequestContent struct {
 	Position int32 `json:"position"`
+}
+
+// ResumeQuestionResponseContent defines model for ResumeQuestionResponseContent.
+type ResumeQuestionResponseContent struct {
+	Paused bool `json:"paused,omitempty"`
 }
 
 // Schedule defines model for Schedule.
@@ -1603,9 +1596,6 @@ type UnauthorizedErrorResponseContent struct {
 // UncompleteCardStepResponseContent defines model for UncompleteCardStepResponseContent.
 type UncompleteCardStepResponseContent = CardStep
 
-// UpdateAnswerResponseContent defines model for UpdateAnswerResponseContent.
-type UpdateAnswerResponseContent = QuestionAnswer
-
 // UpdateCardColumnRequestContent defines model for UpdateCardColumnRequestContent.
 type UpdateCardColumnRequestContent struct {
 	Description string `json:"description,omitempty"`
@@ -1671,9 +1661,6 @@ type UpdateLineupMarkerRequestContent struct {
 	Title       string     `json:"title,omitempty"`
 }
 
-// UpdateLineupMarkerResponseContent defines model for UpdateLineupMarkerResponseContent.
-type UpdateLineupMarkerResponseContent = LineupMarker
-
 // UpdateMessageRequestContent defines model for UpdateMessageRequestContent.
 type UpdateMessageRequestContent struct {
 	CategoryId *int64 `json:"category_id,omitempty"`
@@ -1725,6 +1712,12 @@ type UpdateQuestionNotificationSettingsRequestContent struct {
 
 	// NotifyOnAnswer Notify when someone answers
 	NotifyOnAnswer *bool `json:"notify_on_answer,omitempty"`
+}
+
+// UpdateQuestionNotificationSettingsResponseContent defines model for UpdateQuestionNotificationSettingsResponseContent.
+type UpdateQuestionNotificationSettingsResponseContent struct {
+	Responding bool `json:"responding,omitempty"`
+	Subscribed bool `json:"subscribed,omitempty"`
 }
 
 // UpdateQuestionRequestContent defines model for UpdateQuestionRequestContent.
@@ -2073,11 +2066,11 @@ type CreateCampfireLineJSONRequestBody = CreateCampfireLineRequestContent
 // UpdateCommentJSONRequestBody defines body for UpdateComment for application/json ContentType.
 type UpdateCommentJSONRequestBody = UpdateCommentRequestContent
 
+// CloneToolJSONRequestBody defines body for CloneTool for application/json ContentType.
+type CloneToolJSONRequestBody = CloneToolRequestContent
+
 // UpdateToolJSONRequestBody defines body for UpdateTool for application/json ContentType.
 type UpdateToolJSONRequestBody = UpdateToolRequestContent
-
-// RepositionToolJSONRequestBody defines body for RepositionTool for application/json ContentType.
-type RepositionToolJSONRequestBody = RepositionToolRequestContent
 
 // UpdateDocumentJSONRequestBody defines body for UpdateDocument for application/json ContentType.
 type UpdateDocumentJSONRequestBody = UpdateDocumentRequestContent
@@ -2114,6 +2107,9 @@ type CreateCommentJSONRequestBody = CreateCommentRequestContent
 
 // UpdateSubscriptionJSONRequestBody defines body for UpdateSubscription for application/json ContentType.
 type UpdateSubscriptionJSONRequestBody = UpdateSubscriptionRequestContent
+
+// RepositionToolJSONRequestBody defines body for RepositionTool for application/json ContentType.
+type RepositionToolJSONRequestBody = RepositionToolRequestContent
 
 // UpdateScheduleEntryJSONRequestBody defines body for UpdateScheduleEntry for application/json ContentType.
 type UpdateScheduleEntryJSONRequestBody = UpdateScheduleEntryRequestContent
@@ -2644,8 +2640,10 @@ type ClientInterface interface {
 
 	UpdateComment(ctx context.Context, accountId string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CloneTool request
-	CloneTool(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// CloneToolWithBody request with any body
+	CloneToolWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CloneTool(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTool request
 	DeleteTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2657,17 +2655,6 @@ type ClientInterface interface {
 	UpdateToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateTool(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DisableTool request
-	DisableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// EnableTool request
-	EnableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// RepositionToolWithBody request with any body
-	RepositionToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	RepositionTool(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDocument request
 	GetDocument(ctx context.Context, accountId string, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2818,6 +2805,17 @@ type ClientInterface interface {
 
 	// GetRecordingTimesheet request
 	GetRecordingTimesheet(ctx context.Context, accountId string, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DisableTool request
+	DisableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnableTool request
+	EnableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RepositionToolWithBody request with any body
+	RepositionToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RepositionTool(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetScheduleEntry request
 	GetScheduleEntry(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3780,11 +3778,25 @@ func (c *Client) UpdateComment(ctx context.Context, accountId string, projectId 
 
 }
 
-// CloneTool executes the CloneTool operation.
+// CloneToolWithBody executes the CloneTool operation.
 
-func (c *Client) CloneTool(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CloneToolWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCloneToolRequest(c.Server, accountId, projectId, sourceToolId)
+	req, err := NewCloneToolRequestWithBody(c.Server, accountId, projectId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CloneTool(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCloneToolRequest(c.Server, accountId, projectId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3831,50 +3843,6 @@ func (c *Client) UpdateTool(ctx context.Context, accountId string, projectId int
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateToolRequest(c.Server, accountId, projectId, toolId, body)
 	}, true, "UpdateTool", reqEditors...)
-
-}
-
-// DisableTool is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) DisableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDisableToolRequest(c.Server, accountId, projectId, toolId)
-	}, true, "DisableTool", reqEditors...)
-
-}
-
-// EnableTool executes the EnableTool operation.
-
-func (c *Client) EnableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewEnableToolRequest(c.Server, accountId, projectId, toolId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-// RepositionToolWithBody is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) RepositionToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewRepositionToolRequestWithBody(c.Server, accountId, projectId, toolId, contentType, body)
-	}, true, "RepositionTool", reqEditors...)
-
-}
-
-func (c *Client) RepositionTool(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewRepositionToolRequest(c.Server, accountId, projectId, toolId, body)
-	}, true, "RepositionTool", reqEditors...)
 
 }
 
@@ -4463,6 +4431,50 @@ func (c *Client) GetRecordingTimesheet(ctx context.Context, accountId string, pr
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetRecordingTimesheetRequest(c.Server, accountId, projectId, recordingId, params)
 	}, true, "GetRecordingTimesheet", reqEditors...)
+
+}
+
+// DisableTool is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DisableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDisableToolRequest(c.Server, accountId, projectId, toolId)
+	}, true, "DisableTool", reqEditors...)
+
+}
+
+// EnableTool executes the EnableTool operation.
+
+func (c *Client) EnableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewEnableToolRequest(c.Server, accountId, projectId, toolId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// RepositionToolWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) RepositionToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRepositionToolRequestWithBody(c.Server, accountId, projectId, toolId, contentType, body)
+	}, true, "RepositionTool", reqEditors...)
+
+}
+
+func (c *Client) RepositionTool(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRepositionToolRequest(c.Server, accountId, projectId, toolId, body)
+	}, true, "RepositionTool", reqEditors...)
 
 }
 
@@ -7890,8 +7902,19 @@ func NewUpdateCommentRequestWithBody(server string, accountId string, projectId 
 	return req, nil
 }
 
-// NewCloneToolRequest generates requests for CloneTool
-func NewCloneToolRequest(server string, accountId string, projectId int64, sourceToolId int64) (*http.Request, error) {
+// NewCloneToolRequest calls the generic CloneTool builder with application/json body
+func NewCloneToolRequest(server string, accountId string, projectId int64, body CloneToolJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCloneToolRequestWithBody(server, accountId, projectId, "application/json", bodyReader)
+}
+
+// NewCloneToolRequestWithBody generates requests for CloneTool with any type of body
+func NewCloneToolRequestWithBody(server string, accountId string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7908,19 +7931,12 @@ func NewCloneToolRequest(server string, accountId string, projectId int64, sourc
 		return nil, err
 	}
 
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "sourceToolId", runtime.ParamLocationPath, sourceToolId)
-	if err != nil {
-		return nil, err
-	}
-
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/clone.json", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7930,10 +7946,12 @@ func NewCloneToolRequest(server string, accountId string, projectId int64, sourc
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	req, err := http.NewRequest("POST", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -8076,163 +8094,6 @@ func NewUpdateToolRequestWithBody(server string, accountId string, projectId int
 	}
 
 	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDisableToolRequest generates requests for DisableTool
-func NewDisableToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewEnableToolRequest generates requests for EnableTool
-func NewEnableToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewRepositionToolRequest calls the generic RepositionTool builder with application/json body
-func NewRepositionToolRequest(server string, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewRepositionToolRequestWithBody(server, accountId, projectId, toolId, "application/json", bodyReader)
-}
-
-// NewRepositionToolRequestWithBody generates requests for RepositionTool with any type of body
-func NewRepositionToolRequestWithBody(server string, accountId string, projectId int64, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10476,6 +10337,163 @@ func NewGetRecordingTimesheetRequest(server string, accountId string, projectId 
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewDisableToolRequest generates requests for DisableTool
+func NewDisableToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/position.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnableToolRequest generates requests for EnableTool
+func NewEnableToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/position.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRepositionToolRequest calls the generic RepositionTool builder with application/json body
+func NewRepositionToolRequest(server string, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRepositionToolRequestWithBody(server, accountId, projectId, toolId, "application/json", bodyReader)
+}
+
+// NewRepositionToolRequestWithBody generates requests for RepositionTool with any type of body
+func NewRepositionToolRequestWithBody(server string, accountId string, projectId int64, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/position.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -14390,9 +14408,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"DeleteTool":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetTool":                            {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
-	"DisableTool":                        {Idempotent: true, HasSensitiveParams: false},
-	"EnableTool":                         {Idempotent: false, HasSensitiveParams: false},
-	"RepositionTool":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetDocument":                        {Idempotent: true, HasSensitiveParams: false},
 	"UpdateDocument":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetForward":                         {Idempotent: true, HasSensitiveParams: false},
@@ -14435,6 +14450,9 @@ var operationMetadata = map[string]OperationMetadata{
 	"Subscribe":                          {Idempotent: false, HasSensitiveParams: false},
 	"UpdateSubscription":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetRecordingTimesheet":              {Idempotent: true, HasSensitiveParams: false},
+	"DisableTool":                        {Idempotent: true, HasSensitiveParams: false},
+	"EnableTool":                         {Idempotent: false, HasSensitiveParams: false},
+	"RepositionTool":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetScheduleEntry":                   {Idempotent: true, HasSensitiveParams: false},
 	"UpdateScheduleEntry":                {Idempotent: true, HasSensitiveParams: false},
 	"GetScheduleEntryOccurrence":         {Idempotent: true, HasSensitiveParams: false},
@@ -15609,8 +15627,10 @@ type ClientWithResponsesInterface interface {
 
 	UpdateCommentWithResponse(ctx context.Context, accountId string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
 
-	// CloneToolWithResponse request
-	CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+	// CloneToolWithBodyWithResponse request with any body
+	CloneToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+
+	CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
 
 	// DeleteToolWithResponse request
 	DeleteToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error)
@@ -15622,17 +15642,6 @@ type ClientWithResponsesInterface interface {
 	UpdateToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
 
 	UpdateToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
-
-	// DisableToolWithResponse request
-	DisableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error)
-
-	// EnableToolWithResponse request
-	EnableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error)
-
-	// RepositionToolWithBodyWithResponse request with any body
-	RepositionToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
-
-	RepositionToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
 
 	// GetDocumentWithResponse request
 	GetDocumentWithResponse(ctx context.Context, accountId string, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error)
@@ -15783,6 +15792,17 @@ type ClientWithResponsesInterface interface {
 
 	// GetRecordingTimesheetWithResponse request
 	GetRecordingTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error)
+
+	// DisableToolWithResponse request
+	DisableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error)
+
+	// EnableToolWithResponse request
+	EnableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error)
+
+	// RepositionToolWithBodyWithResponse request with any body
+	RepositionToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
+
+	RepositionToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
 
 	// GetScheduleEntryWithResponse request
 	GetScheduleEntryWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error)
@@ -17216,7 +17236,7 @@ func (r UpdateCommentResponse) StatusCode() int {
 type CloneToolResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CloneToolResponseContent
+	JSON201      *CloneToolResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -17312,83 +17332,6 @@ func (r UpdateToolResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateToolResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type DisableToolResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r DisableToolResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DisableToolResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type EnableToolResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r EnableToolResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r EnableToolResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type RepositionToolResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r RepositionToolResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r RepositionToolResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -17766,7 +17709,6 @@ func (r GetAnswerResponse) StatusCode() int {
 type UpdateAnswerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *UpdateAnswerResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -18032,6 +17974,7 @@ func (r GetAnswersByPersonResponse) StatusCode() int {
 type UpdateQuestionNotificationSettingsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *UpdateQuestionNotificationSettingsResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -18058,6 +18001,7 @@ func (r UpdateQuestionNotificationSettingsResponse) StatusCode() int {
 type ResumeQuestionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *ResumeQuestionResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -18083,6 +18027,7 @@ func (r ResumeQuestionResponse) StatusCode() int {
 type PauseQuestionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *PauseQuestionResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -18492,6 +18437,83 @@ func (r GetRecordingTimesheetResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetRecordingTimesheetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DisableToolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DisableToolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DisableToolResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type EnableToolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r EnableToolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnableToolResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type RepositionToolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r RepositionToolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RepositionToolResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -19632,7 +19654,6 @@ func (r ListPingablePeopleResponse) StatusCode() int {
 type CreateLineupMarkerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *CreateLineupMarkerResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19684,7 +19705,6 @@ func (r DeleteLineupMarkerResponse) StatusCode() int {
 type UpdateLineupMarkerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *UpdateLineupMarkerResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -20966,9 +20986,17 @@ func (c *ClientWithResponses) UpdateCommentWithResponse(ctx context.Context, acc
 	return ParseUpdateCommentResponse(rsp)
 }
 
-// CloneToolWithResponse request returning *CloneToolResponse
-func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
-	rsp, err := c.CloneTool(ctx, accountId, projectId, sourceToolId, reqEditors...)
+// CloneToolWithBodyWithResponse request with arbitrary body returning *CloneToolResponse
+func (c *ClientWithResponses) CloneToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
+	rsp, err := c.CloneToolWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCloneToolResponse(rsp)
+}
+
+func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
+	rsp, err := c.CloneTool(ctx, accountId, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -21008,41 +21036,6 @@ func (c *ClientWithResponses) UpdateToolWithResponse(ctx context.Context, accoun
 		return nil, err
 	}
 	return ParseUpdateToolResponse(rsp)
-}
-
-// DisableToolWithResponse request returning *DisableToolResponse
-func (c *ClientWithResponses) DisableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error) {
-	rsp, err := c.DisableTool(ctx, accountId, projectId, toolId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDisableToolResponse(rsp)
-}
-
-// EnableToolWithResponse request returning *EnableToolResponse
-func (c *ClientWithResponses) EnableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error) {
-	rsp, err := c.EnableTool(ctx, accountId, projectId, toolId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseEnableToolResponse(rsp)
-}
-
-// RepositionToolWithBodyWithResponse request with arbitrary body returning *RepositionToolResponse
-func (c *ClientWithResponses) RepositionToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
-	rsp, err := c.RepositionToolWithBody(ctx, accountId, projectId, toolId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseRepositionToolResponse(rsp)
-}
-
-func (c *ClientWithResponses) RepositionToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
-	rsp, err := c.RepositionTool(ctx, accountId, projectId, toolId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseRepositionToolResponse(rsp)
 }
 
 // GetDocumentWithResponse request returning *GetDocumentResponse
@@ -21517,6 +21510,41 @@ func (c *ClientWithResponses) GetRecordingTimesheetWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseGetRecordingTimesheetResponse(rsp)
+}
+
+// DisableToolWithResponse request returning *DisableToolResponse
+func (c *ClientWithResponses) DisableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error) {
+	rsp, err := c.DisableTool(ctx, accountId, projectId, toolId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDisableToolResponse(rsp)
+}
+
+// EnableToolWithResponse request returning *EnableToolResponse
+func (c *ClientWithResponses) EnableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error) {
+	rsp, err := c.EnableTool(ctx, accountId, projectId, toolId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnableToolResponse(rsp)
+}
+
+// RepositionToolWithBodyWithResponse request with arbitrary body returning *RepositionToolResponse
+func (c *ClientWithResponses) RepositionToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
+	rsp, err := c.RepositionToolWithBody(ctx, accountId, projectId, toolId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRepositionToolResponse(rsp)
+}
+
+func (c *ClientWithResponses) RepositionToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
+	rsp, err := c.RepositionTool(ctx, accountId, projectId, toolId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRepositionToolResponse(rsp)
 }
 
 // GetScheduleEntryWithResponse request returning *GetScheduleEntryResponse
@@ -24859,12 +24887,12 @@ func ParseCloneToolResponse(rsp *http.Response) (*CloneToolResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CloneToolResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -25028,161 +25056,6 @@ func ParseUpdateToolResponse(rsp *http.Response) (*UpdateToolResponse, error) {
 		}
 		response.JSON200 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDisableToolResponse parses an HTTP response from a DisableToolWithResponse call
-func ParseDisableToolResponse(rsp *http.Response) (*DisableToolResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DisableToolResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseEnableToolResponse parses an HTTP response from a EnableToolWithResponse call
-func ParseEnableToolResponse(rsp *http.Response) (*EnableToolResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &EnableToolResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseRepositionToolResponse parses an HTTP response from a RepositionToolWithResponse call
-func ParseRepositionToolResponse(rsp *http.Response) (*RepositionToolResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &RepositionToolResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -26021,13 +25894,6 @@ func ParseUpdateAnswerResponse(rsp *http.Response) (*UpdateAnswerResponse, error
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UpdateAnswerResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -26603,6 +26469,13 @@ func ParseUpdateQuestionNotificationSettingsResponse(rsp *http.Response) (*Updat
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateQuestionNotificationSettingsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -26657,6 +26530,13 @@ func ParseResumeQuestionResponse(rsp *http.Response) (*ResumeQuestionResponse, e
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResumeQuestionResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -26704,6 +26584,13 @@ func ParsePauseQuestionResponse(rsp *http.Response) (*PauseQuestionResponse, err
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PauseQuestionResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -27555,6 +27442,161 @@ func ParseGetRecordingTimesheetResponse(rsp *http.Response) (*GetRecordingTimesh
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDisableToolResponse parses an HTTP response from a DisableToolWithResponse call
+func ParseDisableToolResponse(rsp *http.Response) (*DisableToolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DisableToolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseEnableToolResponse parses an HTTP response from a EnableToolWithResponse call
+func ParseEnableToolResponse(rsp *http.Response) (*EnableToolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnableToolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRepositionToolResponse parses an HTTP response from a RepositionToolWithResponse call
+func ParseRepositionToolResponse(rsp *http.Response) (*RepositionToolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RepositionToolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
@@ -29995,13 +30037,6 @@ func ParseCreateLineupMarkerResponse(rsp *http.Response) (*CreateLineupMarkerRes
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest CreateLineupMarkerResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -30103,13 +30138,6 @@ func ParseUpdateLineupMarkerResponse(rsp *http.Response) (*UpdateLineupMarkerRes
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UpdateLineupMarkerResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
