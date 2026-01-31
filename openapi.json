@@ -2275,8 +2275,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "MoveCardColumn 200 response"
+          "204": {
+            "description": "MoveCardColumn 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -3808,8 +3808,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteCampfireLine 200 response"
+          "204": {
+            "description": "DeleteCampfireLine 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -4812,10 +4812,20 @@
         }
       }
     },
-    "/{accountId}/buckets/{projectId}/dock/tools/{sourceToolId}/clone.json": {
+    "/{accountId}/buckets/{projectId}/dock/tools.json": {
       "post": {
         "description": "Clone an existing tool to create a new one",
         "operationId": "CloneTool",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloneToolRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
         "parameters": [
           {
             "name": "accountId",
@@ -4836,20 +4846,11 @@
               "format": "int64"
             },
             "required": true
-          },
-          {
-            "name": "sourceToolId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
           }
         ],
         "responses": {
-          "200": {
-            "description": "CloneTool 200 response",
+          "201": {
+            "description": "CloneTool 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -5172,320 +5173,6 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "UnauthorizedError 401 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "ForbiddenError 403 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "NotFoundError 404 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "InternalServerError 500 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Automation"
-        ],
-        "x-basecamp-idempotent": {
-          "natural": true
-        },
-        "x-basecamp-retry": {
-          "maxAttempts": 3,
-          "baseDelayMs": 1000,
-          "backoff": "exponential",
-          "retryOn": [
-            429,
-            503
-          ]
-        }
-      }
-    },
-    "/{accountId}/buckets/{projectId}/dock/tools/{toolId}/position.json": {
-      "delete": {
-        "description": "Disable a tool (hide it from the project dock)",
-        "operationId": "DisableTool",
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "description": "Basecamp account ID (numeric string)",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9]+$",
-              "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          },
-          {
-            "name": "toolId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "DisableTool 200 response"
-          },
-          "401": {
-            "description": "UnauthorizedError 401 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "ForbiddenError 403 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "NotFoundError 404 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "InternalServerError 500 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Automation"
-        ],
-        "x-basecamp-idempotent": {
-          "natural": true
-        },
-        "x-basecamp-retry": {
-          "maxAttempts": 3,
-          "baseDelayMs": 1000,
-          "backoff": "exponential",
-          "retryOn": [
-            429,
-            503
-          ]
-        }
-      },
-      "post": {
-        "description": "Enable a tool (show it on the project dock)",
-        "operationId": "EnableTool",
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "description": "Basecamp account ID (numeric string)",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9]+$",
-              "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          },
-          {
-            "name": "toolId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "EnableTool 200 response"
-          },
-          "401": {
-            "description": "UnauthorizedError 401 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "ForbiddenError 403 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "RateLimitError 429 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "InternalServerError 500 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Automation"
-        ],
-        "x-basecamp-retry": {
-          "maxAttempts": 2,
-          "baseDelayMs": 1000,
-          "backoff": "exponential",
-          "retryOn": [
-            429,
-            503
-          ]
-        }
-      },
-      "put": {
-        "description": "Reposition a tool on the project dock",
-        "operationId": "RepositionTool",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RepositionToolRequestContent"
-              }
-            }
-          },
-          "required": true
-        },
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "description": "Basecamp account ID (numeric string)",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9]+$",
-              "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          },
-          {
-            "name": "toolId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "RepositionTool 200 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -7113,15 +6800,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "UpdateAnswer 200 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UpdateAnswerResponseContent"
-                }
-              }
-            }
+          "204": {
+            "description": "UpdateAnswer 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -8243,7 +7923,14 @@
         ],
         "responses": {
           "200": {
-            "description": "UpdateQuestionNotificationSettings 200 response"
+            "description": "UpdateQuestionNotificationSettings 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateQuestionNotificationSettingsResponseContent"
+                }
+              }
+            }
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -8347,7 +8034,14 @@
         ],
         "responses": {
           "200": {
-            "description": "ResumeQuestion 200 response"
+            "description": "ResumeQuestion 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeQuestionResponseContent"
+                }
+              }
+            }
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -8439,7 +8133,14 @@
         ],
         "responses": {
           "200": {
-            "description": "PauseQuestion 200 response"
+            "description": "PauseQuestion 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PauseQuestionResponseContent"
+                }
+              }
+            }
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -8542,8 +8243,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "UnpinMessage 200 response"
+          "204": {
+            "description": "UnpinMessage 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -8637,8 +8338,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "PinMessage 200 response"
+          "204": {
+            "description": "PinMessage 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -8808,7 +8509,7 @@
     },
     "/{accountId}/buckets/{projectId}/recordings/{recordingId}/client_visibility.json": {
       "put": {
-        "description": "Set client visibility for a recording",
+        "description": "Set client visibility for a recording\n\nWARNING: BC3 Rails controller only returns 302 redirect (HTML).\nJSON API format is not implemented. This operation may not work via API.",
         "operationId": "SetClientVisibility",
         "requestBody": {
           "content": {
@@ -10210,6 +9911,320 @@
         "tags": [
           "Schedule"
         ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json": {
+      "delete": {
+        "description": "Disable a tool (hide it from the project dock)",
+        "operationId": "DisableTool",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "toolId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "DisableTool 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "post": {
+        "description": "Enable a tool (show it on the project dock)",
+        "operationId": "EnableTool",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "toolId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "EnableTool 201 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "put": {
+        "description": "Reposition a tool on the project dock",
+        "operationId": "RepositionTool",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositionToolRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "toolId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RepositionTool 200 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -15017,14 +15032,7 @@
         ],
         "responses": {
           "201": {
-            "description": "CreateLineupMarker 201 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateLineupMarkerResponseContent"
-                }
-              }
-            }
+            "description": "CreateLineupMarker 201 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -15214,14 +15222,7 @@
         ],
         "responses": {
           "200": {
-            "description": "UpdateLineupMarker 200 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UpdateLineupMarkerResponseContent"
-                }
-              }
-            }
+            "description": "UpdateLineupMarker 200 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -16046,8 +16047,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "TrashProject 200 response"
+          "204": {
+            "description": "TrashProject 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -17663,8 +17664,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteTemplate 200 response"
+          "204": {
+            "description": "DeleteTemplate 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -19057,6 +19058,19 @@
           }
         }
       },
+      "CloneToolRequestContent": {
+        "type": "object",
+        "properties": {
+          "source_recording_id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          }
+        },
+        "required": [
+          "source_recording_id"
+        ]
+      },
       "CloneToolResponseContent": {
         "$ref": "#/components/schemas/Tool"
       },
@@ -19329,9 +19343,6 @@
           "starts_on",
           "title"
         ]
-      },
-      "CreateLineupMarkerResponseContent": {
-        "$ref": "#/components/schemas/LineupMarker"
       },
       "CreateMessageRequestContent": {
         "type": "object",
@@ -20305,78 +20316,6 @@
           "error"
         ]
       },
-      "LineupMarker": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
-          },
-          "status": {
-            "type": "string"
-          },
-          "color": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "starts_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "ends_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "description": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "updated_at": {
-            "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "type": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "app_url": {
-            "type": "string"
-          },
-          "creator": {
-            "$ref": "#/components/schemas/Person"
-          },
-          "parent": {
-            "$ref": "#/components/schemas/RecordingParent"
-          },
-          "bucket": {
-            "$ref": "#/components/schemas/RecordingBucket"
-          }
-        }
-      },
       "ListAnswersResponseContent": {
         "type": "array",
         "items": {
@@ -20798,6 +20737,14 @@
         "required": [
           "error"
         ]
+      },
+      "PauseQuestionResponseContent": {
+        "type": "object",
+        "properties": {
+          "paused": {
+            "type": "boolean"
+          }
+        }
       },
       "Person": {
         "type": "object",
@@ -21510,6 +21457,14 @@
         "required": [
           "position"
         ]
+      },
+      "ResumeQuestionResponseContent": {
+        "type": "object",
+        "properties": {
+          "paused": {
+            "type": "boolean"
+          }
+        }
       },
       "Schedule": {
         "type": "object",
@@ -22531,9 +22486,6 @@
       "UncompleteCardStepResponseContent": {
         "$ref": "#/components/schemas/CardStep"
       },
-      "UpdateAnswerResponseContent": {
-        "$ref": "#/components/schemas/QuestionAnswer"
-      },
       "UpdateCardColumnRequestContent": {
         "type": "object",
         "properties": {
@@ -22678,9 +22630,6 @@
           }
         }
       },
-      "UpdateLineupMarkerResponseContent": {
-        "$ref": "#/components/schemas/LineupMarker"
-      },
       "UpdateMessageRequestContent": {
         "type": "object",
         "properties": {
@@ -22782,6 +22731,17 @@
             "type": "boolean",
             "description": "Include unanswered in digest",
             "x-go-type-skip-optional-pointer": false
+          }
+        }
+      },
+      "UpdateQuestionNotificationSettingsResponseContent": {
+        "type": "object",
+        "properties": {
+          "responding": {
+            "type": "boolean"
+          },
+          "subscribed": {
+            "type": "boolean"
           }
         }
       },
