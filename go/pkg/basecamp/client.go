@@ -792,7 +792,7 @@ func (c *Client) backoffDelay(attempt int) time.Duration {
 	delay := c.httpOpts.BaseDelay * time.Duration(1<<(attempt-1))
 
 	// Add jitter
-	jitter := time.Duration(rand.Int63n(int64(c.httpOpts.MaxJitter)))
+	jitter := time.Duration(rand.Int63n(int64(c.httpOpts.MaxJitter))) // #nosec G404 -- jitter doesn't need cryptographic randomness
 
 	return delay + jitter
 }

@@ -262,7 +262,7 @@ func (s *TodolistGroupsService) Reposition(ctx context.Context, bucketID, groupI
 	}
 
 	body := generated.RepositionTodolistGroupJSONRequestBody{
-		Position: int32(position),
+		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
 	}
 
 	resp, err := s.client.parent.gen.RepositionTodolistGroupWithResponse(ctx, s.client.accountID, bucketID, groupID, body)

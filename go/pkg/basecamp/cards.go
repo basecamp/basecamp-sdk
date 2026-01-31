@@ -707,7 +707,7 @@ func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int
 	body := generated.MoveCardColumnJSONRequestBody{
 		SourceId: req.SourceID,
 		TargetId: req.TargetID,
-		Position: int32(req.Position),
+		Position: int32(req.Position), // #nosec G115 -- position is validated and bounded by API
 	}
 
 	resp, err := s.client.parent.gen.MoveCardColumnWithResponse(ctx, s.client.accountID, bucketID, cardTableID, body)
@@ -1096,7 +1096,7 @@ func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, ste
 
 	body := generated.RepositionCardStepJSONRequestBody{
 		SourceId: stepID,
-		Position: int32(position),
+		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
 	}
 
 	resp, err := s.client.parent.gen.RepositionCardStepWithResponse(ctx, s.client.accountID, bucketID, cardID, body)

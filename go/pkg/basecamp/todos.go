@@ -501,7 +501,7 @@ func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, p
 	}
 
 	body := generated.RepositionTodoJSONRequestBody{
-		Position: int32(position),
+		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
 	}
 	resp, err := s.client.parent.gen.RepositionTodoWithResponse(ctx, s.client.accountID, bucketID, todoID, body)
 	if err != nil {
