@@ -26,18 +26,6 @@
         ]
       }
     },
-    "CompleteCardStep": {
-      "idempotent": true,
-      "retry": {
-        "max": 3,
-        "base_delay_ms": 1000,
-        "backoff": "exponential",
-        "retry_on": [
-          429,
-          503
-        ]
-      }
-    },
     "CompleteTodo": {
       "idempotent": true,
       "retry": {
@@ -739,7 +727,7 @@
     "GetProgressReport": {
       "readonly": true,
       "pagination": {
-        "style": "link_header",
+        "style": "link",
         "maxPageSize": 50
       },
       "retry": {
@@ -779,7 +767,7 @@
     "GetProjectTimeline": {
       "readonly": true,
       "pagination": {
-        "style": "link_header",
+        "style": "link",
         "maxPageSize": 50
       },
       "retry": {
@@ -1662,6 +1650,10 @@
     },
     "Search": {
       "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -1673,6 +1665,18 @@
       }
     },
     "SetCardColumnColor": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "SetCardStepCompletion": {
       "idempotent": true,
       "retry": {
         "max": 3,
@@ -1756,18 +1760,6 @@
       }
     },
     "UnarchiveRecording": {
-      "idempotent": true,
-      "retry": {
-        "max": 3,
-        "base_delay_ms": 1000,
-        "backoff": "exponential",
-        "retry_on": [
-          429,
-          503
-        ]
-      }
-    },
-    "UncompleteCardStep": {
       "idempotent": true,
       "retry": {
         "max": 3,

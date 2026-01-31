@@ -1508,8 +1508,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "UnsubscribeFromCardColumn 200 response"
+          "204": {
+            "description": "UnsubscribeFromCardColumn 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -1600,8 +1600,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "SubscribeToCardColumn 200 response"
+          "204": {
+            "description": "SubscribeToCardColumn 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -1792,111 +1792,19 @@
       }
     },
     "/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": {
-      "delete": {
-        "description": "Mark a step as incomplete",
-        "operationId": "UncompleteCardStep",
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "description": "Basecamp account ID (numeric string)",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9]+$",
-              "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          },
-          {
-            "name": "stepId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "UncompleteCardStep 200 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UncompleteCardStepResponseContent"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "UnauthorizedError 401 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "ForbiddenError 403 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "NotFoundError 404 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "InternalServerError 500 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Card Tables"
-        ],
-        "x-basecamp-idempotent": {
-          "natural": true
-        },
-        "x-basecamp-retry": {
-          "maxAttempts": 3,
-          "baseDelayMs": 1000,
-          "backoff": "exponential",
-          "retryOn": [
-            429,
-            503
-          ]
-        }
-      },
       "put": {
-        "description": "Mark a step as completed",
-        "operationId": "CompleteCardStep",
+        "description": "Set card step completion status (PUT with completion: \"on\" to complete, \"\" to uncomplete)",
+        "operationId": "SetCardStepCompletion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCardStepCompletionRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
         "parameters": [
           {
             "name": "accountId",
@@ -1930,11 +1838,11 @@
         ],
         "responses": {
           "200": {
-            "description": "CompleteCardStep 200 response",
+            "description": "SetCardStepCompletion 200 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompleteCardStepResponseContent"
+                  "$ref": "#/components/schemas/SetCardStepCompletionResponseContent"
                 }
               }
             }
@@ -8509,7 +8417,7 @@
     },
     "/{accountId}/buckets/{projectId}/recordings/{recordingId}/client_visibility.json": {
       "put": {
-        "description": "Set client visibility for a recording\n\nWARNING: BC3 Rails controller only returns 302 redirect (HTML).\nJSON API format is not implemented. This operation may not work via API.",
+        "description": "Set client visibility for a recording",
         "operationId": "SetClientVisibility",
         "requestBody": {
           "content": {
@@ -10238,7 +10146,7 @@
     },
     "/{accountId}/buckets/{projectId}/schedule_entries/{entryId}": {
       "get": {
-        "description": "Get a single schedule entry by id",
+        "description": "Get a single schedule entry by id.\nNote: Recurring entries will redirect (302) to their recordable URL.\nUse GetScheduleEntryOccurrence for recurring entries instead.",
         "operationId": "GetScheduleEntry",
         "parameters": [
           {
@@ -11113,7 +11021,8 @@
           }
         },
         "x-basecamp-pagination": {
-          "style": "link_header",
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
           "maxPageSize": 50
         },
         "x-basecamp-retry": {
@@ -12146,8 +12055,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "TrashTodo 200 response"
+          "204": {
+            "description": "TrashTodo 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -14445,6 +14354,16 @@
               }
             }
           },
+          "400": {
+            "description": "BadRequestError 400 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponseContent"
+                }
+              }
+            }
+          },
           "401": {
             "description": "UnauthorizedError 401 response",
             "content": {
@@ -14465,16 +14384,6 @@
               }
             }
           },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
-                }
-              }
-            }
-          },
           "429": {
             "description": "RateLimitError 429 response",
             "content": {
@@ -14491,6 +14400,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "WebhookLimitError 507 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookLimitErrorResponseContent"
                 }
               }
             }
@@ -14759,6 +14678,16 @@
               }
             }
           },
+          "400": {
+            "description": "BadRequestError 400 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponseContent"
+                }
+              }
+            }
+          },
           "401": {
             "description": "UnauthorizedError 401 response",
             "content": {
@@ -14789,22 +14718,22 @@
               }
             }
           },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
-                }
-              }
-            }
-          },
           "500": {
             "description": "InternalServerError 500 response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "WebhookLimitError 507 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookLimitErrorResponseContent"
                 }
               }
             }
@@ -16578,6 +16507,16 @@
               }
             }
           },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
           "500": {
             "description": "InternalServerError 500 response",
             "content": {
@@ -16676,7 +16615,8 @@
           }
         },
         "x-basecamp-pagination": {
-          "style": "link_header",
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
           "maxPageSize": 50
         },
         "x-basecamp-retry": {
@@ -17288,6 +17228,14 @@
               "type": "string",
               "description": "created_at|updated_at"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -17345,6 +17293,11 @@
         "tags": [
           "Automation"
         ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -18192,6 +18145,20 @@
             }
           }
         }
+      },
+      "BadRequestErrorResponseContent": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
       },
       "Campfire": {
         "type": "object",
@@ -19136,9 +19103,6 @@
           }
         }
       },
-      "CompleteCardStepResponseContent": {
-        "$ref": "#/components/schemas/CardStep"
-      },
       "CreateAnswerResponseContent": {
         "$ref": "#/components/schemas/QuestionAnswer"
       },
@@ -19312,36 +19276,16 @@
       "CreateLineupMarkerRequestContent": {
         "type": "object",
         "properties": {
-          "title": {
+          "name": {
             "type": "string"
           },
-          "starts_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "ends_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "color": {
-            "type": "string"
-          },
-          "description": {
+          "date": {
             "type": "string"
           }
         },
         "required": [
-          "ends_on",
-          "starts_on",
-          "title"
+          "date",
+          "name"
         ]
       },
       "CreateMessageRequestContent": {
@@ -21428,6 +21372,12 @@
           "position": {
             "type": "integer",
             "format": "int32"
+          },
+          "parent_id": {
+            "type": "integer",
+            "description": "Optional todolist ID to move the todo to a different parent",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -21759,6 +21709,21 @@
       },
       "SetCardColumnColorResponseContent": {
         "$ref": "#/components/schemas/CardColumn"
+      },
+      "SetCardStepCompletionRequestContent": {
+        "type": "object",
+        "properties": {
+          "completion": {
+            "type": "string",
+            "description": "Set to \"on\" to complete the step, \"\" (empty) to uncomplete"
+          }
+        },
+        "required": [
+          "completion"
+        ]
+      },
+      "SetCardStepCompletionResponseContent": {
+        "$ref": "#/components/schemas/CardStep"
       },
       "SetClientVisibilityRequestContent": {
         "type": "object",
@@ -22483,9 +22448,6 @@
           "error"
         ]
       },
-      "UncompleteCardStepResponseContent": {
-        "$ref": "#/components/schemas/CardStep"
-      },
       "UpdateCardColumnRequestContent": {
         "type": "object",
         "properties": {
@@ -22603,29 +22565,10 @@
       "UpdateLineupMarkerRequestContent": {
         "type": "object",
         "properties": {
-          "title": {
+          "name": {
             "type": "string"
           },
-          "starts_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "ends_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "color": {
-            "type": "string"
-          },
-          "description": {
+          "date": {
             "type": "string"
           }
         }
@@ -23220,6 +23163,20 @@
             "type": "string"
           }
         }
+      },
+      "WebhookLimitErrorResponseContent": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
       }
     }
   }
