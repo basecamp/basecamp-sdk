@@ -17,7 +17,7 @@
 
 import { BaseService } from "./base.js";
 import { Errors } from "../errors.js";
-import type { components } from "../generated/schema.js";
+
 
 // =============================================================================
 // Types
@@ -26,7 +26,7 @@ import type { components } from "../generated/schema.js";
 /**
  * A marker on the Basecamp Lineup.
  */
-export type LineupMarker = components["schemas"]["LineupMarker"];
+// Note: LineupMarker response type was removed because create/update now return 204 No Content.
 
 /**
  * Valid colors for lineup markers.
@@ -113,7 +113,7 @@ export class LineupService extends BaseService {
    * });
    * ```
    */
-  async createMarker(req: CreateMarkerRequest): Promise<LineupMarker> {
+  async createMarker(req: CreateMarkerRequest): Promise<void> {
     if (!req.title) {
       throw Errors.validation("Marker title is required");
     }
@@ -130,7 +130,7 @@ export class LineupService extends BaseService {
       throw Errors.validation("Marker ends_on must be in YYYY-MM-DD format");
     }
 
-    const response = await this.request(
+    await this.request(
       {
         service: "Lineup",
         operation: "CreateMarker",
@@ -148,8 +148,6 @@ export class LineupService extends BaseService {
           },
         })
     );
-
-    return response;
   }
 
   /**
@@ -168,7 +166,7 @@ export class LineupService extends BaseService {
    * });
    * ```
    */
-  async updateMarker(markerId: number, req: UpdateMarkerRequest): Promise<LineupMarker> {
+  async updateMarker(markerId: number, req: UpdateMarkerRequest): Promise<void> {
     if (req.startsOn && !isValidDateFormat(req.startsOn)) {
       throw Errors.validation("Marker starts_on must be in YYYY-MM-DD format");
     }
@@ -176,7 +174,7 @@ export class LineupService extends BaseService {
       throw Errors.validation("Marker ends_on must be in YYYY-MM-DD format");
     }
 
-    const response = await this.request(
+    await this.request(
       {
         service: "Lineup",
         operation: "UpdateMarker",
@@ -196,8 +194,6 @@ export class LineupService extends BaseService {
           },
         })
     );
-
-    return response;
   }
 
   /**

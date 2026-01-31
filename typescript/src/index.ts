@@ -327,7 +327,6 @@ export {
 // Lineup service - generated
 export {
   LineupService,
-  type LineupMarker,
   type CreateLineupRequest,
   type UpdateLineupRequest,
 } from "./generated/services/lineup.js";

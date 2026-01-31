@@ -11,8 +11,6 @@ import type { components } from "../schema.js";
 // Types
 // =============================================================================
 
-/** LineupMarker entity from the Basecamp API. */
-export type LineupMarker = components["schemas"]["LineupMarker"];
 
 /**
  * Request parameters for create.
@@ -59,15 +57,15 @@ export class LineupService extends BaseService {
   /**
    * Create a new lineup marker
    * @param req - Request parameters
-   * @returns The LineupMarker
+   * @returns void
    *
    * @example
    * ```ts
    * const result = await client.lineup.create({ ... });
    * ```
    */
-  async create(req: CreateLineupRequest): Promise<LineupMarker> {
-    const response = await this.request(
+  async create(req: CreateLineupRequest): Promise<void> {
+    await this.request(
       {
         service: "Lineup",
         operation: "CreateLineupMarker",
@@ -85,17 +83,16 @@ export class LineupService extends BaseService {
           },
         })
     );
-    return response;
   }
 
   /**
    * Update an existing lineup marker
    * @param markerId - The marker ID
    * @param req - Request parameters
-   * @returns The LineupMarker
+   * @returns void
    */
-  async update(markerId: number, req: UpdateLineupRequest): Promise<LineupMarker> {
-    const response = await this.request(
+  async update(markerId: number, req: UpdateLineupRequest): Promise<void> {
+    await this.request(
       {
         service: "Lineup",
         operation: "UpdateLineupMarker",
@@ -117,7 +114,6 @@ export class LineupService extends BaseService {
           },
         })
     );
-    return response;
   }
 
   /**

@@ -662,13 +662,13 @@ const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/{accountId}/buckets/{projectId}/comments/{commentId}": "UpdateComment",
 
   // Dock/Tools (paths include /dock/tools/)
-  "POST:/{accountId}/buckets/{projectId}/dock/tools/{toolId}/clone.json": "CloneTool",
+  "POST:/{accountId}/buckets/{projectId}/dock/tools.json": "CloneTool",
   "GET:/{accountId}/buckets/{projectId}/dock/tools/{toolId}": "GetTool",
   "PUT:/{accountId}/buckets/{projectId}/dock/tools/{toolId}": "UpdateTool",
   "DELETE:/{accountId}/buckets/{projectId}/dock/tools/{toolId}": "DeleteTool",
-  "PUT:/{accountId}/buckets/{projectId}/dock/tools/{toolId}/position.json": "RepositionTool",
-  "POST:/{accountId}/buckets/{projectId}/dock/tools/{toolId}/position.json": "EnableTool",
-  "DELETE:/{accountId}/buckets/{projectId}/dock/tools/{toolId}/position.json": "DisableTool",
+  "PUT:/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json": "RepositionTool",
+  "POST:/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json": "EnableTool",
+  "DELETE:/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json": "DisableTool",
 
   // Documents
   "GET:/{accountId}/buckets/{projectId}/documents/{documentId}": "GetDocument",

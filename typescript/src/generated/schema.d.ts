@@ -547,7 +547,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/dock/tools/{sourceToolId}/clone.json": {
+    "/buckets/{projectId}/dock/tools.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -578,25 +578,6 @@ export interface paths {
         post?: never;
         /** @description Delete a tool (trash it) */
         delete: operations["DeleteTool"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/buckets/{projectId}/dock/tools/{toolId}/position.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** @description Reposition a tool on the project dock */
-        put: operations["RepositionTool"];
-        /** @description Enable a tool (show it on the project dock) */
-        post: operations["EnableTool"];
-        /** @description Disable a tool (hide it from the project dock) */
-        delete: operations["DisableTool"];
         options?: never;
         head?: never;
         patch?: never;
@@ -995,7 +976,12 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description Set client visibility for a recording */
+        /**
+         * @description Set client visibility for a recording
+         *
+         *     WARNING: BC3 Rails controller only returns 302 redirect (HTML).
+         *     JSON API format is not implemented. This operation may not work via API.
+         */
         put: operations["SetClientVisibility"];
         post?: never;
         delete?: never;
@@ -1132,6 +1118,25 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/buckets/{projectId}/recordings/{toolId}/position.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Reposition a tool on the project dock */
+        put: operations["RepositionTool"];
+        /** @description Enable a tool (show it on the project dock) */
+        post: operations["EnableTool"];
+        /** @description Disable a tool (hide it from the project dock) */
+        delete: operations["DisableTool"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2358,6 +2363,10 @@ export interface components {
             url?: string;
             app_url?: string;
         };
+        CloneToolRequestContent: {
+            /** Format: int64 */
+            source_recording_id: number;
+        };
         CloneToolResponseContent: components["schemas"]["Tool"];
         Comment: {
             /** Format: int64 */
@@ -2432,7 +2441,6 @@ export interface components {
             color?: string;
             description?: string;
         };
-        CreateLineupMarkerResponseContent: components["schemas"]["LineupMarker"];
         CreateMessageRequestContent: {
             subject: string;
             content?: string;
@@ -2710,24 +2718,6 @@ export interface components {
             error: string;
             message?: string;
         };
-        LineupMarker: {
-            /** Format: int64 */
-            id?: number;
-            status?: string;
-            color?: string;
-            title?: string;
-            starts_on?: string;
-            ends_on?: string;
-            description?: string;
-            created_at?: string;
-            updated_at?: string;
-            type?: string;
-            url?: string;
-            app_url?: string;
-            creator?: components["schemas"]["Person"];
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["RecordingBucket"];
-        };
         ListAnswersResponseContent: components["schemas"]["QuestionAnswer"][];
         ListAssignablePeopleResponseContent: components["schemas"]["Person"][];
         ListCampfireLinesResponseContent: components["schemas"]["CampfireLine"][];
@@ -2829,6 +2819,9 @@ export interface components {
         NotFoundErrorResponseContent: {
             error: string;
             message?: string;
+        };
+        PauseQuestionResponseContent: {
+            paused?: boolean;
         };
         Person: {
             /** Format: int64 */
@@ -3048,6 +3041,9 @@ export interface components {
         RepositionToolRequestContent: {
             /** Format: int32 */
             position: number;
+        };
+        ResumeQuestionResponseContent: {
+            paused?: boolean;
         };
         Schedule: {
             /** Format: int64 */
@@ -3358,7 +3354,6 @@ export interface components {
             message?: string;
         };
         UncompleteCardStepResponseContent: components["schemas"]["CardStep"];
-        UpdateAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         UpdateCardColumnRequestContent: {
             title?: string;
             description?: string;
@@ -3398,7 +3393,6 @@ export interface components {
             color?: string;
             description?: string;
         };
-        UpdateLineupMarkerResponseContent: components["schemas"]["LineupMarker"];
         UpdateMessageRequestContent: {
             subject?: string;
             content?: string;
@@ -3432,6 +3426,10 @@ export interface components {
             notify_on_answer?: boolean;
             /** @description Include unanswered in digest */
             digest_include_unanswered?: boolean;
+        };
+        UpdateQuestionNotificationSettingsResponseContent: {
+            responding?: boolean;
+            subscribed?: boolean;
         };
         UpdateQuestionRequestContent: {
             title?: string;
@@ -3599,8 +3597,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateAttachment 200 response */
-            200: {
+            /** @description CreateAttachment 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3802,8 +3800,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description MoveCard 200 response */
-            200: {
+            /** @description MoveCard 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3942,8 +3940,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateCardStep 200 response */
-            200: {
+            /** @description CreateCardStep 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4403,8 +4401,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateCard 200 response */
-            200: {
+            /** @description CreateCard 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4856,8 +4854,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateCardColumn 200 response */
-            200: {
+            /** @description CreateCardColumn 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4928,8 +4926,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description MoveCardColumn 200 response */
-            200: {
+            /** @description MoveCardColumn 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5055,8 +5053,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateMessageType 200 response */
-            200: {
+            /** @description CreateMessageType 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5254,8 +5252,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteMessageType 200 response */
-            200: {
+            /** @description DeleteMessageType 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5433,8 +5431,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateChatbot 200 response */
-            200: {
+            /** @description CreateChatbot 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5635,8 +5633,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteChatbot 200 response */
-            200: {
+            /** @description DeleteChatbot 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5755,8 +5753,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateCampfireLine 200 response */
-            200: {
+            /** @description CreateCampfireLine 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5884,8 +5882,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteCampfireLine 200 response */
-            200: {
+            /** @description DeleteCampfireLine 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6419,14 +6417,17 @@ export interface operations {
             header?: never;
             path: {
                 projectId: number;
-                sourceToolId: number;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloneToolRequestContent"];
+            };
+        };
         responses: {
-            /** @description CloneTool 200 response */
-            200: {
+            /** @description CloneTool 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6624,201 +6625,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteTool 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    RepositionTool: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                toolId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RepositionToolRequestContent"];
-            };
-        };
-        responses: {
-            /** @description RepositionTool 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    EnableTool: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                toolId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description EnableTool 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    DisableTool: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                toolId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description DisableTool 200 response */
-            200: {
+            /** @description DeleteTool 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7127,8 +6935,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateForwardReply 200 response */
-            200: {
+            /** @description CreateForwardReply 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7495,8 +7303,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateMessage 200 response */
-            200: {
+            /** @description CreateMessage 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7757,14 +7565,12 @@ export interface operations {
             };
         };
         responses: {
-            /** @description UpdateAnswer 200 response */
-            200: {
+            /** @description UpdateAnswer 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["UpdateAnswerResponseContent"];
-                };
+                content?: never;
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -7947,8 +7753,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateQuestion 200 response */
-            200: {
+            /** @description CreateQuestion 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8209,8 +8015,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateAnswer 200 response */
-            200: {
+            /** @description CreateAnswer 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8423,7 +8229,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["UpdateQuestionNotificationSettingsResponseContent"];
+                };
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -8489,7 +8297,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PauseQuestionResponseContent"];
+                };
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -8555,7 +8365,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ResumeQuestionResponseContent"];
+                };
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -8607,8 +8419,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description PinMessage 200 response */
-            200: {
+            /** @description PinMessage 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8673,8 +8485,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description UnpinMessage 200 response */
-            200: {
+            /** @description UnpinMessage 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8924,8 +8736,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateComment 200 response */
-            200: {
+            /** @description CreateComment 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9051,8 +8863,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description UnarchiveRecording 200 response */
-            200: {
+            /** @description UnarchiveRecording 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9117,8 +8929,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description ArchiveRecording 200 response */
-            200: {
+            /** @description ArchiveRecording 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9183,8 +8995,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description TrashRecording 200 response */
-            200: {
+            /** @description TrashRecording 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9448,8 +9260,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Unsubscribe 200 response */
-            200: {
+            /** @description Unsubscribe 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9517,6 +9329,199 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GetRecordingTimesheetResponseContent"];
                 };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    RepositionTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                toolId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepositionToolRequestContent"];
+            };
+        };
+        responses: {
+            /** @description RepositionTool 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    EnableTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                toolId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description EnableTool 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DisableTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                toolId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DisableTool 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -9956,8 +9961,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateScheduleEntry 200 response */
-            200: {
+            /** @description CreateScheduleEntry 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10417,8 +10422,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateTodolistGroup 200 response */
-            200: {
+            /** @description CreateTodolistGroup 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10552,8 +10557,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateTodo 200 response */
-            200: {
+            /** @description CreateTodo 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10808,8 +10813,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description CompleteTodo 200 response */
-            200: {
+            /** @description CompleteTodo 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10874,8 +10879,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description UncompleteTodo 200 response */
-            200: {
+            /** @description UncompleteTodo 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11126,8 +11131,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateTodolist 200 response */
-            200: {
+            /** @description CreateTodolist 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11578,8 +11583,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateDocument 200 response */
-            200: {
+            /** @description CreateDocument 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11709,8 +11714,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateUpload 200 response */
-            200: {
+            /** @description CreateUpload 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11840,8 +11845,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateVault 200 response */
-            200: {
+            /** @description CreateVault 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11969,8 +11974,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateWebhook 200 response */
-            200: {
+            /** @description CreateWebhook 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12168,8 +12173,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteWebhook 200 response */
-            200: {
+            /** @description DeleteWebhook 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12338,14 +12343,12 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateLineupMarker 200 response */
-            200: {
+            /** @description CreateLineupMarker 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["CreateLineupMarkerResponseContent"];
-                };
+                content?: never;
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -12414,9 +12417,7 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["UpdateLineupMarkerResponseContent"];
-                };
+                content?: never;
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -12476,8 +12477,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteLineupMarker 200 response */
-            200: {
+            /** @description DeleteLineupMarker 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12819,8 +12820,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateProject 200 response */
-            200: {
+            /** @description CreateProject 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13081,8 +13082,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description TrashProject 200 response */
-            200: {
+            /** @description TrashProject 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13867,8 +13868,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateTemplate 200 response */
-            200: {
+            /** @description CreateTemplate 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14063,8 +14064,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteTemplate 200 response */
-            200: {
+            /** @description DeleteTemplate 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14123,8 +14124,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateProjectFromTemplate 200 response */
-            200: {
+            /** @description CreateProjectFromTemplate 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

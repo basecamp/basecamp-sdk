@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-01-30T15:14:39.241Z",
+  "generated": "2026-01-31T00:45:11.926Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -617,45 +617,6 @@
         "natural": true
       }
     },
-    "EnableTool": {
-      "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
-    "RepositionTool": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
-    "DisableTool": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
     "GetDocument": {
       "retry": {
         "maxAttempts": 3,
@@ -1201,6 +1162,45 @@
           429,
           503
         ]
+      }
+    },
+    "EnableTool": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "RepositionTool": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "DisableTool": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "GetScheduleEntry": {
@@ -2057,10 +2057,6 @@
           429,
           503
         ]
-      },
-      "pagination": {
-        "style": "link_header",
-        "maxPageSize": 50
       }
     },
     "Search": {

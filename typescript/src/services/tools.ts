@@ -91,8 +91,9 @@ export class ToolsService extends BaseService {
         resourceId: sourceToolId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/dock/tools/{sourceToolId}/clone.json", {
-          params: { path: { projectId, sourceToolId } },
+        this.client.POST("/buckets/{projectId}/dock/tools.json", {
+          params: { path: { projectId } },
+          body: { source_recording_id: sourceToolId },
         })
     );
 
@@ -191,7 +192,7 @@ export class ToolsService extends BaseService {
         resourceId: toolId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/dock/tools/{toolId}/position.json", {
+        this.client.POST("/buckets/{projectId}/recordings/{toolId}/position.json", {
           params: { path: { projectId, toolId } },
         })
     );
@@ -220,7 +221,7 @@ export class ToolsService extends BaseService {
         resourceId: toolId,
       },
       () =>
-        this.client.DELETE("/buckets/{projectId}/dock/tools/{toolId}/position.json", {
+        this.client.DELETE("/buckets/{projectId}/recordings/{toolId}/position.json", {
           params: { path: { projectId, toolId } },
         })
     );
@@ -254,7 +255,7 @@ export class ToolsService extends BaseService {
         resourceId: toolId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/dock/tools/{toolId}/position.json", {
+        this.client.PUT("/buckets/{projectId}/recordings/{toolId}/position.json", {
           params: { path: { projectId, toolId } },
           body: {
             position,

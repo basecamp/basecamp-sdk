@@ -76,14 +76,16 @@ describe("ToolsService", () => {
 
       server.use(
         http.post(
-          `${BASE_URL}/buckets/${projectId}/dock/tools/${sourceToolId}/clone.json`,
-          () => {
-            return HttpResponse.json(mockTool);
+          `${BASE_URL}/buckets/${projectId}/dock/tools.json`,
+          async ({ request }) => {
+            const body = await request.json() as { source_recording_id: number };
+            expect(body.source_recording_id).toBe(sourceToolId);
+            return HttpResponse.json(mockTool, { status: 201 });
           }
         )
       );
 
-      const tool = await client.tools.clone(projectId, sourceToolId);
+      const tool = await client.tools.clone(projectId, { sourceRecordingId: sourceToolId });
       expect(tool.id).toBe(333);
       expect(tool.title).toBe("To-dos (Copy)");
     });
@@ -141,7 +143,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.post(
-          `${BASE_URL}/buckets/${projectId}/dock/tools/${toolId}/position.json`,
+          `${BASE_URL}/buckets/${projectId}/recordings/${toolId}/position.json`,
           () => {
             return new HttpResponse(null, { status: 204 });
           }
@@ -159,7 +161,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.delete(
-          `${BASE_URL}/buckets/${projectId}/dock/tools/${toolId}/position.json`,
+          `${BASE_URL}/buckets/${projectId}/recordings/${toolId}/position.json`,
           () => {
             return new HttpResponse(null, { status: 204 });
           }
@@ -177,7 +179,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.put(
-          `${BASE_URL}/buckets/${projectId}/dock/tools/${toolId}/position.json`,
+          `${BASE_URL}/buckets/${projectId}/recordings/${toolId}/position.json`,
           async ({ request }) => {
             const body = await request.json() as { position: number };
             expect(body.position).toBe(1);

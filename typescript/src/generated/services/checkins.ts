@@ -111,10 +111,10 @@ export class CheckinsService extends BaseService {
    * @param projectId - The project ID
    * @param answerId - The answer ID
    * @param req - Request parameters
-   * @returns The Answer
+   * @returns void
    */
-  async updateAnswer(projectId: number, answerId: number, req: UpdateAnswerCheckinRequest): Promise<Answer> {
-    const response = await this.request(
+  async updateAnswer(projectId: number, answerId: number, req: UpdateAnswerCheckinRequest): Promise<void> {
+    await this.request(
       {
         service: "Checkins",
         operation: "UpdateAnswer",
@@ -131,7 +131,6 @@ export class CheckinsService extends BaseService {
           body: req as any,
         })
     );
-    return response;
   }
 
   /**
@@ -393,10 +392,10 @@ export class CheckinsService extends BaseService {
    * @param projectId - The project ID
    * @param questionId - The question ID
    * @param req - Request parameters
-   * @returns void
+   * @returns The question_notification_setting
    */
-  async updateNotificationSettings(projectId: number, questionId: number, req: UpdateNotificationSettingsCheckinRequest): Promise<void> {
-    await this.request(
+  async updateNotificationSettings(projectId: number, questionId: number, req: UpdateNotificationSettingsCheckinRequest): Promise<components["schemas"]["UpdateQuestionNotificationSettingsResponseContent"]> {
+    const response = await this.request(
       {
         service: "Checkins",
         operation: "UpdateQuestionNotificationSettings",
@@ -416,16 +415,17 @@ export class CheckinsService extends BaseService {
           },
         })
     );
+    return response;
   }
 
   /**
    * Pause a check-in question (stops sending reminders)
    * @param projectId - The project ID
    * @param questionId - The question ID
-   * @returns void
+   * @returns The question
    */
-  async pause(projectId: number, questionId: number): Promise<void> {
-    await this.request(
+  async pause(projectId: number, questionId: number): Promise<components["schemas"]["PauseQuestionResponseContent"]> {
+    const response = await this.request(
       {
         service: "Checkins",
         operation: "PauseQuestion",
@@ -441,16 +441,17 @@ export class CheckinsService extends BaseService {
           },
         })
     );
+    return response;
   }
 
   /**
    * Resume a paused check-in question (resumes sending reminders)
    * @param projectId - The project ID
    * @param questionId - The question ID
-   * @returns void
+   * @returns The question
    */
-  async resume(projectId: number, questionId: number): Promise<void> {
-    await this.request(
+  async resume(projectId: number, questionId: number): Promise<components["schemas"]["ResumeQuestionResponseContent"]> {
+    const response = await this.request(
       {
         service: "Checkins",
         operation: "ResumeQuestion",
@@ -466,6 +467,7 @@ export class CheckinsService extends BaseService {
           },
         })
     );
+    return response;
   }
 
   /**

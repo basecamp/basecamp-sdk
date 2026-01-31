@@ -27,15 +27,6 @@ describe("LineupService", () => {
 
   describe("create", () => {
     it("should create a new lineup marker", async () => {
-      const mockMarker = {
-        id: 1,
-        title: "Product Launch",
-        starts_on: "2024-03-01",
-        ends_on: "2024-03-15",
-        color: "green",
-        status: "active",
-      };
-
       server.use(
         http.post(`${BASE_URL}/lineup/markers.json`, async ({ request }) => {
           const body = (await request.json()) as {
@@ -48,19 +39,18 @@ describe("LineupService", () => {
           expect(body.starts_on).toBe("2024-03-01");
           expect(body.ends_on).toBe("2024-03-15");
           expect(body.color).toBe("green");
-          return HttpResponse.json(mockMarker);
+          return new HttpResponse(null, { status: 204 });
         })
       );
 
-      const marker = await client.lineup.create({
-        title: "Product Launch",
-        startsOn: "2024-03-01",
-        endsOn: "2024-03-15",
-        color: "green",
-      });
-
-      expect(marker.id).toBe(1);
-      expect(marker.title).toBe("Product Launch");
+      await expect(
+        client.lineup.create({
+          title: "Product Launch",
+          startsOn: "2024-03-01",
+          endsOn: "2024-03-15",
+          color: "green",
+        })
+      ).resolves.toBeUndefined();
     });
 
     // Note: Client-side validation removed - generated services let API validate
@@ -69,13 +59,6 @@ describe("LineupService", () => {
   describe("update", () => {
     it("should update an existing marker", async () => {
       const markerId = 123;
-      const mockMarker = {
-        id: markerId,
-        title: "Updated Launch",
-        starts_on: "2024-03-01",
-        ends_on: "2024-03-20",
-        color: "blue",
-      };
 
       server.use(
         http.put(`${BASE_URL}/lineup/markers/${markerId}`, async ({ request }) => {
@@ -83,40 +66,35 @@ describe("LineupService", () => {
           expect(body.title).toBe("Updated Launch");
           expect(body.ends_on).toBe("2024-03-20");
           expect(body.color).toBe("blue");
-          return HttpResponse.json(mockMarker);
+          return new HttpResponse(null, { status: 204 });
         })
       );
 
-      const marker = await client.lineup.update(markerId, {
-        title: "Updated Launch",
-        endsOn: "2024-03-20",
-        color: "blue",
-      });
-
-      expect(marker.title).toBe("Updated Launch");
+      await expect(
+        client.lineup.update(markerId, {
+          title: "Updated Launch",
+          endsOn: "2024-03-20",
+          color: "blue",
+        })
+      ).resolves.toBeUndefined();
     });
 
     it("should allow partial updates", async () => {
       const markerId = 123;
-      const mockMarker = {
-        id: markerId,
-        title: "Existing Title",
-        color: "red",
-      };
 
       server.use(
         http.put(`${BASE_URL}/lineup/markers/${markerId}`, async ({ request }) => {
           const body = (await request.json()) as { color?: string };
           expect(body.color).toBe("red");
-          return HttpResponse.json(mockMarker);
+          return new HttpResponse(null, { status: 204 });
         })
       );
 
-      const marker = await client.lineup.update(markerId, {
-        color: "red",
-      });
-
-      expect(marker.color).toBe("red");
+      await expect(
+        client.lineup.update(markerId, {
+          color: "red",
+        })
+      ).resolves.toBeUndefined();
     });
 
     // Note: Client-side validation removed - generated services let API validate

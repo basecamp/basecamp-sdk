@@ -15,6 +15,14 @@ import type { components } from "../schema.js";
 export type Tool = components["schemas"]["Tool"];
 
 /**
+ * Request parameters for clone.
+ */
+export interface CloneToolRequest {
+  /** source recording id */
+  sourceRecordingId: number;
+}
+
+/**
  * Request parameters for update.
  */
 export interface UpdateToolRequest {
@@ -43,10 +51,10 @@ export class ToolsService extends BaseService {
   /**
    * Clone an existing tool to create a new one
    * @param projectId - The project ID
-   * @param sourceToolId - The source tool ID
+   * @param req - Request parameters
    * @returns The Tool
    */
-  async clone(projectId: number, sourceToolId: number): Promise<Tool> {
+  async clone(projectId: number, req: CloneToolRequest): Promise<Tool> {
     const response = await this.request(
       {
         service: "Tools",
@@ -54,12 +62,14 @@ export class ToolsService extends BaseService {
         resourceType: "tool",
         isMutation: true,
         projectId,
-        resourceId: sourceToolId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/dock/tools/{sourceToolId}/clone.json", {
+        this.client.POST("/buckets/{projectId}/dock/tools.json", {
           params: {
-            path: { projectId, sourceToolId },
+            path: { projectId },
+          },
+          body: {
+            source_recording_id: req.sourceRecordingId,
           },
         })
     );
@@ -162,7 +172,7 @@ export class ToolsService extends BaseService {
         resourceId: toolId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/dock/tools/{toolId}/position.json", {
+        this.client.POST("/buckets/{projectId}/recordings/{toolId}/position.json", {
           params: {
             path: { projectId, toolId },
           },
@@ -188,7 +198,7 @@ export class ToolsService extends BaseService {
         resourceId: toolId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/dock/tools/{toolId}/position.json", {
+        this.client.PUT("/buckets/{projectId}/recordings/{toolId}/position.json", {
           params: {
             path: { projectId, toolId },
           },
@@ -214,7 +224,7 @@ export class ToolsService extends BaseService {
         resourceId: toolId,
       },
       () =>
-        this.client.DELETE("/buckets/{projectId}/dock/tools/{toolId}/position.json", {
+        this.client.DELETE("/buckets/{projectId}/recordings/{toolId}/position.json", {
           params: {
             path: { projectId, toolId },
           },

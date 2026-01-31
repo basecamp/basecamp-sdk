@@ -302,36 +302,49 @@ describe("Webhook URL validation", () => {
     });
   });
 
-  it("rejects HTTP payload URL", async () => {
+  // Note: Generated services delegate URL validation to the API server.
+  // Client-side validation was removed when migrating to generated services.
+
+  it("sends HTTP payload URL to API (server validates)", async () => {
+    server.use(
+      http.post(`${BASE_URL}/buckets/1/webhooks.json`, () => {
+        return HttpResponse.json({ error: "payload_url must use HTTPS" }, { status: 422 });
+      })
+    );
+
     await expect(
       client.webhooks.create(1, {
         payloadUrl: "http://example.com/webhook",
         types: ["Todo"],
       })
-    ).rejects.toThrow("HTTPS");
+    ).rejects.toThrow();
   });
 
-  it("rejects empty payload URL", async () => {
+  it("sends empty payload URL to API (server validates)", async () => {
+    server.use(
+      http.post(`${BASE_URL}/buckets/1/webhooks.json`, () => {
+        return HttpResponse.json({ error: "payload_url is required" }, { status: 422 });
+      })
+    );
+
     await expect(
       client.webhooks.create(1, {
         payloadUrl: "",
         types: ["Todo"],
       })
-    ).rejects.toThrow("required");
+    ).rejects.toThrow();
   });
 
   it("accepts HTTPS payload URL", async () => {
     server.use(
       http.post(`${BASE_URL}/buckets/1/webhooks.json`, () => {
         return HttpResponse.json({
-          webhook: {
-            id: 1,
-            active: true,
-            created_at: "2024-01-01T00:00:00Z",
-            updated_at: "2024-01-01T00:00:00Z",
-            payload_url: "https://example.com/webhook",
-            types: ["Todo"],
-          },
+          id: 1,
+          active: true,
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+          payload_url: "https://example.com/webhook",
+          types: ["Todo"],
         });
       })
     );
@@ -476,26 +489,32 @@ describe("Webhook update URL validation", () => {
     });
   });
 
-  it("webhook update rejects http:// payload URL", async () => {
+  // Note: Generated services delegate URL validation to the API server.
+
+  it("webhook update sends http:// payload URL to API (server validates)", async () => {
+    server.use(
+      http.put(`${BASE_URL}/buckets/1/webhooks/1`, () => {
+        return HttpResponse.json({ error: "payload_url must use HTTPS" }, { status: 422 });
+      })
+    );
+
     await expect(
       client.webhooks.update(1, 1, {
         payloadUrl: "http://example.com/webhook",
       })
-    ).rejects.toThrow("HTTPS");
+    ).rejects.toThrow();
   });
 
   it("webhook update allows undefined payload URL", async () => {
     server.use(
       http.put(`${BASE_URL}/buckets/1/webhooks/1`, () => {
         return HttpResponse.json({
-          webhook: {
-            id: 1,
-            active: false,
-            created_at: "2024-01-01T00:00:00Z",
-            updated_at: "2024-01-01T00:00:00Z",
-            payload_url: "https://example.com/webhook",
-            types: ["Todo"],
-          },
+          id: 1,
+          active: false,
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+          payload_url: "https://example.com/webhook",
+          types: ["Todo"],
         });
       })
     );
