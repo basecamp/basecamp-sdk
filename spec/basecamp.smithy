@@ -690,7 +690,7 @@ structure UpdateTodoOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}", code: 204)
 operation TrashTodo {
   input: TrashTodoInput
   output: TrashTodoOutput
@@ -2349,7 +2349,9 @@ structure ListScheduleEntriesOutput {
   entries: ScheduleEntryList
 }
 
-/// Get a single schedule entry by id
+/// Get a single schedule entry by id.
+/// Note: Recurring entries will redirect (302) to their recordable URL.
+/// Use GetScheduleEntryOccurrence for recurring entries instead.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/{accountId}/buckets/{projectId}/schedule_entries/{entryId}")
