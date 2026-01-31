@@ -18,3 +18,4 @@ ruby/.bundle/
 ruby/vendor/
 ruby/pkg/
 ruby/*.gem
+review-session.md
