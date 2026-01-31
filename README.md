@@ -33,9 +33,13 @@ func main() {
     client := basecamp.NewClient(cfg, token)
 
     account := client.ForAccount(os.Getenv("BASECAMP_ACCOUNT_ID"))
-    projects, _ := account.Projects().List(context.Background(), nil)
+    result, err := account.Projects().List(context.Background(), nil)
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+        os.Exit(1)
+    }
 
-    for _, p := range projects {
+    for _, p := range result.Projects {
         fmt.Printf("%d: %s\n", p.ID, p.Name)
     }
 }
@@ -75,7 +79,7 @@ All SDKs provide:
 - **Full API coverage** - 35+ services covering projects, todos, messages, schedules, campfires, card tables, and more
 - **OAuth 2.0 authentication** - Token refresh, PKCE support, and static token options
 - **Automatic retry** - Exponential backoff with jitter, respects `Retry-After` headers
-- **Pagination** - Automatic handling via Link headers
+- **Pagination** - Link header–based pagination support (high-level handling may vary by SDK; see language docs)
 - **ETag caching** - Built-in HTTP caching for efficient API usage
 - **Structured errors** - Typed errors with helpful hints and CLI-friendly exit codes
 - **Observability hooks** - Integration points for logging, metrics, and tracing

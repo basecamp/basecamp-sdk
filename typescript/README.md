@@ -40,16 +40,6 @@ const projects = await client.projects.list();
 for (const project of projects) {
   console.log(`${project.id}: ${project.name}`);
 }
-
-// Create a todo
-const todo = await client.todos.create(projectId, todolistId, {
-  content: "Review pull request",
-  dueOn: "2026-02-01",
-  assigneeIds: [userId],
-});
-
-// Complete a todo
-await client.todos.complete(projectId, todoId);
 ```
 
 ## Configuration
@@ -68,7 +58,7 @@ const client = createBasecampClient({
   baseUrl: "https://3.basecampapi.com/12345", // default
   userAgent: "my-app/1.0",
   enableCache: true, // ETag caching (default: true)
-  enableRetry: true, // Auto retry 429/5xx (default: true)
+  enableRetry: true, // Auto retry 429 and 503 (default: true)
   hooks: myHooks, // Observability hooks
 });
 ```
@@ -122,12 +112,14 @@ const state = generateState();
 
 // Store pkce.verifier and state in session for later
 
-// 3. Build authorization URL
+// 3. Build authorization URL with PKCE challenge
 const authUrl = new URL(config.authorizationEndpoint);
 authUrl.searchParams.set("type", "web_server");
 authUrl.searchParams.set("client_id", CLIENT_ID);
 authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
 authUrl.searchParams.set("state", state);
+authUrl.searchParams.set("code_challenge", pkce.challenge);
+authUrl.searchParams.set("code_challenge_method", "S256");
 // Redirect user to authUrl.toString()
 
 // 4. Exchange code for tokens (in callback handler)
@@ -137,6 +129,7 @@ const token = await exchangeCode({
   redirectUri: REDIRECT_URI,
   clientId: CLIENT_ID,
   clientSecret: CLIENT_SECRET,
+  codeVerifier: pkce.verifier, // PKCE verifier from step 2
   useLegacyFormat: true, // Required for Basecamp Launchpad
 });
 
@@ -176,10 +169,10 @@ The SDK provides typed services for the complete Basecamp API:
 
 | Service | Methods |
 |---------|---------|
-| `messages` | list, get, create, update, trash, pin, unpin |
+| `messages` | list, get, create, update, pin, unpin |
 | `messageBoards` | get |
-| `messageTypes` | list, get, create, update, destroy |
-| `comments` | list, get, create, update, trash |
+| `messageTypes` | list, get, create, update, delete |
+| `comments` | list, get, create, update |
 | `campfires` | list, get, listLines, getLine, createLine, deleteLine |
 
 ### Card Tables (Kanban)
@@ -196,7 +189,7 @@ The SDK provides typed services for the complete Basecamp API:
 | Service | Methods |
 |---------|---------|
 | `schedules` | get, listEntries, getEntry, createEntry, updateEntry, trashEntry |
-| `lineup` | list, get, create, update, delete |
+| `lineup` | create, update, delete |
 | `checkins` | get, listQuestions, getQuestion, listAnswers, getAnswer |
 
 ### Files & Documents
@@ -222,7 +215,7 @@ The SDK provides typed services for the complete Basecamp API:
 | Service | Methods |
 |---------|---------|
 | `search` | search |
-| `reports` | assignablePeople, assignedTodos, overdueTodos, upcomingSchedule |
+| `reports` | progress, upcoming, assigned, overdue, personProgress |
 | `timesheets` | forRecording, forProject, report |
 | `timeline` | get |
 
@@ -243,22 +236,32 @@ The SDK provides typed services for the complete Basecamp API:
 
 ## Pagination
 
-List methods return a single page of results by default. Use the pagination helpers to fetch all pages:
+List methods return a single page of results by default. Use the pagination helpers with low-level API calls to fetch all pages:
 
 ```ts
 import { fetchAllPages, paginateAll } from "@basecamp/sdk";
 
+// First, fetch the initial page using the low-level client
+const initialResponse = await client.GET("/projects.json");
+
 // Option 1: fetchAllPages - returns all results as an array
-const allProjects = await fetchAllPages(() => client.projects.list());
+const allProjects = await fetchAllPages(
+  initialResponse.response,
+  (response) => response.json()
+);
 
 // Option 2: paginateAll - async generator for streaming large result sets
-for await (const project of paginateAll(() => client.projects.list())) {
-  console.log(project.name);
-  // Process one at a time without loading all into memory
+for await (const page of paginateAll(
+  initialResponse.response,
+  (response) => response.json()
+)) {
+  for (const project of page) {
+    console.log(project.name);
+  }
 }
 ```
 
-Services that return paginated results also expose `X-Total-Count` via the response headers when available.
+Paginated endpoints include an `X-Total-Count` HTTP header when available. You can access this header via the `response.headers` field on low-level `client.GET`/`client.POST` calls.
 
 ## Low-Level API Access
 
@@ -275,7 +278,7 @@ if (error) {
 }
 
 // With path parameters
-const { data: project } = await client.GET("/projects/{projectId}.json", {
+const { data: project } = await client.GET("/projects/{projectId}", {
   params: { path: { projectId: 12345 } },
 });
 
@@ -330,7 +333,7 @@ try {
 
 The SDK automatically retries requests on transient failures:
 
-- **Retryable errors**: 429 (rate limit), 502, 503, 504 (gateway errors)
+- **Retryable errors**: 429 (rate limit) and 503 (service unavailable)
 - **Backoff**: Exponential with jitter
 - **Rate limits**: Respects `Retry-After` header
 - **Max retries**: 3 attempts by default
