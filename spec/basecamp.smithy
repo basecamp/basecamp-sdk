@@ -287,6 +287,22 @@ structure ForbiddenError {
   message: String
 }
 
+@error("client")
+@httpError(400)
+structure BadRequestError {
+  @required
+  error: String
+  message: String
+}
+
+@error("server")
+@httpError(507)
+structure WebhookLimitError {
+  @required
+  error: String
+  message: String
+}
+
 @error("server")
 @retryable
 @httpError(500)
@@ -776,6 +792,9 @@ structure RepositionTodoInput {
 
   @required
   position: Integer
+
+  /// Optional todolist ID to move the todo to a different parent
+  parent_id: TodolistId
 }
 
 structure RepositionTodoOutput {}
@@ -3992,7 +4011,7 @@ structure DisableCardColumnOnHoldOutput {
 /// Subscribe to a card column (watch for changes)
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json", code: 204)
 operation SubscribeToCardColumn {
   input: SubscribeToCardColumnInput
   output: SubscribeToCardColumnOutput
@@ -4019,7 +4038,7 @@ structure SubscribeToCardColumnOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json", code: 204)
 operation UnsubscribeFromCardColumn {
   input: UnsubscribeFromCardColumnInput
   output: UnsubscribeFromCardColumnOutput
@@ -4436,7 +4455,7 @@ structure ListPingablePeopleOutput {
 operation UpdateProjectAccess {
   input: UpdateProjectAccessInput
   output: UpdateProjectAccessOutput
-  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure UpdateProjectAccessInput {
@@ -4980,7 +4999,7 @@ structure GetWebhookOutput {
 operation CreateWebhook {
   input: CreateWebhookInput
   output: CreateWebhookOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [BadRequestError, WebhookLimitError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateWebhookInput {
@@ -5014,7 +5033,7 @@ structure CreateWebhookOutput {
 operation UpdateWebhook {
   input: UpdateWebhookInput
   output: UpdateWebhookOutput
-  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, BadRequestError, WebhookLimitError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateWebhookInput {
@@ -5986,6 +6005,7 @@ structure QuestionAnswer {
 /// Search for content across the account
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/search.json")
 operation Search {
   input: SearchInput
@@ -6004,6 +6024,9 @@ structure SearchInput {
 
   @httpQuery("sort")
   sort: SearchSortField
+
+  @httpQuery("page")
+  page: Integer
 }
 
 structure SearchOutput {
@@ -6502,7 +6525,7 @@ structure DeleteLineupMarkerOutput {}
 /// Get account-wide activity feed (progress report)
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link_header", maxPageSize: 50)
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/reports/progress.json")
 operation GetProgressReport {
   input: GetProgressReportInput
@@ -6523,7 +6546,7 @@ structure GetProgressReportOutput {
 /// Get project timeline
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link_header", maxPageSize: 50)
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/buckets/{projectId}/timeline.json")
 operation GetProjectTimeline {
   input: GetProjectTimelineInput
