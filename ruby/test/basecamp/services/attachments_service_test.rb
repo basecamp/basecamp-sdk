@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Tests for the AttachmentsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Uses :name instead of :filename
+
 require "test_helper"
 
 class AttachmentsServiceTest < Minitest::Test
@@ -28,7 +33,7 @@ class AttachmentsServiceTest < Minitest::Test
       )
 
     result = @account.attachments.create(
-      filename: "report.pdf",
+      name: "report.pdf",
       content_type: "application/pdf",
       data: "file data"
     )
@@ -51,7 +56,7 @@ class AttachmentsServiceTest < Minitest::Test
       )
 
     result = @account.attachments.create(
-      filename: "my report (1).pdf",
+      name: "my report (1).pdf",
       content_type: "application/pdf",
       data: "file data"
     )

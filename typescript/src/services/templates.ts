@@ -93,7 +93,7 @@ export class TemplatesService extends BaseService {
       () => this.client.GET("/templates.json")
     );
 
-    return response?.templates ?? [];
+    return response ?? [];
   }
 
   /**
@@ -124,7 +124,7 @@ export class TemplatesService extends BaseService {
         })
     );
 
-    return response.template!;
+    return response;
   }
 
   /**
@@ -163,7 +163,7 @@ export class TemplatesService extends BaseService {
         })
     );
 
-    return response.template!;
+    return response;
   }
 
   /**
@@ -205,7 +205,7 @@ export class TemplatesService extends BaseService {
         })
     );
 
-    return response.template!;
+    return response;
   }
 
   /**
@@ -288,7 +288,7 @@ export class TemplatesService extends BaseService {
         })
     );
 
-    return response.construction!;
+    return response;
   }
 
   /**
@@ -330,6 +330,6 @@ export class TemplatesService extends BaseService {
         })
     );
 
-    return response.construction!;
+    return response;
   }
 }

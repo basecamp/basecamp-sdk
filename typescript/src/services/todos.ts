@@ -125,7 +125,7 @@ export class TodosService extends BaseService {
         })
     );
 
-    return response?.todos ?? [];
+    return response ?? [];
   }
 
   /**
@@ -158,7 +158,7 @@ export class TodosService extends BaseService {
         })
     );
 
-    return response.todo!;
+    return response;
   }
 
   /**
@@ -215,7 +215,7 @@ export class TodosService extends BaseService {
         })
     );
 
-    return response.todo!;
+    return response;
   }
 
   /**
@@ -267,7 +267,7 @@ export class TodosService extends BaseService {
         })
     );
 
-    return response.todo!;
+    return response;
   }
 
   /**

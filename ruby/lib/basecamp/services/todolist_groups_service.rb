@@ -92,7 +92,7 @@ module Basecamp
       # @param group_id [Integer, String] group ID
       # @return [void]
       def trash(project_id:, group_id:)
-        http_delete(bucket_path(project_id, "/recordings/#{group_id}/status/trashed.json"))
+        http_put(bucket_path(project_id, "/recordings/#{group_id}/status/trashed.json"))
         nil
       end
     end

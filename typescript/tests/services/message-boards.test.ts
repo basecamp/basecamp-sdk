@@ -22,20 +22,18 @@ describe("MessageBoardsService", () => {
   describe("get", () => {
     it("should get a message board by ID", async () => {
       const mockBoard = {
-        message_board: {
-          id: 123,
-          status: "active",
-          title: "Message Board",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-02T00:00:00Z",
-          type: "Message::Board",
-          url: "https://3.basecampapi.com/12345/buckets/1/message_boards/123.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/message_boards/123",
-          messages_count: 5,
-          messages_url: "https://3.basecampapi.com/12345/buckets/1/message_boards/123/messages.json",
-          bucket: { id: 1, name: "Test Project", type: "Project" },
-          creator: { id: 999, name: "Test User", email_address: "test@example.com" },
-        },
+        id: 123,
+        status: "active",
+        title: "Message Board",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-02T00:00:00Z",
+        type: "Message::Board",
+        url: "https://3.basecampapi.com/12345/buckets/1/message_boards/123.json",
+        app_url: "https://3.basecamp.com/12345/buckets/1/message_boards/123",
+        messages_count: 5,
+        messages_url: "https://3.basecampapi.com/12345/buckets/1/message_boards/123/messages.json",
+        bucket: { id: 1, name: "Test Project", type: "Project" },
+        creator: { id: 999, name: "Test User", email_address: "test@example.com" },
       };
 
       server.use(

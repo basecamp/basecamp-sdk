@@ -220,12 +220,12 @@ func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int6
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	comment := commentFromGenerated(resp.JSON200.Comment)
+	comment := commentFromGenerated(*resp.JSON201)
 	return &comment, nil
 }
 
@@ -268,7 +268,7 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 		return nil, err
 	}
 
-	comment := commentFromGenerated(resp.JSON200.Comment)
+	comment := commentFromGenerated(*resp.JSON200)
 	return &comment, nil
 }
 

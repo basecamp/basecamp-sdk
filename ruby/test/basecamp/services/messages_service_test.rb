@@ -1,5 +1,12 @@
 # frozen_string_literal: true
 
+# Tests for the MessagesService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - No archive(), unarchive(), trash() - use recordings.archive/unarchive/trash()
+# - No client-side validation (API validates)
+# - Single-resource paths without .json (get, update)
+
 require "test_helper"
 
 class MessagesServiceTest < Minitest::Test
@@ -31,6 +38,7 @@ class MessagesServiceTest < Minitest::Test
   end
 
   def test_get
+    # Generated service: /messages/{id} without .json
     stub_get("/12345/buckets/100/messages/789", response_body: sample_message)
 
     result = @account.messages.get(project_id: 100, message_id: 789)
@@ -69,6 +77,7 @@ class MessagesServiceTest < Minitest::Test
   end
 
   def test_update
+    # Generated service: /messages/{id} without .json
     updated_message = sample_message(subject: "Updated Subject")
     stub_put("/12345/buckets/100/messages/789", response_body: updated_message)
 
@@ -93,27 +102,6 @@ class MessagesServiceTest < Minitest::Test
     assert_nil result
   end
 
-  def test_archive
-    stub_put("/12345/buckets/100/recordings/789/status/archived.json", response_body: {})
-
-    result = @account.messages.archive(project_id: 100, message_id: 789)
-
-    assert_nil result
-  end
-
-  def test_unarchive
-    stub_put("/12345/buckets/100/recordings/789/status/active.json", response_body: {})
-
-    result = @account.messages.unarchive(project_id: 100, message_id: 789)
-
-    assert_nil result
-  end
-
-  def test_trash
-    stub_put("/12345/buckets/100/recordings/789/status/trashed.json", response_body: {})
-
-    result = @account.messages.trash(project_id: 100, message_id: 789)
-
-    assert_nil result
-  end
+  # Note: archive(), unarchive(), trash() are on RecordingsService, not MessagesService (spec-conformant)
+  # Use @account.recordings.archive(project_id:, recording_id:) instead
 end

@@ -359,7 +359,7 @@ func (s *RecordingsService) SetClientVisibility(ctx context.Context, bucketID, r
 		return nil, err
 	}
 
-	recording := recordingFromGenerated(resp.JSON200.Recording)
+	recording := recordingFromGenerated(*resp.JSON200)
 	return &recording, nil
 }
 

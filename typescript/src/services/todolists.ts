@@ -104,7 +104,7 @@ export class TodolistsService extends BaseService {
         })
     );
 
-    return response?.todolists ?? [];
+    return response ?? [];
   }
 
   /**
@@ -138,16 +138,15 @@ export class TodolistsService extends BaseService {
     );
 
     // The response is a union type (TodolistOrGroup) - extract the todolist
-    const result = response.result!;
-    if ("todolist" in result && result.todolist) {
-      return result.todolist as unknown as Todolist;
+    if ("todolist" in response && response.todolist) {
+      return response.todolist as unknown as Todolist;
     }
     // If it's a group, treat it as a todolist (they share the same structure)
-    if ("todolist_group" in result && result.todolist_group) {
-      return result.todolist_group as unknown as Todolist;
+    if ("group" in response && response.group) {
+      return response.group as unknown as Todolist;
     }
-    // Fallback - return result as todolist
-    return result as unknown as Todolist;
+    // Fallback - return response as todolist
+    return response as unknown as Todolist;
   }
 
   /**
@@ -195,7 +194,7 @@ export class TodolistsService extends BaseService {
         })
     );
 
-    return response.todolist!;
+    return response;
   }
 
   /**
@@ -238,14 +237,13 @@ export class TodolistsService extends BaseService {
     );
 
     // The response is a union type - extract the todolist
-    const result = response.result!;
-    if ("todolist" in result && result.todolist) {
-      return result.todolist as unknown as Todolist;
+    if ("todolist" in response && response.todolist) {
+      return response.todolist as unknown as Todolist;
     }
-    if ("todolist_group" in result && result.todolist_group) {
-      return result.todolist_group as unknown as Todolist;
+    if ("group" in response && response.group) {
+      return response.group as unknown as Todolist;
     }
-    return result as unknown as Todolist;
+    return response as unknown as Todolist;
   }
 
   /**

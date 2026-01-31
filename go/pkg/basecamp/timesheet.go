@@ -89,8 +89,8 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 		return nil, nil
 	}
 
-	entries := make([]TimesheetEntry, 0, len(resp.JSON200.Entries))
-	for _, ge := range resp.JSON200.Entries {
+	entries := make([]TimesheetEntry, 0, len(*resp.JSON200))
+	for _, ge := range *resp.JSON200 {
 		entries = append(entries, timesheetEntryFromGenerated(ge))
 	}
 
@@ -134,8 +134,8 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 		return nil, nil
 	}
 
-	entries := make([]TimesheetEntry, 0, len(resp.JSON200.Entries))
-	for _, ge := range resp.JSON200.Entries {
+	entries := make([]TimesheetEntry, 0, len(*resp.JSON200))
+	for _, ge := range *resp.JSON200 {
 		entries = append(entries, timesheetEntryFromGenerated(ge))
 	}
 
@@ -179,8 +179,8 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recor
 		return nil, nil
 	}
 
-	entries := make([]TimesheetEntry, 0, len(resp.JSON200.Entries))
-	for _, ge := range resp.JSON200.Entries {
+	entries := make([]TimesheetEntry, 0, len(*resp.JSON200))
+	for _, ge := range *resp.JSON200 {
 		entries = append(entries, timesheetEntryFromGenerated(ge))
 	}
 

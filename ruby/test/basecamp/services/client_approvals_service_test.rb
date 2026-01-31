@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Tests for the ClientApprovalsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (get)
+
 require "test_helper"
 
 class ClientApprovalsServiceTest < Minitest::Test
@@ -31,7 +36,8 @@ class ClientApprovalsServiceTest < Minitest::Test
   end
 
   def test_get_approval
-    stub_get("/12345/buckets/100/client/approvals/200.json", response_body: sample_approval(id: 200))
+    # Generated service: /client/approvals/{id} without .json
+    stub_get("/12345/buckets/100/client/approvals/200", response_body: sample_approval(id: 200))
 
     approval = @account.client_approvals.get(project_id: 100, approval_id: 200)
 

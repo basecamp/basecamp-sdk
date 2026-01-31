@@ -228,7 +228,7 @@ export class CheckinsService extends BaseService {
         })
     );
 
-    return response.questionnaire as unknown as Questionnaire;
+    return response as unknown as Questionnaire;
   }
 
   /**
@@ -260,7 +260,7 @@ export class CheckinsService extends BaseService {
         })
     );
 
-    return (response?.questions ?? []) as unknown as Question[];
+    return (response ?? []) as Question[];
   }
 
   /**
@@ -293,7 +293,7 @@ export class CheckinsService extends BaseService {
         })
     );
 
-    return response.question as unknown as Question;
+    return response as unknown as Question;
   }
 
   /**
@@ -349,7 +349,7 @@ export class CheckinsService extends BaseService {
         })
     );
 
-    return response.question as unknown as Question;
+    return response as unknown as Question;
   }
 
   /**
@@ -392,7 +392,7 @@ export class CheckinsService extends BaseService {
         })
     );
 
-    return response.question as unknown as Question;
+    return response as unknown as Question;
   }
 
   /**
@@ -424,7 +424,7 @@ export class CheckinsService extends BaseService {
         })
     );
 
-    return (response?.answers ?? []) as unknown as QuestionAnswer[];
+    return (response ?? []) as QuestionAnswer[];
   }
 
   /**
@@ -457,7 +457,7 @@ export class CheckinsService extends BaseService {
         })
     );
 
-    return response.answer as unknown as QuestionAnswer;
+    return response as unknown as QuestionAnswer;
   }
 
   /**
@@ -504,7 +504,7 @@ export class CheckinsService extends BaseService {
         })
     );
 
-    return response.answer as unknown as QuestionAnswer;
+    return response as unknown as QuestionAnswer;
   }
 
   /**

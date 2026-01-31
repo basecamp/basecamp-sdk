@@ -166,6 +166,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Subscribe to a card column (watch for changes) */
+        post: operations["SubscribeToCardColumn"];
+        /** @description Unsubscribe from a card column (stop watching for changes) */
+        delete: operations["UnsubscribeFromCardColumn"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/buckets/{projectId}/card_tables/steps/{stepId}": {
         parameters: {
             query?: never;
@@ -529,7 +547,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/dock/tools/{sourceToolId}/clone.json": {
+    "/buckets/{projectId}/dock/tools.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -560,25 +578,6 @@ export interface paths {
         post?: never;
         /** @description Delete a tool (trash it) */
         delete: operations["DeleteTool"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/buckets/{projectId}/dock/tools/{toolId}/position.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** @description Reposition a tool on the project dock */
-        put: operations["RepositionTool"];
-        /** @description Enable a tool (show it on the project dock) */
-        post: operations["EnableTool"];
-        /** @description Disable a tool (hide it from the project dock) */
-        delete: operations["DisableTool"];
         options?: never;
         head?: never;
         patch?: never;
@@ -855,6 +854,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/buckets/{projectId}/questions/{questionId}/answers/by.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List all people who have answered a question (answerers)
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages.
+         */
+        get: operations["ListQuestionAnswerers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/buckets/{projectId}/questions/{questionId}/answers/by/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get all answers from a specific person for a question
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages.
+         */
+        get: operations["GetAnswersByPerson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/buckets/{projectId}/questions/{questionId}/notification_settings.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Update notification settings for a check-in question */
+        put: operations["UpdateQuestionNotificationSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/buckets/{projectId}/questions/{questionId}/pause.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Pause a check-in question (stops sending reminders) */
+        post: operations["PauseQuestion"];
+        /** @description Resume a paused check-in question (resumes sending reminders) */
+        delete: operations["ResumeQuestion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/buckets/{projectId}/recordings/{messageId}/pin.json": {
         parameters: {
             query?: never;
@@ -898,7 +976,12 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description Set client visibility for a recording */
+        /**
+         * @description Set client visibility for a recording
+         *
+         *     WARNING: BC3 Rails controller only returns 302 redirect (HTML).
+         *     JSON API format is not implemented. This operation may not work via API.
+         */
         put: operations["SetClientVisibility"];
         post?: never;
         delete?: never;
@@ -1040,6 +1123,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/buckets/{projectId}/recordings/{toolId}/position.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Reposition a tool on the project dock */
+        put: operations["RepositionTool"];
+        /** @description Enable a tool (show it on the project dock) */
+        post: operations["EnableTool"];
+        /** @description Disable a tool (hide it from the project dock) */
+        delete: operations["DisableTool"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/buckets/{projectId}/schedule_entries/{entryId}": {
         parameters: {
             query?: never;
@@ -1110,6 +1212,23 @@ export interface paths {
         put?: never;
         /** @description Create a new schedule entry */
         post: operations["CreateScheduleEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/buckets/{projectId}/timeline.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get project timeline */
+        get: operations["GetProjectTimeline"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1252,6 +1371,23 @@ export interface paths {
         post: operations["CompleteTodo"];
         /** @description Mark a todo as incomplete */
         delete: operations["UncompleteTodo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/buckets/{projectId}/todos/{todoId}/position.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Reposition a todo within its todolist */
+        put: operations["RepositionTodo"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1562,6 +1698,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/my/question_reminders.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get pending check-in reminders for the current user
+         *
+         *     Returns questions that are pending a response from the authenticated user.
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages.
+         */
+        get: operations["GetQuestionReminders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/people.json": {
         parameters: {
             query?: never;
@@ -1704,6 +1864,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/progress.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get account-wide activity feed (progress report) */
+        get: operations["GetProgressReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/schedules/upcoming.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get upcoming schedule entries within a date window */
+        get: operations["GetUpcomingSchedule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/timesheet.json": {
         parameters: {
             query?: never;
@@ -1713,6 +1907,74 @@ export interface paths {
         };
         /** @description Get account-wide timesheet report */
         get: operations["GetTimesheetReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/todos/assigned.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List people who can be assigned todos */
+        get: operations["ListAssignablePeople"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/todos/assigned/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get todos assigned to a specific person */
+        get: operations["GetAssignedTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/todos/overdue.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get overdue todos grouped by lateness */
+        get: operations["GetOverdueTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/users/progress/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a person's activity timeline */
+        get: operations["GetPersonProgress"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1835,7 +2097,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Assignable: {
+            /** Format: int64 */
+            id?: number;
+            title?: string;
+            type?: string;
+            url?: string;
+            app_url?: string;
+            bucket?: components["schemas"]["TodoBucket"];
+            parent?: components["schemas"]["TodoParent"];
+            due_on?: string;
+            starts_on?: string;
+            assignees?: components["schemas"]["Person"][];
+        };
         Campfire: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -1848,6 +2124,7 @@ export interface components {
             app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /** Format: int32 */
             position?: number;
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
@@ -1855,6 +2132,7 @@ export interface components {
             lines_url?: string;
         };
         CampfireLine: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -1872,6 +2150,7 @@ export interface components {
             creator?: components["schemas"]["Person"];
         };
         Card: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -1884,12 +2163,14 @@ export interface components {
             app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /** Format: int32 */
             position?: number;
             content?: string;
             description?: string;
             due_on?: string;
             completed?: boolean;
             completed_at?: string;
+            /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
             completion_url?: string;
@@ -1902,6 +2183,7 @@ export interface components {
             steps?: components["schemas"]["CardStep"][];
         };
         CardColumn: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -1913,10 +2195,13 @@ export interface components {
             url?: string;
             app_url?: string;
             bookmark_url?: string;
+            /** Format: int32 */
             position?: number;
             color?: string;
             description?: string;
+            /** Format: int32 */
             cards_count?: number;
+            /** Format: int32 */
             comments_count?: number;
             cards_url?: string;
             parent?: components["schemas"]["RecordingParent"];
@@ -1925,6 +2210,7 @@ export interface components {
             subscribers?: components["schemas"]["Person"][];
         };
         CardStep: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -1936,6 +2222,7 @@ export interface components {
             url?: string;
             app_url?: string;
             bookmark_url?: string;
+            /** Format: int32 */
             position?: number;
             due_on?: string;
             completed?: boolean;
@@ -1948,6 +2235,7 @@ export interface components {
             completion_url?: string;
         };
         CardTable: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -1966,6 +2254,7 @@ export interface components {
             lists?: components["schemas"]["CardColumn"][];
         };
         Chatbot: {
+            /** Format: int64 */
             id?: number;
             created_at?: string;
             updated_at?: string;
@@ -1976,6 +2265,7 @@ export interface components {
             lines_url?: string;
         };
         ClientApproval: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -1994,6 +2284,7 @@ export interface components {
             content?: string;
             subject?: string;
             due_on?: string;
+            /** Format: int32 */
             replies_count?: number;
             replies_url?: string;
             approval_status?: string;
@@ -2001,6 +2292,7 @@ export interface components {
             responses?: components["schemas"]["ClientApprovalResponse"][];
         };
         ClientApprovalResponse: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2018,10 +2310,12 @@ export interface components {
             approved?: boolean;
         };
         ClientCompany: {
+            /** Format: int64 */
             id?: number;
             name?: string;
         };
         ClientCorrespondence: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2039,10 +2333,12 @@ export interface components {
             creator?: components["schemas"]["Person"];
             content?: string;
             subject?: string;
+            /** Format: int32 */
             replies_count?: number;
             replies_url?: string;
         };
         ClientReply: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2067,10 +2363,13 @@ export interface components {
             url?: string;
             app_url?: string;
         };
-        CloneToolResponseContent: {
-            tool?: components["schemas"]["Tool"];
+        CloneToolRequestContent: {
+            /** Format: int64 */
+            source_recording_id: number;
         };
+        CloneToolResponseContent: components["schemas"]["Tool"];
         Comment: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2087,12 +2386,8 @@ export interface components {
             creator?: components["schemas"]["Person"];
             content?: string;
         };
-        CompleteCardStepResponseContent: {
-            step?: components["schemas"]["CardStep"];
-        };
-        CreateAnswerResponseContent: {
-            answer?: components["schemas"]["QuestionAnswer"];
-        };
+        CompleteCardStepResponseContent: components["schemas"]["CardStep"];
+        CreateAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         CreateAttachmentInputPayload: string;
         CreateAttachmentResponseContent: {
             attachable_sgid?: string;
@@ -2100,61 +2395,45 @@ export interface components {
         CreateCampfireLineRequestContent: {
             content: string;
         };
-        CreateCampfireLineResponseContent: {
-            line?: components["schemas"]["CampfireLine"];
-        };
+        CreateCampfireLineResponseContent: components["schemas"]["CampfireLine"];
         CreateCardColumnRequestContent: {
             title: string;
             description?: string;
         };
-        CreateCardColumnResponseContent: {
-            column?: components["schemas"]["CardColumn"];
-        };
+        CreateCardColumnResponseContent: components["schemas"]["CardColumn"];
         CreateCardRequestContent: {
             title: string;
             content?: string;
             due_on?: string;
             notify?: boolean;
         };
-        CreateCardResponseContent: {
-            card?: components["schemas"]["Card"];
-        };
+        CreateCardResponseContent: components["schemas"]["Card"];
         CreateCardStepRequestContent: {
             title: string;
             due_on?: string;
             assignees?: number[];
         };
-        CreateCardStepResponseContent: {
-            step?: components["schemas"]["CardStep"];
-        };
+        CreateCardStepResponseContent: components["schemas"]["CardStep"];
         CreateChatbotRequestContent: {
             service_name: string;
             command_url?: string;
         };
-        CreateChatbotResponseContent: {
-            chatbot?: components["schemas"]["Chatbot"];
-        };
+        CreateChatbotResponseContent: components["schemas"]["Chatbot"];
         CreateCommentRequestContent: {
             content: string;
         };
-        CreateCommentResponseContent: {
-            comment?: components["schemas"]["Comment"];
-        };
+        CreateCommentResponseContent: components["schemas"]["Comment"];
         CreateDocumentRequestContent: {
             title: string;
             content?: string;
             /** @description active|drafted */
             status?: string;
         };
-        CreateDocumentResponseContent: {
-            document?: components["schemas"]["Document"];
-        };
+        CreateDocumentResponseContent: components["schemas"]["Document"];
         CreateForwardReplyRequestContent: {
             content: string;
         };
-        CreateForwardReplyResponseContent: {
-            reply?: components["schemas"]["ForwardReply"];
-        };
+        CreateForwardReplyResponseContent: components["schemas"]["ForwardReply"];
         CreateLineupMarkerRequestContent: {
             title: string;
             starts_on: string;
@@ -2162,26 +2441,20 @@ export interface components {
             color?: string;
             description?: string;
         };
-        CreateLineupMarkerResponseContent: {
-            marker?: components["schemas"]["LineupMarker"];
-        };
         CreateMessageRequestContent: {
             subject: string;
             content?: string;
             /** @description active|drafted */
             status?: string;
+            /** Format: int64 */
             category_id?: number;
         };
-        CreateMessageResponseContent: {
-            message?: components["schemas"]["Message"];
-        };
+        CreateMessageResponseContent: components["schemas"]["Message"];
         CreateMessageTypeRequestContent: {
             name: string;
             icon: string;
         };
-        CreateMessageTypeResponseContent: {
-            message_type?: components["schemas"]["MessageType"];
-        };
+        CreateMessageTypeResponseContent: components["schemas"]["MessageType"];
         CreatePersonRequest: {
             /** Format: password */
             name: string;
@@ -2196,23 +2469,17 @@ export interface components {
             name: string;
             description?: string;
         };
-        CreateProjectFromTemplateResponseContent: {
-            construction?: components["schemas"]["ProjectConstruction"];
-        };
+        CreateProjectFromTemplateResponseContent: components["schemas"]["ProjectConstruction"];
         CreateProjectRequestContent: {
             name: string;
             description?: string;
         };
-        CreateProjectResponseContent: {
-            project?: components["schemas"]["Project"];
-        };
+        CreateProjectResponseContent: components["schemas"]["Project"];
         CreateQuestionRequestContent: {
             title: string;
             schedule: components["schemas"]["QuestionSchedule"];
         };
-        CreateQuestionResponseContent: {
-            question?: components["schemas"]["Question"];
-        };
+        CreateQuestionResponseContent: components["schemas"]["Question"];
         CreateScheduleEntryRequestContent: {
             summary: string;
             starts_at: string;
@@ -2222,16 +2489,12 @@ export interface components {
             all_day?: boolean;
             notify?: boolean;
         };
-        CreateScheduleEntryResponseContent: {
-            entry?: components["schemas"]["ScheduleEntry"];
-        };
+        CreateScheduleEntryResponseContent: components["schemas"]["ScheduleEntry"];
         CreateTemplateRequestContent: {
             name: string;
             description?: string;
         };
-        CreateTemplateResponseContent: {
-            template?: components["schemas"]["Template"];
-        };
+        CreateTemplateResponseContent: components["schemas"]["Template"];
         CreateTodoRequestContent: {
             content: string;
             description?: string;
@@ -2241,57 +2504,46 @@ export interface components {
             due_on?: string;
             starts_on?: string;
         };
-        CreateTodoResponseContent: {
-            todo?: components["schemas"]["Todo"];
-        };
+        CreateTodoResponseContent: components["schemas"]["Todo"];
         CreateTodolistGroupRequestContent: {
             name: string;
         };
-        CreateTodolistGroupResponseContent: {
-            group?: components["schemas"]["TodolistGroup"];
-        };
+        CreateTodolistGroupResponseContent: components["schemas"]["TodolistGroup"];
         CreateTodolistRequestContent: {
             name: string;
             description?: string;
         };
-        CreateTodolistResponseContent: {
-            todolist?: components["schemas"]["Todolist"];
-        };
+        CreateTodolistResponseContent: components["schemas"]["Todolist"];
         CreateUploadRequestContent: {
             attachable_sgid: string;
             description?: string;
             base_name?: string;
         };
-        CreateUploadResponseContent: {
-            upload?: components["schemas"]["Upload"];
-        };
+        CreateUploadResponseContent: components["schemas"]["Upload"];
         CreateVaultRequestContent: {
             title: string;
         };
-        CreateVaultResponseContent: {
-            vault?: components["schemas"]["Vault"];
-        };
+        CreateVaultResponseContent: components["schemas"]["Vault"];
         CreateWebhookRequestContent: {
             payload_url: string;
             types: string[];
             active?: boolean;
         };
-        CreateWebhookResponseContent: {
-            webhook?: components["schemas"]["Webhook"];
-        };
-        DisableCardColumnOnHoldResponseContent: {
-            column?: components["schemas"]["CardColumn"];
-        };
+        CreateWebhookResponseContent: components["schemas"]["Webhook"];
+        DisableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         DockItem: {
+            /** Format: int64 */
             id?: number;
             title?: string;
             name?: string;
             enabled?: boolean;
+            /** Format: int32 */
             position?: number;
             url?: string;
             app_url?: string;
         };
         Document: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2304,19 +2556,21 @@ export interface components {
             app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
+            /** Format: int32 */
             position?: number;
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
             content?: string;
         };
-        EnableCardColumnOnHoldResponseContent: {
-            column?: components["schemas"]["CardColumn"];
-        };
+        EnableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         Event: {
+            /** Format: int64 */
             id?: number;
+            /** Format: int64 */
             recording_id?: number;
             action?: string;
             details?: components["schemas"]["EventDetails"];
@@ -2333,6 +2587,7 @@ export interface components {
             message?: string;
         };
         Forward: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2351,10 +2606,12 @@ export interface components {
             content?: string;
             subject?: string;
             from?: string;
+            /** Format: int32 */
             replies_count?: number;
             replies_url?: string;
         };
         ForwardReply: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2371,130 +2628,73 @@ export interface components {
             creator?: components["schemas"]["Person"];
             content?: string;
         };
-        GetAnswerResponseContent: {
-            answer?: components["schemas"]["QuestionAnswer"];
-        };
-        GetCampfireLineResponseContent: {
-            line?: components["schemas"]["CampfireLine"];
-        };
-        GetCampfireResponseContent: {
-            campfire?: components["schemas"]["Campfire"];
-        };
-        GetCardColumnResponseContent: {
-            column?: components["schemas"]["CardColumn"];
-        };
-        GetCardResponseContent: {
-            card?: components["schemas"]["Card"];
-        };
-        GetCardTableResponseContent: {
-            card_table?: components["schemas"]["CardTable"];
-        };
-        GetChatbotResponseContent: {
-            chatbot?: components["schemas"]["Chatbot"];
-        };
-        GetClientApprovalResponseContent: {
-            approval?: components["schemas"]["ClientApproval"];
-        };
-        GetClientCorrespondenceResponseContent: {
-            correspondence?: components["schemas"]["ClientCorrespondence"];
-        };
-        GetClientReplyResponseContent: {
-            reply?: components["schemas"]["ClientReply"];
-        };
-        GetCommentResponseContent: {
-            comment?: components["schemas"]["Comment"];
-        };
-        GetDocumentResponseContent: {
-            document?: components["schemas"]["Document"];
-        };
-        GetForwardReplyResponseContent: {
-            reply?: components["schemas"]["ForwardReply"];
-        };
-        GetForwardResponseContent: {
-            forward?: components["schemas"]["Forward"];
-        };
-        GetInboxResponseContent: {
-            inbox?: components["schemas"]["Inbox"];
-        };
-        GetMessageBoardResponseContent: {
-            message_board?: components["schemas"]["MessageBoard"];
-        };
-        GetMessageResponseContent: {
-            message?: components["schemas"]["Message"];
-        };
-        GetMessageTypeResponseContent: {
-            message_type?: components["schemas"]["MessageType"];
-        };
-        GetMyProfileResponseContent: {
+        GetAnswerResponseContent: components["schemas"]["QuestionAnswer"];
+        GetAnswersByPersonResponseContent: components["schemas"]["QuestionAnswer"][];
+        GetAssignedTodosResponseContent: {
             person?: components["schemas"]["Person"];
+            grouped_by?: string;
+            todos?: components["schemas"]["Todo"][];
         };
-        GetPersonResponseContent: {
+        GetCampfireLineResponseContent: components["schemas"]["CampfireLine"];
+        GetCampfireResponseContent: components["schemas"]["Campfire"];
+        GetCardColumnResponseContent: components["schemas"]["CardColumn"];
+        GetCardResponseContent: components["schemas"]["Card"];
+        GetCardTableResponseContent: components["schemas"]["CardTable"];
+        GetChatbotResponseContent: components["schemas"]["Chatbot"];
+        GetClientApprovalResponseContent: components["schemas"]["ClientApproval"];
+        GetClientCorrespondenceResponseContent: components["schemas"]["ClientCorrespondence"];
+        GetClientReplyResponseContent: components["schemas"]["ClientReply"];
+        GetCommentResponseContent: components["schemas"]["Comment"];
+        GetDocumentResponseContent: components["schemas"]["Document"];
+        GetForwardReplyResponseContent: components["schemas"]["ForwardReply"];
+        GetForwardResponseContent: components["schemas"]["Forward"];
+        GetInboxResponseContent: components["schemas"]["Inbox"];
+        GetMessageBoardResponseContent: components["schemas"]["MessageBoard"];
+        GetMessageResponseContent: components["schemas"]["Message"];
+        GetMessageTypeResponseContent: components["schemas"]["MessageType"];
+        GetMyProfileResponseContent: components["schemas"]["Person"];
+        GetOverdueTodosResponseContent: {
+            under_a_week_late?: components["schemas"]["Todo"][];
+            over_a_week_late?: components["schemas"]["Todo"][];
+            over_a_month_late?: components["schemas"]["Todo"][];
+            over_three_months_late?: components["schemas"]["Todo"][];
+        };
+        GetPersonProgressResponseContent: {
             person?: components["schemas"]["Person"];
+            events?: components["schemas"]["TimelineEvent"][];
         };
-        GetProjectConstructionResponseContent: {
-            construction?: components["schemas"]["ProjectConstruction"];
+        GetPersonResponseContent: components["schemas"]["Person"];
+        GetProgressReportResponseContent: components["schemas"]["TimelineEvent"][];
+        GetProjectConstructionResponseContent: components["schemas"]["ProjectConstruction"];
+        GetProjectResponseContent: components["schemas"]["Project"];
+        GetProjectTimelineResponseContent: components["schemas"]["TimelineEvent"][];
+        GetProjectTimesheetResponseContent: components["schemas"]["TimesheetEntry"][];
+        GetQuestionRemindersResponseContent: components["schemas"]["QuestionReminder"][];
+        GetQuestionResponseContent: components["schemas"]["Question"];
+        GetQuestionnaireResponseContent: components["schemas"]["Questionnaire"];
+        GetRecordingResponseContent: components["schemas"]["Recording"];
+        GetRecordingTimesheetResponseContent: components["schemas"]["TimesheetEntry"][];
+        GetScheduleEntryOccurrenceResponseContent: components["schemas"]["ScheduleEntry"];
+        GetScheduleEntryResponseContent: components["schemas"]["ScheduleEntry"];
+        GetScheduleResponseContent: components["schemas"]["Schedule"];
+        GetSearchMetadataResponseContent: components["schemas"]["SearchMetadata"];
+        GetSubscriptionResponseContent: components["schemas"]["Subscription"];
+        GetTemplateResponseContent: components["schemas"]["Template"];
+        GetTimesheetReportResponseContent: components["schemas"]["TimesheetEntry"][];
+        GetTodoResponseContent: components["schemas"]["Todo"];
+        GetTodolistOrGroupResponseContent: components["schemas"]["TodolistOrGroup"];
+        GetTodosetResponseContent: components["schemas"]["Todoset"];
+        GetToolResponseContent: components["schemas"]["Tool"];
+        GetUpcomingScheduleResponseContent: {
+            schedule_entries?: components["schemas"]["ScheduleEntry"][];
+            recurring_schedule_entry_occurrences?: components["schemas"]["ScheduleEntry"][];
+            assignables?: components["schemas"]["Assignable"][];
         };
-        GetProjectResponseContent: {
-            project?: components["schemas"]["Project"];
-        };
-        GetProjectTimesheetResponseContent: {
-            entries?: components["schemas"]["TimesheetEntry"][];
-        };
-        GetQuestionResponseContent: {
-            question?: components["schemas"]["Question"];
-        };
-        GetQuestionnaireResponseContent: {
-            questionnaire?: components["schemas"]["Questionnaire"];
-        };
-        GetRecordingResponseContent: {
-            recording?: components["schemas"]["Recording"];
-        };
-        GetRecordingTimesheetResponseContent: {
-            entries?: components["schemas"]["TimesheetEntry"][];
-        };
-        GetScheduleEntryOccurrenceResponseContent: {
-            entry?: components["schemas"]["ScheduleEntry"];
-        };
-        GetScheduleEntryResponseContent: {
-            entry?: components["schemas"]["ScheduleEntry"];
-        };
-        GetScheduleResponseContent: {
-            schedule?: components["schemas"]["Schedule"];
-        };
-        GetSearchMetadataResponseContent: {
-            metadata?: components["schemas"]["SearchMetadata"];
-        };
-        GetSubscriptionResponseContent: {
-            subscription?: components["schemas"]["Subscription"];
-        };
-        GetTemplateResponseContent: {
-            template?: components["schemas"]["Template"];
-        };
-        GetTimesheetReportResponseContent: {
-            entries?: components["schemas"]["TimesheetEntry"][];
-        };
-        GetTodoResponseContent: {
-            todo?: components["schemas"]["Todo"];
-        };
-        GetTodolistOrGroupResponseContent: {
-            result?: components["schemas"]["TodolistOrGroup"];
-        };
-        GetTodosetResponseContent: {
-            todoset?: components["schemas"]["Todoset"];
-        };
-        GetToolResponseContent: {
-            tool?: components["schemas"]["Tool"];
-        };
-        GetUploadResponseContent: {
-            upload?: components["schemas"]["Upload"];
-        };
-        GetVaultResponseContent: {
-            vault?: components["schemas"]["Vault"];
-        };
-        GetWebhookResponseContent: {
-            webhook?: components["schemas"]["Webhook"];
-        };
+        GetUploadResponseContent: components["schemas"]["Upload"];
+        GetVaultResponseContent: components["schemas"]["Vault"];
+        GetWebhookResponseContent: components["schemas"]["Webhook"];
         Inbox: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2506,9 +2706,11 @@ export interface components {
             url?: string;
             app_url?: string;
             bookmark_url?: string;
+            /** Format: int32 */
             position?: number;
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
+            /** Format: int32 */
             forwards_count?: number;
             forwards_url?: string;
         };
@@ -2516,114 +2718,40 @@ export interface components {
             error: string;
             message?: string;
         };
-        LineupMarker: {
-            id?: number;
-            status?: string;
-            color?: string;
-            title?: string;
-            starts_on?: string;
-            ends_on?: string;
-            description?: string;
-            created_at?: string;
-            updated_at?: string;
-            type?: string;
-            url?: string;
-            app_url?: string;
-            creator?: components["schemas"]["Person"];
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["RecordingBucket"];
-        };
-        ListAnswersResponseContent: {
-            answers?: components["schemas"]["QuestionAnswer"][];
-        };
-        ListCampfireLinesResponseContent: {
-            lines?: components["schemas"]["CampfireLine"][];
-        };
-        ListCampfiresResponseContent: {
-            campfires?: components["schemas"]["Campfire"][];
-        };
-        ListCardsResponseContent: {
-            cards?: components["schemas"]["Card"][];
-        };
-        ListChatbotsResponseContent: {
-            chatbots?: components["schemas"]["Chatbot"][];
-        };
-        ListClientApprovalsResponseContent: {
-            approvals?: components["schemas"]["ClientApproval"][];
-        };
-        ListClientCorrespondencesResponseContent: {
-            correspondences?: components["schemas"]["ClientCorrespondence"][];
-        };
-        ListClientRepliesResponseContent: {
-            replies?: components["schemas"]["ClientReply"][];
-        };
-        ListCommentsResponseContent: {
-            comments?: components["schemas"]["Comment"][];
-        };
-        ListDocumentsResponseContent: {
-            documents?: components["schemas"]["Document"][];
-        };
-        ListEventsResponseContent: {
-            events?: components["schemas"]["Event"][];
-        };
-        ListForwardRepliesResponseContent: {
-            replies?: components["schemas"]["ForwardReply"][];
-        };
-        ListForwardsResponseContent: {
-            forwards?: components["schemas"]["Forward"][];
-        };
-        ListMessageTypesResponseContent: {
-            message_types?: components["schemas"]["MessageType"][];
-        };
-        ListMessagesResponseContent: {
-            messages?: components["schemas"]["Message"][];
-        };
-        ListPeopleResponseContent: {
-            people?: components["schemas"]["Person"][];
-        };
-        ListPingablePeopleResponseContent: {
-            people?: components["schemas"]["Person"][];
-        };
-        ListProjectPeopleResponseContent: {
-            people?: components["schemas"]["Person"][];
-        };
-        ListProjectsResponseContent: {
-            projects?: components["schemas"]["Project"][];
-        };
-        ListQuestionsResponseContent: {
-            questions?: components["schemas"]["Question"][];
-        };
-        ListRecordingsResponseContent: {
-            recordings?: components["schemas"]["Recording"][];
-        };
-        ListScheduleEntriesResponseContent: {
-            entries?: components["schemas"]["ScheduleEntry"][];
-        };
-        ListTemplatesResponseContent: {
-            templates?: components["schemas"]["Template"][];
-        };
-        ListTodolistGroupsResponseContent: {
-            groups?: components["schemas"]["TodolistGroup"][];
-        };
-        ListTodolistsResponseContent: {
-            todolists?: components["schemas"]["Todolist"][];
-        };
-        ListTodosResponseContent: {
-            todos?: components["schemas"]["Todo"][];
-        };
-        ListUploadVersionsResponseContent: {
-            uploads?: components["schemas"]["Upload"][];
-        };
-        ListUploadsResponseContent: {
-            uploads?: components["schemas"]["Upload"][];
-        };
-        ListVaultsResponseContent: {
-            vaults?: components["schemas"]["Vault"][];
-        };
-        ListWebhooksResponseContent: {
-            webhooks?: components["schemas"]["Webhook"][];
-        };
+        ListAnswersResponseContent: components["schemas"]["QuestionAnswer"][];
+        ListAssignablePeopleResponseContent: components["schemas"]["Person"][];
+        ListCampfireLinesResponseContent: components["schemas"]["CampfireLine"][];
+        ListCampfiresResponseContent: components["schemas"]["Campfire"][];
+        ListCardsResponseContent: components["schemas"]["Card"][];
+        ListChatbotsResponseContent: components["schemas"]["Chatbot"][];
+        ListClientApprovalsResponseContent: components["schemas"]["ClientApproval"][];
+        ListClientCorrespondencesResponseContent: components["schemas"]["ClientCorrespondence"][];
+        ListClientRepliesResponseContent: components["schemas"]["ClientReply"][];
+        ListCommentsResponseContent: components["schemas"]["Comment"][];
+        ListDocumentsResponseContent: components["schemas"]["Document"][];
+        ListEventsResponseContent: components["schemas"]["Event"][];
+        ListForwardRepliesResponseContent: components["schemas"]["ForwardReply"][];
+        ListForwardsResponseContent: components["schemas"]["Forward"][];
+        ListMessageTypesResponseContent: components["schemas"]["MessageType"][];
+        ListMessagesResponseContent: components["schemas"]["Message"][];
+        ListPeopleResponseContent: components["schemas"]["Person"][];
+        ListPingablePeopleResponseContent: components["schemas"]["Person"][];
+        ListProjectPeopleResponseContent: components["schemas"]["Person"][];
+        ListProjectsResponseContent: components["schemas"]["Project"][];
+        ListQuestionAnswerersResponseContent: components["schemas"]["Person"][];
+        ListQuestionsResponseContent: components["schemas"]["Question"][];
+        ListRecordingsResponseContent: components["schemas"]["Recording"][];
+        ListScheduleEntriesResponseContent: components["schemas"]["ScheduleEntry"][];
+        ListTemplatesResponseContent: components["schemas"]["Template"][];
+        ListTodolistGroupsResponseContent: components["schemas"]["TodolistGroup"][];
+        ListTodolistsResponseContent: components["schemas"]["Todolist"][];
+        ListTodosResponseContent: components["schemas"]["Todo"][];
+        ListUploadVersionsResponseContent: components["schemas"]["Upload"][];
+        ListUploadsResponseContent: components["schemas"]["Upload"][];
+        ListVaultsResponseContent: components["schemas"]["Vault"][];
+        ListWebhooksResponseContent: components["schemas"]["Webhook"][];
         Message: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2636,6 +2764,7 @@ export interface components {
             app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
             parent?: components["schemas"]["RecordingParent"];
@@ -2646,6 +2775,7 @@ export interface components {
             category?: components["schemas"]["MessageType"];
         };
         MessageBoard: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2657,14 +2787,17 @@ export interface components {
             url?: string;
             app_url?: string;
             bookmark_url?: string;
+            /** Format: int32 */
             position?: number;
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
+            /** Format: int32 */
             messages_count?: number;
             messages_url?: string;
             app_messages_url?: string;
         };
         MessageType: {
+            /** Format: int64 */
             id?: number;
             name?: string;
             icon?: string;
@@ -2672,18 +2805,26 @@ export interface components {
             updated_at?: string;
         };
         MoveCardColumnRequestContent: {
+            /** Format: int64 */
             source_id: number;
+            /** Format: int64 */
             target_id: number;
+            /** Format: int32 */
             position?: number;
         };
         MoveCardRequestContent: {
+            /** Format: int64 */
             column_id: number;
         };
         NotFoundErrorResponseContent: {
             error: string;
             message?: string;
         };
+        PauseQuestionResponseContent: {
+            paused?: boolean;
+        };
         Person: {
+            /** Format: int64 */
             id?: number;
             attachable_sgid?: string;
             /** Format: password */
@@ -2711,11 +2852,13 @@ export interface components {
             can_manage_people?: boolean;
         };
         PersonCompany: {
+            /** Format: int64 */
             id?: number;
             /** Format: password */
             name?: string;
         };
         Project: {
+            /** Format: int64 */
             id?: number;
             /** @description active|archived|trashed */
             status?: string;
@@ -2739,12 +2882,14 @@ export interface components {
             revoked?: components["schemas"]["Person"][];
         };
         ProjectConstruction: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             url?: string;
             project?: components["schemas"]["Project"];
         };
         Question: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2762,10 +2907,12 @@ export interface components {
             creator?: components["schemas"]["Person"];
             paused?: boolean;
             schedule?: components["schemas"]["QuestionSchedule"];
+            /** Format: int32 */
             answers_count?: number;
             answers_url?: string;
         };
         QuestionAnswer: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2778,6 +2925,7 @@ export interface components {
             app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
             content?: string;
@@ -2793,18 +2941,31 @@ export interface components {
         QuestionAnswerUpdatePayload: {
             content: string;
         };
+        QuestionReminder: {
+            /** Format: int64 */
+            reminder_id?: number;
+            remind_at?: string;
+            group_on?: string;
+            question?: components["schemas"]["Question"];
+        };
         QuestionSchedule: {
             frequency?: string;
             days?: number[];
+            /** Format: int32 */
             hour?: number;
+            /** Format: int32 */
             minute?: number;
+            /** Format: int32 */
             week_instance?: number;
+            /** Format: int32 */
             week_interval?: number;
+            /** Format: int32 */
             month_interval?: number;
             start_date?: string;
             end_date?: string;
         };
         Questionnaire: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2817,6 +2978,7 @@ export interface components {
             app_url?: string;
             bookmark_url?: string;
             questions_url?: string;
+            /** Format: int32 */
             questions_count?: number;
             name?: string;
             bucket?: components["schemas"]["RecordingBucket"];
@@ -2825,9 +2987,11 @@ export interface components {
         RateLimitErrorResponseContent: {
             error: string;
             message?: string;
+            /** Format: int32 */
             retry_after?: number;
         };
         Recording: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2844,11 +3008,13 @@ export interface components {
             creator?: components["schemas"]["Person"];
         };
         RecordingBucket: {
+            /** Format: int64 */
             id?: number;
             name?: string;
             type?: string;
         };
         RecordingParent: {
+            /** Format: int64 */
             id?: number;
             title?: string;
             type?: string;
@@ -2856,17 +3022,31 @@ export interface components {
             app_url?: string;
         };
         RepositionCardStepRequestContent: {
+            /** Format: int64 */
             source_id: number;
-            /** @description 0-indexed position */
+            /**
+             * Format: int32
+             * @description 0-indexed position
+             */
+            position: number;
+        };
+        RepositionTodoRequestContent: {
+            /** Format: int32 */
             position: number;
         };
         RepositionTodolistGroupRequestContent: {
+            /** Format: int32 */
             position: number;
         };
         RepositionToolRequestContent: {
+            /** Format: int32 */
             position: number;
         };
+        ResumeQuestionResponseContent: {
+            paused?: boolean;
+        };
         Schedule: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2878,10 +3058,12 @@ export interface components {
             url?: string;
             app_url?: string;
             bookmark_url?: string;
+            /** Format: int32 */
             position?: number;
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
             include_due_assignments?: boolean;
+            /** Format: int32 */
             entries_count?: number;
             entries_url?: string;
         };
@@ -2890,6 +3072,7 @@ export interface components {
             end_date?: string;
         };
         ScheduleEntry: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2902,6 +3085,7 @@ export interface components {
             app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
             parent?: components["schemas"]["RecordingParent"];
@@ -2918,13 +3102,13 @@ export interface components {
             projects?: components["schemas"]["SearchProject"][];
         };
         SearchProject: {
+            /** Format: int64 */
             id?: number;
             name?: string;
         };
-        SearchResponseContent: {
-            results?: components["schemas"]["SearchResult"][];
-        };
+        SearchResponseContent: components["schemas"]["SearchResult"][];
         SearchResult: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2947,25 +3131,21 @@ export interface components {
             /** @description Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown */
             color: string;
         };
-        SetCardColumnColorResponseContent: {
-            column?: components["schemas"]["CardColumn"];
-        };
+        SetCardColumnColorResponseContent: components["schemas"]["CardColumn"];
         SetClientVisibilityRequestContent: {
             visible_to_clients: boolean;
         };
-        SetClientVisibilityResponseContent: {
-            recording?: components["schemas"]["Recording"];
-        };
-        SubscribeResponseContent: {
-            subscription?: components["schemas"]["Subscription"];
-        };
+        SetClientVisibilityResponseContent: components["schemas"]["Recording"];
+        SubscribeResponseContent: components["schemas"]["Subscription"];
         Subscription: {
             subscribed?: boolean;
+            /** Format: int32 */
             count?: number;
             url?: string;
             subscribers?: components["schemas"]["Person"][];
         };
         Template: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             created_at?: string;
@@ -2976,7 +3156,24 @@ export interface components {
             app_url?: string;
             dock?: components["schemas"]["DockItem"][];
         };
+        TimelineEvent: {
+            /** Format: int64 */
+            id?: number;
+            created_at?: string;
+            kind?: string;
+            /** Format: int64 */
+            parent_recording_id?: number;
+            url?: string;
+            app_url?: string;
+            creator?: components["schemas"]["Person"];
+            action?: string;
+            target?: string;
+            title?: string;
+            summary_excerpt?: string;
+            bucket?: components["schemas"]["TodoBucket"];
+        };
         TimesheetEntry: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -2996,6 +3193,7 @@ export interface components {
             hours?: string;
         };
         Todo: {
+            /** Format: int64 */
             id?: number;
             /** @description active|archived|trashed */
             status?: string;
@@ -3009,8 +3207,10 @@ export interface components {
             app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
+            /** Format: int32 */
             position?: number;
             parent?: components["schemas"]["TodoParent"];
             bucket?: components["schemas"]["TodoBucket"];
@@ -3025,11 +3225,13 @@ export interface components {
             completion_url?: string;
         };
         TodoBucket: {
+            /** Format: int64 */
             id?: number;
             name?: string;
             type?: string;
         };
         TodoParent: {
+            /** Format: int64 */
             id?: number;
             title?: string;
             type?: string;
@@ -3037,6 +3239,7 @@ export interface components {
             app_url?: string;
         };
         Todolist: {
+            /** Format: int64 */
             id?: number;
             /** @description active|archived|trashed */
             status?: string;
@@ -3050,8 +3253,10 @@ export interface components {
             app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
+            /** Format: int32 */
             position?: number;
             parent?: components["schemas"]["TodoParent"];
             bucket?: components["schemas"]["TodoBucket"];
@@ -3065,6 +3270,7 @@ export interface components {
             app_todos_url?: string;
         };
         TodolistGroup: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -3077,8 +3283,10 @@ export interface components {
             app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
+            /** Format: int32 */
             position?: number;
             parent?: components["schemas"]["TodoParent"];
             bucket?: components["schemas"]["TodoBucket"];
@@ -3096,6 +3304,7 @@ export interface components {
             group: components["schemas"]["TodolistGroup"];
         };
         Todoset: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -3107,20 +3316,26 @@ export interface components {
             url?: string;
             app_url?: string;
             bookmark_url?: string;
+            /** Format: int32 */
             position?: number;
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
             name?: string;
+            /** Format: int32 */
             todolists_count?: number;
             todolists_url?: string;
             completed_ratio?: string;
             completed?: boolean;
+            /** Format: int32 */
             completed_count?: number;
+            /** Format: int32 */
             on_schedule_count?: number;
+            /** Format: int32 */
             over_schedule_count?: number;
             app_todolists_url?: string;
         };
         Tool: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             created_at?: string;
@@ -3128,6 +3343,7 @@ export interface components {
             title?: string;
             name?: string;
             enabled?: boolean;
+            /** Format: int32 */
             position?: number;
             url?: string;
             app_url?: string;
@@ -3137,56 +3353,39 @@ export interface components {
             error: string;
             message?: string;
         };
-        UncompleteCardStepResponseContent: {
-            step?: components["schemas"]["CardStep"];
-        };
-        UpdateAnswerResponseContent: {
-            answer?: components["schemas"]["QuestionAnswer"];
-        };
+        UncompleteCardStepResponseContent: components["schemas"]["CardStep"];
         UpdateCardColumnRequestContent: {
             title?: string;
             description?: string;
         };
-        UpdateCardColumnResponseContent: {
-            column?: components["schemas"]["CardColumn"];
-        };
+        UpdateCardColumnResponseContent: components["schemas"]["CardColumn"];
         UpdateCardRequestContent: {
             title?: string;
             content?: string;
             due_on?: string;
             assignee_ids?: number[];
         };
-        UpdateCardResponseContent: {
-            card?: components["schemas"]["Card"];
-        };
+        UpdateCardResponseContent: components["schemas"]["Card"];
         UpdateCardStepRequestContent: {
             title?: string;
             due_on?: string;
             assignees?: number[];
         };
-        UpdateCardStepResponseContent: {
-            step?: components["schemas"]["CardStep"];
-        };
+        UpdateCardStepResponseContent: components["schemas"]["CardStep"];
         UpdateChatbotRequestContent: {
             service_name: string;
             command_url?: string;
         };
-        UpdateChatbotResponseContent: {
-            chatbot?: components["schemas"]["Chatbot"];
-        };
+        UpdateChatbotResponseContent: components["schemas"]["Chatbot"];
         UpdateCommentRequestContent: {
             content: string;
         };
-        UpdateCommentResponseContent: {
-            comment?: components["schemas"]["Comment"];
-        };
+        UpdateCommentResponseContent: components["schemas"]["Comment"];
         UpdateDocumentRequestContent: {
             title?: string;
             content?: string;
         };
-        UpdateDocumentResponseContent: {
-            document?: components["schemas"]["Document"];
-        };
+        UpdateDocumentResponseContent: components["schemas"]["Document"];
         UpdateLineupMarkerRequestContent: {
             title?: string;
             starts_on?: string;
@@ -3194,34 +3393,26 @@ export interface components {
             color?: string;
             description?: string;
         };
-        UpdateLineupMarkerResponseContent: {
-            marker?: components["schemas"]["LineupMarker"];
-        };
         UpdateMessageRequestContent: {
             subject?: string;
             content?: string;
             /** @description active|drafted */
             status?: string;
+            /** Format: int64 */
             category_id?: number;
         };
-        UpdateMessageResponseContent: {
-            message?: components["schemas"]["Message"];
-        };
+        UpdateMessageResponseContent: components["schemas"]["Message"];
         UpdateMessageTypeRequestContent: {
             name?: string;
             icon?: string;
         };
-        UpdateMessageTypeResponseContent: {
-            message_type?: components["schemas"]["MessageType"];
-        };
+        UpdateMessageTypeResponseContent: components["schemas"]["MessageType"];
         UpdateProjectAccessRequestContent: {
             grant?: number[];
             revoke?: number[];
             create?: components["schemas"]["CreatePersonRequest"][];
         };
-        UpdateProjectAccessResponseContent: {
-            result?: components["schemas"]["ProjectAccessResult"];
-        };
+        UpdateProjectAccessResponseContent: components["schemas"]["ProjectAccessResult"];
         UpdateProjectRequestContent: {
             name: string;
             description?: string;
@@ -3229,17 +3420,23 @@ export interface components {
             admissions?: string;
             schedule_attributes?: components["schemas"]["ScheduleAttributes"];
         };
-        UpdateProjectResponseContent: {
-            project?: components["schemas"]["Project"];
+        UpdateProjectResponseContent: components["schemas"]["Project"];
+        UpdateQuestionNotificationSettingsRequestContent: {
+            /** @description Notify when someone answers */
+            notify_on_answer?: boolean;
+            /** @description Include unanswered in digest */
+            digest_include_unanswered?: boolean;
+        };
+        UpdateQuestionNotificationSettingsResponseContent: {
+            responding?: boolean;
+            subscribed?: boolean;
         };
         UpdateQuestionRequestContent: {
             title?: string;
             schedule?: components["schemas"]["QuestionSchedule"];
             paused?: boolean;
         };
-        UpdateQuestionResponseContent: {
-            question?: components["schemas"]["Question"];
-        };
+        UpdateQuestionResponseContent: components["schemas"]["Question"];
         UpdateScheduleEntryRequestContent: {
             summary?: string;
             starts_at?: string;
@@ -3249,29 +3446,21 @@ export interface components {
             all_day?: boolean;
             notify?: boolean;
         };
-        UpdateScheduleEntryResponseContent: {
-            entry?: components["schemas"]["ScheduleEntry"];
-        };
+        UpdateScheduleEntryResponseContent: components["schemas"]["ScheduleEntry"];
         UpdateScheduleSettingsRequestContent: {
             include_due_assignments: boolean;
         };
-        UpdateScheduleSettingsResponseContent: {
-            schedule?: components["schemas"]["Schedule"];
-        };
+        UpdateScheduleSettingsResponseContent: components["schemas"]["Schedule"];
         UpdateSubscriptionRequestContent: {
             subscriptions?: number[];
             unsubscriptions?: number[];
         };
-        UpdateSubscriptionResponseContent: {
-            subscription?: components["schemas"]["Subscription"];
-        };
+        UpdateSubscriptionResponseContent: components["schemas"]["Subscription"];
         UpdateTemplateRequestContent: {
             name?: string;
             description?: string;
         };
-        UpdateTemplateResponseContent: {
-            template?: components["schemas"]["Template"];
-        };
+        UpdateTemplateResponseContent: components["schemas"]["Template"];
         UpdateTodoRequestContent: {
             content?: string;
             description?: string;
@@ -3281,46 +3470,35 @@ export interface components {
             due_on?: string;
             starts_on?: string;
         };
-        UpdateTodoResponseContent: {
-            todo?: components["schemas"]["Todo"];
-        };
+        UpdateTodoResponseContent: components["schemas"]["Todo"];
         UpdateTodolistOrGroupRequestContent: {
             /** @description Name (required for both Todolist and TodolistGroup) */
             name?: string;
             /** @description Description (Todolist only, ignored for groups) */
             description?: string;
         };
-        UpdateTodolistOrGroupResponseContent: {
-            result?: components["schemas"]["TodolistOrGroup"];
-        };
+        UpdateTodolistOrGroupResponseContent: components["schemas"]["TodolistOrGroup"];
         UpdateToolRequestContent: {
             title: string;
         };
-        UpdateToolResponseContent: {
-            tool?: components["schemas"]["Tool"];
-        };
+        UpdateToolResponseContent: components["schemas"]["Tool"];
         UpdateUploadRequestContent: {
             description?: string;
             base_name?: string;
         };
-        UpdateUploadResponseContent: {
-            upload?: components["schemas"]["Upload"];
-        };
+        UpdateUploadResponseContent: components["schemas"]["Upload"];
         UpdateVaultRequestContent: {
             title?: string;
         };
-        UpdateVaultResponseContent: {
-            vault?: components["schemas"]["Vault"];
-        };
+        UpdateVaultResponseContent: components["schemas"]["Vault"];
         UpdateWebhookRequestContent: {
             payload_url?: string;
             types?: string[];
             active?: boolean;
         };
-        UpdateWebhookResponseContent: {
-            webhook?: components["schemas"]["Webhook"];
-        };
+        UpdateWebhookResponseContent: components["schemas"]["Webhook"];
         Upload: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -3333,16 +3511,21 @@ export interface components {
             app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
+            /** Format: int32 */
             position?: number;
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
             description?: string;
             content_type?: string;
+            /** Format: int64 */
             byte_size?: number;
+            /** Format: int32 */
             width?: number;
+            /** Format: int32 */
             height?: number;
             download_url?: string;
             filename?: string;
@@ -3352,6 +3535,7 @@ export interface components {
             message?: string;
         };
         Vault: {
+            /** Format: int64 */
             id?: number;
             status?: string;
             visible_to_clients?: boolean;
@@ -3363,18 +3547,23 @@ export interface components {
             url?: string;
             app_url?: string;
             bookmark_url?: string;
+            /** Format: int32 */
             position?: number;
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
+            /** Format: int32 */
             documents_count?: number;
             documents_url?: string;
+            /** Format: int32 */
             uploads_count?: number;
             uploads_url?: string;
+            /** Format: int32 */
             vaults_count?: number;
             vaults_url?: string;
         };
         Webhook: {
+            /** Format: int64 */
             id?: number;
             active?: boolean;
             created_at?: string;
@@ -3398,9 +3587,7 @@ export interface operations {
             query: {
                 name: string;
             };
-            header: {
-                "Content-Type": string;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -3410,8 +3597,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateAttachment 200 response */
-            200: {
+            /** @description CreateAttachment 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3613,8 +3800,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description MoveCard 200 response */
-            200: {
+            /** @description MoveCard 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3753,8 +3940,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateCardStep 200 response */
-            200: {
+            /** @description CreateCardStep 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4214,8 +4401,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateCard 200 response */
-            200: {
+            /** @description CreateCard 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4257,6 +4444,129 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    SubscribeToCardColumn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                columnId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SubscribeToCardColumn 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UnsubscribeFromCardColumn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                columnId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description UnsubscribeFromCardColumn 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -4544,8 +4854,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateCardColumn 200 response */
-            200: {
+            /** @description CreateCardColumn 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4616,8 +4926,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description MoveCardColumn 200 response */
-            200: {
+            /** @description MoveCardColumn 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4743,8 +5053,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateMessageType 200 response */
-            200: {
+            /** @description CreateMessageType 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4942,8 +5252,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteMessageType 200 response */
-            200: {
+            /** @description DeleteMessageType 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5121,8 +5431,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateChatbot 200 response */
-            200: {
+            /** @description CreateChatbot 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5323,8 +5633,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteChatbot 200 response */
-            200: {
+            /** @description DeleteChatbot 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5443,8 +5753,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateCampfireLine 200 response */
-            200: {
+            /** @description CreateCampfireLine 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5572,8 +5882,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteCampfireLine 200 response */
-            200: {
+            /** @description DeleteCampfireLine 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6107,14 +6417,17 @@ export interface operations {
             header?: never;
             path: {
                 projectId: number;
-                sourceToolId: number;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloneToolRequestContent"];
+            };
+        };
         responses: {
-            /** @description CloneTool 200 response */
-            200: {
+            /** @description CloneTool 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6312,201 +6625,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteTool 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    RepositionTool: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                toolId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RepositionToolRequestContent"];
-            };
-        };
-        responses: {
-            /** @description RepositionTool 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    EnableTool: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                toolId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description EnableTool 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    DisableTool: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                toolId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description DisableTool 200 response */
-            200: {
+            /** @description DeleteTool 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6815,8 +6935,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateForwardReply 200 response */
-            200: {
+            /** @description CreateForwardReply 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7183,8 +7303,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateMessage 200 response */
-            200: {
+            /** @description CreateMessage 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7445,14 +7565,12 @@ export interface operations {
             };
         };
         responses: {
-            /** @description UpdateAnswer 200 response */
-            200: {
+            /** @description UpdateAnswer 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["UpdateAnswerResponseContent"];
-                };
+                content?: never;
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -7635,8 +7753,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateQuestion 200 response */
-            200: {
+            /** @description CreateQuestion 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7897,8 +8015,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateAnswer 200 response */
-            200: {
+            /** @description CreateAnswer 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7953,6 +8071,342 @@ export interface operations {
             };
         };
     };
+    ListQuestionAnswerers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                questionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListQuestionAnswerers 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListQuestionAnswerersResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetAnswersByPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                questionId: number;
+                personId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetAnswersByPerson 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetAnswersByPersonResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateQuestionNotificationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                questionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateQuestionNotificationSettingsRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateQuestionNotificationSettings 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateQuestionNotificationSettingsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    PauseQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                questionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PauseQuestion 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PauseQuestionResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ResumeQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                questionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ResumeQuestion 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeQuestionResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     PinMessage: {
         parameters: {
             query?: never;
@@ -7965,8 +8419,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description PinMessage 200 response */
-            200: {
+            /** @description PinMessage 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8031,8 +8485,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description UnpinMessage 200 response */
-            200: {
+            /** @description UnpinMessage 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8282,8 +8736,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateComment 200 response */
-            200: {
+            /** @description CreateComment 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8409,8 +8863,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description UnarchiveRecording 200 response */
-            200: {
+            /** @description UnarchiveRecording 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8475,8 +8929,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description ArchiveRecording 200 response */
-            200: {
+            /** @description ArchiveRecording 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8541,8 +8995,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description TrashRecording 200 response */
-            200: {
+            /** @description TrashRecording 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8806,8 +9260,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Unsubscribe 200 response */
-            200: {
+            /** @description Unsubscribe 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8875,6 +9329,199 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GetRecordingTimesheetResponseContent"];
                 };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    RepositionTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                toolId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepositionToolRequestContent"];
+            };
+        };
+        responses: {
+            /** @description RepositionTool 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    EnableTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                toolId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description EnableTool 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DisableTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                toolId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DisableTool 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -9314,8 +9961,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateScheduleEntry 200 response */
-            200: {
+            /** @description CreateScheduleEntry 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9348,6 +9995,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetProjectTimeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetProjectTimeline 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetProjectTimelineResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -9708,8 +10422,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateTodolistGroup 200 response */
-            200: {
+            /** @description CreateTodolistGroup 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9843,8 +10557,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateTodo 200 response */
-            200: {
+            /** @description CreateTodo 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10099,8 +10813,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description CompleteTodo 200 response */
-            200: {
+            /** @description CompleteTodo 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10165,7 +10879,68 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description UncompleteTodo 200 response */
+            /** @description UncompleteTodo 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    RepositionTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                todoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepositionTodoRequestContent"];
+            };
+        };
+        responses: {
+            /** @description RepositionTodo 200 response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -10197,6 +10972,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -10347,8 +11131,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateTodolist 200 response */
-            200: {
+            /** @description CreateTodolist 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10799,8 +11583,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateDocument 200 response */
-            200: {
+            /** @description CreateDocument 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10930,8 +11714,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateUpload 200 response */
-            200: {
+            /** @description CreateUpload 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11061,8 +11845,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateVault 200 response */
-            200: {
+            /** @description CreateVault 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11190,8 +11974,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateWebhook 200 response */
-            200: {
+            /** @description CreateWebhook 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11389,8 +12173,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteWebhook 200 response */
-            200: {
+            /** @description DeleteWebhook 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11559,14 +12343,12 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateLineupMarker 200 response */
-            200: {
+            /** @description CreateLineupMarker 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["CreateLineupMarkerResponseContent"];
-                };
+                content?: never;
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -11635,9 +12417,7 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["UpdateLineupMarkerResponseContent"];
-                };
+                content?: never;
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -11697,8 +12477,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteLineupMarker 200 response */
-            200: {
+            /** @description DeleteLineupMarker 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11785,6 +12565,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetQuestionReminders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetQuestionReminders 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetQuestionRemindersResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -11984,8 +12820,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateProject 200 response */
-            200: {
+            /** @description CreateProject 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12246,8 +13082,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description TrashProject 200 response */
-            200: {
+            /** @description TrashProject 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12420,6 +13256,121 @@ export interface operations {
             };
         };
     };
+    GetProgressReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetProgressReport 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetProgressReportResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetUpcomingSchedule: {
+        parameters: {
+            query?: {
+                window_starts_on?: string;
+                window_ends_on?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetUpcomingSchedule 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetUpcomingScheduleResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetTimesheetReport: {
         parameters: {
             query?: {
@@ -12467,6 +13418,255 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListAssignablePeople: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListAssignablePeople 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListAssignablePeopleResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetAssignedTodos: {
+        parameters: {
+            query?: {
+                /** @description Group by "bucket" or "date" */
+                group_by?: string;
+            };
+            header?: never;
+            path: {
+                personId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetAssignedTodos 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetAssignedTodosResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetOverdueTodos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetOverdueTodos 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetOverdueTodosResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetPersonProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetPersonProgress 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetPersonProgressResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -12668,8 +13868,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateTemplate 200 response */
-            200: {
+            /** @description CreateTemplate 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12864,8 +14064,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description DeleteTemplate 200 response */
-            200: {
+            /** @description DeleteTemplate 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12924,8 +14124,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateProjectFromTemplate 200 response */
-            200: {
+            /** @description CreateProjectFromTemplate 201 response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

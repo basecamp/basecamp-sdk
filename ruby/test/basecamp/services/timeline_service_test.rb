@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# Tests for the TimelineService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Only get_project_timeline() available (not progress, person_progress, etc.)
+# - No client-side validation (API validates)
+
 require "test_helper"
 
 class TimelineServiceTest < Minitest::Test
@@ -18,124 +24,18 @@ class TimelineServiceTest < Minitest::Test
     }
   end
 
-  def test_progress
-    response = {
-      "events" => [
-        sample_event(id: 1, action: "created"),
-        sample_event(id: 2, action: "updated")
-      ]
-    }
+  def test_get_project_timeline
+    events = [ sample_event(id: 1, action: "updated"), sample_event(id: 2, action: "completed") ]
 
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/reports/progress\.json})
-      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+    stub_get("/12345/buckets/100/timeline.json", response_body: events)
 
-    result = @account.timeline.progress.to_a
+    result = @account.timeline.get_project_timeline(project_id: 100).to_a
 
     assert_kind_of Array, result
     assert_equal 2, result.length
-    assert_equal "created", result[0]["action"]
-  end
-
-  def test_progress_pagination
-    page1 = { "events" => [ sample_event(id: 1) ] }
-    page2 = { "events" => [ sample_event(id: 2) ] }
-
-    stub_request(:get, "https://3.basecampapi.com/12345/reports/progress.json")
-      .to_return(
-        status: 200,
-        body: page1.to_json,
-        headers: {
-          "Content-Type" => "application/json",
-          "Link" => '<https://3.basecampapi.com/12345/reports/progress.json?page=2>; rel="next"'
-        }
-      )
-
-    stub_request(:get, "https://3.basecampapi.com/12345/reports/progress.json?page=2")
-      .to_return(status: 200, body: page2.to_json, headers: { "Content-Type" => "application/json" })
-
-    result = @account.timeline.progress.to_a
-
-    assert_equal 2, result.length
-    assert_equal 1, result[0]["id"]
-    assert_equal 2, result[1]["id"]
-  end
-
-  def test_project_timeline
-    response = {
-      "events" => [
-        sample_event(id: 1, action: "updated")
-      ]
-    }
-
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/100/timeline\.json})
-      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
-
-    result = @account.timeline.project_timeline(project_id: 100).to_a
-
-    assert_kind_of Array, result
-    assert_equal 1, result.length
     assert_equal "updated", result[0]["action"]
   end
 
-  def test_person_progress
-    response = {
-      "person" => { "id" => 456, "name" => "Jane Doe" },
-      "events" => [
-        sample_event(id: 1, action: "completed")
-      ]
-    }
-
-    # Note: no .json extension on this endpoint
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/reports/users/progress/456$})
-      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
-
-    result = @account.timeline.person_progress(person_id: 456)
-
-    assert_kind_of Hash, result
-    assert_equal "Jane Doe", result["person"]["name"]
-    assert_equal 1, result["events"].length
-    assert_equal "completed", result["events"][0]["action"]
-  end
-
-  def test_person_progress_events
-    response = {
-      "person" => { "id" => 456, "name" => "Jane Doe" },
-      "events" => [
-        sample_event(id: 1, action: "completed")
-      ]
-    }
-
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/reports/users/progress/456$})
-      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
-
-    result = @account.timeline.person_progress_events(person_id: 456).to_a
-
-    assert_kind_of Array, result
-    assert_equal 1, result.length
-    assert_equal "completed", result[0]["action"]
-  end
-
-  def test_person_progress_events_pagination
-    page1 = { "person" => { "id" => 456 }, "events" => [ sample_event(id: 1) ] }
-    page2 = { "person" => { "id" => 456 }, "events" => [ sample_event(id: 2) ] }
-
-    stub_request(:get, "https://3.basecampapi.com/12345/reports/users/progress/456")
-      .to_return(
-        status: 200,
-        body: page1.to_json,
-        headers: {
-          "Content-Type" => "application/json",
-          "Link" => '<https://3.basecampapi.com/12345/reports/users/progress/456?page=2>; rel="next"'
-        }
-      )
-
-    stub_request(:get, "https://3.basecampapi.com/12345/reports/users/progress/456?page=2")
-      .to_return(status: 200, body: page2.to_json, headers: { "Content-Type" => "application/json" })
-
-    result = @account.timeline.person_progress_events(person_id: 456).to_a
-
-    assert_equal 2, result.length
-    assert_equal 1, result[0]["id"]
-    assert_equal 2, result[1]["id"]
-  end
+  # Note: progress(), person_progress(), person_progress_events() methods
+  # not available in generated service (spec-conformant)
 end

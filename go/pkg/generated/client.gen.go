@@ -292,10 +292,13 @@ type ClientSide struct {
 	Url    string `json:"url,omitempty"`
 }
 
-// CloneToolResponseContent defines model for CloneToolResponseContent.
-type CloneToolResponseContent struct {
-	Tool Tool `json:"tool,omitempty"`
+// CloneToolRequestContent defines model for CloneToolRequestContent.
+type CloneToolRequestContent struct {
+	SourceRecordingId int64 `json:"source_recording_id"`
 }
+
+// CloneToolResponseContent defines model for CloneToolResponseContent.
+type CloneToolResponseContent = Tool
 
 // Comment defines model for Comment.
 type Comment struct {
@@ -317,14 +320,10 @@ type Comment struct {
 }
 
 // CompleteCardStepResponseContent defines model for CompleteCardStepResponseContent.
-type CompleteCardStepResponseContent struct {
-	Step CardStep `json:"step,omitempty"`
-}
+type CompleteCardStepResponseContent = CardStep
 
 // CreateAnswerResponseContent defines model for CreateAnswerResponseContent.
-type CreateAnswerResponseContent struct {
-	Answer QuestionAnswer `json:"answer,omitempty"`
-}
+type CreateAnswerResponseContent = QuestionAnswer
 
 // CreateAttachmentInputPayload defines model for CreateAttachmentInputPayload.
 type CreateAttachmentInputPayload = string
@@ -340,9 +339,7 @@ type CreateCampfireLineRequestContent struct {
 }
 
 // CreateCampfireLineResponseContent defines model for CreateCampfireLineResponseContent.
-type CreateCampfireLineResponseContent struct {
-	Line CampfireLine `json:"line,omitempty"`
-}
+type CreateCampfireLineResponseContent = CampfireLine
 
 // CreateCardColumnRequestContent defines model for CreateCardColumnRequestContent.
 type CreateCardColumnRequestContent struct {
@@ -351,22 +348,18 @@ type CreateCardColumnRequestContent struct {
 }
 
 // CreateCardColumnResponseContent defines model for CreateCardColumnResponseContent.
-type CreateCardColumnResponseContent struct {
-	Column CardColumn `json:"column,omitempty"`
-}
+type CreateCardColumnResponseContent = CardColumn
 
 // CreateCardRequestContent defines model for CreateCardRequestContent.
 type CreateCardRequestContent struct {
 	Content string     `json:"content,omitempty"`
 	DueOn   types.Date `json:"due_on,omitempty"`
-	Notify  bool       `json:"notify,omitempty"`
+	Notify  *bool      `json:"notify,omitempty"`
 	Title   string     `json:"title"`
 }
 
 // CreateCardResponseContent defines model for CreateCardResponseContent.
-type CreateCardResponseContent struct {
-	Card Card `json:"card,omitempty"`
-}
+type CreateCardResponseContent = Card
 
 // CreateCardStepRequestContent defines model for CreateCardStepRequestContent.
 type CreateCardStepRequestContent struct {
@@ -376,9 +369,7 @@ type CreateCardStepRequestContent struct {
 }
 
 // CreateCardStepResponseContent defines model for CreateCardStepResponseContent.
-type CreateCardStepResponseContent struct {
-	Step CardStep `json:"step,omitempty"`
-}
+type CreateCardStepResponseContent = CardStep
 
 // CreateChatbotRequestContent defines model for CreateChatbotRequestContent.
 type CreateChatbotRequestContent struct {
@@ -387,9 +378,7 @@ type CreateChatbotRequestContent struct {
 }
 
 // CreateChatbotResponseContent defines model for CreateChatbotResponseContent.
-type CreateChatbotResponseContent struct {
-	Chatbot Chatbot `json:"chatbot,omitempty"`
-}
+type CreateChatbotResponseContent = Chatbot
 
 // CreateCommentRequestContent defines model for CreateCommentRequestContent.
 type CreateCommentRequestContent struct {
@@ -397,9 +386,7 @@ type CreateCommentRequestContent struct {
 }
 
 // CreateCommentResponseContent defines model for CreateCommentResponseContent.
-type CreateCommentResponseContent struct {
-	Comment Comment `json:"comment,omitempty"`
-}
+type CreateCommentResponseContent = Comment
 
 // CreateDocumentRequestContent defines model for CreateDocumentRequestContent.
 type CreateDocumentRequestContent struct {
@@ -411,9 +398,7 @@ type CreateDocumentRequestContent struct {
 }
 
 // CreateDocumentResponseContent defines model for CreateDocumentResponseContent.
-type CreateDocumentResponseContent struct {
-	Document Document `json:"document,omitempty"`
-}
+type CreateDocumentResponseContent = Document
 
 // CreateForwardReplyRequestContent defines model for CreateForwardReplyRequestContent.
 type CreateForwardReplyRequestContent struct {
@@ -421,9 +406,7 @@ type CreateForwardReplyRequestContent struct {
 }
 
 // CreateForwardReplyResponseContent defines model for CreateForwardReplyResponseContent.
-type CreateForwardReplyResponseContent struct {
-	Reply ForwardReply `json:"reply,omitempty"`
-}
+type CreateForwardReplyResponseContent = ForwardReply
 
 // CreateLineupMarkerRequestContent defines model for CreateLineupMarkerRequestContent.
 type CreateLineupMarkerRequestContent struct {
@@ -432,11 +415,6 @@ type CreateLineupMarkerRequestContent struct {
 	EndsOn      types.Date `json:"ends_on"`
 	StartsOn    types.Date `json:"starts_on"`
 	Title       string     `json:"title"`
-}
-
-// CreateLineupMarkerResponseContent defines model for CreateLineupMarkerResponseContent.
-type CreateLineupMarkerResponseContent struct {
-	Marker LineupMarker `json:"marker,omitempty"`
 }
 
 // CreateMessageRequestContent defines model for CreateMessageRequestContent.
@@ -450,9 +428,7 @@ type CreateMessageRequestContent struct {
 }
 
 // CreateMessageResponseContent defines model for CreateMessageResponseContent.
-type CreateMessageResponseContent struct {
-	Message Message `json:"message,omitempty"`
-}
+type CreateMessageResponseContent = Message
 
 // CreateMessageTypeRequestContent defines model for CreateMessageTypeRequestContent.
 type CreateMessageTypeRequestContent struct {
@@ -461,9 +437,7 @@ type CreateMessageTypeRequestContent struct {
 }
 
 // CreateMessageTypeResponseContent defines model for CreateMessageTypeResponseContent.
-type CreateMessageTypeResponseContent struct {
-	MessageType MessageType `json:"message_type,omitempty"`
-}
+type CreateMessageTypeResponseContent = MessageType
 
 // CreatePersonRequest defines model for CreatePersonRequest.
 type CreatePersonRequest struct {
@@ -480,9 +454,7 @@ type CreateProjectFromTemplateRequestContent struct {
 }
 
 // CreateProjectFromTemplateResponseContent defines model for CreateProjectFromTemplateResponseContent.
-type CreateProjectFromTemplateResponseContent struct {
-	Construction ProjectConstruction `json:"construction,omitempty"`
-}
+type CreateProjectFromTemplateResponseContent = ProjectConstruction
 
 // CreateProjectRequestContent defines model for CreateProjectRequestContent.
 type CreateProjectRequestContent struct {
@@ -491,9 +463,7 @@ type CreateProjectRequestContent struct {
 }
 
 // CreateProjectResponseContent defines model for CreateProjectResponseContent.
-type CreateProjectResponseContent struct {
-	Project Project `json:"project,omitempty"`
-}
+type CreateProjectResponseContent = Project
 
 // CreateQuestionRequestContent defines model for CreateQuestionRequestContent.
 type CreateQuestionRequestContent struct {
@@ -502,25 +472,21 @@ type CreateQuestionRequestContent struct {
 }
 
 // CreateQuestionResponseContent defines model for CreateQuestionResponseContent.
-type CreateQuestionResponseContent struct {
-	Question Question `json:"question,omitempty"`
-}
+type CreateQuestionResponseContent = Question
 
 // CreateScheduleEntryRequestContent defines model for CreateScheduleEntryRequestContent.
 type CreateScheduleEntryRequestContent struct {
-	AllDay         bool      `json:"all_day,omitempty"`
+	AllDay         *bool     `json:"all_day,omitempty"`
 	Description    string    `json:"description,omitempty"`
 	EndsAt         time.Time `json:"ends_at"`
-	Notify         bool      `json:"notify,omitempty"`
+	Notify         *bool     `json:"notify,omitempty"`
 	ParticipantIds []int64   `json:"participant_ids,omitempty"`
 	StartsAt       time.Time `json:"starts_at"`
 	Summary        string    `json:"summary"`
 }
 
 // CreateScheduleEntryResponseContent defines model for CreateScheduleEntryResponseContent.
-type CreateScheduleEntryResponseContent struct {
-	Entry ScheduleEntry `json:"entry,omitempty"`
-}
+type CreateScheduleEntryResponseContent = ScheduleEntry
 
 // CreateTemplateRequestContent defines model for CreateTemplateRequestContent.
 type CreateTemplateRequestContent struct {
@@ -529,9 +495,7 @@ type CreateTemplateRequestContent struct {
 }
 
 // CreateTemplateResponseContent defines model for CreateTemplateResponseContent.
-type CreateTemplateResponseContent struct {
-	Template Template `json:"template,omitempty"`
-}
+type CreateTemplateResponseContent = Template
 
 // CreateTodoRequestContent defines model for CreateTodoRequestContent.
 type CreateTodoRequestContent struct {
@@ -540,14 +504,12 @@ type CreateTodoRequestContent struct {
 	Content                 string     `json:"content"`
 	Description             string     `json:"description,omitempty"`
 	DueOn                   types.Date `json:"due_on,omitempty"`
-	Notify                  bool       `json:"notify,omitempty"`
+	Notify                  *bool      `json:"notify,omitempty"`
 	StartsOn                types.Date `json:"starts_on,omitempty"`
 }
 
 // CreateTodoResponseContent defines model for CreateTodoResponseContent.
-type CreateTodoResponseContent struct {
-	Todo Todo `json:"todo,omitempty"`
-}
+type CreateTodoResponseContent = Todo
 
 // CreateTodolistGroupRequestContent defines model for CreateTodolistGroupRequestContent.
 type CreateTodolistGroupRequestContent struct {
@@ -555,9 +517,7 @@ type CreateTodolistGroupRequestContent struct {
 }
 
 // CreateTodolistGroupResponseContent defines model for CreateTodolistGroupResponseContent.
-type CreateTodolistGroupResponseContent struct {
-	Group TodolistGroup `json:"group,omitempty"`
-}
+type CreateTodolistGroupResponseContent = TodolistGroup
 
 // CreateTodolistRequestContent defines model for CreateTodolistRequestContent.
 type CreateTodolistRequestContent struct {
@@ -566,9 +526,7 @@ type CreateTodolistRequestContent struct {
 }
 
 // CreateTodolistResponseContent defines model for CreateTodolistResponseContent.
-type CreateTodolistResponseContent struct {
-	Todolist Todolist `json:"todolist,omitempty"`
-}
+type CreateTodolistResponseContent = Todolist
 
 // CreateUploadRequestContent defines model for CreateUploadRequestContent.
 type CreateUploadRequestContent struct {
@@ -578,9 +536,7 @@ type CreateUploadRequestContent struct {
 }
 
 // CreateUploadResponseContent defines model for CreateUploadResponseContent.
-type CreateUploadResponseContent struct {
-	Upload Upload `json:"upload,omitempty"`
-}
+type CreateUploadResponseContent = Upload
 
 // CreateVaultRequestContent defines model for CreateVaultRequestContent.
 type CreateVaultRequestContent struct {
@@ -588,26 +544,20 @@ type CreateVaultRequestContent struct {
 }
 
 // CreateVaultResponseContent defines model for CreateVaultResponseContent.
-type CreateVaultResponseContent struct {
-	Vault Vault `json:"vault,omitempty"`
-}
+type CreateVaultResponseContent = Vault
 
 // CreateWebhookRequestContent defines model for CreateWebhookRequestContent.
 type CreateWebhookRequestContent struct {
-	Active     bool     `json:"active,omitempty"`
+	Active     *bool    `json:"active,omitempty"`
 	PayloadUrl string   `json:"payload_url"`
 	Types      []string `json:"types"`
 }
 
 // CreateWebhookResponseContent defines model for CreateWebhookResponseContent.
-type CreateWebhookResponseContent struct {
-	Webhook Webhook `json:"webhook,omitempty"`
-}
+type CreateWebhookResponseContent = Webhook
 
 // DisableCardColumnOnHoldResponseContent defines model for DisableCardColumnOnHoldResponseContent.
-type DisableCardColumnOnHoldResponseContent struct {
-	Column CardColumn `json:"column,omitempty"`
-}
+type DisableCardColumnOnHoldResponseContent = CardColumn
 
 // DockItem defines model for DockItem.
 type DockItem struct {
@@ -644,9 +594,7 @@ type Document struct {
 }
 
 // EnableCardColumnOnHoldResponseContent defines model for EnableCardColumnOnHoldResponseContent.
-type EnableCardColumnOnHoldResponseContent struct {
-	Column CardColumn `json:"column,omitempty"`
-}
+type EnableCardColumnOnHoldResponseContent = CardColumn
 
 // Event defines model for Event.
 type Event struct {
@@ -716,6 +664,9 @@ type ForwardReply struct {
 
 // GetAnswerResponseContent defines model for GetAnswerResponseContent.
 type GetAnswerResponseContent = QuestionAnswer
+
+// GetAnswersByPersonResponseContent defines model for GetAnswersByPersonResponseContent.
+type GetAnswersByPersonResponseContent = []QuestionAnswer
 
 // GetAssignedTodosResponseContent defines model for GetAssignedTodosResponseContent.
 type GetAssignedTodosResponseContent struct {
@@ -796,9 +747,7 @@ type GetPersonProgressResponseContent struct {
 type GetPersonResponseContent = Person
 
 // GetProgressReportResponseContent defines model for GetProgressReportResponseContent.
-type GetProgressReportResponseContent struct {
-	Events []TimelineEvent `json:"events,omitempty"`
-}
+type GetProgressReportResponseContent = []TimelineEvent
 
 // GetProjectConstructionResponseContent defines model for GetProjectConstructionResponseContent.
 type GetProjectConstructionResponseContent = ProjectConstruction
@@ -807,14 +756,13 @@ type GetProjectConstructionResponseContent = ProjectConstruction
 type GetProjectResponseContent = Project
 
 // GetProjectTimelineResponseContent defines model for GetProjectTimelineResponseContent.
-type GetProjectTimelineResponseContent struct {
-	Events []TimelineEvent `json:"events,omitempty"`
-}
+type GetProjectTimelineResponseContent = []TimelineEvent
 
 // GetProjectTimesheetResponseContent defines model for GetProjectTimesheetResponseContent.
-type GetProjectTimesheetResponseContent struct {
-	Entries []TimesheetEntry `json:"entries,omitempty"`
-}
+type GetProjectTimesheetResponseContent = []TimesheetEntry
+
+// GetQuestionRemindersResponseContent defines model for GetQuestionRemindersResponseContent.
+type GetQuestionRemindersResponseContent = []QuestionReminder
 
 // GetQuestionResponseContent defines model for GetQuestionResponseContent.
 type GetQuestionResponseContent = Question
@@ -826,9 +774,7 @@ type GetQuestionnaireResponseContent = Questionnaire
 type GetRecordingResponseContent = Recording
 
 // GetRecordingTimesheetResponseContent defines model for GetRecordingTimesheetResponseContent.
-type GetRecordingTimesheetResponseContent struct {
-	Entries []TimesheetEntry `json:"entries,omitempty"`
-}
+type GetRecordingTimesheetResponseContent = []TimesheetEntry
 
 // GetScheduleEntryOccurrenceResponseContent defines model for GetScheduleEntryOccurrenceResponseContent.
 type GetScheduleEntryOccurrenceResponseContent = ScheduleEntry
@@ -849,9 +795,7 @@ type GetSubscriptionResponseContent = Subscription
 type GetTemplateResponseContent = Template
 
 // GetTimesheetReportResponseContent defines model for GetTimesheetReportResponseContent.
-type GetTimesheetReportResponseContent struct {
-	Entries []TimesheetEntry `json:"entries,omitempty"`
-}
+type GetTimesheetReportResponseContent = []TimesheetEntry
 
 // GetTodoResponseContent defines model for GetTodoResponseContent.
 type GetTodoResponseContent = Todo
@@ -905,25 +849,6 @@ type Inbox struct {
 type InternalServerErrorResponseContent struct {
 	Error   string `json:"error"`
 	Message string `json:"message,omitempty"`
-}
-
-// LineupMarker defines model for LineupMarker.
-type LineupMarker struct {
-	AppUrl      string          `json:"app_url,omitempty"`
-	Bucket      RecordingBucket `json:"bucket,omitempty"`
-	Color       string          `json:"color,omitempty"`
-	CreatedAt   time.Time       `json:"created_at,omitempty"`
-	Creator     Person          `json:"creator,omitempty"`
-	Description string          `json:"description,omitempty"`
-	EndsOn      types.Date      `json:"ends_on,omitempty"`
-	Id          *int64          `json:"id,omitempty"`
-	Parent      RecordingParent `json:"parent,omitempty"`
-	StartsOn    types.Date      `json:"starts_on,omitempty"`
-	Status      string          `json:"status,omitempty"`
-	Title       string          `json:"title,omitempty"`
-	Type        string          `json:"type,omitempty"`
-	UpdatedAt   time.Time       `json:"updated_at,omitempty"`
-	Url         string          `json:"url,omitempty"`
 }
 
 // ListAnswersResponseContent defines model for ListAnswersResponseContent.
@@ -985,6 +910,9 @@ type ListProjectPeopleResponseContent = []Person
 
 // ListProjectsResponseContent defines model for ListProjectsResponseContent.
 type ListProjectsResponseContent = []Project
+
+// ListQuestionAnswerersResponseContent defines model for ListQuestionAnswerersResponseContent.
+type ListQuestionAnswerersResponseContent = []Person
 
 // ListQuestionsResponseContent defines model for ListQuestionsResponseContent.
 type ListQuestionsResponseContent = []Question
@@ -1089,6 +1017,11 @@ type MoveCardRequestContent struct {
 type NotFoundErrorResponseContent struct {
 	Error   string `json:"error"`
 	Message string `json:"message,omitempty"`
+}
+
+// PauseQuestionResponseContent defines model for PauseQuestionResponseContent.
+type PauseQuestionResponseContent struct {
+	Paused bool `json:"paused,omitempty"`
 }
 
 // Person defines model for Person.
@@ -1215,6 +1148,14 @@ type QuestionAnswerUpdatePayload struct {
 	Content string `json:"content"`
 }
 
+// QuestionReminder defines model for QuestionReminder.
+type QuestionReminder struct {
+	GroupOn    types.Date `json:"group_on,omitempty"`
+	Question   Question   `json:"question,omitempty"`
+	RemindAt   time.Time  `json:"remind_at,omitempty"`
+	ReminderId *int64     `json:"reminder_id,omitempty"`
+}
+
 // QuestionSchedule defines model for QuestionSchedule.
 type QuestionSchedule struct {
 	Days          []int32 `json:"days,omitempty"`
@@ -1311,6 +1252,11 @@ type RepositionToolRequestContent struct {
 	Position int32 `json:"position"`
 }
 
+// ResumeQuestionResponseContent defines model for ResumeQuestionResponseContent.
+type ResumeQuestionResponseContent struct {
+	Paused bool `json:"paused,omitempty"`
+}
+
 // Schedule defines model for Schedule.
 type Schedule struct {
 	AppUrl                string     `json:"app_url,omitempty"`
@@ -1377,9 +1323,7 @@ type SearchProject struct {
 }
 
 // SearchResponseContent defines model for SearchResponseContent.
-type SearchResponseContent struct {
-	Results []SearchResult `json:"results,omitempty"`
-}
+type SearchResponseContent = []SearchResult
 
 // SearchResult defines model for SearchResult.
 type SearchResult struct {
@@ -1409,9 +1353,7 @@ type SetCardColumnColorRequestContent struct {
 }
 
 // SetCardColumnColorResponseContent defines model for SetCardColumnColorResponseContent.
-type SetCardColumnColorResponseContent struct {
-	Column CardColumn `json:"column,omitempty"`
-}
+type SetCardColumnColorResponseContent = CardColumn
 
 // SetClientVisibilityRequestContent defines model for SetClientVisibilityRequestContent.
 type SetClientVisibilityRequestContent struct {
@@ -1419,14 +1361,10 @@ type SetClientVisibilityRequestContent struct {
 }
 
 // SetClientVisibilityResponseContent defines model for SetClientVisibilityResponseContent.
-type SetClientVisibilityResponseContent struct {
-	Recording Recording `json:"recording,omitempty"`
-}
+type SetClientVisibilityResponseContent = Recording
 
 // SubscribeResponseContent defines model for SubscribeResponseContent.
-type SubscribeResponseContent struct {
-	Subscription Subscription `json:"subscription,omitempty"`
-}
+type SubscribeResponseContent = Subscription
 
 // Subscription defines model for Subscription.
 type Subscription struct {
@@ -1656,14 +1594,7 @@ type UnauthorizedErrorResponseContent struct {
 }
 
 // UncompleteCardStepResponseContent defines model for UncompleteCardStepResponseContent.
-type UncompleteCardStepResponseContent struct {
-	Step CardStep `json:"step,omitempty"`
-}
-
-// UpdateAnswerResponseContent defines model for UpdateAnswerResponseContent.
-type UpdateAnswerResponseContent struct {
-	Answer QuestionAnswer `json:"answer,omitempty"`
-}
+type UncompleteCardStepResponseContent = CardStep
 
 // UpdateCardColumnRequestContent defines model for UpdateCardColumnRequestContent.
 type UpdateCardColumnRequestContent struct {
@@ -1672,9 +1603,7 @@ type UpdateCardColumnRequestContent struct {
 }
 
 // UpdateCardColumnResponseContent defines model for UpdateCardColumnResponseContent.
-type UpdateCardColumnResponseContent struct {
-	Column CardColumn `json:"column,omitempty"`
-}
+type UpdateCardColumnResponseContent = CardColumn
 
 // UpdateCardRequestContent defines model for UpdateCardRequestContent.
 type UpdateCardRequestContent struct {
@@ -1685,9 +1614,7 @@ type UpdateCardRequestContent struct {
 }
 
 // UpdateCardResponseContent defines model for UpdateCardResponseContent.
-type UpdateCardResponseContent struct {
-	Card Card `json:"card,omitempty"`
-}
+type UpdateCardResponseContent = Card
 
 // UpdateCardStepRequestContent defines model for UpdateCardStepRequestContent.
 type UpdateCardStepRequestContent struct {
@@ -1697,9 +1624,7 @@ type UpdateCardStepRequestContent struct {
 }
 
 // UpdateCardStepResponseContent defines model for UpdateCardStepResponseContent.
-type UpdateCardStepResponseContent struct {
-	Step CardStep `json:"step,omitempty"`
-}
+type UpdateCardStepResponseContent = CardStep
 
 // UpdateChatbotRequestContent defines model for UpdateChatbotRequestContent.
 type UpdateChatbotRequestContent struct {
@@ -1708,9 +1633,7 @@ type UpdateChatbotRequestContent struct {
 }
 
 // UpdateChatbotResponseContent defines model for UpdateChatbotResponseContent.
-type UpdateChatbotResponseContent struct {
-	Chatbot Chatbot `json:"chatbot,omitempty"`
-}
+type UpdateChatbotResponseContent = Chatbot
 
 // UpdateCommentRequestContent defines model for UpdateCommentRequestContent.
 type UpdateCommentRequestContent struct {
@@ -1718,9 +1641,7 @@ type UpdateCommentRequestContent struct {
 }
 
 // UpdateCommentResponseContent defines model for UpdateCommentResponseContent.
-type UpdateCommentResponseContent struct {
-	Comment Comment `json:"comment,omitempty"`
-}
+type UpdateCommentResponseContent = Comment
 
 // UpdateDocumentRequestContent defines model for UpdateDocumentRequestContent.
 type UpdateDocumentRequestContent struct {
@@ -1729,9 +1650,7 @@ type UpdateDocumentRequestContent struct {
 }
 
 // UpdateDocumentResponseContent defines model for UpdateDocumentResponseContent.
-type UpdateDocumentResponseContent struct {
-	Document Document `json:"document,omitempty"`
-}
+type UpdateDocumentResponseContent = Document
 
 // UpdateLineupMarkerRequestContent defines model for UpdateLineupMarkerRequestContent.
 type UpdateLineupMarkerRequestContent struct {
@@ -1740,11 +1659,6 @@ type UpdateLineupMarkerRequestContent struct {
 	EndsOn      types.Date `json:"ends_on,omitempty"`
 	StartsOn    types.Date `json:"starts_on,omitempty"`
 	Title       string     `json:"title,omitempty"`
-}
-
-// UpdateLineupMarkerResponseContent defines model for UpdateLineupMarkerResponseContent.
-type UpdateLineupMarkerResponseContent struct {
-	Marker LineupMarker `json:"marker,omitempty"`
 }
 
 // UpdateMessageRequestContent defines model for UpdateMessageRequestContent.
@@ -1758,9 +1672,7 @@ type UpdateMessageRequestContent struct {
 }
 
 // UpdateMessageResponseContent defines model for UpdateMessageResponseContent.
-type UpdateMessageResponseContent struct {
-	Message Message `json:"message,omitempty"`
-}
+type UpdateMessageResponseContent = Message
 
 // UpdateMessageTypeRequestContent defines model for UpdateMessageTypeRequestContent.
 type UpdateMessageTypeRequestContent struct {
@@ -1769,9 +1681,7 @@ type UpdateMessageTypeRequestContent struct {
 }
 
 // UpdateMessageTypeResponseContent defines model for UpdateMessageTypeResponseContent.
-type UpdateMessageTypeResponseContent struct {
-	MessageType MessageType `json:"message_type,omitempty"`
-}
+type UpdateMessageTypeResponseContent = MessageType
 
 // UpdateProjectAccessRequestContent defines model for UpdateProjectAccessRequestContent.
 type UpdateProjectAccessRequestContent struct {
@@ -1781,9 +1691,7 @@ type UpdateProjectAccessRequestContent struct {
 }
 
 // UpdateProjectAccessResponseContent defines model for UpdateProjectAccessResponseContent.
-type UpdateProjectAccessResponseContent struct {
-	Result ProjectAccessResult `json:"result,omitempty"`
-}
+type UpdateProjectAccessResponseContent = ProjectAccessResult
 
 // UpdateProjectRequestContent defines model for UpdateProjectRequestContent.
 type UpdateProjectRequestContent struct {
@@ -1795,37 +1703,46 @@ type UpdateProjectRequestContent struct {
 }
 
 // UpdateProjectResponseContent defines model for UpdateProjectResponseContent.
-type UpdateProjectResponseContent struct {
-	Project Project `json:"project,omitempty"`
+type UpdateProjectResponseContent = Project
+
+// UpdateQuestionNotificationSettingsRequestContent defines model for UpdateQuestionNotificationSettingsRequestContent.
+type UpdateQuestionNotificationSettingsRequestContent struct {
+	// DigestIncludeUnanswered Include unanswered in digest
+	DigestIncludeUnanswered *bool `json:"digest_include_unanswered,omitempty"`
+
+	// NotifyOnAnswer Notify when someone answers
+	NotifyOnAnswer *bool `json:"notify_on_answer,omitempty"`
+}
+
+// UpdateQuestionNotificationSettingsResponseContent defines model for UpdateQuestionNotificationSettingsResponseContent.
+type UpdateQuestionNotificationSettingsResponseContent struct {
+	Responding bool `json:"responding,omitempty"`
+	Subscribed bool `json:"subscribed,omitempty"`
 }
 
 // UpdateQuestionRequestContent defines model for UpdateQuestionRequestContent.
 type UpdateQuestionRequestContent struct {
-	Paused   bool             `json:"paused,omitempty"`
+	Paused   *bool            `json:"paused,omitempty"`
 	Schedule QuestionSchedule `json:"schedule,omitempty"`
 	Title    string           `json:"title,omitempty"`
 }
 
 // UpdateQuestionResponseContent defines model for UpdateQuestionResponseContent.
-type UpdateQuestionResponseContent struct {
-	Question Question `json:"question,omitempty"`
-}
+type UpdateQuestionResponseContent = Question
 
 // UpdateScheduleEntryRequestContent defines model for UpdateScheduleEntryRequestContent.
 type UpdateScheduleEntryRequestContent struct {
-	AllDay         bool      `json:"all_day,omitempty"`
+	AllDay         *bool     `json:"all_day,omitempty"`
 	Description    string    `json:"description,omitempty"`
 	EndsAt         time.Time `json:"ends_at,omitempty"`
-	Notify         bool      `json:"notify,omitempty"`
+	Notify         *bool     `json:"notify,omitempty"`
 	ParticipantIds []int64   `json:"participant_ids,omitempty"`
 	StartsAt       time.Time `json:"starts_at,omitempty"`
 	Summary        string    `json:"summary,omitempty"`
 }
 
 // UpdateScheduleEntryResponseContent defines model for UpdateScheduleEntryResponseContent.
-type UpdateScheduleEntryResponseContent struct {
-	Entry ScheduleEntry `json:"entry,omitempty"`
-}
+type UpdateScheduleEntryResponseContent = ScheduleEntry
 
 // UpdateScheduleSettingsRequestContent defines model for UpdateScheduleSettingsRequestContent.
 type UpdateScheduleSettingsRequestContent struct {
@@ -1833,9 +1750,7 @@ type UpdateScheduleSettingsRequestContent struct {
 }
 
 // UpdateScheduleSettingsResponseContent defines model for UpdateScheduleSettingsResponseContent.
-type UpdateScheduleSettingsResponseContent struct {
-	Schedule Schedule `json:"schedule,omitempty"`
-}
+type UpdateScheduleSettingsResponseContent = Schedule
 
 // UpdateSubscriptionRequestContent defines model for UpdateSubscriptionRequestContent.
 type UpdateSubscriptionRequestContent struct {
@@ -1844,9 +1759,7 @@ type UpdateSubscriptionRequestContent struct {
 }
 
 // UpdateSubscriptionResponseContent defines model for UpdateSubscriptionResponseContent.
-type UpdateSubscriptionResponseContent struct {
-	Subscription Subscription `json:"subscription,omitempty"`
-}
+type UpdateSubscriptionResponseContent = Subscription
 
 // UpdateTemplateRequestContent defines model for UpdateTemplateRequestContent.
 type UpdateTemplateRequestContent struct {
@@ -1855,9 +1768,7 @@ type UpdateTemplateRequestContent struct {
 }
 
 // UpdateTemplateResponseContent defines model for UpdateTemplateResponseContent.
-type UpdateTemplateResponseContent struct {
-	Template Template `json:"template,omitempty"`
-}
+type UpdateTemplateResponseContent = Template
 
 // UpdateTodoRequestContent defines model for UpdateTodoRequestContent.
 type UpdateTodoRequestContent struct {
@@ -1866,14 +1777,12 @@ type UpdateTodoRequestContent struct {
 	Content                 string     `json:"content,omitempty"`
 	Description             string     `json:"description,omitempty"`
 	DueOn                   types.Date `json:"due_on,omitempty"`
-	Notify                  bool       `json:"notify,omitempty"`
+	Notify                  *bool      `json:"notify,omitempty"`
 	StartsOn                types.Date `json:"starts_on,omitempty"`
 }
 
 // UpdateTodoResponseContent defines model for UpdateTodoResponseContent.
-type UpdateTodoResponseContent struct {
-	Todo Todo `json:"todo,omitempty"`
-}
+type UpdateTodoResponseContent = Todo
 
 // UpdateTodolistOrGroupRequestContent defines model for UpdateTodolistOrGroupRequestContent.
 type UpdateTodolistOrGroupRequestContent struct {
@@ -1884,11 +1793,8 @@ type UpdateTodolistOrGroupRequestContent struct {
 	Name string `json:"name,omitempty"`
 }
 
-// UpdateTodolistOrGroupResponseContent defines model for UpdateTodolistOrGroupResponseContent.
-type UpdateTodolistOrGroupResponseContent struct {
-	// Result Union type for polymorphic todolist endpoint
-	Result TodolistOrGroup `json:"result,omitempty"`
-}
+// UpdateTodolistOrGroupResponseContent Union type for polymorphic todolist endpoint
+type UpdateTodolistOrGroupResponseContent = TodolistOrGroup
 
 // UpdateToolRequestContent defines model for UpdateToolRequestContent.
 type UpdateToolRequestContent struct {
@@ -1896,9 +1802,7 @@ type UpdateToolRequestContent struct {
 }
 
 // UpdateToolResponseContent defines model for UpdateToolResponseContent.
-type UpdateToolResponseContent struct {
-	Tool Tool `json:"tool,omitempty"`
-}
+type UpdateToolResponseContent = Tool
 
 // UpdateUploadRequestContent defines model for UpdateUploadRequestContent.
 type UpdateUploadRequestContent struct {
@@ -1907,9 +1811,7 @@ type UpdateUploadRequestContent struct {
 }
 
 // UpdateUploadResponseContent defines model for UpdateUploadResponseContent.
-type UpdateUploadResponseContent struct {
-	Upload Upload `json:"upload,omitempty"`
-}
+type UpdateUploadResponseContent = Upload
 
 // UpdateVaultRequestContent defines model for UpdateVaultRequestContent.
 type UpdateVaultRequestContent struct {
@@ -1917,21 +1819,17 @@ type UpdateVaultRequestContent struct {
 }
 
 // UpdateVaultResponseContent defines model for UpdateVaultResponseContent.
-type UpdateVaultResponseContent struct {
-	Vault Vault `json:"vault,omitempty"`
-}
+type UpdateVaultResponseContent = Vault
 
 // UpdateWebhookRequestContent defines model for UpdateWebhookRequestContent.
 type UpdateWebhookRequestContent struct {
-	Active     bool     `json:"active,omitempty"`
+	Active     *bool    `json:"active,omitempty"`
 	PayloadUrl string   `json:"payload_url,omitempty"`
 	Types      []string `json:"types,omitempty"`
 }
 
 // UpdateWebhookResponseContent defines model for UpdateWebhookResponseContent.
-type UpdateWebhookResponseContent struct {
-	Webhook Webhook `json:"webhook,omitempty"`
-}
+type UpdateWebhookResponseContent = Webhook
 
 // Upload defines model for Upload.
 type Upload struct {
@@ -2168,11 +2066,11 @@ type CreateCampfireLineJSONRequestBody = CreateCampfireLineRequestContent
 // UpdateCommentJSONRequestBody defines body for UpdateComment for application/json ContentType.
 type UpdateCommentJSONRequestBody = UpdateCommentRequestContent
 
+// CloneToolJSONRequestBody defines body for CloneTool for application/json ContentType.
+type CloneToolJSONRequestBody = CloneToolRequestContent
+
 // UpdateToolJSONRequestBody defines body for UpdateTool for application/json ContentType.
 type UpdateToolJSONRequestBody = UpdateToolRequestContent
-
-// RepositionToolJSONRequestBody defines body for RepositionTool for application/json ContentType.
-type RepositionToolJSONRequestBody = RepositionToolRequestContent
 
 // UpdateDocumentJSONRequestBody defines body for UpdateDocument for application/json ContentType.
 type UpdateDocumentJSONRequestBody = UpdateDocumentRequestContent
@@ -2198,6 +2096,9 @@ type UpdateQuestionJSONRequestBody = UpdateQuestionRequestContent
 // CreateAnswerJSONRequestBody defines body for CreateAnswer for application/json ContentType.
 type CreateAnswerJSONRequestBody = QuestionAnswerPayload
 
+// UpdateQuestionNotificationSettingsJSONRequestBody defines body for UpdateQuestionNotificationSettings for application/json ContentType.
+type UpdateQuestionNotificationSettingsJSONRequestBody = UpdateQuestionNotificationSettingsRequestContent
+
 // SetClientVisibilityJSONRequestBody defines body for SetClientVisibility for application/json ContentType.
 type SetClientVisibilityJSONRequestBody = SetClientVisibilityRequestContent
 
@@ -2206,6 +2107,9 @@ type CreateCommentJSONRequestBody = CreateCommentRequestContent
 
 // UpdateSubscriptionJSONRequestBody defines body for UpdateSubscription for application/json ContentType.
 type UpdateSubscriptionJSONRequestBody = UpdateSubscriptionRequestContent
+
+// RepositionToolJSONRequestBody defines body for RepositionTool for application/json ContentType.
+type RepositionToolJSONRequestBody = RepositionToolRequestContent
 
 // UpdateScheduleEntryJSONRequestBody defines body for UpdateScheduleEntry for application/json ContentType.
 type UpdateScheduleEntryJSONRequestBody = UpdateScheduleEntryRequestContent
@@ -2625,6 +2529,12 @@ type ClientInterface interface {
 
 	CreateCard(ctx context.Context, accountId string, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UnsubscribeFromCardColumn request
+	UnsubscribeFromCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SubscribeToCardColumn request
+	SubscribeToCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UpdateCardStepWithBody request with any body
 	UpdateCardStepWithBody(ctx context.Context, accountId string, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2730,8 +2640,10 @@ type ClientInterface interface {
 
 	UpdateComment(ctx context.Context, accountId string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CloneTool request
-	CloneTool(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// CloneToolWithBody request with any body
+	CloneToolWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CloneTool(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTool request
 	DeleteTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2743,17 +2655,6 @@ type ClientInterface interface {
 	UpdateToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateTool(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DisableTool request
-	DisableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// EnableTool request
-	EnableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// RepositionToolWithBody request with any body
-	RepositionToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	RepositionTool(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDocument request
 	GetDocument(ctx context.Context, accountId string, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2837,6 +2738,23 @@ type ClientInterface interface {
 
 	CreateAnswer(ctx context.Context, accountId string, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListQuestionAnswerers request
+	ListQuestionAnswerers(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAnswersByPerson request
+	GetAnswersByPerson(ctx context.Context, accountId string, projectId int64, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateQuestionNotificationSettingsWithBody request with any body
+	UpdateQuestionNotificationSettingsWithBody(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateQuestionNotificationSettings(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionNotificationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResumeQuestion request
+	ResumeQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PauseQuestion request
+	PauseQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UnpinMessage request
 	UnpinMessage(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2887,6 +2805,17 @@ type ClientInterface interface {
 
 	// GetRecordingTimesheet request
 	GetRecordingTimesheet(ctx context.Context, accountId string, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DisableTool request
+	DisableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnableTool request
+	EnableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RepositionToolWithBody request with any body
+	RepositionToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RepositionTool(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetScheduleEntry request
 	GetScheduleEntry(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3066,6 +2995,9 @@ type ClientInterface interface {
 
 	// GetMyProfile request
 	GetMyProfile(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetQuestionReminders request
+	GetQuestionReminders(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPeople request
 	ListPeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3401,6 +3333,26 @@ func (c *Client) CreateCard(ctx context.Context, accountId string, projectId int
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// UnsubscribeFromCardColumn is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UnsubscribeFromCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUnsubscribeFromCardColumnRequest(c.Server, accountId, projectId, columnId)
+	}, true, "UnsubscribeFromCardColumn", reqEditors...)
+
+}
+
+// SubscribeToCardColumn is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) SubscribeToCardColumn(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewSubscribeToCardColumnRequest(c.Server, accountId, projectId, columnId)
+	}, true, "SubscribeToCardColumn", reqEditors...)
 
 }
 
@@ -3826,11 +3778,25 @@ func (c *Client) UpdateComment(ctx context.Context, accountId string, projectId 
 
 }
 
-// CloneTool executes the CloneTool operation.
+// CloneToolWithBody executes the CloneTool operation.
 
-func (c *Client) CloneTool(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CloneToolWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCloneToolRequest(c.Server, accountId, projectId, sourceToolId)
+	req, err := NewCloneToolRequestWithBody(c.Server, accountId, projectId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CloneTool(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCloneToolRequest(c.Server, accountId, projectId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3877,50 +3843,6 @@ func (c *Client) UpdateTool(ctx context.Context, accountId string, projectId int
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateToolRequest(c.Server, accountId, projectId, toolId, body)
 	}, true, "UpdateTool", reqEditors...)
-
-}
-
-// DisableTool is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) DisableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDisableToolRequest(c.Server, accountId, projectId, toolId)
-	}, true, "DisableTool", reqEditors...)
-
-}
-
-// EnableTool executes the EnableTool operation.
-
-func (c *Client) EnableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewEnableToolRequest(c.Server, accountId, projectId, toolId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-// RepositionToolWithBody is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) RepositionToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewRepositionToolRequestWithBody(c.Server, accountId, projectId, toolId, contentType, body)
-	}, true, "RepositionTool", reqEditors...)
-
-}
-
-func (c *Client) RepositionTool(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewRepositionToolRequest(c.Server, accountId, projectId, toolId, body)
-	}, true, "RepositionTool", reqEditors...)
 
 }
 
@@ -4256,6 +4178,64 @@ func (c *Client) CreateAnswer(ctx context.Context, accountId string, projectId i
 
 }
 
+// ListQuestionAnswerers is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListQuestionAnswerers(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListQuestionAnswerersRequest(c.Server, accountId, projectId, questionId)
+	}, true, "ListQuestionAnswerers", reqEditors...)
+
+}
+
+// GetAnswersByPerson is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetAnswersByPerson(ctx context.Context, accountId string, projectId int64, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetAnswersByPersonRequest(c.Server, accountId, projectId, questionId, personId)
+	}, true, "GetAnswersByPerson", reqEditors...)
+
+}
+
+// UpdateQuestionNotificationSettingsWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateQuestionNotificationSettingsWithBody(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateQuestionNotificationSettingsRequestWithBody(c.Server, accountId, projectId, questionId, contentType, body)
+	}, true, "UpdateQuestionNotificationSettings", reqEditors...)
+
+}
+
+func (c *Client) UpdateQuestionNotificationSettings(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionNotificationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateQuestionNotificationSettingsRequest(c.Server, accountId, projectId, questionId, body)
+	}, true, "UpdateQuestionNotificationSettings", reqEditors...)
+
+}
+
+// ResumeQuestion is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ResumeQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewResumeQuestionRequest(c.Server, accountId, projectId, questionId)
+	}, true, "ResumeQuestion", reqEditors...)
+
+}
+
+// PauseQuestion is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) PauseQuestion(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewPauseQuestionRequest(c.Server, accountId, projectId, questionId)
+	}, true, "PauseQuestion", reqEditors...)
+
+}
+
 // UnpinMessage is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) UnpinMessage(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4451,6 +4431,50 @@ func (c *Client) GetRecordingTimesheet(ctx context.Context, accountId string, pr
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetRecordingTimesheetRequest(c.Server, accountId, projectId, recordingId, params)
 	}, true, "GetRecordingTimesheet", reqEditors...)
+
+}
+
+// DisableTool is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DisableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDisableToolRequest(c.Server, accountId, projectId, toolId)
+	}, true, "DisableTool", reqEditors...)
+
+}
+
+// EnableTool executes the EnableTool operation.
+
+func (c *Client) EnableTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewEnableToolRequest(c.Server, accountId, projectId, toolId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// RepositionToolWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) RepositionToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRepositionToolRequestWithBody(c.Server, accountId, projectId, toolId, contentType, body)
+	}, true, "RepositionTool", reqEditors...)
+
+}
+
+func (c *Client) RepositionTool(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRepositionToolRequest(c.Server, accountId, projectId, toolId, body)
+	}, true, "RepositionTool", reqEditors...)
 
 }
 
@@ -5181,6 +5205,16 @@ func (c *Client) GetMyProfile(ctx context.Context, accountId string, reqEditors 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetMyProfileRequest(c.Server, accountId)
 	}, true, "GetMyProfile", reqEditors...)
+
+}
+
+// GetQuestionReminders is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetQuestionReminders(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetQuestionRemindersRequest(c.Server, accountId)
+	}, true, "GetQuestionReminders", reqEditors...)
 
 }
 
@@ -6245,6 +6279,102 @@ func NewCreateCardRequestWithBody(server string, accountId string, projectId int
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUnsubscribeFromCardColumnRequest generates requests for UnsubscribeFromCardColumn
+func NewUnsubscribeFromCardColumnRequest(server string, accountId string, projectId int64, columnId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/lists/%s/subscription.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSubscribeToCardColumnRequest generates requests for SubscribeToCardColumn
+func NewSubscribeToCardColumnRequest(server string, accountId string, projectId int64, columnId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/lists/%s/subscription.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -7772,8 +7902,19 @@ func NewUpdateCommentRequestWithBody(server string, accountId string, projectId 
 	return req, nil
 }
 
-// NewCloneToolRequest generates requests for CloneTool
-func NewCloneToolRequest(server string, accountId string, projectId int64, sourceToolId int64) (*http.Request, error) {
+// NewCloneToolRequest calls the generic CloneTool builder with application/json body
+func NewCloneToolRequest(server string, accountId string, projectId int64, body CloneToolJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCloneToolRequestWithBody(server, accountId, projectId, "application/json", bodyReader)
+}
+
+// NewCloneToolRequestWithBody generates requests for CloneTool with any type of body
+func NewCloneToolRequestWithBody(server string, accountId string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7790,19 +7931,12 @@ func NewCloneToolRequest(server string, accountId string, projectId int64, sourc
 		return nil, err
 	}
 
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "sourceToolId", runtime.ParamLocationPath, sourceToolId)
-	if err != nil {
-		return nil, err
-	}
-
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/clone.json", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7812,10 +7946,12 @@ func NewCloneToolRequest(server string, accountId string, projectId int64, sourc
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	req, err := http.NewRequest("POST", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -7958,163 +8094,6 @@ func NewUpdateToolRequestWithBody(server string, accountId string, projectId int
 	}
 
 	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDisableToolRequest generates requests for DisableTool
-func NewDisableToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewEnableToolRequest generates requests for EnableTool
-func NewEnableToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewRepositionToolRequest calls the generic RepositionTool builder with application/json body
-func NewRepositionToolRequest(server string, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewRepositionToolRequestWithBody(server, accountId, projectId, toolId, "application/json", bodyReader)
-}
-
-// NewRepositionToolRequestWithBody generates requests for RepositionTool with any type of body
-func NewRepositionToolRequestWithBody(server string, accountId string, projectId int64, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s/position.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9301,6 +9280,266 @@ func NewCreateAnswerRequestWithBody(server string, accountId string, projectId i
 	return req, nil
 }
 
+// NewListQuestionAnswerersRequest generates requests for ListQuestionAnswerers
+func NewListQuestionAnswerersRequest(server string, accountId string, projectId int64, questionId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/answers/by.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAnswersByPersonRequest generates requests for GetAnswersByPerson
+func NewGetAnswersByPersonRequest(server string, accountId string, projectId int64, questionId int64, personId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "personId", runtime.ParamLocationPath, personId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/answers/by/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateQuestionNotificationSettingsRequest calls the generic UpdateQuestionNotificationSettings builder with application/json body
+func NewUpdateQuestionNotificationSettingsRequest(server string, accountId string, projectId int64, questionId int64, body UpdateQuestionNotificationSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateQuestionNotificationSettingsRequestWithBody(server, accountId, projectId, questionId, "application/json", bodyReader)
+}
+
+// NewUpdateQuestionNotificationSettingsRequestWithBody generates requests for UpdateQuestionNotificationSettings with any type of body
+func NewUpdateQuestionNotificationSettingsRequestWithBody(server string, accountId string, projectId int64, questionId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/notification_settings.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewResumeQuestionRequest generates requests for ResumeQuestion
+func NewResumeQuestionRequest(server string, accountId string, projectId int64, questionId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/pause.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPauseQuestionRequest generates requests for PauseQuestion
+func NewPauseQuestionRequest(server string, accountId string, projectId int64, questionId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "questionId", runtime.ParamLocationPath, questionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/questions/%s/pause.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewUnpinMessageRequest generates requests for UnpinMessage
 func NewUnpinMessageRequest(server string, accountId string, projectId int64, messageId int64) (*http.Request, error) {
 	var err error
@@ -10098,6 +10337,163 @@ func NewGetRecordingTimesheetRequest(server string, accountId string, projectId 
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewDisableToolRequest generates requests for DisableTool
+func NewDisableToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/position.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnableToolRequest generates requests for EnableTool
+func NewEnableToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/position.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRepositionToolRequest calls the generic RepositionTool builder with application/json body
+func NewRepositionToolRequest(server string, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRepositionToolRequestWithBody(server, accountId, projectId, toolId, "application/json", bodyReader)
+}
+
+// NewRepositionToolRequestWithBody generates requests for RepositionTool with any type of body
+func NewRepositionToolRequestWithBody(server string, accountId string, projectId int64, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/position.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -12622,6 +13018,40 @@ func NewGetMyProfileRequest(server string, accountId string) (*http.Request, err
 	return req, nil
 }
 
+// NewGetQuestionRemindersRequest generates requests for GetQuestionReminders
+func NewGetQuestionRemindersRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/question_reminders.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListPeopleRequest generates requests for ListPeople
 func NewListPeopleRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -13930,165 +14360,173 @@ type OperationMetadata struct {
 // This is generated from x-basecamp-* extensions in the OpenAPI spec.
 // GET/HEAD operations are always considered idempotent for retry purposes.
 var operationMetadata = map[string]OperationMetadata{
-	"CreateAttachment":           {Idempotent: false, HasSensitiveParams: false},
-	"GetCard":                    {Idempotent: true, HasSensitiveParams: false},
-	"UpdateCard":                 {Idempotent: true, HasSensitiveParams: false},
-	"MoveCard":                   {Idempotent: false, HasSensitiveParams: false},
-	"RepositionCardStep":         {Idempotent: false, HasSensitiveParams: false},
-	"CreateCardStep":             {Idempotent: false, HasSensitiveParams: false},
-	"GetCardColumn":              {Idempotent: true, HasSensitiveParams: false},
-	"UpdateCardColumn":           {Idempotent: true, HasSensitiveParams: false},
-	"SetCardColumnColor":         {Idempotent: true, HasSensitiveParams: false},
-	"DisableCardColumnOnHold":    {Idempotent: true, HasSensitiveParams: false},
-	"EnableCardColumnOnHold":     {Idempotent: false, HasSensitiveParams: false},
-	"ListCards":                  {Idempotent: true, HasSensitiveParams: false},
-	"CreateCard":                 {Idempotent: false, HasSensitiveParams: false},
-	"UpdateCardStep":             {Idempotent: true, HasSensitiveParams: false},
-	"UncompleteCardStep":         {Idempotent: true, HasSensitiveParams: false},
-	"CompleteCardStep":           {Idempotent: true, HasSensitiveParams: false},
-	"GetCardTable":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateCardColumn":           {Idempotent: false, HasSensitiveParams: false},
-	"MoveCardColumn":             {Idempotent: false, HasSensitiveParams: false},
-	"ListMessageTypes":           {Idempotent: true, HasSensitiveParams: false},
-	"CreateMessageType":          {Idempotent: false, HasSensitiveParams: false},
-	"DeleteMessageType":          {Idempotent: true, HasSensitiveParams: false},
-	"GetMessageType":             {Idempotent: true, HasSensitiveParams: false},
-	"UpdateMessageType":          {Idempotent: true, HasSensitiveParams: false},
-	"GetCampfire":                {Idempotent: true, HasSensitiveParams: false},
-	"ListChatbots":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateChatbot":              {Idempotent: false, HasSensitiveParams: false},
-	"DeleteChatbot":              {Idempotent: true, HasSensitiveParams: false},
-	"GetChatbot":                 {Idempotent: true, HasSensitiveParams: false},
-	"UpdateChatbot":              {Idempotent: true, HasSensitiveParams: false},
-	"ListCampfireLines":          {Idempotent: true, HasSensitiveParams: false},
-	"CreateCampfireLine":         {Idempotent: false, HasSensitiveParams: false},
-	"DeleteCampfireLine":         {Idempotent: true, HasSensitiveParams: false},
-	"GetCampfireLine":            {Idempotent: true, HasSensitiveParams: false},
-	"ListClientApprovals":        {Idempotent: true, HasSensitiveParams: false},
-	"GetClientApproval":          {Idempotent: true, HasSensitiveParams: false},
-	"ListClientCorrespondences":  {Idempotent: true, HasSensitiveParams: false},
-	"GetClientCorrespondence":    {Idempotent: true, HasSensitiveParams: false},
-	"ListClientReplies":          {Idempotent: true, HasSensitiveParams: false},
-	"GetClientReply":             {Idempotent: true, HasSensitiveParams: false},
-	"GetComment":                 {Idempotent: true, HasSensitiveParams: false},
-	"UpdateComment":              {Idempotent: true, HasSensitiveParams: false},
-	"CloneTool":                  {Idempotent: false, HasSensitiveParams: false},
-	"DeleteTool":                 {Idempotent: true, HasSensitiveParams: false},
-	"GetTool":                    {Idempotent: true, HasSensitiveParams: false},
-	"UpdateTool":                 {Idempotent: true, HasSensitiveParams: false},
-	"DisableTool":                {Idempotent: true, HasSensitiveParams: false},
-	"EnableTool":                 {Idempotent: false, HasSensitiveParams: false},
-	"RepositionTool":             {Idempotent: true, HasSensitiveParams: false},
-	"GetDocument":                {Idempotent: true, HasSensitiveParams: false},
-	"UpdateDocument":             {Idempotent: true, HasSensitiveParams: false},
-	"GetForward":                 {Idempotent: true, HasSensitiveParams: false},
-	"ListForwardReplies":         {Idempotent: true, HasSensitiveParams: false},
-	"CreateForwardReply":         {Idempotent: false, HasSensitiveParams: false},
-	"GetForwardReply":            {Idempotent: true, HasSensitiveParams: false},
-	"GetInbox":                   {Idempotent: true, HasSensitiveParams: false},
-	"ListForwards":               {Idempotent: true, HasSensitiveParams: false},
-	"GetMessageBoard":            {Idempotent: true, HasSensitiveParams: false},
-	"ListMessages":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateMessage":              {Idempotent: false, HasSensitiveParams: false},
-	"GetMessage":                 {Idempotent: true, HasSensitiveParams: false},
-	"UpdateMessage":              {Idempotent: true, HasSensitiveParams: false},
-	"GetAnswer":                  {Idempotent: true, HasSensitiveParams: false},
-	"UpdateAnswer":               {Idempotent: true, HasSensitiveParams: false},
-	"GetQuestionnaire":           {Idempotent: true, HasSensitiveParams: false},
-	"ListQuestions":              {Idempotent: true, HasSensitiveParams: false},
-	"CreateQuestion":             {Idempotent: false, HasSensitiveParams: false},
-	"GetQuestion":                {Idempotent: true, HasSensitiveParams: false},
-	"UpdateQuestion":             {Idempotent: true, HasSensitiveParams: false},
-	"ListAnswers":                {Idempotent: true, HasSensitiveParams: false},
-	"CreateAnswer":               {Idempotent: false, HasSensitiveParams: false},
-	"UnpinMessage":               {Idempotent: true, HasSensitiveParams: false},
-	"PinMessage":                 {Idempotent: false, HasSensitiveParams: false},
-	"GetRecording":               {Idempotent: true, HasSensitiveParams: false},
-	"SetClientVisibility":        {Idempotent: true, HasSensitiveParams: false},
-	"ListComments":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateComment":              {Idempotent: false, HasSensitiveParams: false},
-	"ListEvents":                 {Idempotent: true, HasSensitiveParams: false},
-	"UnarchiveRecording":         {Idempotent: true, HasSensitiveParams: false},
-	"ArchiveRecording":           {Idempotent: true, HasSensitiveParams: false},
-	"TrashRecording":             {Idempotent: true, HasSensitiveParams: false},
-	"Unsubscribe":                {Idempotent: true, HasSensitiveParams: false},
-	"GetSubscription":            {Idempotent: true, HasSensitiveParams: false},
-	"Subscribe":                  {Idempotent: false, HasSensitiveParams: false},
-	"UpdateSubscription":         {Idempotent: true, HasSensitiveParams: false},
-	"GetRecordingTimesheet":      {Idempotent: true, HasSensitiveParams: false},
-	"GetScheduleEntry":           {Idempotent: true, HasSensitiveParams: false},
-	"UpdateScheduleEntry":        {Idempotent: true, HasSensitiveParams: false},
-	"GetScheduleEntryOccurrence": {Idempotent: true, HasSensitiveParams: false},
-	"GetSchedule":                {Idempotent: true, HasSensitiveParams: false},
-	"UpdateScheduleSettings":     {Idempotent: true, HasSensitiveParams: false},
-	"ListScheduleEntries":        {Idempotent: true, HasSensitiveParams: false},
-	"CreateScheduleEntry":        {Idempotent: false, HasSensitiveParams: false},
-	"GetProjectTimeline":         {Idempotent: true, HasSensitiveParams: false},
-	"GetProjectTimesheet":        {Idempotent: true, HasSensitiveParams: false},
-	"RepositionTodolistGroup":    {Idempotent: true, HasSensitiveParams: false},
-	"GetTodolistOrGroup":         {Idempotent: true, HasSensitiveParams: false},
-	"UpdateTodolistOrGroup":      {Idempotent: true, HasSensitiveParams: false},
-	"ListTodolistGroups":         {Idempotent: true, HasSensitiveParams: false},
-	"CreateTodolistGroup":        {Idempotent: false, HasSensitiveParams: false},
-	"ListTodos":                  {Idempotent: true, HasSensitiveParams: false},
-	"CreateTodo":                 {Idempotent: false, HasSensitiveParams: false},
-	"TrashTodo":                  {Idempotent: true, HasSensitiveParams: false},
-	"GetTodo":                    {Idempotent: true, HasSensitiveParams: false},
-	"UpdateTodo":                 {Idempotent: true, HasSensitiveParams: false},
-	"UncompleteTodo":             {Idempotent: true, HasSensitiveParams: false},
-	"CompleteTodo":               {Idempotent: true, HasSensitiveParams: false},
-	"RepositionTodo":             {Idempotent: true, HasSensitiveParams: false},
-	"GetTodoset":                 {Idempotent: true, HasSensitiveParams: false},
-	"ListTodolists":              {Idempotent: true, HasSensitiveParams: false},
-	"CreateTodolist":             {Idempotent: false, HasSensitiveParams: false},
-	"GetUpload":                  {Idempotent: true, HasSensitiveParams: false},
-	"UpdateUpload":               {Idempotent: true, HasSensitiveParams: false},
-	"ListUploadVersions":         {Idempotent: true, HasSensitiveParams: false},
-	"GetVault":                   {Idempotent: true, HasSensitiveParams: false},
-	"UpdateVault":                {Idempotent: true, HasSensitiveParams: false},
-	"ListDocuments":              {Idempotent: true, HasSensitiveParams: false},
-	"CreateDocument":             {Idempotent: false, HasSensitiveParams: false},
-	"ListUploads":                {Idempotent: true, HasSensitiveParams: false},
-	"CreateUpload":               {Idempotent: false, HasSensitiveParams: false},
-	"ListVaults":                 {Idempotent: true, HasSensitiveParams: false},
-	"CreateVault":                {Idempotent: false, HasSensitiveParams: false},
-	"ListWebhooks":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateWebhook":              {Idempotent: false, HasSensitiveParams: false},
-	"DeleteWebhook":              {Idempotent: true, HasSensitiveParams: false},
-	"GetWebhook":                 {Idempotent: true, HasSensitiveParams: false},
-	"UpdateWebhook":              {Idempotent: true, HasSensitiveParams: false},
-	"ListCampfires":              {Idempotent: true, HasSensitiveParams: false},
-	"ListPingablePeople":         {Idempotent: true, HasSensitiveParams: false},
-	"CreateLineupMarker":         {Idempotent: false, HasSensitiveParams: false},
-	"DeleteLineupMarker":         {Idempotent: true, HasSensitiveParams: false},
-	"UpdateLineupMarker":         {Idempotent: true, HasSensitiveParams: false},
-	"GetMyProfile":               {Idempotent: true, HasSensitiveParams: false},
-	"ListPeople":                 {Idempotent: true, HasSensitiveParams: false},
-	"GetPerson":                  {Idempotent: true, HasSensitiveParams: false},
-	"ListProjects":               {Idempotent: true, HasSensitiveParams: false},
-	"CreateProject":              {Idempotent: false, HasSensitiveParams: false},
-	"ListRecordings":             {Idempotent: true, HasSensitiveParams: false},
-	"TrashProject":               {Idempotent: true, HasSensitiveParams: false},
-	"GetProject":                 {Idempotent: true, HasSensitiveParams: false},
-	"UpdateProject":              {Idempotent: true, HasSensitiveParams: false},
-	"ListProjectPeople":          {Idempotent: true, HasSensitiveParams: false},
-	"UpdateProjectAccess":        {Idempotent: true, HasSensitiveParams: false},
-	"GetProgressReport":          {Idempotent: true, HasSensitiveParams: false},
-	"GetUpcomingSchedule":        {Idempotent: true, HasSensitiveParams: false},
-	"GetTimesheetReport":         {Idempotent: true, HasSensitiveParams: false},
-	"ListAssignablePeople":       {Idempotent: true, HasSensitiveParams: false},
-	"GetAssignedTodos":           {Idempotent: true, HasSensitiveParams: false},
-	"GetOverdueTodos":            {Idempotent: true, HasSensitiveParams: false},
-	"GetPersonProgress":          {Idempotent: true, HasSensitiveParams: false},
-	"Search":                     {Idempotent: true, HasSensitiveParams: false},
-	"GetSearchMetadata":          {Idempotent: true, HasSensitiveParams: false},
-	"ListTemplates":              {Idempotent: true, HasSensitiveParams: false},
-	"CreateTemplate":             {Idempotent: false, HasSensitiveParams: false},
-	"DeleteTemplate":             {Idempotent: true, HasSensitiveParams: false},
-	"GetTemplate":                {Idempotent: true, HasSensitiveParams: false},
-	"UpdateTemplate":             {Idempotent: true, HasSensitiveParams: false},
-	"CreateProjectFromTemplate":  {Idempotent: false, HasSensitiveParams: false},
-	"GetProjectConstruction":     {Idempotent: true, HasSensitiveParams: false},
+	"CreateAttachment":                   {Idempotent: false, HasSensitiveParams: false},
+	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
+	"UpdateCard":                         {Idempotent: true, HasSensitiveParams: false},
+	"MoveCard":                           {Idempotent: false, HasSensitiveParams: false},
+	"RepositionCardStep":                 {Idempotent: false, HasSensitiveParams: false},
+	"CreateCardStep":                     {Idempotent: false, HasSensitiveParams: false},
+	"GetCardColumn":                      {Idempotent: true, HasSensitiveParams: false},
+	"UpdateCardColumn":                   {Idempotent: true, HasSensitiveParams: false},
+	"SetCardColumnColor":                 {Idempotent: true, HasSensitiveParams: false},
+	"DisableCardColumnOnHold":            {Idempotent: true, HasSensitiveParams: false},
+	"EnableCardColumnOnHold":             {Idempotent: false, HasSensitiveParams: false},
+	"ListCards":                          {Idempotent: true, HasSensitiveParams: false},
+	"CreateCard":                         {Idempotent: false, HasSensitiveParams: false},
+	"UnsubscribeFromCardColumn":          {Idempotent: true, HasSensitiveParams: false},
+	"SubscribeToCardColumn":              {Idempotent: true, HasSensitiveParams: false},
+	"UpdateCardStep":                     {Idempotent: true, HasSensitiveParams: false},
+	"UncompleteCardStep":                 {Idempotent: true, HasSensitiveParams: false},
+	"CompleteCardStep":                   {Idempotent: true, HasSensitiveParams: false},
+	"GetCardTable":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateCardColumn":                   {Idempotent: false, HasSensitiveParams: false},
+	"MoveCardColumn":                     {Idempotent: false, HasSensitiveParams: false},
+	"ListMessageTypes":                   {Idempotent: true, HasSensitiveParams: false},
+	"CreateMessageType":                  {Idempotent: false, HasSensitiveParams: false},
+	"DeleteMessageType":                  {Idempotent: true, HasSensitiveParams: false},
+	"GetMessageType":                     {Idempotent: true, HasSensitiveParams: false},
+	"UpdateMessageType":                  {Idempotent: true, HasSensitiveParams: false},
+	"GetCampfire":                        {Idempotent: true, HasSensitiveParams: false},
+	"ListChatbots":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateChatbot":                      {Idempotent: false, HasSensitiveParams: false},
+	"DeleteChatbot":                      {Idempotent: true, HasSensitiveParams: false},
+	"GetChatbot":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateChatbot":                      {Idempotent: true, HasSensitiveParams: false},
+	"ListCampfireLines":                  {Idempotent: true, HasSensitiveParams: false},
+	"CreateCampfireLine":                 {Idempotent: false, HasSensitiveParams: false},
+	"DeleteCampfireLine":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetCampfireLine":                    {Idempotent: true, HasSensitiveParams: false},
+	"ListClientApprovals":                {Idempotent: true, HasSensitiveParams: false},
+	"GetClientApproval":                  {Idempotent: true, HasSensitiveParams: false},
+	"ListClientCorrespondences":          {Idempotent: true, HasSensitiveParams: false},
+	"GetClientCorrespondence":            {Idempotent: true, HasSensitiveParams: false},
+	"ListClientReplies":                  {Idempotent: true, HasSensitiveParams: false},
+	"GetClientReply":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetComment":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateComment":                      {Idempotent: true, HasSensitiveParams: false},
+	"CloneTool":                          {Idempotent: false, HasSensitiveParams: false},
+	"DeleteTool":                         {Idempotent: true, HasSensitiveParams: false},
+	"GetTool":                            {Idempotent: true, HasSensitiveParams: false},
+	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
+	"GetDocument":                        {Idempotent: true, HasSensitiveParams: false},
+	"UpdateDocument":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetForward":                         {Idempotent: true, HasSensitiveParams: false},
+	"ListForwardReplies":                 {Idempotent: true, HasSensitiveParams: false},
+	"CreateForwardReply":                 {Idempotent: false, HasSensitiveParams: false},
+	"GetForwardReply":                    {Idempotent: true, HasSensitiveParams: false},
+	"GetInbox":                           {Idempotent: true, HasSensitiveParams: false},
+	"ListForwards":                       {Idempotent: true, HasSensitiveParams: false},
+	"GetMessageBoard":                    {Idempotent: true, HasSensitiveParams: false},
+	"ListMessages":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateMessage":                      {Idempotent: false, HasSensitiveParams: false},
+	"GetMessage":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateMessage":                      {Idempotent: true, HasSensitiveParams: false},
+	"GetAnswer":                          {Idempotent: true, HasSensitiveParams: false},
+	"UpdateAnswer":                       {Idempotent: true, HasSensitiveParams: false},
+	"GetQuestionnaire":                   {Idempotent: true, HasSensitiveParams: false},
+	"ListQuestions":                      {Idempotent: true, HasSensitiveParams: false},
+	"CreateQuestion":                     {Idempotent: false, HasSensitiveParams: false},
+	"GetQuestion":                        {Idempotent: true, HasSensitiveParams: false},
+	"UpdateQuestion":                     {Idempotent: true, HasSensitiveParams: false},
+	"ListAnswers":                        {Idempotent: true, HasSensitiveParams: false},
+	"CreateAnswer":                       {Idempotent: false, HasSensitiveParams: false},
+	"ListQuestionAnswerers":              {Idempotent: true, HasSensitiveParams: false},
+	"GetAnswersByPerson":                 {Idempotent: true, HasSensitiveParams: false},
+	"UpdateQuestionNotificationSettings": {Idempotent: true, HasSensitiveParams: false},
+	"ResumeQuestion":                     {Idempotent: true, HasSensitiveParams: false},
+	"PauseQuestion":                      {Idempotent: true, HasSensitiveParams: false},
+	"UnpinMessage":                       {Idempotent: true, HasSensitiveParams: false},
+	"PinMessage":                         {Idempotent: false, HasSensitiveParams: false},
+	"GetRecording":                       {Idempotent: true, HasSensitiveParams: false},
+	"SetClientVisibility":                {Idempotent: true, HasSensitiveParams: false},
+	"ListComments":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateComment":                      {Idempotent: false, HasSensitiveParams: false},
+	"ListEvents":                         {Idempotent: true, HasSensitiveParams: false},
+	"UnarchiveRecording":                 {Idempotent: true, HasSensitiveParams: false},
+	"ArchiveRecording":                   {Idempotent: true, HasSensitiveParams: false},
+	"TrashRecording":                     {Idempotent: true, HasSensitiveParams: false},
+	"Unsubscribe":                        {Idempotent: true, HasSensitiveParams: false},
+	"GetSubscription":                    {Idempotent: true, HasSensitiveParams: false},
+	"Subscribe":                          {Idempotent: false, HasSensitiveParams: false},
+	"UpdateSubscription":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetRecordingTimesheet":              {Idempotent: true, HasSensitiveParams: false},
+	"DisableTool":                        {Idempotent: true, HasSensitiveParams: false},
+	"EnableTool":                         {Idempotent: false, HasSensitiveParams: false},
+	"RepositionTool":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetScheduleEntry":                   {Idempotent: true, HasSensitiveParams: false},
+	"UpdateScheduleEntry":                {Idempotent: true, HasSensitiveParams: false},
+	"GetScheduleEntryOccurrence":         {Idempotent: true, HasSensitiveParams: false},
+	"GetSchedule":                        {Idempotent: true, HasSensitiveParams: false},
+	"UpdateScheduleSettings":             {Idempotent: true, HasSensitiveParams: false},
+	"ListScheduleEntries":                {Idempotent: true, HasSensitiveParams: false},
+	"CreateScheduleEntry":                {Idempotent: false, HasSensitiveParams: false},
+	"GetProjectTimeline":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetProjectTimesheet":                {Idempotent: true, HasSensitiveParams: false},
+	"RepositionTodolistGroup":            {Idempotent: true, HasSensitiveParams: false},
+	"GetTodolistOrGroup":                 {Idempotent: true, HasSensitiveParams: false},
+	"UpdateTodolistOrGroup":              {Idempotent: true, HasSensitiveParams: false},
+	"ListTodolistGroups":                 {Idempotent: true, HasSensitiveParams: false},
+	"CreateTodolistGroup":                {Idempotent: false, HasSensitiveParams: false},
+	"ListTodos":                          {Idempotent: true, HasSensitiveParams: false},
+	"CreateTodo":                         {Idempotent: false, HasSensitiveParams: false},
+	"TrashTodo":                          {Idempotent: true, HasSensitiveParams: false},
+	"GetTodo":                            {Idempotent: true, HasSensitiveParams: false},
+	"UpdateTodo":                         {Idempotent: true, HasSensitiveParams: false},
+	"UncompleteTodo":                     {Idempotent: true, HasSensitiveParams: false},
+	"CompleteTodo":                       {Idempotent: true, HasSensitiveParams: false},
+	"RepositionTodo":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetTodoset":                         {Idempotent: true, HasSensitiveParams: false},
+	"ListTodolists":                      {Idempotent: true, HasSensitiveParams: false},
+	"CreateTodolist":                     {Idempotent: false, HasSensitiveParams: false},
+	"GetUpload":                          {Idempotent: true, HasSensitiveParams: false},
+	"UpdateUpload":                       {Idempotent: true, HasSensitiveParams: false},
+	"ListUploadVersions":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetVault":                           {Idempotent: true, HasSensitiveParams: false},
+	"UpdateVault":                        {Idempotent: true, HasSensitiveParams: false},
+	"ListDocuments":                      {Idempotent: true, HasSensitiveParams: false},
+	"CreateDocument":                     {Idempotent: false, HasSensitiveParams: false},
+	"ListUploads":                        {Idempotent: true, HasSensitiveParams: false},
+	"CreateUpload":                       {Idempotent: false, HasSensitiveParams: false},
+	"ListVaults":                         {Idempotent: true, HasSensitiveParams: false},
+	"CreateVault":                        {Idempotent: false, HasSensitiveParams: false},
+	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
+	"DeleteWebhook":                      {Idempotent: true, HasSensitiveParams: false},
+	"GetWebhook":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateWebhook":                      {Idempotent: true, HasSensitiveParams: false},
+	"ListCampfires":                      {Idempotent: true, HasSensitiveParams: false},
+	"ListPingablePeople":                 {Idempotent: true, HasSensitiveParams: false},
+	"CreateLineupMarker":                 {Idempotent: false, HasSensitiveParams: false},
+	"DeleteLineupMarker":                 {Idempotent: true, HasSensitiveParams: false},
+	"UpdateLineupMarker":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetMyProfile":                       {Idempotent: true, HasSensitiveParams: false},
+	"GetQuestionReminders":               {Idempotent: true, HasSensitiveParams: false},
+	"ListPeople":                         {Idempotent: true, HasSensitiveParams: false},
+	"GetPerson":                          {Idempotent: true, HasSensitiveParams: false},
+	"ListProjects":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateProject":                      {Idempotent: false, HasSensitiveParams: false},
+	"ListRecordings":                     {Idempotent: true, HasSensitiveParams: false},
+	"TrashProject":                       {Idempotent: true, HasSensitiveParams: false},
+	"GetProject":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateProject":                      {Idempotent: true, HasSensitiveParams: false},
+	"ListProjectPeople":                  {Idempotent: true, HasSensitiveParams: false},
+	"UpdateProjectAccess":                {Idempotent: true, HasSensitiveParams: false},
+	"GetProgressReport":                  {Idempotent: true, HasSensitiveParams: false},
+	"GetUpcomingSchedule":                {Idempotent: true, HasSensitiveParams: false},
+	"GetTimesheetReport":                 {Idempotent: true, HasSensitiveParams: false},
+	"ListAssignablePeople":               {Idempotent: true, HasSensitiveParams: false},
+	"GetAssignedTodos":                   {Idempotent: true, HasSensitiveParams: false},
+	"GetOverdueTodos":                    {Idempotent: true, HasSensitiveParams: false},
+	"GetPersonProgress":                  {Idempotent: true, HasSensitiveParams: false},
+	"Search":                             {Idempotent: true, HasSensitiveParams: false},
+	"GetSearchMetadata":                  {Idempotent: true, HasSensitiveParams: false},
+	"ListTemplates":                      {Idempotent: true, HasSensitiveParams: false},
+	"CreateTemplate":                     {Idempotent: false, HasSensitiveParams: false},
+	"DeleteTemplate":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetTemplate":                        {Idempotent: true, HasSensitiveParams: false},
+	"UpdateTemplate":                     {Idempotent: true, HasSensitiveParams: false},
+	"CreateProjectFromTemplate":          {Idempotent: false, HasSensitiveParams: false},
+	"GetProjectConstruction":             {Idempotent: true, HasSensitiveParams: false},
 }
 
 // GetOperationMetadata returns metadata for the given operation ID.
@@ -15078,6 +15516,12 @@ type ClientWithResponsesInterface interface {
 
 	CreateCardWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, body CreateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCardResponse, error)
 
+	// UnsubscribeFromCardColumnWithResponse request
+	UnsubscribeFromCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*UnsubscribeFromCardColumnResponse, error)
+
+	// SubscribeToCardColumnWithResponse request
+	SubscribeToCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*SubscribeToCardColumnResponse, error)
+
 	// UpdateCardStepWithBodyWithResponse request with any body
 	UpdateCardStepWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error)
 
@@ -15183,8 +15627,10 @@ type ClientWithResponsesInterface interface {
 
 	UpdateCommentWithResponse(ctx context.Context, accountId string, projectId int64, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
 
-	// CloneToolWithResponse request
-	CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+	// CloneToolWithBodyWithResponse request with any body
+	CloneToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+
+	CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
 
 	// DeleteToolWithResponse request
 	DeleteToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error)
@@ -15196,17 +15642,6 @@ type ClientWithResponsesInterface interface {
 	UpdateToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
 
 	UpdateToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
-
-	// DisableToolWithResponse request
-	DisableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error)
-
-	// EnableToolWithResponse request
-	EnableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error)
-
-	// RepositionToolWithBodyWithResponse request with any body
-	RepositionToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
-
-	RepositionToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
 
 	// GetDocumentWithResponse request
 	GetDocumentWithResponse(ctx context.Context, accountId string, projectId int64, documentId int64, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error)
@@ -15290,6 +15725,23 @@ type ClientWithResponsesInterface interface {
 
 	CreateAnswerWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, body CreateAnswerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
 
+	// ListQuestionAnswerersWithResponse request
+	ListQuestionAnswerersWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ListQuestionAnswerersResponse, error)
+
+	// GetAnswersByPersonWithResponse request
+	GetAnswersByPersonWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*GetAnswersByPersonResponse, error)
+
+	// UpdateQuestionNotificationSettingsWithBodyWithResponse request with any body
+	UpdateQuestionNotificationSettingsWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionNotificationSettingsResponse, error)
+
+	UpdateQuestionNotificationSettingsWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionNotificationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionNotificationSettingsResponse, error)
+
+	// ResumeQuestionWithResponse request
+	ResumeQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ResumeQuestionResponse, error)
+
+	// PauseQuestionWithResponse request
+	PauseQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*PauseQuestionResponse, error)
+
 	// UnpinMessageWithResponse request
 	UnpinMessageWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*UnpinMessageResponse, error)
 
@@ -15340,6 +15792,17 @@ type ClientWithResponsesInterface interface {
 
 	// GetRecordingTimesheetWithResponse request
 	GetRecordingTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error)
+
+	// DisableToolWithResponse request
+	DisableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error)
+
+	// EnableToolWithResponse request
+	EnableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error)
+
+	// RepositionToolWithBodyWithResponse request with any body
+	RepositionToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
+
+	RepositionToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error)
 
 	// GetScheduleEntryWithResponse request
 	GetScheduleEntryWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error)
@@ -15520,6 +15983,9 @@ type ClientWithResponsesInterface interface {
 	// GetMyProfileWithResponse request
 	GetMyProfileWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyProfileResponse, error)
 
+	// GetQuestionRemindersWithResponse request
+	GetQuestionRemindersWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetQuestionRemindersResponse, error)
+
 	// ListPeopleWithResponse request
 	ListPeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error)
 
@@ -15614,7 +16080,7 @@ type ClientWithResponsesInterface interface {
 type CreateAttachmentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateAttachmentResponseContent
+	JSON201      *CreateAttachmentResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -15746,7 +16212,7 @@ func (r RepositionCardStepResponse) StatusCode() int {
 type CreateCardStepResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateCardStepResponseContent
+	JSON201      *CreateCardStepResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -15932,7 +16398,7 @@ func (r ListCardsResponse) StatusCode() int {
 type CreateCardResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateCardResponseContent
+	JSON201      *CreateCardResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -15950,6 +16416,57 @@ func (r CreateCardResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateCardResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UnsubscribeFromCardColumnResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UnsubscribeFromCardColumnResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UnsubscribeFromCardColumnResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type SubscribeToCardColumnResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r SubscribeToCardColumnResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SubscribeToCardColumnResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -16065,7 +16582,7 @@ func (r GetCardTableResponse) StatusCode() int {
 type CreateCardColumnResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateCardColumnResponseContent
+	JSON201      *CreateCardColumnResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -16144,7 +16661,7 @@ func (r ListMessageTypesResponse) StatusCode() int {
 type CreateMessageTypeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateMessageTypeResponseContent
+	JSON201      *CreateMessageTypeResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -16301,7 +16818,7 @@ func (r ListChatbotsResponse) StatusCode() int {
 type CreateChatbotResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateChatbotResponseContent
+	JSON201      *CreateChatbotResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -16432,7 +16949,7 @@ func (r ListCampfireLinesResponse) StatusCode() int {
 type CreateCampfireLineResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateCampfireLineResponseContent
+	JSON201      *CreateCampfireLineResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -16719,7 +17236,7 @@ func (r UpdateCommentResponse) StatusCode() int {
 type CloneToolResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CloneToolResponseContent
+	JSON201      *CloneToolResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -16815,83 +17332,6 @@ func (r UpdateToolResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateToolResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type DisableToolResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r DisableToolResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DisableToolResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type EnableToolResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r EnableToolResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r EnableToolResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type RepositionToolResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r RepositionToolResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r RepositionToolResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -17006,7 +17446,7 @@ func (r ListForwardRepliesResponse) StatusCode() int {
 type CreateForwardReplyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateForwardReplyResponseContent
+	JSON201      *CreateForwardReplyResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -17163,7 +17603,7 @@ func (r ListMessagesResponse) StatusCode() int {
 type CreateMessageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateMessageResponseContent
+	JSON201      *CreateMessageResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -17269,7 +17709,6 @@ func (r GetAnswerResponse) StatusCode() int {
 type UpdateAnswerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *UpdateAnswerResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -17348,7 +17787,7 @@ func (r ListQuestionsResponse) StatusCode() int {
 type CreateQuestionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateQuestionResponseContent
+	JSON201      *CreateQuestionResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -17454,7 +17893,7 @@ func (r ListAnswersResponse) StatusCode() int {
 type CreateAnswerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateAnswerResponseContent
+	JSON201      *CreateAnswerResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -17472,6 +17911,140 @@ func (r CreateAnswerResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateAnswerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListQuestionAnswerersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListQuestionAnswerersResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListQuestionAnswerersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListQuestionAnswerersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetAnswersByPersonResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetAnswersByPersonResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAnswersByPersonResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAnswersByPersonResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpdateQuestionNotificationSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateQuestionNotificationSettingsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateQuestionNotificationSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateQuestionNotificationSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ResumeQuestionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ResumeQuestionResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ResumeQuestionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResumeQuestionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PauseQuestionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PauseQuestionResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r PauseQuestionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PauseQuestionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -17611,7 +18184,7 @@ func (r ListCommentsResponse) StatusCode() int {
 type CreateCommentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateCommentResponseContent
+	JSON201      *CreateCommentResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -17870,6 +18443,83 @@ func (r GetRecordingTimesheetResponse) StatusCode() int {
 	return 0
 }
 
+type DisableToolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DisableToolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DisableToolResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type EnableToolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r EnableToolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnableToolResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type RepositionToolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r RepositionToolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RepositionToolResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetScheduleEntryResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -18031,7 +18681,7 @@ func (r ListScheduleEntriesResponse) StatusCode() int {
 type CreateScheduleEntryResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateScheduleEntryResponseContent
+	JSON201      *CreateScheduleEntryResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -18216,7 +18866,7 @@ func (r ListTodolistGroupsResponse) StatusCode() int {
 type CreateTodolistGroupResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateTodolistGroupResponseContent
+	JSON201      *CreateTodolistGroupResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -18269,7 +18919,7 @@ func (r ListTodosResponse) StatusCode() int {
 type CreateTodoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateTodoResponseContent
+	JSON201      *CreateTodoResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -18503,7 +19153,7 @@ func (r ListTodolistsResponse) StatusCode() int {
 type CreateTodolistResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateTodolistResponseContent
+	JSON201      *CreateTodolistResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -18688,7 +19338,7 @@ func (r ListDocumentsResponse) StatusCode() int {
 type CreateDocumentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateDocumentResponseContent
+	JSON201      *CreateDocumentResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -18741,7 +19391,7 @@ func (r ListUploadsResponse) StatusCode() int {
 type CreateUploadResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateUploadResponseContent
+	JSON201      *CreateUploadResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -18794,7 +19444,7 @@ func (r ListVaultsResponse) StatusCode() int {
 type CreateVaultResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateVaultResponseContent
+	JSON201      *CreateVaultResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -18847,7 +19497,7 @@ func (r ListWebhooksResponse) StatusCode() int {
 type CreateWebhookResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateWebhookResponseContent
+	JSON201      *CreateWebhookResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19004,7 +19654,6 @@ func (r ListPingablePeopleResponse) StatusCode() int {
 type CreateLineupMarkerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateLineupMarkerResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19056,7 +19705,6 @@ func (r DeleteLineupMarkerResponse) StatusCode() int {
 type UpdateLineupMarkerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *UpdateLineupMarkerResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -19100,6 +19748,32 @@ func (r GetMyProfileResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetMyProfileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetQuestionRemindersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetQuestionRemindersResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetQuestionRemindersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetQuestionRemindersResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -19187,7 +19861,7 @@ func (r ListProjectsResponse) StatusCode() int {
 type CreateProjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateProjectResponseContent
+	JSON201      *CreateProjectResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19633,7 +20307,7 @@ func (r ListTemplatesResponse) StatusCode() int {
 type CreateTemplateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateTemplateResponseContent
+	JSON201      *CreateTemplateResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19738,7 +20412,7 @@ func (r UpdateTemplateResponse) StatusCode() int {
 type CreateProjectFromTemplateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CreateProjectFromTemplateResponseContent
+	JSON201      *CreateProjectFromTemplateResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19959,6 +20633,24 @@ func (c *ClientWithResponses) CreateCardWithResponse(ctx context.Context, accoun
 		return nil, err
 	}
 	return ParseCreateCardResponse(rsp)
+}
+
+// UnsubscribeFromCardColumnWithResponse request returning *UnsubscribeFromCardColumnResponse
+func (c *ClientWithResponses) UnsubscribeFromCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*UnsubscribeFromCardColumnResponse, error) {
+	rsp, err := c.UnsubscribeFromCardColumn(ctx, accountId, projectId, columnId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnsubscribeFromCardColumnResponse(rsp)
+}
+
+// SubscribeToCardColumnWithResponse request returning *SubscribeToCardColumnResponse
+func (c *ClientWithResponses) SubscribeToCardColumnWithResponse(ctx context.Context, accountId string, projectId int64, columnId int64, reqEditors ...RequestEditorFn) (*SubscribeToCardColumnResponse, error) {
+	rsp, err := c.SubscribeToCardColumn(ctx, accountId, projectId, columnId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSubscribeToCardColumnResponse(rsp)
 }
 
 // UpdateCardStepWithBodyWithResponse request with arbitrary body returning *UpdateCardStepResponse
@@ -20294,9 +20986,17 @@ func (c *ClientWithResponses) UpdateCommentWithResponse(ctx context.Context, acc
 	return ParseUpdateCommentResponse(rsp)
 }
 
-// CloneToolWithResponse request returning *CloneToolResponse
-func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, sourceToolId int64, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
-	rsp, err := c.CloneTool(ctx, accountId, projectId, sourceToolId, reqEditors...)
+// CloneToolWithBodyWithResponse request with arbitrary body returning *CloneToolResponse
+func (c *ClientWithResponses) CloneToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
+	rsp, err := c.CloneToolWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCloneToolResponse(rsp)
+}
+
+func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
+	rsp, err := c.CloneTool(ctx, accountId, projectId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -20336,41 +21036,6 @@ func (c *ClientWithResponses) UpdateToolWithResponse(ctx context.Context, accoun
 		return nil, err
 	}
 	return ParseUpdateToolResponse(rsp)
-}
-
-// DisableToolWithResponse request returning *DisableToolResponse
-func (c *ClientWithResponses) DisableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error) {
-	rsp, err := c.DisableTool(ctx, accountId, projectId, toolId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDisableToolResponse(rsp)
-}
-
-// EnableToolWithResponse request returning *EnableToolResponse
-func (c *ClientWithResponses) EnableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error) {
-	rsp, err := c.EnableTool(ctx, accountId, projectId, toolId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseEnableToolResponse(rsp)
-}
-
-// RepositionToolWithBodyWithResponse request with arbitrary body returning *RepositionToolResponse
-func (c *ClientWithResponses) RepositionToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
-	rsp, err := c.RepositionToolWithBody(ctx, accountId, projectId, toolId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseRepositionToolResponse(rsp)
-}
-
-func (c *ClientWithResponses) RepositionToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
-	rsp, err := c.RepositionTool(ctx, accountId, projectId, toolId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseRepositionToolResponse(rsp)
 }
 
 // GetDocumentWithResponse request returning *GetDocumentResponse
@@ -20635,6 +21300,59 @@ func (c *ClientWithResponses) CreateAnswerWithResponse(ctx context.Context, acco
 	return ParseCreateAnswerResponse(rsp)
 }
 
+// ListQuestionAnswerersWithResponse request returning *ListQuestionAnswerersResponse
+func (c *ClientWithResponses) ListQuestionAnswerersWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ListQuestionAnswerersResponse, error) {
+	rsp, err := c.ListQuestionAnswerers(ctx, accountId, projectId, questionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListQuestionAnswerersResponse(rsp)
+}
+
+// GetAnswersByPersonWithResponse request returning *GetAnswersByPersonResponse
+func (c *ClientWithResponses) GetAnswersByPersonWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*GetAnswersByPersonResponse, error) {
+	rsp, err := c.GetAnswersByPerson(ctx, accountId, projectId, questionId, personId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAnswersByPersonResponse(rsp)
+}
+
+// UpdateQuestionNotificationSettingsWithBodyWithResponse request with arbitrary body returning *UpdateQuestionNotificationSettingsResponse
+func (c *ClientWithResponses) UpdateQuestionNotificationSettingsWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionNotificationSettingsResponse, error) {
+	rsp, err := c.UpdateQuestionNotificationSettingsWithBody(ctx, accountId, projectId, questionId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateQuestionNotificationSettingsResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateQuestionNotificationSettingsWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, body UpdateQuestionNotificationSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionNotificationSettingsResponse, error) {
+	rsp, err := c.UpdateQuestionNotificationSettings(ctx, accountId, projectId, questionId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateQuestionNotificationSettingsResponse(rsp)
+}
+
+// ResumeQuestionWithResponse request returning *ResumeQuestionResponse
+func (c *ClientWithResponses) ResumeQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*ResumeQuestionResponse, error) {
+	rsp, err := c.ResumeQuestion(ctx, accountId, projectId, questionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResumeQuestionResponse(rsp)
+}
+
+// PauseQuestionWithResponse request returning *PauseQuestionResponse
+func (c *ClientWithResponses) PauseQuestionWithResponse(ctx context.Context, accountId string, projectId int64, questionId int64, reqEditors ...RequestEditorFn) (*PauseQuestionResponse, error) {
+	rsp, err := c.PauseQuestion(ctx, accountId, projectId, questionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePauseQuestionResponse(rsp)
+}
+
 // UnpinMessageWithResponse request returning *UnpinMessageResponse
 func (c *ClientWithResponses) UnpinMessageWithResponse(ctx context.Context, accountId string, projectId int64, messageId int64, reqEditors ...RequestEditorFn) (*UnpinMessageResponse, error) {
 	rsp, err := c.UnpinMessage(ctx, accountId, projectId, messageId, reqEditors...)
@@ -20792,6 +21510,41 @@ func (c *ClientWithResponses) GetRecordingTimesheetWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseGetRecordingTimesheetResponse(rsp)
+}
+
+// DisableToolWithResponse request returning *DisableToolResponse
+func (c *ClientWithResponses) DisableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error) {
+	rsp, err := c.DisableTool(ctx, accountId, projectId, toolId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDisableToolResponse(rsp)
+}
+
+// EnableToolWithResponse request returning *EnableToolResponse
+func (c *ClientWithResponses) EnableToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*EnableToolResponse, error) {
+	rsp, err := c.EnableTool(ctx, accountId, projectId, toolId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnableToolResponse(rsp)
+}
+
+// RepositionToolWithBodyWithResponse request with arbitrary body returning *RepositionToolResponse
+func (c *ClientWithResponses) RepositionToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
+	rsp, err := c.RepositionToolWithBody(ctx, accountId, projectId, toolId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRepositionToolResponse(rsp)
+}
+
+func (c *ClientWithResponses) RepositionToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body RepositionToolJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionToolResponse, error) {
+	rsp, err := c.RepositionTool(ctx, accountId, projectId, toolId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRepositionToolResponse(rsp)
 }
 
 // GetScheduleEntryWithResponse request returning *GetScheduleEntryResponse
@@ -21369,6 +22122,15 @@ func (c *ClientWithResponses) GetMyProfileWithResponse(ctx context.Context, acco
 	return ParseGetMyProfileResponse(rsp)
 }
 
+// GetQuestionRemindersWithResponse request returning *GetQuestionRemindersResponse
+func (c *ClientWithResponses) GetQuestionRemindersWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetQuestionRemindersResponse, error) {
+	rsp, err := c.GetQuestionReminders(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetQuestionRemindersResponse(rsp)
+}
+
 // ListPeopleWithResponse request returning *ListPeopleResponse
 func (c *ClientWithResponses) ListPeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error) {
 	rsp, err := c.ListPeople(ctx, accountId, reqEditors...)
@@ -21665,12 +22427,12 @@ func ParseCreateAttachmentResponse(rsp *http.Response) (*CreateAttachmentRespons
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateAttachmentResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -21949,12 +22711,12 @@ func ParseCreateCardStepResponse(rsp *http.Response) (*CreateCardStepResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateCardStepResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -22355,12 +23117,12 @@ func ParseCreateCardResponse(rsp *http.Response) (*CreateCardResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateCardResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -22382,6 +23144,107 @@ func ParseCreateCardResponse(rsp *http.Response) (*CreateCardResponse, error) {
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUnsubscribeFromCardColumnResponse parses an HTTP response from a UnsubscribeFromCardColumnWithResponse call
+func ParseUnsubscribeFromCardColumnResponse(rsp *http.Response) (*UnsubscribeFromCardColumnResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UnsubscribeFromCardColumnResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSubscribeToCardColumnResponse parses an HTTP response from a SubscribeToCardColumnWithResponse call
+func ParseSubscribeToCardColumnResponse(rsp *http.Response) (*SubscribeToCardColumnResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SubscribeToCardColumnResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent
@@ -22646,12 +23509,12 @@ func ParseCreateCardColumnResponse(rsp *http.Response) (*CreateCardColumnRespons
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateCardColumnResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -22815,12 +23678,12 @@ func ParseCreateMessageTypeResponse(rsp *http.Response) (*CreateMessageTypeRespo
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateMessageTypeResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -23146,12 +24009,12 @@ func ParseCreateChatbotResponse(rsp *http.Response) (*CreateChatbotResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateChatbotResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -23423,12 +24286,12 @@ func ParseCreateCampfireLineResponse(rsp *http.Response) (*CreateCampfireLineRes
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateCampfireLineResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -24024,12 +24887,12 @@ func ParseCloneToolResponse(rsp *http.Response) (*CloneToolResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CloneToolResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -24193,161 +25056,6 @@ func ParseUpdateToolResponse(rsp *http.Response) (*UpdateToolResponse, error) {
 		}
 		response.JSON200 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDisableToolResponse parses an HTTP response from a DisableToolWithResponse call
-func ParseDisableToolResponse(rsp *http.Response) (*DisableToolResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DisableToolResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseEnableToolResponse parses an HTTP response from a EnableToolWithResponse call
-func ParseEnableToolResponse(rsp *http.Response) (*EnableToolResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &EnableToolResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseRepositionToolResponse parses an HTTP response from a RepositionToolWithResponse call
-func ParseRepositionToolResponse(rsp *http.Response) (*RepositionToolResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &RepositionToolResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -24625,12 +25333,12 @@ func ParseCreateForwardReplyResponse(rsp *http.Response) (*CreateForwardReplyRes
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateForwardReplyResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -24956,12 +25664,12 @@ func ParseCreateMessageResponse(rsp *http.Response) (*CreateMessageResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateMessageResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -25186,13 +25894,6 @@ func ParseUpdateAnswerResponse(rsp *http.Response) (*UpdateAnswerResponse, error
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UpdateAnswerResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -25355,12 +26056,12 @@ func ParseCreateQuestionResponse(rsp *http.Response) (*CreateQuestionResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateQuestionResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -25585,12 +26286,12 @@ func ParseCreateAnswerResponse(rsp *http.Response) (*CreateAnswerResponse, error
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateAnswerResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -25612,6 +26313,304 @@ func ParseCreateAnswerResponse(rsp *http.Response) (*CreateAnswerResponse, error
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListQuestionAnswerersResponse parses an HTTP response from a ListQuestionAnswerersWithResponse call
+func ParseListQuestionAnswerersResponse(rsp *http.Response) (*ListQuestionAnswerersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListQuestionAnswerersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListQuestionAnswerersResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAnswersByPersonResponse parses an HTTP response from a GetAnswersByPersonWithResponse call
+func ParseGetAnswersByPersonResponse(rsp *http.Response) (*GetAnswersByPersonResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAnswersByPersonResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetAnswersByPersonResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateQuestionNotificationSettingsResponse parses an HTTP response from a UpdateQuestionNotificationSettingsWithResponse call
+func ParseUpdateQuestionNotificationSettingsResponse(rsp *http.Response) (*UpdateQuestionNotificationSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateQuestionNotificationSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateQuestionNotificationSettingsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseResumeQuestionResponse parses an HTTP response from a ResumeQuestionWithResponse call
+func ParseResumeQuestionResponse(rsp *http.Response) (*ResumeQuestionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResumeQuestionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResumeQuestionResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePauseQuestionResponse parses an HTTP response from a PauseQuestionWithResponse call
+func ParsePauseQuestionResponse(rsp *http.Response) (*PauseQuestionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PauseQuestionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PauseQuestionResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent
@@ -25916,12 +26915,12 @@ func ParseCreateCommentResponse(rsp *http.Response) (*CreateCommentResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateCommentResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -26456,6 +27455,161 @@ func ParseGetRecordingTimesheetResponse(rsp *http.Response) (*GetRecordingTimesh
 	return response, nil
 }
 
+// ParseDisableToolResponse parses an HTTP response from a DisableToolWithResponse call
+func ParseDisableToolResponse(rsp *http.Response) (*DisableToolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DisableToolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseEnableToolResponse parses an HTTP response from a EnableToolWithResponse call
+func ParseEnableToolResponse(rsp *http.Response) (*EnableToolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnableToolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRepositionToolResponse parses an HTTP response from a RepositionToolWithResponse call
+func ParseRepositionToolResponse(rsp *http.Response) (*RepositionToolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RepositionToolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetScheduleEntryResponse parses an HTTP response from a GetScheduleEntryWithResponse call
 func ParseGetScheduleEntryResponse(rsp *http.Response) (*GetScheduleEntryResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -26808,12 +27962,12 @@ func ParseCreateScheduleEntryResponse(rsp *http.Response) (*CreateScheduleEntryR
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateScheduleEntryResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -27207,12 +28361,12 @@ func ParseCreateTodolistGroupResponse(rsp *http.Response) (*CreateTodolistGroupR
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateTodolistGroupResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -27322,12 +28476,12 @@ func ParseCreateTodoResponse(rsp *http.Response) (*CreateTodoResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateTodoResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -27808,12 +28962,12 @@ func ParseCreateTodolistResponse(rsp *http.Response) (*CreateTodolistResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateTodolistResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -28207,12 +29361,12 @@ func ParseCreateDocumentResponse(rsp *http.Response) (*CreateDocumentResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateDocumentResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -28322,12 +29476,12 @@ func ParseCreateUploadResponse(rsp *http.Response) (*CreateUploadResponse, error
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateUploadResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -28437,12 +29591,12 @@ func ParseCreateVaultResponse(rsp *http.Response) (*CreateVaultResponse, error) 
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateVaultResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -28552,12 +29706,12 @@ func ParseCreateWebhookResponse(rsp *http.Response) (*CreateWebhookResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateWebhookResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -28883,13 +30037,6 @@ func ParseCreateLineupMarkerResponse(rsp *http.Response) (*CreateLineupMarkerRes
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest CreateLineupMarkerResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -28991,13 +30138,6 @@ func ParseUpdateLineupMarkerResponse(rsp *http.Response) (*UpdateLineupMarkerRes
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UpdateLineupMarkerResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -29079,6 +30219,60 @@ func ParseGetMyProfileResponse(rsp *http.Response) (*GetMyProfileResponse, error
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetQuestionRemindersResponse parses an HTTP response from a GetQuestionRemindersWithResponse call
+func ParseGetQuestionRemindersResponse(rsp *http.Response) (*GetQuestionRemindersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetQuestionRemindersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetQuestionRemindersResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
@@ -29268,12 +30462,12 @@ func ParseCreateProjectResponse(rsp *http.Response) (*CreateProjectResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateProjectResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -30214,12 +31408,12 @@ func ParseCreateTemplateResponse(rsp *http.Response) (*CreateTemplateResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateTemplateResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -30437,12 +31631,12 @@ func ParseCreateProjectFromTemplateResponse(rsp *http.Response) (*CreateProjectF
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateProjectFromTemplateResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent

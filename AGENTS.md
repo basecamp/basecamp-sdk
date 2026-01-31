@@ -1,5 +1,53 @@
 # Basecamp SDK Agent Guidelines
 
+## SDK Development Rules
+
+### NEVER Do These (Hard Rules)
+
+1. **NEVER edit files under `*/generated/`** - They get overwritten by generators
+2. **NEVER add hand-written service methods for API operations** - All API ops come from generators
+3. **NEVER skip running `make smithy-build` after Smithy changes** - Keeps OpenAPI in sync
+4. **NEVER construct API paths manually in SDK code** - Use the generated client methods
+
+### Always Do These
+
+1. **All new API coverage starts in `spec/basecamp.smithy`**
+2. **Run generators after spec changes**: `make smithy-build` then SDK-specific generators
+3. **Fix generators when output is wrong** - Don't patch generated files directly
+
+### SDK Architecture
+
+**Target architecture (all SDKs):**
+```
+Smithy Spec → OpenAPI → Generated Client → Service Layer → User
+```
+
+| SDK | Generated Client | Service Layer | Status |
+|-----|-----------------|---------------|--------|
+| **Go** | `pkg/generated/client.gen.go` | `pkg/basecamp/*.go` (wraps generated client) | ✅ Complete |
+| **TypeScript** | `openapi-fetch` + `schema.d.ts` | `src/generated/services/*.ts` | ✅ Complete |
+| **Ruby** | HTTP client | `lib/basecamp/generated/services/*.rb` | ✅ Complete |
+
+**All three SDKs have complete generated service layers** covering 167 operations across 37 services.
+
+**TypeScript/Ruby runtime**: Wired to generated services (`src/generated/services/`, `lib/basecamp/generated/services/`). Hand-written services remain only for infrastructure (`base.ts`/`base_service.rb`) and OAuth (`authorization.ts`/`authorization_service.rb`).
+
+### Required Workflow for Adding API Coverage
+
+Every new API endpoint MUST follow this sequence:
+
+1. **Add operation to `spec/basecamp.smithy`** - This is mandatory, not optional
+2. **Run `make smithy-build`** - Regenerates `openapi.json`
+3. **Run SDK generators**:
+   - `cd go && make generate`
+   - `make ts-generate-services`
+   - `make rb-generate-services`
+4. **Run `make`** - Verifies all SDKs build and pass tests
+
+That's it. Generated services are the runtime—no hand-written service updates needed.
+
+---
+
 ## Smithy-First Development Workflow
 
 When extending the Basecamp SDK, follow a Smithy-first approach where the API specification drives implementation.
@@ -91,3 +139,16 @@ Reuse these common shapes throughout the spec:
 - `Person` - Full person object structure
 - `TodoParent` / `RecordingParent` - Parent reference (id, title, type, url, app_url)
 - `TodoBucket` / `RecordingBucket` - Project reference in recordings
+
+---
+
+## TypeScript/Ruby Service Layer
+
+**Switchover complete.** Both SDKs use generated services at runtime.
+
+| SDK | Runtime Services | Infrastructure |
+|-----|-----------------|----------------|
+| **TypeScript** | `src/generated/services/*.ts` | `src/services/base.ts`, `src/services/authorization.ts` |
+| **Ruby** | `lib/basecamp/generated/services/*.rb` | `lib/basecamp/services/base_service.rb`, `lib/basecamp/services/authorization_service.rb` |
+
+Hand-written API services in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) are NOT loaded at runtime. They exist only as reference implementations.

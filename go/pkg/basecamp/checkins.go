@@ -368,12 +368,12 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, question
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	question := questionFromGenerated(resp.JSON200.Question)
+	question := questionFromGenerated(*resp.JSON201)
 	return &question, nil
 }
 
@@ -408,7 +408,7 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 		body.Schedule = questionScheduleToGenerated(req.Schedule)
 	}
 	if req.Paused != nil {
-		body.Paused = *req.Paused
+		body.Paused = req.Paused
 	}
 
 	resp, err := s.client.parent.gen.UpdateQuestionWithResponse(ctx, s.client.accountID, bucketID, questionID, body)
@@ -423,7 +423,7 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 		return nil, err
 	}
 
-	question := questionFromGenerated(resp.JSON200.Question)
+	question := questionFromGenerated(*resp.JSON200)
 	return &question, nil
 }
 
@@ -579,12 +579,12 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	answer := questionAnswerFromGenerated(resp.JSON200.Answer)
+	answer := questionAnswerFromGenerated(*resp.JSON201)
 	return &answer, nil
 }
 
@@ -812,26 +812,26 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 func questionScheduleToGenerated(s *QuestionSchedule) generated.QuestionSchedule {
 	days := make([]int32, len(s.Days))
 	for i, d := range s.Days {
-		days[i] = int32(d)
+		days[i] = int32(d) // #nosec G115 -- weekday values are always 0-6
 	}
 
 	gs := generated.QuestionSchedule{
 		Frequency: s.Frequency,
 		Days:      days,
-		Hour:      int32(s.Hour),
-		Minute:    int32(s.Minute),
+		Hour:      int32(s.Hour),   // #nosec G115 -- hour is 0-23
+		Minute:    int32(s.Minute), // #nosec G115 -- minute is 0-59
 		StartDate: s.StartDate,
 		EndDate:   s.EndDate,
 	}
 
 	if s.WeekInstance != nil {
-		gs.WeekInstance = int32(*s.WeekInstance)
+		gs.WeekInstance = int32(*s.WeekInstance) // #nosec G115 -- bounded small value
 	}
 	if s.WeekInterval != nil {
-		gs.WeekInterval = int32(*s.WeekInterval)
+		gs.WeekInterval = int32(*s.WeekInterval) // #nosec G115 -- bounded small value
 	}
 	if s.MonthInterval != nil {
-		gs.MonthInterval = int32(*s.MonthInterval)
+		gs.MonthInterval = int32(*s.MonthInterval) // #nosec G115 -- bounded small value
 	}
 
 	return gs

@@ -96,8 +96,8 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 		return nil, nil
 	}
 
-	searchResults := make([]SearchResult, 0, len(resp.JSON200.Results))
-	for _, gsr := range resp.JSON200.Results {
+	searchResults := make([]SearchResult, 0, len(*resp.JSON200))
+	for _, gsr := range *resp.JSON200 {
 		searchResults = append(searchResults, searchResultFromGenerated(gsr))
 	}
 

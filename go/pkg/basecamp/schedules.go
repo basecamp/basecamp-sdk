@@ -335,8 +335,8 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 		EndsAt:         endsAt,
 		Description:    req.Description,
 		ParticipantIds: req.ParticipantIDs,
-		AllDay:         req.AllDay,
-		Notify:         req.Notify,
+		AllDay:         &req.AllDay,
+		Notify:         &req.Notify,
 	}
 
 	resp, err := s.client.parent.gen.CreateScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, scheduleID, body)
@@ -346,12 +346,12 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
+	entry := scheduleEntryFromGenerated(*resp.JSON201)
 	return &entry, nil
 }
 
@@ -381,8 +381,8 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 	body := generated.UpdateScheduleEntryJSONRequestBody{
 		Description:    req.Description,
 		ParticipantIds: req.ParticipantIDs,
-		AllDay:         req.AllDay,
-		Notify:         req.Notify,
+		AllDay:         &req.AllDay,
+		Notify:         &req.Notify,
 		Summary:        req.Summary,
 	}
 	if req.StartsAt != "" {
@@ -414,7 +414,7 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 		return nil, err
 	}
 
-	entry := scheduleEntryFromGenerated(resp.JSON200.Entry)
+	entry := scheduleEntryFromGenerated(*resp.JSON200)
 	return &entry, nil
 }
 
@@ -495,7 +495,7 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, schedul
 		return nil, err
 	}
 
-	schedule := scheduleFromGenerated(resp.JSON200.Schedule)
+	schedule := scheduleFromGenerated(*resp.JSON200)
 	return &schedule, nil
 }
 

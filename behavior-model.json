@@ -26,18 +26,6 @@
         ]
       }
     },
-    "CompleteCardStep": {
-      "idempotent": true,
-      "retry": {
-        "max": 3,
-        "base_delay_ms": 1000,
-        "backoff": "exponential",
-        "retry_on": [
-          429,
-          503
-        ]
-      }
-    },
     "CompleteTodo": {
       "idempotent": true,
       "retry": {
@@ -456,6 +444,22 @@
         ]
       }
     },
+    "GetAnswersByPerson": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "GetAssignedTodos": {
       "readonly": true,
       "retry": {
@@ -710,10 +714,6 @@
     },
     "GetPersonProgress": {
       "readonly": true,
-      "pagination": {
-        "style": "link_header",
-        "maxPageSize": 50
-      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -727,7 +727,7 @@
     "GetProgressReport": {
       "readonly": true,
       "pagination": {
-        "style": "link_header",
+        "style": "link",
         "maxPageSize": 50
       },
       "retry": {
@@ -767,7 +767,7 @@
     "GetProjectTimeline": {
       "readonly": true,
       "pagination": {
-        "style": "link_header",
+        "style": "link",
         "maxPageSize": 50
       },
       "retry": {
@@ -794,6 +794,22 @@
     },
     "GetQuestion": {
       "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetQuestionReminders": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -1336,6 +1352,22 @@
         ]
       }
     },
+    "ListQuestionAnswerers": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "ListQuestions": {
       "readonly": true,
       "pagination": {
@@ -1534,6 +1566,18 @@
         ]
       }
     },
+    "PauseQuestion": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "PinMessage": {
       "retry": {
         "max": 2,
@@ -1592,8 +1636,24 @@
         ]
       }
     },
+    "ResumeQuestion": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "Search": {
       "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -1605,6 +1665,18 @@
       }
     },
     "SetCardColumnColor": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "SetCardStepCompletion": {
       "idempotent": true,
       "retry": {
         "max": 3,
@@ -1631,6 +1703,18 @@
     "Subscribe": {
       "retry": {
         "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "SubscribeToCardColumn": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
         "base_delay_ms": 1000,
         "backoff": "exponential",
         "retry_on": [
@@ -1687,18 +1771,6 @@
         ]
       }
     },
-    "UncompleteCardStep": {
-      "idempotent": true,
-      "retry": {
-        "max": 3,
-        "base_delay_ms": 1000,
-        "backoff": "exponential",
-        "retry_on": [
-          429,
-          503
-        ]
-      }
-    },
     "UncompleteTodo": {
       "idempotent": true,
       "retry": {
@@ -1724,6 +1796,18 @@
       }
     },
     "Unsubscribe": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "UnsubscribeFromCardColumn": {
       "idempotent": true,
       "retry": {
         "max": 3,
@@ -1880,6 +1964,18 @@
       }
     },
     "UpdateQuestion": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateQuestionNotificationSettings": {
       "idempotent": true,
       "retry": {
         "max": 3,

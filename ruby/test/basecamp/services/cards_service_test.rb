@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Tests for the CardsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (get, update)
+
 require "test_helper"
 
 class CardsServiceTest < Minitest::Test
@@ -32,7 +37,8 @@ class CardsServiceTest < Minitest::Test
   end
 
   def test_get_card
-    stub_get("/12345/buckets/100/card_tables/cards/200.json", response_body: sample_card(id: 200))
+    # Generated service: /card_tables/cards/{id} without .json
+    stub_get("/12345/buckets/100/card_tables/cards/200", response_body: sample_card(id: 200))
 
     card = @account.cards.get(project_id: 100, card_id: 200)
 
@@ -57,8 +63,9 @@ class CardsServiceTest < Minitest::Test
   end
 
   def test_update_card
+    # Generated service: /card_tables/cards/{id} without .json
     updated_card = sample_card(id: 200, title: "Updated Title")
-    stub_put("/12345/buckets/100/card_tables/cards/200.json", response_body: updated_card)
+    stub_put("/12345/buckets/100/card_tables/cards/200", response_body: updated_card)
 
     card = @account.cards.update(
       project_id: 100,

@@ -94,6 +94,6 @@ export class MessageBoardsService extends BaseService {
         })
     );
 
-    return response.message_board as unknown as MessageBoard;
+    return response as unknown as MessageBoard;
   }
 }

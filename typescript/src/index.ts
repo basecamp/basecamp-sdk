@@ -68,56 +68,13 @@ export {
 } from "./hooks.js";
 
 // =============================================================================
-// Services
+// Services - Generated from OpenAPI spec (spec-driven)
 // =============================================================================
 
-// Base service (for extending)
+// Base service (for extending) - hand-written infrastructure
 export { BaseService, type FetchResponse } from "./services/base.js";
 
-// Core services
-export {
-  ProjectsService,
-  type Project,
-  type DockItem,
-  type ProjectStatus,
-  type ProjectListOptions,
-  type CreateProjectRequest,
-  type UpdateProjectRequest,
-} from "./services/projects.js";
-
-export {
-  TodosService,
-  type Todo,
-  type Person,
-  type TodoListOptions,
-  type CreateTodoRequest,
-  type UpdateTodoRequest,
-} from "./services/todos.js";
-
-export {
-  TodolistsService,
-  type Todolist,
-  type TodolistListOptions,
-  type CreateTodolistRequest,
-  type UpdateTodolistRequest,
-} from "./services/todolists.js";
-
-export {
-  TodosetsService,
-  type Todoset,
-  type TodosetBucket,
-  type TodosetCreator,
-} from "./services/todosets.js";
-
-export {
-  PeopleService,
-  type Person as PersonFull,
-  type PersonCompany,
-  type CreatePersonRequest,
-  type UpdateProjectAccessRequest,
-  type UpdateProjectAccessResponse,
-} from "./services/people.js";
-
+// Authorization service - hand-written (OAuth flows not in OpenAPI spec)
 export {
   AuthorizationService,
   type Identity,
@@ -126,164 +83,265 @@ export {
   type GetAuthorizationInfoOptions,
 } from "./services/authorization.js";
 
-// Communication services
+// Core services - generated
+export {
+  ProjectsService,
+  type Project,
+  type ListProjectOptions,
+  type CreateProjectRequest,
+  type UpdateProjectRequest,
+} from "./generated/services/projects.js";
+
+export {
+  TodosService,
+  type Todo,
+  type ListTodoOptions,
+  type CreateTodoRequest,
+  type UpdateTodoRequest,
+  type RepositionTodoRequest,
+} from "./generated/services/todos.js";
+
+export {
+  TodolistsService,
+  type Todolist,
+  type ListTodolistOptions,
+  type CreateTodolistRequest,
+  type UpdateTodolistRequest,
+} from "./generated/services/todolists.js";
+
+export {
+  TodosetsService,
+  type Todoset,
+} from "./generated/services/todosets.js";
+
+export {
+  PeopleService,
+  type Person,
+  type UpdateProjectAccessPeopleRequest,
+} from "./generated/services/people.js";
+
+// Communication services - generated
 export {
   MessagesService,
   type Message,
-  type MessageType,
   type CreateMessageRequest,
   type UpdateMessageRequest,
-} from "./services/messages.js";
+} from "./generated/services/messages.js";
 
 export {
   CommentsService,
   type Comment,
   type CreateCommentRequest,
   type UpdateCommentRequest,
-} from "./services/comments.js";
+} from "./generated/services/comments.js";
 
 export {
   CampfiresService,
   type Campfire,
   type CampfireLine,
   type Chatbot,
-  type CreateChatbotRequest,
-  type UpdateChatbotRequest,
-} from "./services/campfires.js";
+  type CreateChatbotCampfireRequest,
+  type UpdateChatbotCampfireRequest,
+  type CreateLineCampfireRequest,
+} from "./generated/services/campfires.js";
 
-// Card services (kanban boards)
+// Card services (kanban boards) - generated
 export {
   CardTablesService,
-  CardsService,
-  CardColumnsService,
-  CardStepsService,
   type CardTable,
-  type CardColumn,
+} from "./generated/services/card-tables.js";
+
+export {
+  CardsService,
   type Card,
-  type CardStep,
-  type ColumnColor,
   type CreateCardRequest,
   type UpdateCardRequest,
-  type CreateColumnRequest,
-  type UpdateColumnRequest,
-  type MoveColumnRequest,
-  type CreateStepRequest,
-  type UpdateStepRequest,
-} from "./services/cards.js";
+  type MoveCardRequest,
+} from "./generated/services/cards.js";
 
-// Message Boards service
+export {
+  CardColumnsService,
+  type CardColumn,
+  type CreateCardColumnRequest,
+  type UpdateCardColumnRequest,
+  type MoveCardColumnRequest,
+  type SetColorCardColumnRequest,
+} from "./generated/services/card-columns.js";
+
+export {
+  CardStepsService,
+  type CardStep,
+  type CreateCardStepRequest,
+  type UpdateCardStepRequest,
+} from "./generated/services/card-steps.js";
+
+// Message services - generated
 export {
   MessageBoardsService,
   type MessageBoard,
-} from "./services/message-boards.js";
+} from "./generated/services/message-boards.js";
 
-// Message Types service
 export {
   MessageTypesService,
-  type MessageType as MessageTypeItem,
+  type MessageType,
   type CreateMessageTypeRequest,
   type UpdateMessageTypeRequest,
-} from "./services/message-types.js";
+} from "./generated/services/message-types.js";
 
-// Forwards service
+// Forwards service - generated
 export {
   ForwardsService,
   type Inbox,
   type Forward,
   type ForwardReply,
-  type CreateForwardReplyRequest,
-} from "./services/forwards.js";
+  type CreateReplyForwardRequest,
+} from "./generated/services/forwards.js";
 
-// Checkins service
+// Checkins service - generated
 export {
   CheckinsService,
   type Questionnaire,
   type Question,
-  type QuestionAnswer,
-  type QuestionSchedule,
-  type CreateQuestionRequest,
-  type UpdateQuestionRequest,
-  type CreateAnswerRequest,
-  type UpdateAnswerRequest,
-} from "./services/checkins.js";
+  type Answer,
+  type CreateQuestionCheckinRequest,
+  type UpdateQuestionCheckinRequest,
+  type CreateAnswerCheckinRequest,
+  type UpdateAnswerCheckinRequest,
+  type UpdateNotificationSettingsCheckinRequest,
+} from "./generated/services/checkins.js";
 
-// Client Portal services
+// Client Portal services - generated
 export {
   ClientApprovalsService,
   type ClientApproval,
-  type ClientApprovalResponse,
-} from "./services/client-approvals.js";
+} from "./generated/services/client-approvals.js";
 
 export {
   ClientCorrespondencesService,
   type ClientCorrespondence,
-} from "./services/client-correspondences.js";
+} from "./generated/services/client-correspondences.js";
 
 export {
   ClientRepliesService,
   type ClientReply,
-} from "./services/client-replies.js";
+} from "./generated/services/client-replies.js";
 
-// Automation services
+export {
+  ClientVisibilityService,
+} from "./generated/services/client-visibility.js";
+
+// Automation services - generated
 export {
   WebhooksService,
   type Webhook,
   type CreateWebhookRequest,
   type UpdateWebhookRequest,
-} from "./services/webhooks.js";
+} from "./generated/services/webhooks.js";
 
 export {
   SubscriptionsService,
   type Subscription,
   type UpdateSubscriptionRequest,
-} from "./services/subscriptions.js";
+} from "./generated/services/subscriptions.js";
 
-// Search & Reports services
+export {
+  EventsService,
+  type Event,
+} from "./generated/services/events.js";
+
+// File services - generated
+export {
+  AttachmentsService,
+} from "./generated/services/attachments.js";
+
+export {
+  VaultsService,
+  type Vault,
+  type CreateVaultRequest,
+  type UpdateVaultRequest,
+} from "./generated/services/vaults.js";
+
+export {
+  DocumentsService,
+  type Document,
+  type CreateDocumentRequest,
+  type UpdateDocumentRequest,
+} from "./generated/services/documents.js";
+
+export {
+  UploadsService,
+  type Upload,
+  type CreateUploadRequest,
+  type UpdateUploadRequest,
+} from "./generated/services/uploads.js";
+
+// Schedule & Time services - generated
+export {
+  SchedulesService,
+  type Schedule,
+  type ScheduleEntry,
+  type CreateEntryScheduleRequest,
+  type UpdateEntryScheduleRequest,
+  type UpdateSettingsScheduleRequest,
+  type ListEntriesScheduleOptions,
+} from "./generated/services/schedules.js";
+
+export {
+  TimesheetsService,
+  type ForRecordingTimesheetOptions,
+  type ForProjectTimesheetOptions,
+  type ReportTimesheetOptions,
+} from "./generated/services/timesheets.js";
+
+export {
+  TimelineService,
+} from "./generated/services/timeline.js";
+
+// Search & Reports services - generated
 export {
   SearchService,
-  type SearchResult,
-  type SearchMetadata,
-  type SearchProject,
-  type SearchOptions,
-} from "./services/search.js";
+  type SearchSearchOptions,
+} from "./generated/services/search.js";
 
 export {
   ReportsService,
-  type TimesheetEntry,
-  type TimesheetReportOptions,
-} from "./services/reports.js";
+} from "./generated/services/reports.js";
 
-// Templates service
+// Recording services - generated
+export {
+  RecordingsService,
+  type Recording,
+  type ListRecordingOptions,
+} from "./generated/services/recordings.js";
+
+// Templates service - generated
 export {
   TemplatesService,
   type Template,
-  type ProjectConstruction,
+  type ListTemplateOptions,
   type CreateTemplateRequest,
   type UpdateTemplateRequest,
-  type CreateProjectFromTemplateRequest,
-} from "./services/templates.js";
+  type CreateProjectTemplateRequest,
+} from "./generated/services/templates.js";
 
-// Time & Activity services
+// Lineup service - generated
 export {
   LineupService,
-  type LineupMarker,
-  type MarkerColor,
-  type CreateMarkerRequest,
-  type UpdateMarkerRequest,
-} from "./services/lineup.js";
+  type CreateLineupRequest,
+  type UpdateLineupRequest,
+} from "./generated/services/lineup.js";
 
-// Organization services
+// Organization services - generated
 export {
   TodolistGroupsService,
   type TodolistGroup,
   type CreateTodolistGroupRequest,
-  type UpdateTodolistGroupRequest,
-} from "./services/todolistGroups.js";
+} from "./generated/services/todolist-groups.js";
 
 export {
   ToolsService,
   type Tool,
-} from "./services/tools.js";
+} from "./generated/services/tools.js";
 
 // OpenTelemetry hooks
 export {

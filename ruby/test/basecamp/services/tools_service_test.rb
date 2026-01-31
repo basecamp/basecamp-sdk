@@ -23,10 +23,10 @@ class ToolsServiceTest < Minitest::Test
   def test_clone
     response = { "id" => 2, "name" => "Message Board (Copy)" }
 
-    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/dock/tools/\d+/clone\.json})
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/dock/tools\.json})
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.tools.clone(project_id: 1, source_tool_id: 2)
+    result = @account.tools.clone(project_id: 1, source_recording_id: 2)
     assert_equal "Message Board (Copy)", result["name"]
   end
 
@@ -49,7 +49,7 @@ class ToolsServiceTest < Minitest::Test
   end
 
   def test_enable
-    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/dock/tools/\d+/position\.json})
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/recordings/\d+/position\.json})
       .to_return(status: 204)
 
     result = @account.tools.enable(project_id: 1, tool_id: 2)
@@ -57,7 +57,7 @@ class ToolsServiceTest < Minitest::Test
   end
 
   def test_disable
-    stub_request(:delete, %r{https://3\.basecampapi\.com/12345/buckets/\d+/dock/tools/\d+/position\.json})
+    stub_request(:delete, %r{https://3\.basecampapi\.com/12345/buckets/\d+/recordings/\d+/position\.json})
       .to_return(status: 204)
 
     result = @account.tools.disable(project_id: 1, tool_id: 2)
@@ -65,7 +65,7 @@ class ToolsServiceTest < Minitest::Test
   end
 
   def test_reposition
-    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/dock/tools/\d+/position\.json})
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/recordings/\d+/position\.json})
       .to_return(status: 204)
 
     result = @account.tools.reposition(project_id: 1, tool_id: 2, position: 1)

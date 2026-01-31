@@ -1,5 +1,8 @@
 /**
- * Tests for the TemplatesService
+ * Tests for the TemplatesService (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -30,7 +33,7 @@ describe("TemplatesService", () => {
 
       server.use(
         http.get(`${BASE_URL}/templates.json`, () => {
-          return HttpResponse.json({ templates: mockTemplates });
+          return HttpResponse.json(mockTemplates);
         })
       );
 
@@ -42,7 +45,7 @@ describe("TemplatesService", () => {
     it("should return empty array when no templates exist", async () => {
       server.use(
         http.get(`${BASE_URL}/templates.json`, () => {
-          return HttpResponse.json({ templates: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -63,7 +66,7 @@ describe("TemplatesService", () => {
 
       server.use(
         http.get(`${BASE_URL}/templates/${templateId}`, () => {
-          return HttpResponse.json({ template: mockTemplate });
+          return HttpResponse.json(mockTemplate);
         })
       );
 
@@ -97,7 +100,7 @@ describe("TemplatesService", () => {
           const body = await request.json() as { name: string; description?: string };
           expect(body.name).toBe("New Template");
           expect(body.description).toBe("A new template");
-          return HttpResponse.json({ template: mockTemplate });
+          return HttpResponse.json(mockTemplate);
         })
       );
 
@@ -109,11 +112,7 @@ describe("TemplatesService", () => {
       expect(template.name).toBe("New Template");
     });
 
-    it("should throw validation error for missing name", async () => {
-      await expect(
-        client.templates.create({ name: "" })
-      ).rejects.toThrow("Template name is required");
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("update", () => {
@@ -129,7 +128,7 @@ describe("TemplatesService", () => {
         http.put(`${BASE_URL}/templates/${templateId}`, async ({ request }) => {
           const body = await request.json() as { name: string };
           expect(body.name).toBe("Updated Template");
-          return HttpResponse.json({ template: mockTemplate });
+          return HttpResponse.json(mockTemplate);
         })
       );
 
@@ -140,11 +139,7 @@ describe("TemplatesService", () => {
       expect(template.name).toBe("Updated Template");
     });
 
-    it("should throw validation error for missing name", async () => {
-      await expect(
-        client.templates.update(123, { name: "" })
-      ).rejects.toThrow("Template name is required");
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("delete", () => {
@@ -176,7 +171,7 @@ describe("TemplatesService", () => {
           async ({ request }) => {
             const body = await request.json() as { name: string; description?: string };
             expect(body.name).toBe("Q1 Campaign");
-            return HttpResponse.json({ construction: mockConstruction });
+            return HttpResponse.json(mockConstruction);
           }
         )
       );
@@ -189,11 +184,7 @@ describe("TemplatesService", () => {
       expect(construction.status).toBe("pending");
     });
 
-    it("should throw validation error for missing project name", async () => {
-      await expect(
-        client.templates.createProject(123, { name: "" })
-      ).rejects.toThrow("Project name is required");
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("getConstruction", () => {
@@ -214,7 +205,7 @@ describe("TemplatesService", () => {
         http.get(
           `${BASE_URL}/templates/${templateId}/project_constructions/${constructionId}`,
           () => {
-            return HttpResponse.json({ construction: mockConstruction });
+            return HttpResponse.json(mockConstruction);
           }
         )
       );

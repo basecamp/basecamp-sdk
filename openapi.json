@@ -42,8 +42,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateAttachment 200 response",
+          "201": {
+            "description": "CreateAttachment 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -385,8 +385,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "MoveCard 200 response"
+          "204": {
+            "description": "MoveCard 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -613,8 +613,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateCardStep 200 response",
+          "201": {
+            "description": "CreateCardStep 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -1397,8 +1397,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateCard 200 response",
+          "201": {
+            "description": "CreateCard 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -1463,6 +1463,202 @@
         ],
         "x-basecamp-retry": {
           "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json": {
+      "delete": {
+        "description": "Unsubscribe from a card column (stop watching for changes)",
+        "operationId": "UnsubscribeFromCardColumn",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "columnId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "UnsubscribeFromCardColumn 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "post": {
+        "description": "Subscribe to a card column (watch for changes)",
+        "operationId": "SubscribeToCardColumn",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "columnId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "SubscribeToCardColumn 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
           "baseDelayMs": 1000,
           "backoff": "exponential",
           "retryOn": [
@@ -1596,111 +1792,19 @@
       }
     },
     "/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": {
-      "delete": {
-        "description": "Mark a step as incomplete",
-        "operationId": "UncompleteCardStep",
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "description": "Basecamp account ID (numeric string)",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9]+$",
-              "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          },
-          {
-            "name": "stepId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "UncompleteCardStep 200 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UncompleteCardStepResponseContent"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "UnauthorizedError 401 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "ForbiddenError 403 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "NotFoundError 404 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "InternalServerError 500 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Card Tables"
-        ],
-        "x-basecamp-idempotent": {
-          "natural": true
-        },
-        "x-basecamp-retry": {
-          "maxAttempts": 3,
-          "baseDelayMs": 1000,
-          "backoff": "exponential",
-          "retryOn": [
-            429,
-            503
-          ]
-        }
-      },
       "put": {
-        "description": "Mark a step as completed",
-        "operationId": "CompleteCardStep",
+        "description": "Set card step completion status (PUT with completion: \"on\" to complete, \"\" to uncomplete)",
+        "operationId": "SetCardStepCompletion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCardStepCompletionRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
         "parameters": [
           {
             "name": "accountId",
@@ -1734,11 +1838,11 @@
         ],
         "responses": {
           "200": {
-            "description": "CompleteCardStep 200 response",
+            "description": "SetCardStepCompletion 200 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompleteCardStepResponseContent"
+                  "$ref": "#/components/schemas/SetCardStepCompletionResponseContent"
                 }
               }
             }
@@ -1958,8 +2062,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateCardColumn 200 response",
+          "201": {
+            "description": "CreateCardColumn 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -2079,8 +2183,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "MoveCardColumn 200 response"
+          "204": {
+            "description": "MoveCardColumn 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -2279,8 +2383,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateMessageType 200 response",
+          "201": {
+            "description": "CreateMessageType 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -2390,8 +2494,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteMessageType 200 response"
+          "204": {
+            "description": "DeleteMessageType 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -2922,8 +3026,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateChatbot 200 response",
+          "201": {
+            "description": "CreateChatbot 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -3042,8 +3146,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteChatbot 200 response"
+          "204": {
+            "description": "DeleteChatbot 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -3492,8 +3596,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateCampfireLine 200 response",
+          "201": {
+            "description": "CreateCampfireLine 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -3612,8 +3716,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteCampfireLine 200 response"
+          "204": {
+            "description": "DeleteCampfireLine 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -4616,10 +4720,20 @@
         }
       }
     },
-    "/{accountId}/buckets/{projectId}/dock/tools/{sourceToolId}/clone.json": {
+    "/{accountId}/buckets/{projectId}/dock/tools.json": {
       "post": {
         "description": "Clone an existing tool to create a new one",
         "operationId": "CloneTool",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloneToolRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
         "parameters": [
           {
             "name": "accountId",
@@ -4640,20 +4754,11 @@
               "format": "int64"
             },
             "required": true
-          },
-          {
-            "name": "sourceToolId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
           }
         ],
         "responses": {
-          "200": {
-            "description": "CloneTool 200 response",
+          "201": {
+            "description": "CloneTool 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -4763,8 +4868,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteTool 200 response"
+          "204": {
+            "description": "DeleteTool 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -4976,320 +5081,6 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "UnauthorizedError 401 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "ForbiddenError 403 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "NotFoundError 404 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "InternalServerError 500 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Automation"
-        ],
-        "x-basecamp-idempotent": {
-          "natural": true
-        },
-        "x-basecamp-retry": {
-          "maxAttempts": 3,
-          "baseDelayMs": 1000,
-          "backoff": "exponential",
-          "retryOn": [
-            429,
-            503
-          ]
-        }
-      }
-    },
-    "/{accountId}/buckets/{projectId}/dock/tools/{toolId}/position.json": {
-      "delete": {
-        "description": "Disable a tool (hide it from the project dock)",
-        "operationId": "DisableTool",
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "description": "Basecamp account ID (numeric string)",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9]+$",
-              "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          },
-          {
-            "name": "toolId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "DisableTool 200 response"
-          },
-          "401": {
-            "description": "UnauthorizedError 401 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "ForbiddenError 403 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "NotFoundError 404 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "InternalServerError 500 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Automation"
-        ],
-        "x-basecamp-idempotent": {
-          "natural": true
-        },
-        "x-basecamp-retry": {
-          "maxAttempts": 3,
-          "baseDelayMs": 1000,
-          "backoff": "exponential",
-          "retryOn": [
-            429,
-            503
-          ]
-        }
-      },
-      "post": {
-        "description": "Enable a tool (show it on the project dock)",
-        "operationId": "EnableTool",
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "description": "Basecamp account ID (numeric string)",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9]+$",
-              "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          },
-          {
-            "name": "toolId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "EnableTool 200 response"
-          },
-          "401": {
-            "description": "UnauthorizedError 401 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "ForbiddenError 403 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "RateLimitError 429 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "InternalServerError 500 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Automation"
-        ],
-        "x-basecamp-retry": {
-          "maxAttempts": 2,
-          "baseDelayMs": 1000,
-          "backoff": "exponential",
-          "retryOn": [
-            429,
-            503
-          ]
-        }
-      },
-      "put": {
-        "description": "Reposition a tool on the project dock",
-        "operationId": "RepositionTool",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RepositionToolRequestContent"
-              }
-            }
-          },
-          "required": true
-        },
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "description": "Basecamp account ID (numeric string)",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9]+$",
-              "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          },
-          {
-            "name": "toolId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "RepositionTool 200 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -5832,8 +5623,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateForwardReply 200 response",
+          "201": {
+            "description": "CreateForwardReply 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -6475,8 +6266,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateMessage 200 response",
+          "201": {
+            "description": "CreateMessage 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -6917,15 +6708,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "UpdateAnswer 200 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UpdateAnswerResponseContent"
-                }
-              }
-            }
+          "204": {
+            "description": "UpdateAnswer 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -7246,8 +7030,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateQuestion 200 response",
+          "201": {
+            "description": "CreateQuestion 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -7693,8 +7477,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateAnswer 200 response",
+          "201": {
+            "description": "CreateAnswer 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -7768,6 +7552,569 @@
         }
       }
     },
+    "/{accountId}/buckets/{projectId}/questions/{questionId}/answers/by.json": {
+      "get": {
+        "description": "List all people who have answered a question (answerers)\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages.",
+        "operationId": "ListQuestionAnswerers",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ListQuestionAnswerers 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListQuestionAnswerersResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "x-basecamp-pagination": {
+          "style": "link",
+          "maxPageSize": 50
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/buckets/{projectId}/questions/{questionId}/answers/by/{personId}": {
+      "get": {
+        "description": "Get all answers from a specific person for a question\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages.",
+        "operationId": "GetAnswersByPerson",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "personId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetAnswersByPerson 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetAnswersByPersonResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "x-basecamp-pagination": {
+          "style": "link",
+          "maxPageSize": 50
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/buckets/{projectId}/questions/{questionId}/notification_settings.json": {
+      "put": {
+        "description": "Update notification settings for a check-in question",
+        "operationId": "UpdateQuestionNotificationSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQuestionNotificationSettingsRequestContent"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UpdateQuestionNotificationSettings 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateQuestionNotificationSettingsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/buckets/{projectId}/questions/{questionId}/pause.json": {
+      "delete": {
+        "description": "Resume a paused check-in question (resumes sending reminders)",
+        "operationId": "ResumeQuestion",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ResumeQuestion 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeQuestionResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "post": {
+        "description": "Pause a check-in question (stops sending reminders)",
+        "operationId": "PauseQuestion",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PauseQuestion 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PauseQuestionResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/buckets/{projectId}/recordings/{messageId}/pin.json": {
       "delete": {
         "description": "Unpin a message from the message board",
@@ -7804,8 +8151,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "UnpinMessage 200 response"
+          "204": {
+            "description": "UnpinMessage 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -7899,8 +8246,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "PinMessage 200 response"
+          "204": {
+            "description": "PinMessage 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -8342,8 +8689,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateComment 200 response",
+          "201": {
+            "description": "CreateComment 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -8559,8 +8906,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "UnarchiveRecording 200 response"
+          "204": {
+            "description": "UnarchiveRecording 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -8666,8 +9013,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "ArchiveRecording 200 response"
+          "204": {
+            "description": "ArchiveRecording 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -8794,8 +9141,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "TrashRecording 200 response"
+          "204": {
+            "description": "TrashRecording 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -8901,8 +9248,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Unsubscribe 200 response"
+          "204": {
+            "description": "Unsubscribe 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -9483,9 +9830,323 @@
         }
       }
     },
+    "/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json": {
+      "delete": {
+        "description": "Disable a tool (hide it from the project dock)",
+        "operationId": "DisableTool",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "toolId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "DisableTool 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "post": {
+        "description": "Enable a tool (show it on the project dock)",
+        "operationId": "EnableTool",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "toolId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "EnableTool 201 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "put": {
+        "description": "Reposition a tool on the project dock",
+        "operationId": "RepositionTool",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositionToolRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "toolId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RepositionTool 200 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/buckets/{projectId}/schedule_entries/{entryId}": {
       "get": {
-        "description": "Get a single schedule entry by id",
+        "description": "Get a single schedule entry by id.\nNote: Recurring entries will redirect (302) to their recordable URL.\nUse GetScheduleEntryOccurrence for recurring entries instead.",
         "operationId": "GetScheduleEntry",
         "parameters": [
           {
@@ -10196,8 +10857,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateScheduleEntry 200 response",
+          "201": {
+            "description": "CreateScheduleEntry 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -10360,7 +11021,8 @@
           }
         },
         "x-basecamp-pagination": {
-          "style": "link_header",
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
           "maxPageSize": 50
         },
         "x-basecamp-retry": {
@@ -11041,8 +11703,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateTodolistGroup 200 response",
+          "201": {
+            "description": "CreateTodolistGroup 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -11282,8 +11944,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateTodo 200 response",
+          "201": {
+            "description": "CreateTodo 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -11393,8 +12055,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "TrashTodo 200 response"
+          "204": {
+            "description": "TrashTodo 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -11710,8 +12372,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "UncompleteTodo 200 response"
+          "204": {
+            "description": "UncompleteTodo 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -11805,8 +12467,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CompleteTodo 200 response"
+          "204": {
+            "description": "CompleteTodo 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -12250,8 +12912,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateTodolist 200 response",
+          "201": {
+            "description": "CreateTodolist 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -13025,8 +13687,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateDocument 200 response",
+          "201": {
+            "description": "CreateDocument 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -13250,8 +13912,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateUpload 200 response",
+          "201": {
+            "description": "CreateUpload 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -13475,8 +14137,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateVault 200 response",
+          "201": {
+            "description": "CreateVault 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -13682,12 +14344,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateWebhook 200 response",
+          "201": {
+            "description": "CreateWebhook 201 response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateWebhookResponseContent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BadRequestError 400 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponseContent"
                 }
               }
             }
@@ -13712,16 +14384,6 @@
               }
             }
           },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
-                }
-              }
-            }
-          },
           "429": {
             "description": "RateLimitError 429 response",
             "content": {
@@ -13738,6 +14400,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "WebhookLimitError 507 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookLimitErrorResponseContent"
                 }
               }
             }
@@ -13793,8 +14465,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteWebhook 200 response"
+          "204": {
+            "description": "DeleteWebhook 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -14006,6 +14678,16 @@
               }
             }
           },
+          "400": {
+            "description": "BadRequestError 400 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponseContent"
+                }
+              }
+            }
+          },
           "401": {
             "description": "UnauthorizedError 401 response",
             "content": {
@@ -14036,22 +14718,22 @@
               }
             }
           },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
-                }
-              }
-            }
-          },
           "500": {
             "description": "InternalServerError 500 response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "WebhookLimitError 507 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookLimitErrorResponseContent"
                 }
               }
             }
@@ -14278,15 +14960,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateLineupMarker 200 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateLineupMarkerResponseContent"
-                }
-              }
-            }
+          "201": {
+            "description": "CreateLineupMarker 201 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -14380,8 +15055,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteLineupMarker 200 response"
+          "204": {
+            "description": "DeleteLineupMarker 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -14476,14 +15151,7 @@
         ],
         "responses": {
           "200": {
-            "description": "UpdateLineupMarker 200 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UpdateLineupMarkerResponseContent"
-                }
-              }
-            }
+            "description": "UpdateLineupMarker 200 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -14625,6 +15293,90 @@
         "tags": [
           "People"
         ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/my/question_reminders.json": {
+      "get": {
+        "description": "Get pending check-in reminders for the current user\n\nReturns questions that are pending a response from the authenticated user.\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages.",
+        "operationId": "GetQuestionReminders",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetQuestionReminders 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetQuestionRemindersResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "x-basecamp-pagination": {
+          "style": "link",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -14939,8 +15691,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateProject 200 response",
+          "201": {
+            "description": "CreateProject 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -15224,8 +15976,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "TrashProject 200 response"
+          "204": {
+            "description": "TrashProject 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -15755,6 +16507,16 @@
               }
             }
           },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
           "500": {
             "description": "InternalServerError 500 response",
             "content": {
@@ -15853,7 +16615,8 @@
           }
         },
         "x-basecamp-pagination": {
-          "style": "link_header",
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
           "maxPageSize": 50
         },
         "x-basecamp-retry": {
@@ -16422,10 +17185,6 @@
             }
           }
         },
-        "x-basecamp-pagination": {
-          "style": "link_header",
-          "maxPageSize": 50
-        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -16468,6 +17227,14 @@
             "schema": {
               "type": "string",
               "description": "created_at|updated_at"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -16526,6 +17293,11 @@
         "tags": [
           "Automation"
         ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -16743,8 +17515,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateTemplate 200 response",
+          "201": {
+            "description": "CreateTemplate 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -16845,8 +17617,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "DeleteTemplate 200 response"
+          "204": {
+            "description": "DeleteTemplate 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -17145,8 +17917,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "CreateProjectFromTemplate 200 response",
+          "201": {
+            "description": "CreateProjectFromTemplate 201 response",
             "content": {
               "application/json": {
                 "schema": {
@@ -17373,6 +18145,20 @@
             }
           }
         }
+      },
+      "BadRequestErrorResponseContent": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
       },
       "Campfire": {
         "type": "object",
@@ -18239,13 +19025,21 @@
           }
         }
       },
-      "CloneToolResponseContent": {
+      "CloneToolRequestContent": {
         "type": "object",
         "properties": {
-          "tool": {
-            "$ref": "#/components/schemas/Tool"
+          "source_recording_id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
-        }
+        },
+        "required": [
+          "source_recording_id"
+        ]
+      },
+      "CloneToolResponseContent": {
+        "$ref": "#/components/schemas/Tool"
       },
       "Comment": {
         "type": "object",
@@ -18309,21 +19103,8 @@
           }
         }
       },
-      "CompleteCardStepResponseContent": {
-        "type": "object",
-        "properties": {
-          "step": {
-            "$ref": "#/components/schemas/CardStep"
-          }
-        }
-      },
       "CreateAnswerResponseContent": {
-        "type": "object",
-        "properties": {
-          "answer": {
-            "$ref": "#/components/schemas/QuestionAnswer"
-          }
-        }
+        "$ref": "#/components/schemas/QuestionAnswer"
       },
       "CreateAttachmentInputPayload": {
         "type": "string",
@@ -18349,12 +19130,7 @@
         ]
       },
       "CreateCampfireLineResponseContent": {
-        "type": "object",
-        "properties": {
-          "line": {
-            "$ref": "#/components/schemas/CampfireLine"
-          }
-        }
+        "$ref": "#/components/schemas/CampfireLine"
       },
       "CreateCardColumnRequestContent": {
         "type": "object",
@@ -18371,12 +19147,7 @@
         ]
       },
       "CreateCardColumnResponseContent": {
-        "type": "object",
-        "properties": {
-          "column": {
-            "$ref": "#/components/schemas/CardColumn"
-          }
-        }
+        "$ref": "#/components/schemas/CardColumn"
       },
       "CreateCardRequestContent": {
         "type": "object",
@@ -18396,7 +19167,8 @@
             "x-go-type-skip-optional-pointer": true
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -18404,12 +19176,7 @@
         ]
       },
       "CreateCardResponseContent": {
-        "type": "object",
-        "properties": {
-          "card": {
-            "$ref": "#/components/schemas/Card"
-          }
-        }
+        "$ref": "#/components/schemas/Card"
       },
       "CreateCardStepRequestContent": {
         "type": "object",
@@ -18438,12 +19205,7 @@
         ]
       },
       "CreateCardStepResponseContent": {
-        "type": "object",
-        "properties": {
-          "step": {
-            "$ref": "#/components/schemas/CardStep"
-          }
-        }
+        "$ref": "#/components/schemas/CardStep"
       },
       "CreateChatbotRequestContent": {
         "type": "object",
@@ -18460,12 +19222,7 @@
         ]
       },
       "CreateChatbotResponseContent": {
-        "type": "object",
-        "properties": {
-          "chatbot": {
-            "$ref": "#/components/schemas/Chatbot"
-          }
-        }
+        "$ref": "#/components/schemas/Chatbot"
       },
       "CreateCommentRequestContent": {
         "type": "object",
@@ -18479,12 +19236,7 @@
         ]
       },
       "CreateCommentResponseContent": {
-        "type": "object",
-        "properties": {
-          "comment": {
-            "$ref": "#/components/schemas/Comment"
-          }
-        }
+        "$ref": "#/components/schemas/Comment"
       },
       "CreateDocumentRequestContent": {
         "type": "object",
@@ -18505,12 +19257,7 @@
         ]
       },
       "CreateDocumentResponseContent": {
-        "type": "object",
-        "properties": {
-          "document": {
-            "$ref": "#/components/schemas/Document"
-          }
-        }
+        "$ref": "#/components/schemas/Document"
       },
       "CreateForwardReplyRequestContent": {
         "type": "object",
@@ -18524,55 +19271,22 @@
         ]
       },
       "CreateForwardReplyResponseContent": {
-        "type": "object",
-        "properties": {
-          "reply": {
-            "$ref": "#/components/schemas/ForwardReply"
-          }
-        }
+        "$ref": "#/components/schemas/ForwardReply"
       },
       "CreateLineupMarkerRequestContent": {
         "type": "object",
         "properties": {
-          "title": {
+          "name": {
             "type": "string"
           },
-          "starts_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "ends_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "color": {
-            "type": "string"
-          },
-          "description": {
+          "date": {
             "type": "string"
           }
         },
         "required": [
-          "ends_on",
-          "starts_on",
-          "title"
+          "date",
+          "name"
         ]
-      },
-      "CreateLineupMarkerResponseContent": {
-        "type": "object",
-        "properties": {
-          "marker": {
-            "$ref": "#/components/schemas/LineupMarker"
-          }
-        }
       },
       "CreateMessageRequestContent": {
         "type": "object",
@@ -18598,12 +19312,7 @@
         ]
       },
       "CreateMessageResponseContent": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "$ref": "#/components/schemas/Message"
-          }
-        }
+        "$ref": "#/components/schemas/Message"
       },
       "CreateMessageTypeRequestContent": {
         "type": "object",
@@ -18621,12 +19330,7 @@
         ]
       },
       "CreateMessageTypeResponseContent": {
-        "type": "object",
-        "properties": {
-          "message_type": {
-            "$ref": "#/components/schemas/MessageType"
-          }
-        }
+        "$ref": "#/components/schemas/MessageType"
       },
       "CreatePersonRequest": {
         "type": "object",
@@ -18668,12 +19372,7 @@
         ]
       },
       "CreateProjectFromTemplateResponseContent": {
-        "type": "object",
-        "properties": {
-          "construction": {
-            "$ref": "#/components/schemas/ProjectConstruction"
-          }
-        }
+        "$ref": "#/components/schemas/ProjectConstruction"
       },
       "CreateProjectRequestContent": {
         "type": "object",
@@ -18690,12 +19389,7 @@
         ]
       },
       "CreateProjectResponseContent": {
-        "type": "object",
-        "properties": {
-          "project": {
-            "$ref": "#/components/schemas/Project"
-          }
-        }
+        "$ref": "#/components/schemas/Project"
       },
       "CreateQuestionRequestContent": {
         "type": "object",
@@ -18713,12 +19407,7 @@
         ]
       },
       "CreateQuestionResponseContent": {
-        "type": "object",
-        "properties": {
-          "question": {
-            "$ref": "#/components/schemas/Question"
-          }
-        }
+        "$ref": "#/components/schemas/Question"
       },
       "CreateScheduleEntryRequestContent": {
         "type": "object",
@@ -18753,10 +19442,12 @@
             }
           },
           "all_day": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -18766,12 +19457,7 @@
         ]
       },
       "CreateScheduleEntryResponseContent": {
-        "type": "object",
-        "properties": {
-          "entry": {
-            "$ref": "#/components/schemas/ScheduleEntry"
-          }
-        }
+        "$ref": "#/components/schemas/ScheduleEntry"
       },
       "CreateTemplateRequestContent": {
         "type": "object",
@@ -18788,12 +19474,7 @@
         ]
       },
       "CreateTemplateResponseContent": {
-        "type": "object",
-        "properties": {
-          "template": {
-            "$ref": "#/components/schemas/Template"
-          }
-        }
+        "$ref": "#/components/schemas/Template"
       },
       "CreateTodoRequestContent": {
         "type": "object",
@@ -18819,7 +19500,8 @@
             }
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "due_on": {
             "type": "string",
@@ -18843,12 +19525,7 @@
         ]
       },
       "CreateTodoResponseContent": {
-        "type": "object",
-        "properties": {
-          "todo": {
-            "$ref": "#/components/schemas/Todo"
-          }
-        }
+        "$ref": "#/components/schemas/Todo"
       },
       "CreateTodolistGroupRequestContent": {
         "type": "object",
@@ -18862,12 +19539,7 @@
         ]
       },
       "CreateTodolistGroupResponseContent": {
-        "type": "object",
-        "properties": {
-          "group": {
-            "$ref": "#/components/schemas/TodolistGroup"
-          }
-        }
+        "$ref": "#/components/schemas/TodolistGroup"
       },
       "CreateTodolistRequestContent": {
         "type": "object",
@@ -18884,12 +19556,7 @@
         ]
       },
       "CreateTodolistResponseContent": {
-        "type": "object",
-        "properties": {
-          "todolist": {
-            "$ref": "#/components/schemas/Todolist"
-          }
-        }
+        "$ref": "#/components/schemas/Todolist"
       },
       "CreateUploadRequestContent": {
         "type": "object",
@@ -18909,12 +19576,7 @@
         ]
       },
       "CreateUploadResponseContent": {
-        "type": "object",
-        "properties": {
-          "upload": {
-            "$ref": "#/components/schemas/Upload"
-          }
-        }
+        "$ref": "#/components/schemas/Upload"
       },
       "CreateVaultRequestContent": {
         "type": "object",
@@ -18928,12 +19590,7 @@
         ]
       },
       "CreateVaultResponseContent": {
-        "type": "object",
-        "properties": {
-          "vault": {
-            "$ref": "#/components/schemas/Vault"
-          }
-        }
+        "$ref": "#/components/schemas/Vault"
       },
       "CreateWebhookRequestContent": {
         "type": "object",
@@ -18948,7 +19605,8 @@
             }
           },
           "active": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -18957,20 +19615,10 @@
         ]
       },
       "CreateWebhookResponseContent": {
-        "type": "object",
-        "properties": {
-          "webhook": {
-            "$ref": "#/components/schemas/Webhook"
-          }
-        }
+        "$ref": "#/components/schemas/Webhook"
       },
       "DisableCardColumnOnHoldResponseContent": {
-        "type": "object",
-        "properties": {
-          "column": {
-            "$ref": "#/components/schemas/CardColumn"
-          }
-        }
+        "$ref": "#/components/schemas/CardColumn"
       },
       "DockItem": {
         "type": "object",
@@ -19078,12 +19726,7 @@
         }
       },
       "EnableCardColumnOnHoldResponseContent": {
-        "type": "object",
-        "properties": {
-          "column": {
-            "$ref": "#/components/schemas/CardColumn"
-          }
-        }
+        "$ref": "#/components/schemas/CardColumn"
       },
       "Event": {
         "type": "object",
@@ -19300,6 +19943,12 @@
       "GetAnswerResponseContent": {
         "$ref": "#/components/schemas/QuestionAnswer"
       },
+      "GetAnswersByPersonResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/QuestionAnswer"
+        }
+      },
       "GetAssignedTodosResponseContent": {
         "type": "object",
         "properties": {
@@ -19418,14 +20067,9 @@
         "$ref": "#/components/schemas/Person"
       },
       "GetProgressReportResponseContent": {
-        "type": "object",
-        "properties": {
-          "events": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TimelineEvent"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/TimelineEvent"
         }
       },
       "GetProjectConstructionResponseContent": {
@@ -19435,25 +20079,21 @@
         "$ref": "#/components/schemas/Project"
       },
       "GetProjectTimelineResponseContent": {
-        "type": "object",
-        "properties": {
-          "events": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TimelineEvent"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/TimelineEvent"
         }
       },
       "GetProjectTimesheetResponseContent": {
-        "type": "object",
-        "properties": {
-          "entries": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TimesheetEntry"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/TimesheetEntry"
+        }
+      },
+      "GetQuestionRemindersResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/QuestionReminder"
         }
       },
       "GetQuestionResponseContent": {
@@ -19466,14 +20106,9 @@
         "$ref": "#/components/schemas/Recording"
       },
       "GetRecordingTimesheetResponseContent": {
-        "type": "object",
-        "properties": {
-          "entries": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TimesheetEntry"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/TimesheetEntry"
         }
       },
       "GetScheduleEntryOccurrenceResponseContent": {
@@ -19495,14 +20130,9 @@
         "$ref": "#/components/schemas/Template"
       },
       "GetTimesheetReportResponseContent": {
-        "type": "object",
-        "properties": {
-          "entries": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TimesheetEntry"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/TimesheetEntry"
         }
       },
       "GetTodoResponseContent": {
@@ -19630,78 +20260,6 @@
           "error"
         ]
       },
-      "LineupMarker": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
-          },
-          "status": {
-            "type": "string"
-          },
-          "color": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "starts_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "ends_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "description": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "updated_at": {
-            "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "type": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "app_url": {
-            "type": "string"
-          },
-          "creator": {
-            "$ref": "#/components/schemas/Person"
-          },
-          "parent": {
-            "$ref": "#/components/schemas/RecordingParent"
-          },
-          "bucket": {
-            "$ref": "#/components/schemas/RecordingBucket"
-          }
-        }
-      },
       "ListAnswersResponseContent": {
         "type": "array",
         "items": {
@@ -19820,6 +20378,12 @@
         "type": "array",
         "items": {
           "$ref": "#/components/schemas/Project"
+        }
+      },
+      "ListQuestionAnswerersResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Person"
         }
       },
       "ListQuestionsResponseContent": {
@@ -20117,6 +20681,14 @@
         "required": [
           "error"
         ]
+      },
+      "PauseQuestionResponseContent": {
+        "type": "object",
+        "properties": {
+          "paused": {
+            "type": "boolean"
+          }
+        }
       },
       "Person": {
         "type": "object",
@@ -20524,6 +21096,35 @@
           "content"
         ]
       },
+      "QuestionReminder": {
+        "type": "object",
+        "properties": {
+          "reminder_id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "remind_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "group_on": {
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "question": {
+            "$ref": "#/components/schemas/Question"
+          }
+        }
+      },
       "QuestionSchedule": {
         "type": "object",
         "properties": {
@@ -20771,6 +21372,12 @@
           "position": {
             "type": "integer",
             "format": "int32"
+          },
+          "parent_id": {
+            "type": "integer",
+            "description": "Optional todolist ID to move the todo to a different parent",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -20800,6 +21407,14 @@
         "required": [
           "position"
         ]
+      },
+      "ResumeQuestionResponseContent": {
+        "type": "object",
+        "properties": {
+          "paused": {
+            "type": "boolean"
+          }
+        }
       },
       "Schedule": {
         "type": "object",
@@ -21007,14 +21622,9 @@
         }
       },
       "SearchResponseContent": {
-        "type": "object",
-        "properties": {
-          "results": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SearchResult"
-            }
-          }
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/SearchResult"
         }
       },
       "SearchResult": {
@@ -21098,12 +21708,22 @@
         ]
       },
       "SetCardColumnColorResponseContent": {
+        "$ref": "#/components/schemas/CardColumn"
+      },
+      "SetCardStepCompletionRequestContent": {
         "type": "object",
         "properties": {
-          "column": {
-            "$ref": "#/components/schemas/CardColumn"
+          "completion": {
+            "type": "string",
+            "description": "Set to \"on\" to complete the step, \"\" (empty) to uncomplete"
           }
-        }
+        },
+        "required": [
+          "completion"
+        ]
+      },
+      "SetCardStepCompletionResponseContent": {
+        "$ref": "#/components/schemas/CardStep"
       },
       "SetClientVisibilityRequestContent": {
         "type": "object",
@@ -21117,20 +21737,10 @@
         ]
       },
       "SetClientVisibilityResponseContent": {
-        "type": "object",
-        "properties": {
-          "recording": {
-            "$ref": "#/components/schemas/Recording"
-          }
-        }
+        "$ref": "#/components/schemas/Recording"
       },
       "SubscribeResponseContent": {
-        "type": "object",
-        "properties": {
-          "subscription": {
-            "$ref": "#/components/schemas/Subscription"
-          }
-        }
+        "$ref": "#/components/schemas/Subscription"
       },
       "Subscription": {
         "type": "object",
@@ -21838,22 +22448,6 @@
           "error"
         ]
       },
-      "UncompleteCardStepResponseContent": {
-        "type": "object",
-        "properties": {
-          "step": {
-            "$ref": "#/components/schemas/CardStep"
-          }
-        }
-      },
-      "UpdateAnswerResponseContent": {
-        "type": "object",
-        "properties": {
-          "answer": {
-            "$ref": "#/components/schemas/QuestionAnswer"
-          }
-        }
-      },
       "UpdateCardColumnRequestContent": {
         "type": "object",
         "properties": {
@@ -21866,12 +22460,7 @@
         }
       },
       "UpdateCardColumnResponseContent": {
-        "type": "object",
-        "properties": {
-          "column": {
-            "$ref": "#/components/schemas/CardColumn"
-          }
-        }
+        "$ref": "#/components/schemas/CardColumn"
       },
       "UpdateCardRequestContent": {
         "type": "object",
@@ -21900,12 +22489,7 @@
         }
       },
       "UpdateCardResponseContent": {
-        "type": "object",
-        "properties": {
-          "card": {
-            "$ref": "#/components/schemas/Card"
-          }
-        }
+        "$ref": "#/components/schemas/Card"
       },
       "UpdateCardStepRequestContent": {
         "type": "object",
@@ -21931,12 +22515,7 @@
         }
       },
       "UpdateCardStepResponseContent": {
-        "type": "object",
-        "properties": {
-          "step": {
-            "$ref": "#/components/schemas/CardStep"
-          }
-        }
+        "$ref": "#/components/schemas/CardStep"
       },
       "UpdateChatbotRequestContent": {
         "type": "object",
@@ -21953,12 +22532,7 @@
         ]
       },
       "UpdateChatbotResponseContent": {
-        "type": "object",
-        "properties": {
-          "chatbot": {
-            "$ref": "#/components/schemas/Chatbot"
-          }
-        }
+        "$ref": "#/components/schemas/Chatbot"
       },
       "UpdateCommentRequestContent": {
         "type": "object",
@@ -21972,12 +22546,7 @@
         ]
       },
       "UpdateCommentResponseContent": {
-        "type": "object",
-        "properties": {
-          "comment": {
-            "$ref": "#/components/schemas/Comment"
-          }
-        }
+        "$ref": "#/components/schemas/Comment"
       },
       "UpdateDocumentRequestContent": {
         "type": "object",
@@ -21991,48 +22560,16 @@
         }
       },
       "UpdateDocumentResponseContent": {
-        "type": "object",
-        "properties": {
-          "document": {
-            "$ref": "#/components/schemas/Document"
-          }
-        }
+        "$ref": "#/components/schemas/Document"
       },
       "UpdateLineupMarkerRequestContent": {
         "type": "object",
         "properties": {
-          "title": {
+          "name": {
             "type": "string"
           },
-          "starts_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "ends_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "color": {
+          "date": {
             "type": "string"
-          },
-          "description": {
-            "type": "string"
-          }
-        }
-      },
-      "UpdateLineupMarkerResponseContent": {
-        "type": "object",
-        "properties": {
-          "marker": {
-            "$ref": "#/components/schemas/LineupMarker"
           }
         }
       },
@@ -22057,12 +22594,7 @@
         }
       },
       "UpdateMessageResponseContent": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "$ref": "#/components/schemas/Message"
-          }
-        }
+        "$ref": "#/components/schemas/Message"
       },
       "UpdateMessageTypeRequestContent": {
         "type": "object",
@@ -22076,12 +22608,7 @@
         }
       },
       "UpdateMessageTypeResponseContent": {
-        "type": "object",
-        "properties": {
-          "message_type": {
-            "$ref": "#/components/schemas/MessageType"
-          }
-        }
+        "$ref": "#/components/schemas/MessageType"
       },
       "UpdateProjectAccessRequestContent": {
         "type": "object",
@@ -22109,12 +22636,7 @@
         }
       },
       "UpdateProjectAccessResponseContent": {
-        "type": "object",
-        "properties": {
-          "result": {
-            "$ref": "#/components/schemas/ProjectAccessResult"
-          }
-        }
+        "$ref": "#/components/schemas/ProjectAccessResult"
       },
       "UpdateProjectRequestContent": {
         "type": "object",
@@ -22138,10 +22660,31 @@
         ]
       },
       "UpdateProjectResponseContent": {
+        "$ref": "#/components/schemas/Project"
+      },
+      "UpdateQuestionNotificationSettingsRequestContent": {
         "type": "object",
         "properties": {
-          "project": {
-            "$ref": "#/components/schemas/Project"
+          "notify_on_answer": {
+            "type": "boolean",
+            "description": "Notify when someone answers",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "digest_include_unanswered": {
+            "type": "boolean",
+            "description": "Include unanswered in digest",
+            "x-go-type-skip-optional-pointer": false
+          }
+        }
+      },
+      "UpdateQuestionNotificationSettingsResponseContent": {
+        "type": "object",
+        "properties": {
+          "responding": {
+            "type": "boolean"
+          },
+          "subscribed": {
+            "type": "boolean"
           }
         }
       },
@@ -22155,17 +22698,13 @@
             "$ref": "#/components/schemas/QuestionSchedule"
           },
           "paused": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
       "UpdateQuestionResponseContent": {
-        "type": "object",
-        "properties": {
-          "question": {
-            "$ref": "#/components/schemas/Question"
-          }
-        }
+        "$ref": "#/components/schemas/Question"
       },
       "UpdateScheduleEntryRequestContent": {
         "type": "object",
@@ -22200,20 +22739,17 @@
             }
           },
           "all_day": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
       "UpdateScheduleEntryResponseContent": {
-        "type": "object",
-        "properties": {
-          "entry": {
-            "$ref": "#/components/schemas/ScheduleEntry"
-          }
-        }
+        "$ref": "#/components/schemas/ScheduleEntry"
       },
       "UpdateScheduleSettingsRequestContent": {
         "type": "object",
@@ -22227,12 +22763,7 @@
         ]
       },
       "UpdateScheduleSettingsResponseContent": {
-        "type": "object",
-        "properties": {
-          "schedule": {
-            "$ref": "#/components/schemas/Schedule"
-          }
-        }
+        "$ref": "#/components/schemas/Schedule"
       },
       "UpdateSubscriptionRequestContent": {
         "type": "object",
@@ -22254,12 +22785,7 @@
         }
       },
       "UpdateSubscriptionResponseContent": {
-        "type": "object",
-        "properties": {
-          "subscription": {
-            "$ref": "#/components/schemas/Subscription"
-          }
-        }
+        "$ref": "#/components/schemas/Subscription"
       },
       "UpdateTemplateRequestContent": {
         "type": "object",
@@ -22273,12 +22799,7 @@
         }
       },
       "UpdateTemplateResponseContent": {
-        "type": "object",
-        "properties": {
-          "template": {
-            "$ref": "#/components/schemas/Template"
-          }
-        }
+        "$ref": "#/components/schemas/Template"
       },
       "UpdateTodoRequestContent": {
         "type": "object",
@@ -22304,7 +22825,8 @@
             }
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "due_on": {
             "type": "string",
@@ -22325,12 +22847,7 @@
         }
       },
       "UpdateTodoResponseContent": {
-        "type": "object",
-        "properties": {
-          "todo": {
-            "$ref": "#/components/schemas/Todo"
-          }
-        }
+        "$ref": "#/components/schemas/Todo"
       },
       "UpdateTodolistOrGroupRequestContent": {
         "type": "object",
@@ -22346,12 +22863,7 @@
         }
       },
       "UpdateTodolistOrGroupResponseContent": {
-        "type": "object",
-        "properties": {
-          "result": {
-            "$ref": "#/components/schemas/TodolistOrGroup"
-          }
-        }
+        "$ref": "#/components/schemas/TodolistOrGroup"
       },
       "UpdateToolRequestContent": {
         "type": "object",
@@ -22365,12 +22877,7 @@
         ]
       },
       "UpdateToolResponseContent": {
-        "type": "object",
-        "properties": {
-          "tool": {
-            "$ref": "#/components/schemas/Tool"
-          }
-        }
+        "$ref": "#/components/schemas/Tool"
       },
       "UpdateUploadRequestContent": {
         "type": "object",
@@ -22384,12 +22891,7 @@
         }
       },
       "UpdateUploadResponseContent": {
-        "type": "object",
-        "properties": {
-          "upload": {
-            "$ref": "#/components/schemas/Upload"
-          }
-        }
+        "$ref": "#/components/schemas/Upload"
       },
       "UpdateVaultRequestContent": {
         "type": "object",
@@ -22400,12 +22902,7 @@
         }
       },
       "UpdateVaultResponseContent": {
-        "type": "object",
-        "properties": {
-          "vault": {
-            "$ref": "#/components/schemas/Vault"
-          }
-        }
+        "$ref": "#/components/schemas/Vault"
       },
       "UpdateWebhookRequestContent": {
         "type": "object",
@@ -22420,17 +22917,13 @@
             }
           },
           "active": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
       "UpdateWebhookResponseContent": {
-        "type": "object",
-        "properties": {
-          "webhook": {
-            "$ref": "#/components/schemas/Webhook"
-          }
-        }
+        "$ref": "#/components/schemas/Webhook"
       },
       "Upload": {
         "type": "object",
@@ -22670,6 +23163,20 @@
             "type": "string"
           }
         }
+      },
+      "WebhookLimitErrorResponseContent": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
       }
     }
   }

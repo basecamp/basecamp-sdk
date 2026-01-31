@@ -2,7 +2,6 @@ package basecamp
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -67,8 +66,7 @@ func NewLineupService(client *AccountClient) *LineupService {
 }
 
 // CreateMarker creates a new marker on the lineup.
-// Returns the created marker.
-func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerRequest) (result *LineupMarker, err error) {
+func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerRequest) (err error) {
 	op := OperationInfo{
 		Service: "Lineup", Operation: "CreateMarker",
 		ResourceType: "lineup_marker", IsMutation: true,
@@ -84,26 +82,26 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 
 	if req == nil || req.Title == "" {
 		err = ErrUsage("marker title is required")
-		return nil, err
+		return err
 	}
 	if req.StartsOn == "" {
 		err = ErrUsage("marker starts_on date is required")
-		return nil, err
+		return err
 	}
 	if req.EndsOn == "" {
 		err = ErrUsage("marker ends_on date is required")
-		return nil, err
+		return err
 	}
 
 	startsOn, parseErr := types.ParseDate(req.StartsOn)
 	if parseErr != nil {
 		err = ErrUsage("marker starts_on date must be in YYYY-MM-DD format")
-		return nil, err
+		return err
 	}
 	endsOn, parseErr := types.ParseDate(req.EndsOn)
 	if parseErr != nil {
 		err = ErrUsage("marker ends_on date must be in YYYY-MM-DD format")
-		return nil, err
+		return err
 	}
 
 	body := generated.CreateLineupMarkerJSONRequestBody{
@@ -116,24 +114,14 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 
 	resp, err := s.client.parent.gen.CreateLineupMarkerWithResponse(ctx, s.client.accountID, body)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		err = fmt.Errorf("unexpected empty response")
-		return nil, err
-	}
-
-	marker := lineupMarkerFromGenerated(resp.JSON200.Marker)
-	return &marker, nil
+	return checkResponse(resp.HTTPResponse)
 }
 
 // UpdateMarker updates an existing marker.
 // markerID is the marker ID.
-// Returns the updated marker.
-func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *UpdateMarkerRequest) (result *LineupMarker, err error) {
+func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *UpdateMarkerRequest) (err error) {
 	op := OperationInfo{
 		Service: "Lineup", Operation: "UpdateMarker",
 		ResourceType: "lineup_marker", IsMutation: true,
@@ -150,7 +138,7 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 
 	if req == nil {
 		err = ErrUsage("update request is required")
-		return nil, err
+		return err
 	}
 
 	body := generated.UpdateLineupMarkerJSONRequestBody{
@@ -162,7 +150,7 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 		startsOn, parseErr := types.ParseDate(req.StartsOn)
 		if parseErr != nil {
 			err = ErrUsage("marker starts_on date must be in YYYY-MM-DD format")
-			return nil, err
+			return err
 		}
 		body.StartsOn = startsOn
 	}
@@ -170,25 +158,16 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 		endsOn, parseErr := types.ParseDate(req.EndsOn)
 		if parseErr != nil {
 			err = ErrUsage("marker ends_on date must be in YYYY-MM-DD format")
-			return nil, err
+			return err
 		}
 		body.EndsOn = endsOn
 	}
 
 	resp, err := s.client.parent.gen.UpdateLineupMarkerWithResponse(ctx, s.client.accountID, markerID, body)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		err = fmt.Errorf("unexpected empty response")
-		return nil, err
-	}
-
-	marker := lineupMarkerFromGenerated(resp.JSON200.Marker)
-	return &marker, nil
+	return checkResponse(resp.HTTPResponse)
 }
 
 // DeleteMarker deletes a marker.
@@ -215,60 +194,5 @@ func (s *LineupService) DeleteMarker(ctx context.Context, markerID int64) (err e
 	return checkResponse(resp.HTTPResponse)
 }
 
-// lineupMarkerFromGenerated converts a generated LineupMarker to our clean type.
-func lineupMarkerFromGenerated(gm generated.LineupMarker) LineupMarker {
-	m := LineupMarker{
-		Status:      gm.Status,
-		Color:       gm.Color,
-		Title:       gm.Title,
-		Description: gm.Description,
-		CreatedAt:   gm.CreatedAt,
-		UpdatedAt:   gm.UpdatedAt,
-		Type:        gm.Type,
-		URL:         gm.Url,
-		AppURL:      gm.AppUrl,
-	}
-
-	if gm.Id != nil {
-		m.ID = *gm.Id
-	}
-
-	// Convert date fields to strings
-	if !gm.StartsOn.IsZero() {
-		m.StartsOn = gm.StartsOn.String()
-	}
-	if !gm.EndsOn.IsZero() {
-		m.EndsOn = gm.EndsOn.String()
-	}
-
-	if gm.Creator.Id != nil || gm.Creator.Name != "" {
-		m.Creator = &Person{
-			ID:           derefInt64(gm.Creator.Id),
-			Name:         gm.Creator.Name,
-			EmailAddress: gm.Creator.EmailAddress,
-			AvatarURL:    gm.Creator.AvatarUrl,
-			Admin:        gm.Creator.Admin,
-			Owner:        gm.Creator.Owner,
-		}
-	}
-
-	if gm.Parent.Id != nil || gm.Parent.Title != "" {
-		m.Parent = &Parent{
-			ID:     derefInt64(gm.Parent.Id),
-			Title:  gm.Parent.Title,
-			Type:   gm.Parent.Type,
-			URL:    gm.Parent.Url,
-			AppURL: gm.Parent.AppUrl,
-		}
-	}
-
-	if gm.Bucket.Id != nil || gm.Bucket.Name != "" {
-		m.Bucket = &Bucket{
-			ID:   derefInt64(gm.Bucket.Id),
-			Name: gm.Bucket.Name,
-			Type: gm.Bucket.Type,
-		}
-	}
-
-	return m
-}
+// Note: lineupMarkerFromGenerated was removed because CreateLineupMarker and
+// UpdateLineupMarker now return 204 No Content with no response body.

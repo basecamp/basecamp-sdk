@@ -90,19 +90,23 @@ func (s *ToolsService) Create(ctx context.Context, bucketID, sourceToolID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, bucketID, sourceToolID)
+	body := generated.CloneToolJSONRequestBody{
+		SourceRecordingId: sourceToolID,
+	}
+
+	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, bucketID, body)
 	if err != nil {
 		return nil, err
 	}
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	tool := toolFromGenerated(resp.JSON200.Tool)
+	tool := toolFromGenerated(*resp.JSON201)
 	return &tool, nil
 }
 
@@ -145,7 +149,7 @@ func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, title
 		return nil, err
 	}
 
-	tool := toolFromGenerated(resp.JSON200.Tool)
+	tool := toolFromGenerated(*resp.JSON200)
 	return &tool, nil
 }
 
@@ -248,7 +252,7 @@ func (s *ToolsService) Reposition(ctx context.Context, bucketID, toolID int64, p
 	}
 
 	body := generated.RepositionToolJSONRequestBody{
-		Position: int32(position),
+		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
 	}
 
 	resp, err := s.client.parent.gen.RepositionToolWithResponse(ctx, s.client.accountID, bucketID, toolID, body)

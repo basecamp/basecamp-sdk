@@ -80,7 +80,7 @@ export class TodolistGroupsService extends BaseService {
         })
     );
 
-    return response?.groups ?? [];
+    return response ?? [];
   }
 
   /**
@@ -168,7 +168,7 @@ export class TodolistGroupsService extends BaseService {
         })
     );
 
-    return response.group!;
+    return response;
   }
 
   /**

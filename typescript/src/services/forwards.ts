@@ -151,7 +151,7 @@ export class ForwardsService extends BaseService {
         })
     );
 
-    return response.inbox as unknown as Inbox;
+    return response as unknown as Inbox;
   }
 
   /**
@@ -183,7 +183,7 @@ export class ForwardsService extends BaseService {
         })
     );
 
-    return (response?.forwards ?? []) as unknown as Forward[];
+    return (response ?? []) as Forward[];
   }
 
   /**
@@ -216,7 +216,7 @@ export class ForwardsService extends BaseService {
         })
     );
 
-    return response.forward as unknown as Forward;
+    return response as unknown as Forward;
   }
 
   /**
@@ -248,7 +248,7 @@ export class ForwardsService extends BaseService {
         })
     );
 
-    return (response?.replies ?? []) as unknown as ForwardReply[];
+    return (response ?? []) as ForwardReply[];
   }
 
   /**
@@ -282,7 +282,7 @@ export class ForwardsService extends BaseService {
         })
     );
 
-    return response.reply as unknown as ForwardReply;
+    return response as unknown as ForwardReply;
   }
 
   /**
@@ -328,6 +328,6 @@ export class ForwardsService extends BaseService {
         })
     );
 
-    return response.reply as unknown as ForwardReply;
+    return response as unknown as ForwardReply;
   }
 }

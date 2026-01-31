@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Tests for the DocumentsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (get, update)
+
 require "test_helper"
 
 class DocumentsServiceTest < Minitest::Test
@@ -32,7 +37,8 @@ class DocumentsServiceTest < Minitest::Test
   end
 
   def test_get_document
-    stub_get("/12345/buckets/100/documents/200.json", response_body: sample_document(id: 200))
+    # Generated service: /documents/{id} without .json
+    stub_get("/12345/buckets/100/documents/200", response_body: sample_document(id: 200))
 
     document = @account.documents.get(project_id: 100, document_id: 200)
 
@@ -72,8 +78,9 @@ class DocumentsServiceTest < Minitest::Test
   end
 
   def test_update_document
+    # Generated service: /documents/{id} without .json
     updated_document = sample_document(id: 200, title: "Updated Title")
-    stub_put("/12345/buckets/100/documents/200.json", response_body: updated_document)
+    stub_put("/12345/buckets/100/documents/200", response_body: updated_document)
 
     document = @account.documents.update(
       project_id: 100,

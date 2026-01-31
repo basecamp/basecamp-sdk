@@ -53,7 +53,7 @@ describe("EventsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/recordings/5001/events.json`, () => {
-          return HttpResponse.json({ events });
+          return HttpResponse.json(events);
         })
       );
 
@@ -69,7 +69,7 @@ describe("EventsService", () => {
     it("should return empty array when no events", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/123/recordings/5001/events.json`, () => {
-          return HttpResponse.json({ events: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -96,7 +96,7 @@ describe("EventsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/recordings/5001/events.json`, () => {
-          return HttpResponse.json({ events });
+          return HttpResponse.json(events);
         })
       );
 
@@ -122,7 +122,7 @@ describe("EventsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/recordings/5001/events.json`, () => {
-          return HttpResponse.json({ events });
+          return HttpResponse.json(events);
         })
       );
 
@@ -148,7 +148,7 @@ describe("EventsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/recordings/5001/events.json`, () => {
-          return HttpResponse.json({ events });
+          return HttpResponse.json(events);
         })
       );
 

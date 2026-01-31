@@ -98,7 +98,7 @@ export class SubscriptionsService extends BaseService {
         })
     );
 
-    return response.subscription as unknown as Subscription;
+    return response as unknown as Subscription;
   }
 
   /**
@@ -130,7 +130,7 @@ export class SubscriptionsService extends BaseService {
         })
     );
 
-    return response.subscription as unknown as Subscription;
+    return response as unknown as Subscription;
   }
 
   /**
@@ -211,6 +211,6 @@ export class SubscriptionsService extends BaseService {
         })
     );
 
-    return response.subscription as unknown as Subscription;
+    return response as unknown as Subscription;
   }
 }

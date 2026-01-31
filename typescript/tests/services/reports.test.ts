@@ -1,5 +1,11 @@
 /**
- * Tests for the ReportsService
+ * Tests for the ReportsService and TimesheetsService (generated from OpenAPI spec)
+ *
+ * Note: In generated services, timesheet operations moved from ReportsService
+ * to a dedicated TimesheetsService:
+ * - reports.timesheet() -> timesheets.report()
+ * - reports.projectTimesheet() -> timesheets.forProject()
+ * - reports.recordingTimesheet() -> timesheets.forRecording()
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -9,7 +15,7 @@ import type { BasecampClient } from "../../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
-describe("ReportsService", () => {
+describe("TimesheetsService", () => {
   let client: BasecampClient;
 
   beforeEach(() => {
@@ -20,7 +26,7 @@ describe("ReportsService", () => {
     });
   });
 
-  describe("timesheet", () => {
+  describe("report", () => {
     it("should return account-wide timesheet entries", async () => {
       const mockEntries = [
         {
@@ -41,11 +47,11 @@ describe("ReportsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/reports/timesheet.json`, () => {
-          return HttpResponse.json({ entries: mockEntries });
+          return HttpResponse.json(mockEntries);
         })
       );
 
-      const entries = await client.reports.timesheet();
+      const entries = await client.timesheets.report();
       expect(entries).toHaveLength(2);
       expect(entries[0]!.hours).toBe("4.5");
       expect(entries[1]!.date).toBe("2024-01-16");
@@ -57,11 +63,11 @@ describe("ReportsService", () => {
           const url = new URL(request.url);
           expect(url.searchParams.get("from")).toBe("2024-01-01");
           expect(url.searchParams.get("to")).toBe("2024-01-31");
-          return HttpResponse.json({ entries: [] });
+          return HttpResponse.json([]);
         })
       );
 
-      const entries = await client.reports.timesheet({
+      const entries = await client.timesheets.report({
         from: "2024-01-01",
         to: "2024-01-31",
       });
@@ -73,16 +79,16 @@ describe("ReportsService", () => {
         http.get(`${BASE_URL}/reports/timesheet.json`, ({ request }) => {
           const url = new URL(request.url);
           expect(url.searchParams.get("person_id")).toBe("12345");
-          return HttpResponse.json({ entries: [] });
+          return HttpResponse.json([]);
         })
       );
 
-      const entries = await client.reports.timesheet({ personId: 12345 });
+      const entries = await client.timesheets.report({ personId: 12345 });
       expect(entries).toEqual([]);
     });
   });
 
-  describe("projectTimesheet", () => {
+  describe("forProject", () => {
     it("should return timesheet entries for a specific project", async () => {
       const projectId = 67890;
       const mockEntries = [
@@ -96,11 +102,11 @@ describe("ReportsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/${projectId}/timesheet.json`, () => {
-          return HttpResponse.json({ entries: mockEntries });
+          return HttpResponse.json(mockEntries);
         })
       );
 
-      const entries = await client.reports.projectTimesheet(projectId);
+      const entries = await client.timesheets.forProject(projectId);
       expect(entries).toHaveLength(1);
       expect(entries[0]!.hours).toBe("2.0");
     });
@@ -113,11 +119,11 @@ describe("ReportsService", () => {
           const url = new URL(request.url);
           expect(url.searchParams.get("from")).toBe("2024-02-01");
           expect(url.searchParams.get("person_id")).toBe("999");
-          return HttpResponse.json({ entries: [] });
+          return HttpResponse.json([]);
         })
       );
 
-      const entries = await client.reports.projectTimesheet(projectId, {
+      const entries = await client.timesheets.forProject(projectId, {
         from: "2024-02-01",
         personId: 999,
       });
@@ -125,7 +131,7 @@ describe("ReportsService", () => {
     });
   });
 
-  describe("recordingTimesheet", () => {
+  describe("forRecording", () => {
     it("should return timesheet entries for a specific recording", async () => {
       const projectId = 67890;
       const recordingId = 11111;
@@ -142,12 +148,12 @@ describe("ReportsService", () => {
         http.get(
           `${BASE_URL}/buckets/${projectId}/recordings/${recordingId}/timesheet.json`,
           () => {
-            return HttpResponse.json({ entries: mockEntries });
+            return HttpResponse.json(mockEntries);
           }
         )
       );
 
-      const entries = await client.reports.recordingTimesheet(projectId, recordingId);
+      const entries = await client.timesheets.forRecording(projectId, recordingId);
       expect(entries).toHaveLength(1);
       expect(entries[0]!.hours).toBe("1.5");
     });

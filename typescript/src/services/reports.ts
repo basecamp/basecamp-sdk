@@ -86,7 +86,7 @@ export class ReportsService extends BaseService {
         })
     );
 
-    return response?.entries ?? [];
+    return response ?? [];
   }
 
   /**
@@ -133,7 +133,7 @@ export class ReportsService extends BaseService {
         })
     );
 
-    return response?.entries ?? [];
+    return response ?? [];
   }
 
   /**
@@ -177,6 +177,6 @@ export class ReportsService extends BaseService {
         })
     );
 
-    return response?.entries ?? [];
+    return response ?? [];
   }
 }

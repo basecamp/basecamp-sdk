@@ -1,10 +1,14 @@
 /**
- * Tests for the Uploads service
+ * Tests for the Uploads service (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No domain-specific trash() method (use recordings.trash() instead)
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
-import { UploadsService } from "../../src/services/uploads.js";
+import type { UploadsService } from "../../src/generated/services/uploads.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
 
@@ -36,7 +40,7 @@ describe("UploadsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/uploads/7001`, () => {
-          return HttpResponse.json({ upload });
+          return HttpResponse.json(upload);
         })
       );
 
@@ -73,7 +77,7 @@ describe("UploadsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, () => {
-          return HttpResponse.json({ uploads });
+          return HttpResponse.json(uploads);
         })
       );
 
@@ -87,7 +91,7 @@ describe("UploadsService", () => {
     it("should return empty array when no uploads", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, () => {
-          return HttpResponse.json({ uploads: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -109,7 +113,7 @@ describe("UploadsService", () => {
 
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, () => {
-          return HttpResponse.json({ upload: newUpload });
+          return HttpResponse.json(newUpload);
         })
       );
 
@@ -128,7 +132,7 @@ describe("UploadsService", () => {
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, async ({ request }) => {
           capturedBody = (await request.json()) as { attachable_sgid?: string; description?: string; base_name?: string };
-          return HttpResponse.json({ upload: { id: 1, title: "Test" } });
+          return HttpResponse.json({ id: 1, title: "Test" });
         })
       );
 
@@ -143,18 +147,7 @@ describe("UploadsService", () => {
       expect(capturedBody?.base_name).toBe("custom-name");
     });
 
-    it("should throw validation error when attachableSgid is missing", async () => {
-      await expect(
-        service.create(123, 1001, { attachableSgid: "" })
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.create(123, 1001, { attachableSgid: "" });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("attachable_sgid");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("update", () => {
@@ -168,7 +161,7 @@ describe("UploadsService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/uploads/7001`, () => {
-          return HttpResponse.json({ upload: updatedUpload });
+          return HttpResponse.json(updatedUpload);
         })
       );
 
@@ -186,7 +179,7 @@ describe("UploadsService", () => {
       server.use(
         http.put(`${BASE_URL}/buckets/123/uploads/7001`, async ({ request }) => {
           capturedBody = (await request.json()) as { description?: string; base_name?: string };
-          return HttpResponse.json({ upload: { id: 7001, title: "Test" } });
+          return HttpResponse.json({ id: 7001, title: "Test" });
         })
       );
 
@@ -210,7 +203,7 @@ describe("UploadsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/uploads/7001/versions.json`, () => {
-          return HttpResponse.json({ uploads });
+          return HttpResponse.json(uploads);
         })
       );
 
@@ -222,7 +215,7 @@ describe("UploadsService", () => {
     it("should return empty array when no versions", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/123/uploads/7001/versions.json`, () => {
-          return HttpResponse.json({ uploads: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -232,25 +225,7 @@ describe("UploadsService", () => {
     });
   });
 
-  describe("trash", () => {
-    it("should move an upload to trash", async () => {
-      server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/7001/status/trashed.json`, () => {
-          return new HttpResponse(null, { status: 204 });
-        })
-      );
-
-      await expect(service.trash(123, 7001)).resolves.toBeUndefined();
-    });
-
-    it("should throw error for non-existent upload", async () => {
-      server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/9999/status/trashed.json`, () => {
-          return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
-      );
-
-      await expect(service.trash(123, 9999)).rejects.toThrow(BasecampError);
-    });
-  });
+  // Note: trash() is on RecordingsService, not UploadsService (spec-conformant)
+  // Use client.recordings.trash(projectId, uploadId) instead
 });
+

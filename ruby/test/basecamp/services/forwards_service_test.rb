@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Tests for the ForwardsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (get_inbox, get, get_reply)
+
 require "test_helper"
 
 class ForwardsServiceTest < Minitest::Test
@@ -37,7 +42,8 @@ class ForwardsServiceTest < Minitest::Test
   end
 
   def test_get_inbox
-    stub_get("/12345/buckets/100/inboxes/200.json", response_body: sample_inbox(id: 200))
+    # Generated service: /inboxes/{id} without .json
+    stub_get("/12345/buckets/100/inboxes/200", response_body: sample_inbox(id: 200))
 
     inbox = @account.forwards.get_inbox(project_id: 100, inbox_id: 200)
 
@@ -57,7 +63,8 @@ class ForwardsServiceTest < Minitest::Test
   end
 
   def test_get_forward
-    stub_get("/12345/buckets/100/inbox_forwards/200.json", response_body: sample_forward(id: 200))
+    # Generated service: /inbox_forwards/{id} without .json
+    stub_get("/12345/buckets/100/inbox_forwards/200", response_body: sample_forward(id: 200))
 
     forward = @account.forwards.get(project_id: 100, forward_id: 200)
 
@@ -77,7 +84,8 @@ class ForwardsServiceTest < Minitest::Test
   end
 
   def test_get_reply
-    stub_get("/12345/buckets/100/inbox_forwards/200/replies/300.json", response_body: sample_reply(id: 300))
+    # Generated service: /inbox_forwards/{id}/replies/{reply_id} without .json
+    stub_get("/12345/buckets/100/inbox_forwards/200/replies/300", response_body: sample_reply(id: 300))
 
     reply = @account.forwards.get_reply(project_id: 100, forward_id: 200, reply_id: 300)
 

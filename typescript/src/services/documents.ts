@@ -103,7 +103,7 @@ export class DocumentsService extends BaseService {
         })
     );
 
-    return response.document!;
+    return response;
   }
 
   /**
@@ -137,7 +137,7 @@ export class DocumentsService extends BaseService {
         })
     );
 
-    return response?.documents ?? [];
+    return response ?? [];
   }
 
   /**
@@ -189,7 +189,7 @@ export class DocumentsService extends BaseService {
         })
     );
 
-    return response.document!;
+    return response;
   }
 
   /**
@@ -228,7 +228,7 @@ export class DocumentsService extends BaseService {
         })
     );
 
-    return response.document!;
+    return response;
   }
 
   /**

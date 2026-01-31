@@ -183,12 +183,12 @@ func (s *TodolistGroupsService) Create(ctx context.Context, bucketID, todolistID
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	group := todolistGroupFromGenerated(resp.JSON200.Group)
+	group := todolistGroupFromGenerated(*resp.JSON201)
 	return &group, nil
 }
 
@@ -228,7 +228,7 @@ func (s *TodolistGroupsService) Update(ctx context.Context, bucketID, groupID in
 	}
 
 	// The response is a union type, try to extract as TodolistGroup
-	g, err := resp.JSON200.Result.AsTodolistOrGroup1()
+	g, err := resp.JSON200.AsTodolistOrGroup1()
 	if err != nil {
 		err = fmt.Errorf("response is not a todolist group: %w", err)
 		return nil, err
@@ -262,7 +262,7 @@ func (s *TodolistGroupsService) Reposition(ctx context.Context, bucketID, groupI
 	}
 
 	body := generated.RepositionTodolistGroupJSONRequestBody{
-		Position: int32(position),
+		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
 	}
 
 	resp, err := s.client.parent.gen.RepositionTodolistGroupWithResponse(ctx, s.client.accountID, bucketID, groupID, body)

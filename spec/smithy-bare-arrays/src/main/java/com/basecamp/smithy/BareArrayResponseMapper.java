@@ -2,9 +2,13 @@
  * Copyright Basecamp, LLC
  * SPDX-License-Identifier: Apache-2.0
  *
- * Transforms List*ResponseContent schemas from wrapped objects to bare arrays.
+ * Transforms *ResponseContent schemas from wrapped objects to bare arrays.
  * This bridges the gap between Smithy's protocol constraints (which require
  * wrapped structures) and the BC3 API's actual wire format (bare arrays).
+ *
+ * Applies to any response schema ending in ResponseContent that has exactly
+ * one property which is an array type. This includes List operations, Search,
+ * and Get operations that return collections (e.g., timesheets).
  */
 package com.basecamp.smithy;
 
@@ -19,22 +23,25 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * An OpenAPI mapper that transforms List response schemas from wrapped objects
+ * An OpenAPI mapper that transforms response schemas from wrapped objects
  * to bare arrays, matching the BC3 API's actual response format.
  *
  * <p>Smithy's AWS restJson1 protocol requires list outputs to be modeled as
  * wrapped structures (e.g., {@code ListProjectsOutput { projects: ProjectList }})
  * because {@code @httpPayload} only supports structures, not arrays.
  *
- * <p>However, the BC3 API returns bare arrays: {@code GET /projects.json}
- * returns {@code [...]} not {@code {"projects": [...]}}.
+ * <p>However, the BC3 API returns bare arrays for all array-returning operations:
+ * {@code GET /projects.json} returns {@code [...]} not {@code {"projects": [...]}}.
+ * This applies to List operations, Search, and Get operations that return
+ * collections (e.g., timesheets).
  *
- * <p>This mapper runs after core OpenAPI generation and transforms schemas
- * matching the pattern {@code List*ResponseContent} from:
+ * <p>This mapper runs after core OpenAPI generation and transforms ALL
+ * {@code *ResponseContent} schemas that have exactly one property which is
+ * an array type. For example:
  * <pre>{@code
  * {"type": "object", "properties": {"x": {"type": "array", "items": ...}}}
  * }</pre>
- * to:
+ * becomes:
  * <pre>{@code
  * {"type": "array", "items": ...}
  * }</pre>
@@ -77,7 +84,7 @@ public final class BareArrayResponseMapper implements OpenApiMapper {
         }
 
         if (transformedCount > 0) {
-            LOGGER.info("Transformed " + transformedCount + " List*ResponseContent schemas to bare arrays");
+            LOGGER.info("Transformed " + transformedCount + " *ResponseContent schemas to bare arrays");
         }
 
         // Rebuild the node with updated schemas
@@ -98,8 +105,8 @@ public final class BareArrayResponseMapper implements OpenApiMapper {
      * @return true if the schema matches the criteria for transformation
      */
     boolean shouldTransform(String name, Node schema) {
-        // Must match List*ResponseContent pattern
-        if (!name.startsWith("List") || !name.endsWith("ResponseContent")) {
+        // Must be a *ResponseContent schema
+        if (!name.endsWith("ResponseContent")) {
             return false;
         }
 

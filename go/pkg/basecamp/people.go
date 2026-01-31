@@ -374,13 +374,13 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, bucketID int64,
 
 	// Convert the response
 	accessResult := &UpdateProjectAccessResponse{
-		Granted: make([]Person, 0, len(resp.JSON200.Result.Granted)),
-		Revoked: make([]Person, 0, len(resp.JSON200.Result.Revoked)),
+		Granted: make([]Person, 0, len(resp.JSON200.Granted)),
+		Revoked: make([]Person, 0, len(resp.JSON200.Revoked)),
 	}
-	for _, gp := range resp.JSON200.Result.Granted {
+	for _, gp := range resp.JSON200.Granted {
 		accessResult.Granted = append(accessResult.Granted, personFromGenerated(gp))
 	}
-	for _, gp := range resp.JSON200.Result.Revoked {
+	for _, gp := range resp.JSON200.Revoked {
 		accessResult.Revoked = append(accessResult.Revoked, personFromGenerated(gp))
 	}
 

@@ -1,10 +1,14 @@
 /**
- * Tests for the Schedules service
+ * Tests for the Schedules service (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
+ * - No domain-specific trashEntry() (use recordings.trash())
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
-import { SchedulesService } from "../../src/services/schedules.js";
+import type { SchedulesService } from "../../src/generated/services/schedules.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
 
@@ -34,7 +38,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/schedules/4001`, () => {
-          return HttpResponse.json({ schedule });
+          return HttpResponse.json(schedule);
         })
       );
 
@@ -71,7 +75,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, () => {
-          return HttpResponse.json({ entries });
+          return HttpResponse.json(entries);
         })
       );
 
@@ -85,7 +89,7 @@ describe("SchedulesService", () => {
     it("should return empty array when no entries", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, () => {
-          return HttpResponse.json({ entries: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -108,7 +112,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/schedule_entries/4101`, () => {
-          return HttpResponse.json({ entry });
+          return HttpResponse.json(entry);
         })
       );
 
@@ -132,7 +136,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.post(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, () => {
-          return HttpResponse.json({ entry: newEntry });
+          return HttpResponse.json(newEntry);
         })
       );
 
@@ -152,7 +156,7 @@ describe("SchedulesService", () => {
       server.use(
         http.post(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, async ({ request }) => {
           capturedBody = (await request.json()) as Record<string, unknown>;
-          return HttpResponse.json({ entry: { id: 1, summary: "Test" } });
+          return HttpResponse.json({ id: 1, summary: "Test" });
         })
       );
 
@@ -175,89 +179,7 @@ describe("SchedulesService", () => {
       expect(capturedBody?.notify).toBe(true);
     });
 
-    it("should throw validation error when summary is missing", async () => {
-      await expect(
-        service.createEntry(123, 4001, {
-          summary: "",
-          startsAt: "2024-12-20T14:00:00Z",
-          endsAt: "2024-12-20T15:00:00Z",
-        })
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.createEntry(123, 4001, {
-          summary: "",
-          startsAt: "2024-12-20T14:00:00Z",
-          endsAt: "2024-12-20T15:00:00Z",
-        });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("summary");
-      }
-    });
-
-    it("should throw validation error when startsAt is missing", async () => {
-      await expect(
-        service.createEntry(123, 4001, {
-          summary: "Test",
-          startsAt: "",
-          endsAt: "2024-12-20T15:00:00Z",
-        })
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.createEntry(123, 4001, {
-          summary: "Test",
-          startsAt: "",
-          endsAt: "2024-12-20T15:00:00Z",
-        });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("starts_at");
-      }
-    });
-
-    it("should throw validation error when endsAt is missing", async () => {
-      await expect(
-        service.createEntry(123, 4001, {
-          summary: "Test",
-          startsAt: "2024-12-20T14:00:00Z",
-          endsAt: "",
-        })
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.createEntry(123, 4001, {
-          summary: "Test",
-          startsAt: "2024-12-20T14:00:00Z",
-          endsAt: "",
-        });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("ends_at");
-      }
-    });
-
-    it("should throw validation error for invalid startsAt format", async () => {
-      await expect(
-        service.createEntry(123, 4001, {
-          summary: "Test",
-          startsAt: "2024-12-20",
-          endsAt: "2024-12-20T15:00:00Z",
-        })
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.createEntry(123, 4001, {
-          summary: "Test",
-          startsAt: "2024-12-20",
-          endsAt: "2024-12-20T15:00:00Z",
-        });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("RFC3339");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("updateEntry", () => {
@@ -271,7 +193,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/schedule_entries/4101`, () => {
-          return HttpResponse.json({ entry: updatedEntry });
+          return HttpResponse.json(updatedEntry);
         })
       );
 
@@ -284,22 +206,7 @@ describe("SchedulesService", () => {
       expect(result.summary).toBe("Updated Meeting");
     });
 
-    it("should throw validation error for invalid date format", async () => {
-      await expect(
-        service.updateEntry(123, 4101, {
-          startsAt: "invalid-date",
-        })
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.updateEntry(123, 4101, {
-          startsAt: "invalid-date",
-        });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("RFC3339");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("getEntryOccurrence", () => {
@@ -313,7 +220,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/schedule_entries/4101/occurrences/2024-12-22`, () => {
-          return HttpResponse.json({ entry });
+          return HttpResponse.json(entry);
         })
       );
 
@@ -322,29 +229,7 @@ describe("SchedulesService", () => {
       expect(result.starts_at).toBe("2024-12-22T09:00:00Z");
     });
 
-    it("should throw validation error when date is missing", async () => {
-      await expect(service.getEntryOccurrence(123, 4101, "")).rejects.toThrow(BasecampError);
-
-      try {
-        await service.getEntryOccurrence(123, 4101, "");
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("date");
-      }
-    });
-
-    it("should throw validation error for invalid date format", async () => {
-      await expect(
-        service.getEntryOccurrence(123, 4101, "12-22-2024")
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.getEntryOccurrence(123, 4101, "12-22-2024");
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("YYYY-MM-DD");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("updateSettings", () => {
@@ -357,7 +242,7 @@ describe("SchedulesService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/schedules/4001`, () => {
-          return HttpResponse.json({ schedule });
+          return HttpResponse.json(schedule);
         })
       );
 
@@ -374,7 +259,7 @@ describe("SchedulesService", () => {
       server.use(
         http.put(`${BASE_URL}/buckets/123/schedules/4001`, async ({ request }) => {
           capturedBody = (await request.json()) as { include_due_assignments?: boolean };
-          return HttpResponse.json({ schedule: { id: 4001, title: "Schedule" } });
+          return HttpResponse.json({ id: 4001, title: "Schedule" });
         })
       );
 
@@ -384,25 +269,6 @@ describe("SchedulesService", () => {
     });
   });
 
-  describe("trashEntry", () => {
-    it("should move a schedule entry to trash", async () => {
-      server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/4101/status/trashed.json`, () => {
-          return new HttpResponse(null, { status: 204 });
-        })
-      );
-
-      await expect(service.trashEntry(123, 4101)).resolves.toBeUndefined();
-    });
-
-    it("should throw error for non-existent entry", async () => {
-      server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/9999/status/trashed.json`, () => {
-          return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
-      );
-
-      await expect(service.trashEntry(123, 9999)).rejects.toThrow(BasecampError);
-    });
-  });
+  // Note: trashEntry() is on RecordingsService, not SchedulesService (spec-conformant)
+  // Use client.recordings.trash(projectId, entryId) instead
 });

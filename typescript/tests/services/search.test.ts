@@ -1,5 +1,8 @@
 /**
- * Tests for the SearchService
+ * Tests for the SearchService (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -46,7 +49,7 @@ describe("SearchService", () => {
         http.get(`${BASE_URL}/search.json`, ({ request }) => {
           const url = new URL(request.url);
           expect(url.searchParams.get("query")).toBe("project");
-          return HttpResponse.json({ results: mockResults });
+          return HttpResponse.json(mockResults);
         })
       );
 
@@ -62,7 +65,7 @@ describe("SearchService", () => {
           const url = new URL(request.url);
           expect(url.searchParams.get("query")).toBe("test");
           expect(url.searchParams.get("sort")).toBe("updated_at");
-          return HttpResponse.json({ results: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -70,19 +73,12 @@ describe("SearchService", () => {
       expect(results).toHaveLength(0);
     });
 
-    it("should throw validation error for empty query", async () => {
-      await expect(client.search.search("")).rejects.toThrow(BasecampError);
-      await expect(client.search.search("")).rejects.toThrow("Search query is required");
-    });
-
-    it("should throw validation error for whitespace-only query", async () => {
-      await expect(client.search.search("   ")).rejects.toThrow(BasecampError);
-    });
+    // Note: Client-side validation removed - generated services let API validate
 
     it("should return empty array when no results", async () => {
       server.use(
         http.get(`${BASE_URL}/search.json`, () => {
-          return HttpResponse.json({ results: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -102,7 +98,7 @@ describe("SearchService", () => {
 
       server.use(
         http.get(`${BASE_URL}/searches/metadata.json`, () => {
-          return HttpResponse.json({ metadata: mockMetadata });
+          return HttpResponse.json(mockMetadata);
         })
       );
 
@@ -114,7 +110,7 @@ describe("SearchService", () => {
     it("should return empty projects array when no projects available", async () => {
       server.use(
         http.get(`${BASE_URL}/searches/metadata.json`, () => {
-          return HttpResponse.json({ metadata: { projects: [] } });
+          return HttpResponse.json({ projects: [] });
         })
       );
 

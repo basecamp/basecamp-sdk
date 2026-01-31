@@ -24,6 +24,7 @@ if [[ ! -f "$INPUT_FILE" ]]; then
 fi
 
 jq '
+# First pass: add x-go-type extensions for timestamps, dates, and ids
 walk(
   if type == "object" then
     to_entries | map(
@@ -55,6 +56,32 @@ walk(
     .
   end
 )
+|
+# Second pass: mark optional booleans in REQUEST schemas with x-go-type-skip-optional-pointer: false
+# This forces oapi-codegen to generate *bool instead of bool, allowing
+# Go clients to distinguish "not set" (nil) from "false" in request bodies
+# Only applies to schemas ending in "RequestContent" (request body schemas)
+.components.schemas |= with_entries(
+  if .key | test("RequestContent$") then
+    .value |= (
+      if type == "object" and .type == "object" and .properties then
+        (.required // []) as $required |
+        .properties |= with_entries(
+          .key as $propName |
+          if .value.type == "boolean" and ($required | index($propName) | not) then
+            .value += { "x-go-type-skip-optional-pointer": false }
+          else
+            .
+          end
+        )
+      else
+        .
+      end
+    )
+  else
+    .
+  end
+)
 ' "$INPUT_FILE" > "${OUTPUT_FILE}.tmp"
 
 mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
@@ -63,8 +90,10 @@ mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 timestamp_count=$(jq '[.. | objects | select(.["x-go-type"] == "time.Time")] | length' "$OUTPUT_FILE")
 date_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.Date")] | length' "$OUTPUT_FILE")
 id_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
+nullable_bool_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("RequestContent$")) | .value.properties // {} | to_entries[] | select(.value.type == "boolean" and .value["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
 
 echo "Enhanced OpenAPI spec with Go type extensions:"
 echo "  Timestamp fields (time.Time): $timestamp_count"
 echo "  Date fields (types.Date): $date_count"
 echo "  Id fields (keeping pointers): $id_count"
+echo "  Nullable booleans (*bool): $nullable_bool_count"

@@ -1,10 +1,13 @@
 /**
- * Tests for the Vaults service
+ * Tests for the Vaults service (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
-import { VaultsService } from "../../src/services/vaults.js";
+import type { VaultsService } from "../../src/generated/services/vaults.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
 
@@ -36,7 +39,7 @@ describe("VaultsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001`, () => {
-          return HttpResponse.json({ vault });
+          return HttpResponse.json(vault);
         })
       );
 
@@ -73,7 +76,7 @@ describe("VaultsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, () => {
-          return HttpResponse.json({ vaults });
+          return HttpResponse.json(vaults);
         })
       );
 
@@ -87,7 +90,7 @@ describe("VaultsService", () => {
     it("should return empty array when no child vaults", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, () => {
-          return HttpResponse.json({ vaults: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -107,7 +110,7 @@ describe("VaultsService", () => {
 
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, () => {
-          return HttpResponse.json({ vault: newVault });
+          return HttpResponse.json(newVault);
         })
       );
 
@@ -123,7 +126,7 @@ describe("VaultsService", () => {
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string };
-          return HttpResponse.json({ vault: { id: 1, title: "Test" } });
+          return HttpResponse.json({ id: 1, title: "Test" });
         })
       );
 
@@ -132,16 +135,7 @@ describe("VaultsService", () => {
       expect(capturedBody?.title).toBe("My New Folder");
     });
 
-    it("should throw validation error when title is missing", async () => {
-      await expect(service.create(123, 1001, { title: "" })).rejects.toThrow(BasecampError);
-
-      try {
-        await service.create(123, 1001, { title: "" });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("title");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("update", () => {
@@ -154,7 +148,7 @@ describe("VaultsService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/vaults/1001`, () => {
-          return HttpResponse.json({ vault: updatedVault });
+          return HttpResponse.json(updatedVault);
         })
       );
 
@@ -169,7 +163,7 @@ describe("VaultsService", () => {
       server.use(
         http.put(`${BASE_URL}/buckets/123/vaults/1001`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string };
-          return HttpResponse.json({ vault: { id: 1001, title: "Updated" } });
+          return HttpResponse.json({ id: 1001, title: "Updated" });
         })
       );
 

@@ -1,5 +1,8 @@
 /**
- * Tests for the MessageTypesService class
+ * Tests for the MessageTypesService class (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -21,12 +24,10 @@ describe("MessageTypesService", () => {
 
   describe("list", () => {
     it("should list all message types in a project", async () => {
-      const mockTypes = {
-        message_types: [
-          { id: 1, name: "Announcement", icon: "📢", created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
-          { id: 2, name: "Question", icon: "❓", created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
-        ],
-      };
+      const mockTypes = [
+        { id: 1, name: "Announcement", icon: "📢", created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
+        { id: 2, name: "Question", icon: "❓", created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
+      ];
 
       server.use(
         http.get(`${BASE_URL}/buckets/1/categories.json`, () => {
@@ -45,7 +46,7 @@ describe("MessageTypesService", () => {
     it("should return empty array when no types exist", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/1/categories.json`, () => {
-          return HttpResponse.json({ message_types: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -57,13 +58,11 @@ describe("MessageTypesService", () => {
   describe("get", () => {
     it("should get a message type by ID", async () => {
       const mockType = {
-        message_type: {
-          id: 1,
-          name: "Announcement",
-          icon: "📢",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z",
-        },
+        id: 1,
+        name: "Announcement",
+        icon: "📢",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       };
 
       server.use(
@@ -83,13 +82,11 @@ describe("MessageTypesService", () => {
   describe("create", () => {
     it("should create a new message type", async () => {
       const mockType = {
-        message_type: {
-          id: 3,
-          name: "Update",
-          icon: "🔄",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z",
-        },
+        id: 3,
+        name: "Update",
+        icon: "🔄",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       };
 
       server.use(
@@ -110,37 +107,17 @@ describe("MessageTypesService", () => {
       expect(type.name).toBe("Update");
     });
 
-    it("should throw validation error when name is missing", async () => {
-      try {
-        await client.messageTypes.create(1, { name: "", icon: "🔄" });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
-
-    it("should throw validation error when icon is missing", async () => {
-      try {
-        await client.messageTypes.create(1, { name: "Test", icon: "" });
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("validation");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("update", () => {
     it("should update an existing message type", async () => {
       const mockType = {
-        message_type: {
-          id: 1,
-          name: "Updated Name",
-          icon: "🎉",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-02T00:00:00Z",
-        },
+        id: 1,
+        name: "Updated Name",
+        icon: "🎉",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-02T00:00:00Z",
       };
 
       server.use(

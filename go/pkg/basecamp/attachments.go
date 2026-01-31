@@ -74,12 +74,12 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
 	return &AttachmentResponse{
-		AttachableSGID: resp.JSON200.AttachableSgid,
+		AttachableSGID: resp.JSON201.AttachableSgid,
 	}, nil
 }

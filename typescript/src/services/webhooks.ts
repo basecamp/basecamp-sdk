@@ -96,7 +96,7 @@ export class WebhooksService extends BaseService {
         })
     );
 
-    return (response?.webhooks ?? []) as unknown as Webhook[];
+    return (response ?? []) as Webhook[];
   }
 
   /**
@@ -129,7 +129,7 @@ export class WebhooksService extends BaseService {
         })
     );
 
-    return response.webhook as unknown as Webhook;
+    return response as unknown as Webhook;
   }
 
   /**
@@ -185,7 +185,7 @@ export class WebhooksService extends BaseService {
         })
     );
 
-    return response.webhook as unknown as Webhook;
+    return response as unknown as Webhook;
   }
 
   /**
@@ -240,7 +240,7 @@ export class WebhooksService extends BaseService {
         })
     );
 
-    return response.webhook as unknown as Webhook;
+    return response as unknown as Webhook;
   }
 
   /**

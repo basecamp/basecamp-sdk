@@ -109,7 +109,7 @@ export class ClientCorrespondencesService extends BaseService {
         })
     );
 
-    return (response?.correspondences ?? []) as unknown as ClientCorrespondence[];
+    return (response ?? []) as ClientCorrespondence[];
   }
 
   /**
@@ -142,6 +142,6 @@ export class ClientCorrespondencesService extends BaseService {
         })
     );
 
-    return response.correspondence as unknown as ClientCorrespondence;
+    return response as unknown as ClientCorrespondence;
   }
 }

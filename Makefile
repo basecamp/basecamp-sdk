@@ -91,12 +91,17 @@ go-check-drift:
 # TypeScript SDK targets
 #------------------------------------------------------------------------------
 
-.PHONY: ts-generate ts-build ts-test ts-typecheck ts-check-path-mapping ts-check ts-clean
+.PHONY: ts-generate ts-generate-services ts-build ts-test ts-typecheck ts-check-path-mapping ts-check ts-clean
 
 # Generate TypeScript types and metadata from OpenAPI
 ts-generate:
 	@echo "==> Generating TypeScript SDK..."
 	cd typescript && npm run generate
+
+# Generate TypeScript services from OpenAPI
+ts-generate-services:
+	@echo "==> Generating TypeScript services..."
+	cd typescript && npx tsx scripts/generate-services.ts
 
 # Build TypeScript SDK
 ts-build:
@@ -131,7 +136,7 @@ ts-clean:
 # Ruby SDK targets
 #------------------------------------------------------------------------------
 
-.PHONY: rb-generate rb-build rb-test rb-check rb-doc rb-clean
+.PHONY: rb-generate rb-generate-services rb-build rb-test rb-check rb-doc rb-clean
 
 # Generate Ruby types and metadata from OpenAPI
 rb-generate:
@@ -139,6 +144,11 @@ rb-generate:
 	cd ruby && ruby scripts/generate-metadata.rb > lib/basecamp/generated/metadata.json
 	cd ruby && ruby scripts/generate-types.rb > lib/basecamp/generated/types.rb
 	@echo "Generated lib/basecamp/generated/metadata.json and types.rb"
+
+# Generate Ruby services from OpenAPI
+rb-generate-services:
+	@echo "==> Generating Ruby services..."
+	cd ruby && ruby scripts/generate-services.rb
 
 # Build Ruby SDK (install deps)
 rb-build:
@@ -222,6 +232,7 @@ help:
 	@echo ""
 	@echo "TypeScript SDK:"
 	@echo "  ts-generate           Generate types and metadata from OpenAPI"
+	@echo "  ts-generate-services  Generate service classes from OpenAPI"
 	@echo "  ts-build              Build TypeScript SDK"
 	@echo "  ts-test               Run TypeScript tests"
 	@echo "  ts-typecheck          Run TypeScript type checking"
@@ -235,12 +246,13 @@ help:
 	@echo "  conformance-build Build conformance test runner"
 	@echo ""
 	@echo "Ruby SDK:"
-	@echo "  rb-generate      Generate types and metadata from OpenAPI"
-	@echo "  rb-build         Build Ruby SDK (install deps)"
-	@echo "  rb-test          Run Ruby tests (with coverage)"
-	@echo "  rb-check         Run all Ruby checks"
-	@echo "  rb-doc           Generate YARD documentation"
-	@echo "  rb-clean         Remove Ruby build artifacts"
+	@echo "  rb-generate          Generate types and metadata from OpenAPI"
+	@echo "  rb-generate-services Generate service classes from OpenAPI"
+	@echo "  rb-build             Build Ruby SDK (install deps)"
+	@echo "  rb-test              Run Ruby tests (with coverage)"
+	@echo "  rb-check             Run all Ruby checks"
+	@echo "  rb-doc               Generate YARD documentation"
+	@echo "  rb-clean             Remove Ruby build artifacts"
 	@echo ""
 	@echo "Combined:"
 	@echo "  check            Run all checks (Smithy + Go + TypeScript + Ruby + Conformance)"

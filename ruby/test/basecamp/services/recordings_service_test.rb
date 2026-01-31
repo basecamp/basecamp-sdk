@@ -1,5 +1,15 @@
 # frozen_string_literal: true
 
+# Tests for the RecordingsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - list_events() moved to EventsService
+# - subscribe/unsubscribe/get_subscription() moved to SubscriptionsService
+# - set_client_visibility() moved to ClientVisibilityService
+# - No client-side validation (API validates)
+# - bucket param is string, not array
+# - Single-resource paths without .json (get)
+
 require "test_helper"
 
 class RecordingsServiceTest < Minitest::Test
@@ -37,12 +47,14 @@ class RecordingsServiceTest < Minitest::Test
       .with(query: { type: "Message", bucket: "100", status: "archived" })
       .to_return(status: 200, body: recordings.to_json)
 
-    result = @account.recordings.list(type: "Message", bucket: 100, status: "archived").to_a
+    # Generated service uses bucket as string, not array
+    result = @account.recordings.list(type: "Message", bucket: "100", status: "archived").to_a
 
     assert_equal 1, result.length
   end
 
   def test_get
+    # Generated service: /recordings/{id} without .json
     stub_get("/12345/buckets/100/recordings/456", response_body: sample_recording)
 
     result = @account.recordings.get(project_id: 100, recording_id: 456)
@@ -75,50 +87,7 @@ class RecordingsServiceTest < Minitest::Test
     assert_nil result
   end
 
-  def test_list_events
-    events = [
-      { "id" => 1, "action" => "created", "created_at" => "2024-01-01T00:00:00Z" },
-      { "id" => 2, "action" => "updated", "created_at" => "2024-01-02T00:00:00Z" }
-    ]
-    stub_get("/12345/buckets/100/recordings/456/events.json", response_body: events)
-
-    result = @account.recordings.list_events(project_id: 100, recording_id: 456).to_a
-
-    assert_equal 2, result.length
-    assert_equal "created", result[0]["action"]
-  end
-
-  def test_get_subscription
-    subscription = { "subscribed" => true }
-    stub_get("/12345/buckets/100/recordings/456/subscription.json", response_body: subscription)
-
-    result = @account.recordings.get_subscription(project_id: 100, recording_id: 456)
-
-    assert result["subscribed"]
-  end
-
-  def test_subscribe
-    subscription = { "subscribed" => true }
-    stub_post("/12345/buckets/100/recordings/456/subscription.json", response_body: subscription)
-
-    result = @account.recordings.subscribe(project_id: 100, recording_id: 456)
-
-    assert result["subscribed"]
-  end
-
-  def test_unsubscribe
-    stub_delete("/12345/buckets/100/recordings/456/subscription.json")
-
-    result = @account.recordings.unsubscribe(project_id: 100, recording_id: 456)
-
-    assert_nil result
-  end
-
-  def test_set_client_visibility
-    stub_put("/12345/buckets/100/recordings/456/client_visibility.json", response_body: {})
-
-    result = @account.recordings.set_client_visibility(project_id: 100, recording_id: 456, visible: true)
-
-    assert_nil result
-  end
+  # Note: list_events() is on EventsService (spec-conformant)
+  # Note: subscribe/unsubscribe/get_subscription() are on SubscriptionsService (spec-conformant)
+  # Note: set_client_visibility() is on ClientVisibilityService (spec-conformant)
 end

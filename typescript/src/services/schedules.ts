@@ -130,7 +130,7 @@ export class SchedulesService extends BaseService {
         })
     );
 
-    return response.schedule!;
+    return response;
   }
 
   /**
@@ -164,7 +164,7 @@ export class SchedulesService extends BaseService {
         })
     );
 
-    return response?.entries ?? [];
+    return response ?? [];
   }
 
   /**
@@ -197,7 +197,7 @@ export class SchedulesService extends BaseService {
         })
     );
 
-    return response.entry!;
+    return response;
   }
 
   /**
@@ -271,7 +271,7 @@ export class SchedulesService extends BaseService {
         })
     );
 
-    return response.entry!;
+    return response;
   }
 
   /**
@@ -332,7 +332,7 @@ export class SchedulesService extends BaseService {
         })
     );
 
-    return response.entry!;
+    return response;
   }
 
   /**
@@ -382,7 +382,7 @@ export class SchedulesService extends BaseService {
         )
     );
 
-    return response.entry!;
+    return response;
   }
 
   /**
@@ -424,7 +424,7 @@ export class SchedulesService extends BaseService {
         })
     );
 
-    return response.schedule!;
+    return response;
   }
 
   /**

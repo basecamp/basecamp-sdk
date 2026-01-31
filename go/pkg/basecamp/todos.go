@@ -308,7 +308,7 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 		Description:             req.Description,
 		AssigneeIds:             req.AssigneeIDs,
 		CompletionSubscriberIds: req.CompletionSubscriberIDs,
-		Notify:                  req.Notify,
+		Notify:                  &req.Notify,
 	}
 	// Parse date strings to types.Date for the generated client
 	if req.DueOn != "" {
@@ -335,12 +335,13 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	todo := todoFromGenerated(resp.JSON200.Todo)
+	todo := todoFromGenerated(*resp.JSON201)
 	return &todo, nil
 }
 
@@ -367,7 +368,7 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 		Description:             req.Description,
 		AssigneeIds:             req.AssigneeIDs,
 		CompletionSubscriberIds: req.CompletionSubscriberIDs,
-		Notify:                  req.Notify,
+		Notify:                  &req.Notify,
 	}
 	// Parse date strings to types.Date for the generated client
 	if req.DueOn != "" {
@@ -399,7 +400,7 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 		return nil, err
 	}
 
-	todo := todoFromGenerated(resp.JSON200.Todo)
+	todo := todoFromGenerated(*resp.JSON200)
 	return &todo, nil
 }
 
@@ -500,7 +501,7 @@ func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, p
 	}
 
 	body := generated.RepositionTodoJSONRequestBody{
-		Position: int32(position),
+		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
 	}
 	resp, err := s.client.parent.gen.RepositionTodoWithResponse(ctx, s.client.accountID, bucketID, todoID, body)
 	if err != nil {

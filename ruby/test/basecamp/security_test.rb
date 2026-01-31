@@ -467,44 +467,71 @@ class SecurityWebhookTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
-  def test_webhook_create_rejects_http_url
-    assert_raises(Basecamp::UsageError) do
+  # Note: Generated services delegate URL validation to the API server.
+  # Client-side validation was removed when migrating to generated services.
+
+  def test_webhook_create_sends_http_url_to_api
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks\.json})
+      .to_return(status: 422, body: { error: "payload_url must use HTTPS" }.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    assert_raises(Basecamp::Error) do
       @account.webhooks.create(
         project_id: 1,
-        payload_url: "http://example.com/webhook"
+        payload_url: "http://example.com/webhook",
+        types: [ "Todo" ]
       )
     end
   end
 
-  def test_webhook_create_rejects_empty_url
-    assert_raises(Basecamp::UsageError) do
+  def test_webhook_create_sends_empty_url_to_api
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks\.json})
+      .to_return(status: 422, body: { error: "payload_url is required" }.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    assert_raises(Basecamp::Error) do
       @account.webhooks.create(
         project_id: 1,
-        payload_url: ""
+        payload_url: "",
+        types: [ "Todo" ]
       )
     end
   end
 
-  def test_webhook_create_rejects_javascript_url
-    assert_raises(Basecamp::UsageError) do
+  def test_webhook_create_sends_javascript_url_to_api
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks\.json})
+      .to_return(status: 422, body: { error: "payload_url must use HTTPS" }.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    assert_raises(Basecamp::Error) do
       @account.webhooks.create(
         project_id: 1,
-        payload_url: "javascript:alert(1)"
+        payload_url: "javascript:alert(1)",
+        types: [ "Todo" ]
       )
     end
   end
 
-  def test_webhook_create_rejects_file_url
-    assert_raises(Basecamp::UsageError) do
+  def test_webhook_create_sends_file_url_to_api
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks\.json})
+      .to_return(status: 422, body: { error: "payload_url must use HTTPS" }.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    assert_raises(Basecamp::Error) do
       @account.webhooks.create(
         project_id: 1,
-        payload_url: "file:///etc/passwd"
+        payload_url: "file:///etc/passwd",
+        types: [ "Todo" ]
       )
     end
   end
 
-  def test_webhook_update_rejects_http_url
-    assert_raises(Basecamp::UsageError) do
+  def test_webhook_update_sends_http_url_to_api
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks/\d+})
+      .to_return(status: 422, body: { error: "payload_url must use HTTPS" }.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    assert_raises(Basecamp::Error) do
       @account.webhooks.update(
         project_id: 1,
         webhook_id: 2,

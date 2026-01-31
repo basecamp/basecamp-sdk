@@ -1,10 +1,14 @@
 /**
- * Tests for the Documents service
+ * Tests for the Documents service (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - No client-side validation (API validates)
+ * - No domain-specific trash() (use recordings.trash())
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
-import { DocumentsService } from "../../src/services/documents.js";
+import type { DocumentsService } from "../../src/generated/services/documents.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
 
@@ -34,7 +38,7 @@ describe("DocumentsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/documents/5001`, () => {
-          return HttpResponse.json({ document });
+          return HttpResponse.json(document);
         })
       );
 
@@ -71,7 +75,7 @@ describe("DocumentsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, () => {
-          return HttpResponse.json({ documents });
+          return HttpResponse.json(documents);
         })
       );
 
@@ -85,7 +89,7 @@ describe("DocumentsService", () => {
     it("should return empty array when no documents", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, () => {
-          return HttpResponse.json({ documents: [] });
+          return HttpResponse.json([]);
         })
       );
 
@@ -106,7 +110,7 @@ describe("DocumentsService", () => {
 
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, () => {
-          return HttpResponse.json({ document: newDocument });
+          return HttpResponse.json(newDocument);
         })
       );
 
@@ -125,7 +129,7 @@ describe("DocumentsService", () => {
       server.use(
         http.post(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string; content?: string; status?: string };
-          return HttpResponse.json({ document: { id: 1, title: "Test" } });
+          return HttpResponse.json({ id: 1, title: "Test" });
         })
       );
 
@@ -140,18 +144,7 @@ describe("DocumentsService", () => {
       expect(capturedBody?.status).toBe("drafted");
     });
 
-    it("should throw validation error when title is missing", async () => {
-      await expect(
-        service.create(123, 1001, { title: "" })
-      ).rejects.toThrow(BasecampError);
-
-      try {
-        await service.create(123, 1001, { title: "" });
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("validation");
-        expect((err as BasecampError).message).toContain("title");
-      }
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("update", () => {
@@ -165,7 +158,7 @@ describe("DocumentsService", () => {
 
       server.use(
         http.put(`${BASE_URL}/buckets/123/documents/5001`, () => {
-          return HttpResponse.json({ document: updatedDocument });
+          return HttpResponse.json(updatedDocument);
         })
       );
 
@@ -184,7 +177,7 @@ describe("DocumentsService", () => {
       server.use(
         http.put(`${BASE_URL}/buckets/123/documents/5001`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string; content?: string };
-          return HttpResponse.json({ document: { id: 5001, title: "Updated" } });
+          return HttpResponse.json({ id: 5001, title: "Updated" });
         })
       );
 
@@ -194,25 +187,6 @@ describe("DocumentsService", () => {
     });
   });
 
-  describe("trash", () => {
-    it("should move a document to trash", async () => {
-      server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/5001/status/trashed.json`, () => {
-          return new HttpResponse(null, { status: 204 });
-        })
-      );
-
-      await expect(service.trash(123, 5001)).resolves.toBeUndefined();
-    });
-
-    it("should throw error for non-existent document", async () => {
-      server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/9999/status/trashed.json`, () => {
-          return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
-      );
-
-      await expect(service.trash(123, 9999)).rejects.toThrow(BasecampError);
-    });
-  });
+  // Note: trash() is on RecordingsService, not DocumentsService (spec-conformant)
+  // Use client.recordings.trash(projectId, documentId) instead
 });

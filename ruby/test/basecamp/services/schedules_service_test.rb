@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# Tests for the SchedulesService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - No trash_entry() - use recordings.trash() instead
+# - No client-side validation (API validates)
+
 require "test_helper"
 
 class SchedulesServiceTest < Minitest::Test
@@ -126,11 +132,6 @@ class SchedulesServiceTest < Minitest::Test
     assert_equal false, result["include_due_assignments"]
   end
 
-  def test_trash_entry
-    stub_put("/12345/buckets/100/recordings/789/status/trashed.json", response_body: {})
-
-    result = @account.schedules.trash_entry(project_id: 100, entry_id: 789)
-
-    assert_nil result
-  end
+  # Note: trash_entry() is on RecordingsService, not SchedulesService (spec-conformant)
+  # Use @account.recordings.trash(project_id:, recording_id:) instead
 end

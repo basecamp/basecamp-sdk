@@ -174,12 +174,12 @@ func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateReques
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	template := templateFromGenerated(resp.JSON200.Template)
+	template := templateFromGenerated(*resp.JSON201)
 	return &template, nil
 }
 
@@ -222,7 +222,7 @@ func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *Up
 		return nil, err
 	}
 
-	template := templateFromGenerated(resp.JSON200.Template)
+	template := templateFromGenerated(*resp.JSON200)
 	return &template, nil
 }
 
@@ -283,12 +283,12 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	construction := projectConstructionFromGenerated(resp.JSON200.Construction)
+	construction := projectConstructionFromGenerated(*resp.JSON201)
 	return &construction, nil
 }
 

@@ -404,12 +404,12 @@ func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID i
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
+	if resp.JSON201 == nil {
 		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
-	reply := forwardReplyFromGenerated(resp.JSON200.Reply)
+	reply := forwardReplyFromGenerated(*resp.JSON201)
 	return &reply, nil
 }
 

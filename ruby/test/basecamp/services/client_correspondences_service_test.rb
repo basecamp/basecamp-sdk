@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Tests for the ClientCorrespondencesService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Single-resource paths without .json (get)
+
 require "test_helper"
 
 class ClientCorrespondencesServiceTest < Minitest::Test
@@ -31,7 +36,8 @@ class ClientCorrespondencesServiceTest < Minitest::Test
   end
 
   def test_get_correspondence
-    stub_get("/12345/buckets/100/client/correspondences/200.json", response_body: sample_correspondence(id: 200))
+    # Generated service: /client/correspondences/{id} without .json
+    stub_get("/12345/buckets/100/client/correspondences/200", response_body: sample_correspondence(id: 200))
 
     correspondence = @account.client_correspondences.get(project_id: 100, correspondence_id: 200)
 

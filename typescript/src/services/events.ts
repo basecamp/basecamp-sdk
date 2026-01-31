@@ -82,6 +82,6 @@ export class EventsService extends BaseService {
         })
     );
 
-    return response?.events ?? [];
+    return response ?? [];
   }
 }

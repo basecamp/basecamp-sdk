@@ -1,5 +1,9 @@
 /**
- * Tests for the ToolsService
+ * Tests for the ToolsService (generated from OpenAPI spec)
+ *
+ * Note: Generated services are spec-conformant:
+ * - update() and reposition() take request objects, not bare params
+ * - No client-side validation (API validates)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -35,7 +39,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.get(`${BASE_URL}/buckets/${projectId}/dock/tools/${toolId}`, () => {
-          return HttpResponse.json({ tool: mockTool });
+          return HttpResponse.json(mockTool);
         })
       );
 
@@ -72,14 +76,16 @@ describe("ToolsService", () => {
 
       server.use(
         http.post(
-          `${BASE_URL}/buckets/${projectId}/dock/tools/${sourceToolId}/clone.json`,
-          () => {
-            return HttpResponse.json({ tool: mockTool });
+          `${BASE_URL}/buckets/${projectId}/dock/tools.json`,
+          async ({ request }) => {
+            const body = await request.json() as { source_recording_id: number };
+            expect(body.source_recording_id).toBe(sourceToolId);
+            return HttpResponse.json(mockTool, { status: 201 });
           }
         )
       );
 
-      const tool = await client.tools.clone(projectId, sourceToolId);
+      const tool = await client.tools.clone(projectId, { sourceRecordingId: sourceToolId });
       expect(tool.id).toBe(333);
       expect(tool.title).toBe("To-dos (Copy)");
     });
@@ -102,20 +108,17 @@ describe("ToolsService", () => {
           async ({ request }) => {
             const body = await request.json() as { title: string };
             expect(body.title).toBe("Sprint Backlog");
-            return HttpResponse.json({ tool: mockTool });
+            return HttpResponse.json(mockTool);
           }
         )
       );
 
-      const tool = await client.tools.update(projectId, toolId, "Sprint Backlog");
+      // Generated service takes a request object
+      const tool = await client.tools.update(projectId, toolId, { title: "Sprint Backlog" });
       expect(tool.title).toBe("Sprint Backlog");
     });
 
-    it("should throw validation error for missing title", async () => {
-      await expect(client.tools.update(111, 222, "")).rejects.toThrow(
-        "Tool title is required"
-      );
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("delete", () => {
@@ -140,7 +143,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.post(
-          `${BASE_URL}/buckets/${projectId}/dock/tools/${toolId}/position.json`,
+          `${BASE_URL}/buckets/${projectId}/recordings/${toolId}/position.json`,
           () => {
             return new HttpResponse(null, { status: 204 });
           }
@@ -158,7 +161,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.delete(
-          `${BASE_URL}/buckets/${projectId}/dock/tools/${toolId}/position.json`,
+          `${BASE_URL}/buckets/${projectId}/recordings/${toolId}/position.json`,
           () => {
             return new HttpResponse(null, { status: 204 });
           }
@@ -176,7 +179,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.put(
-          `${BASE_URL}/buckets/${projectId}/dock/tools/${toolId}/position.json`,
+          `${BASE_URL}/buckets/${projectId}/recordings/${toolId}/position.json`,
           async ({ request }) => {
             const body = await request.json() as { position: number };
             expect(body.position).toBe(1);
@@ -185,19 +188,12 @@ describe("ToolsService", () => {
         )
       );
 
+      // Generated service takes a request object
       await expect(
-        client.tools.reposition(projectId, toolId, 1)
+        client.tools.reposition(projectId, toolId, { position: 1 })
       ).resolves.toBeUndefined();
     });
 
-    it("should throw validation error for position less than 1", async () => {
-      await expect(client.tools.reposition(111, 222, 0)).rejects.toThrow(
-        "Position must be at least 1"
-      );
-
-      await expect(client.tools.reposition(111, 222, -5)).rejects.toThrow(
-        "Position must be at least 1"
-      );
-    });
+    // Note: Client-side validation removed - generated services let API validate
   });
 });

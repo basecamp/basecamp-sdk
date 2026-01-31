@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# Tests for the CommentsService (generated from OpenAPI spec)
+#
+# Note: Generated services are spec-conformant:
+# - Some paths without .json suffix (get, update)
+# - No client-side validation (API validates)
+
 require "test_helper"
 
 class CommentsServiceTest < Minitest::Test
@@ -30,7 +36,8 @@ class CommentsServiceTest < Minitest::Test
   end
 
   def test_get_comment
-    stub_get("/12345/buckets/100/comments/200.json", response_body: sample_comment(id: 200))
+    # Generated service: /comments/{id} without .json
+    stub_get("/12345/buckets/100/comments/200", response_body: sample_comment(id: 200))
 
     comment = @account.comments.get(project_id: 100, comment_id: 200)
 
@@ -53,8 +60,9 @@ class CommentsServiceTest < Minitest::Test
   end
 
   def test_update_comment
+    # Generated service: /comments/{id} without .json
     updated_comment = sample_comment(id: 200, content: "<p>Updated comment</p>")
-    stub_put("/12345/buckets/100/comments/200.json", response_body: updated_comment)
+    stub_put("/12345/buckets/100/comments/200", response_body: updated_comment)
 
     comment = @account.comments.update(
       project_id: 100,

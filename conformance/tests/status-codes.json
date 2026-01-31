@@ -1,0 +1,228 @@
+[
+  {
+    "name": "GET returns 200 OK on success",
+    "description": "Verifies that GET operations return 200 OK as the default success status code",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 200, "body": {"id": 12345, "name": "Test Project"}}
+    ],
+    "assertions": [
+      {"type": "statusCode", "expected": 200},
+      {"type": "noError"}
+    ],
+    "tags": ["status-code", "200", "get"]
+  },
+  {
+    "name": "PUT returns 200 OK on success",
+    "description": "Verifies that PUT update operations return 200 OK as the default success status code",
+    "operation": "UpdateProject",
+    "method": "PUT",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "requestBody": {"name": "Updated Name"},
+    "mockResponses": [
+      {"status": 200, "body": {"id": 12345, "name": "Updated Name"}}
+    ],
+    "assertions": [
+      {"type": "statusCode", "expected": 200},
+      {"type": "noError"}
+    ],
+    "tags": ["status-code", "200", "put"]
+  },
+  {
+    "name": "POST create returns 201 Created",
+    "description": "Verifies that POST create operations return 201 Created per Smithy spec (code: 201)",
+    "operation": "CreateProject",
+    "method": "POST",
+    "path": "/projects.json",
+    "requestBody": {"name": "New Project"},
+    "mockResponses": [
+      {"status": 201, "body": {"id": 99999, "name": "New Project"}}
+    ],
+    "assertions": [
+      {"type": "statusCode", "expected": 201},
+      {"type": "noError"}
+    ],
+    "tags": ["status-code", "201", "post", "create"]
+  },
+  {
+    "name": "POST create todo returns 201 Created",
+    "description": "Verifies that CreateTodo returns 201 Created per Smithy spec (code: 201)",
+    "operation": "CreateTodo",
+    "method": "POST",
+    "path": "/buckets/{projectId}/todolists/{todolistId}/todos.json",
+    "pathParams": {"projectId": 12345, "todolistId": 67890},
+    "requestBody": {"content": "New todo item"},
+    "mockResponses": [
+      {"status": 201, "body": {"id": 111, "content": "New todo item"}}
+    ],
+    "assertions": [
+      {"type": "statusCode", "expected": 201},
+      {"type": "noError"}
+    ],
+    "tags": ["status-code", "201", "post", "create"]
+  },
+  {
+    "name": "DELETE returns 204 No Content",
+    "description": "Verifies that DELETE trash operations return 204 No Content per Smithy spec (code: 204)",
+    "operation": "TrashProject",
+    "method": "DELETE",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 204}
+    ],
+    "assertions": [
+      {"type": "statusCode", "expected": 204},
+      {"type": "noError"}
+    ],
+    "tags": ["status-code", "204", "delete"]
+  },
+  {
+    "name": "404 Not Found error is surfaced",
+    "description": "Verifies that 404 responses are correctly surfaced as NotFoundError per Smithy @httpError(404)",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 99999},
+    "mockResponses": [
+      {"status": 404, "body": {"error": "Not found"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 404}
+    ],
+    "tags": ["status-code", "404", "error"]
+  },
+  {
+    "name": "422 Validation Error is surfaced",
+    "description": "Verifies that 422 responses are correctly surfaced as ValidationError per Smithy @httpError(422)",
+    "operation": "CreateProject",
+    "method": "POST",
+    "path": "/projects.json",
+    "requestBody": {"name": ""},
+    "mockResponses": [
+      {"status": 422, "body": {"error": "Name can't be blank"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 422}
+    ],
+    "tags": ["status-code", "422", "error", "validation"]
+  },
+  {
+    "name": "401 Unauthorized error is surfaced",
+    "description": "Verifies that 401 responses are correctly surfaced as UnauthorizedError per Smithy @httpError(401)",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {"status": 401, "body": {"error": "Unauthorized"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 401}
+    ],
+    "tags": ["status-code", "401", "error", "auth"]
+  },
+  {
+    "name": "403 Forbidden error is surfaced",
+    "description": "Verifies that 403 responses are correctly surfaced as ForbiddenError per Smithy @httpError(403)",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 403, "body": {"error": "Forbidden"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 403}
+    ],
+    "tags": ["status-code", "403", "error", "auth"]
+  },
+  {
+    "name": "429 Rate Limit error is surfaced after retries exhausted",
+    "description": "Verifies that 429 responses are surfaced as RateLimitError per Smithy @httpError(429) @retryable(throttling: true) after all retries are exhausted",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 429, "headers": {"Retry-After": "0"}, "body": {"error": "Rate limit exceeded"}},
+      {"status": 429, "headers": {"Retry-After": "0"}, "body": {"error": "Rate limit exceeded"}},
+      {"status": 429, "headers": {"Retry-After": "0"}, "body": {"error": "Rate limit exceeded"}},
+      {"status": 429, "headers": {"Retry-After": "0"}, "body": {"error": "Rate limit exceeded"}}
+    ],
+    "assertions": [
+      {"type": "statusCode", "expected": 429}
+    ],
+    "tags": ["status-code", "429", "error", "rate-limit"]
+  },
+  {
+    "name": "500 Internal Server Error is surfaced",
+    "description": "Verifies that 500 responses are surfaced as InternalServerError per Smithy @httpError(500) @retryable",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 500, "body": {"error": "Internal server error"}}
+    ],
+    "assertions": [
+      {"type": "statusCode", "expected": 500}
+    ],
+    "tags": ["status-code", "500", "error", "server"]
+  },
+  {
+    "name": "List operation returns 200 OK with collection",
+    "description": "Verifies that list/GET collection operations return 200 OK as the default success code",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {"status": 200, "body": [{"id": 1, "name": "Project A"}, {"id": 2, "name": "Project B"}]}
+    ],
+    "assertions": [
+      {"type": "statusCode", "expected": 200},
+      {"type": "noError"}
+    ],
+    "tags": ["status-code", "200", "get", "list"]
+  },
+  {
+    "name": "Non-retryable client errors are not retried",
+    "description": "Verifies that 401, 403, 404, and 422 client errors are NOT retried since they lack @retryable",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 401, "body": {"error": "Unauthorized"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 401}
+    ],
+    "tags": ["status-code", "error", "no-retry"]
+  },
+  {
+    "name": "422 on create is not retried",
+    "description": "Verifies that 422 validation errors on POST create operations are not retried",
+    "operation": "CreateTodo",
+    "method": "POST",
+    "path": "/buckets/{projectId}/todolists/{todolistId}/todos.json",
+    "pathParams": {"projectId": 12345, "todolistId": 67890},
+    "requestBody": {"content": ""},
+    "mockResponses": [
+      {"status": 422, "body": {"error": "Content can't be blank"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 422}
+    ],
+    "tags": ["status-code", "422", "error", "no-retry", "post"]
+  }
+]

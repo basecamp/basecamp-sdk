@@ -8,6 +8,41 @@ import (
 	"time"
 )
 
+// FlexTime is a time.Time that can unmarshal from either a Unix timestamp (integer)
+// or an RFC 3339 string. This supports both BC3 OAuth 2.1 (integer) and Launchpad (string).
+type FlexTime struct {
+	time.Time
+}
+
+// UnmarshalJSON implements json.Unmarshaler for FlexTime.
+func (ft *FlexTime) UnmarshalJSON(data []byte) error {
+	// Handle null
+	if string(data) == "null" {
+		ft.Time = time.Time{}
+		return nil
+	}
+
+	// Try as integer (Unix timestamp) first
+	var unix int64
+	if err := json.Unmarshal(data, &unix); err == nil {
+		ft.Time = time.Unix(unix, 0)
+		return nil
+	}
+
+	// Try as string (RFC 3339)
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		t, err := time.Parse(time.RFC3339, str)
+		if err != nil {
+			return fmt.Errorf("invalid time string %q: %w", str, err)
+		}
+		ft.Time = t
+		return nil
+	}
+
+	return fmt.Errorf("expires_at must be a Unix timestamp or RFC 3339 string, got: %s", string(data))
+}
+
 // Identity represents the authenticated user's identity from the authorization endpoint.
 type Identity struct {
 	ID           int64  `json:"id"`
@@ -30,7 +65,7 @@ type AuthorizedAccount struct {
 
 // AuthorizationInfo contains the complete authorization response.
 type AuthorizationInfo struct {
-	ExpiresAt time.Time           `json:"expires_at"`
+	ExpiresAt FlexTime            `json:"expires_at"`
 	Identity  Identity            `json:"identity"`
 	Accounts  []AuthorizedAccount `json:"accounts"`
 }
