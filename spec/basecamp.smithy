@@ -5283,9 +5283,6 @@ structure UnarchiveRecordingInput {
 structure UnarchiveRecordingOutput {}
 
 /// Set client visibility for a recording
-///
-/// WARNING: BC3 Rails controller only returns 302 redirect (HTML).
-/// JSON API format is not implemented. This operation may not work via API.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
