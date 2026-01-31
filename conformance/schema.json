@@ -83,6 +83,7 @@
             "enum": [
               "requestCount",
               "delayBetweenRequests",
+              "statusCode",
               "responseStatus",
               "responseBody",
               "headerPresent",
