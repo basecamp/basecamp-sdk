@@ -1,5 +1,18 @@
 # Basecamp SDK Agent Guidelines
 
+## Current Status
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| **Smithy Spec** | 166 operations | Single source of truth for all APIs |
+| **Go SDK** | Production-ready | Full generated client + service wrappers |
+| **TypeScript SDK** | Production-ready | 37 generated services, openapi-fetch based |
+| **Ruby SDK** | Production-ready | 37 generated services |
+
+All three SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. No hand-written API methods exist in any SDK runtime.
+
+---
+
 ## SDK Development Rules
 
 ### NEVER Do These (Hard Rules)
@@ -28,7 +41,7 @@ Smithy Spec → OpenAPI → Generated Client → Service Layer → User
 | **TypeScript** | `openapi-fetch` + `schema.d.ts` | `src/generated/services/*.ts` | ✅ Complete |
 | **Ruby** | HTTP client | `lib/basecamp/generated/services/*.rb` | ✅ Complete |
 
-**All three SDKs have complete generated service layers** covering 167 operations across 37 services.
+**All three SDKs have complete generated service layers** covering 166 operations across 37 services.
 
 **TypeScript/Ruby runtime**: Wired to generated services (`src/generated/services/`, `lib/basecamp/generated/services/`). Hand-written services remain only for infrastructure (`base.ts`/`base_service.rb`) and OAuth (`authorization.ts`/`authorization_service.rb`).
 
