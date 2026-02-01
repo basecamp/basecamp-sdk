@@ -1,20 +1,14 @@
 package basecamp
 
 import (
-	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-// unmarshalSubsWithNumbers decodes JSON into a map preserving numbers as json.Number.
-func unmarshalSubsWithNumbers(data []byte) (map[string]interface{}, error) {
-	var result map[string]interface{}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	return result, decoder.Decode(&result)
-}
+// unmarshalSubsWithNumbers is an alias for the shared unmarshalWithNumbers helper.
+var unmarshalSubsWithNumbers = unmarshalWithNumbers
 
 func subscriptionsFixturesDir() string {
 	return filepath.Join("..", "..", "..", "spec", "fixtures", "subscriptions")
