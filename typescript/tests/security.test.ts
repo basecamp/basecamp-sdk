@@ -428,6 +428,7 @@ describe("Cache auth isolation", () => {
     const client = createBasecampClient({
       accountId: "12345",
       accessToken: "token-cache-test",
+      enableCache: true,
     });
 
     // First request: populates cache with ETag

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "logger"
 
 class HooksTest < Minitest::Test
   def test_request_info_data_class

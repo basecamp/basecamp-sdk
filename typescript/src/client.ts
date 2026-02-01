@@ -181,7 +181,7 @@ export interface BasecampClientOptions {
   baseUrl?: string;
   /** User-Agent header (defaults to basecamp-sdk-ts/VERSION) */
   userAgent?: string;
-  /** Enable ETag-based caching (defaults to true) */
+  /** Enable ETag-based caching (defaults to false) */
   enableCache?: boolean;
   /** Enable automatic retry on 429/503 (defaults to true) */
   enableRetry?: boolean;
@@ -216,7 +216,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     accessToken,
     baseUrl = `https://3.basecampapi.com/${accountId}`,
     userAgent = DEFAULT_USER_AGENT,
-    enableCache = true,
+    enableCache = false,
     enableRetry = true,
     hooks,
   } = options;

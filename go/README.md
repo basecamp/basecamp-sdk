@@ -126,7 +126,7 @@ func main() {
 | `BASECAMP_TODOLIST_ID` | Default todolist ID | No |
 | `BASECAMP_BASE_URL` | API base URL | No (default: `https://3.basecampapi.com`) |
 | `BASECAMP_CACHE_DIR` | Cache directory path | No (default: `~/.cache/basecamp`) |
-| `BASECAMP_CACHE_ENABLED` | Enable HTTP caching | No (default: `true`) |
+| `BASECAMP_CACHE_ENABLED` | Enable HTTP caching | No (default: `false`) |
 | `BASECAMP_NO_KEYRING` | Disable system keyring | No |
 
 Note: Account ID is specified via `client.ForAccount(accountID)` rather than configuration.
@@ -345,7 +345,19 @@ if err != nil {
 
 ## Caching
 
-The SDK automatically caches GET responses using ETags:
+The SDK supports ETag-based caching for GET responses. **Caching is disabled by default** to avoid writing private data to disk unexpectedly.
+
+To enable caching:
+
+```go
+cfg := basecamp.DefaultConfig()
+cfg.CacheEnabled = true
+
+// Or via environment variable:
+// BASECAMP_CACHE_ENABLED=true
+```
+
+When enabled, the SDK caches GET responses using ETags:
 
 ```go
 // First request fetches from API
@@ -353,10 +365,6 @@ projects, _ := account.Projects().List(ctx, nil)
 
 // Second request uses cached data if unchanged (304 Not Modified)
 projects, _ = account.Projects().List(ctx, nil)
-
-// Disable caching
-cfg := basecamp.DefaultConfig()
-cfg.CacheEnabled = false
 ```
 
 ## Custom HTTP Client

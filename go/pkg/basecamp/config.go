@@ -37,7 +37,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		BaseURL:      "https://3.basecampapi.com",
 		CacheDir:     filepath.Join(cacheDir, "basecamp"),
-		CacheEnabled: true,
+		CacheEnabled: false,
 	}
 }
 
