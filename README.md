@@ -1,4 +1,4 @@
-# Basecamp SDK
+# <img src="assets/basecamp-badge.svg" height="28" alt="Basecamp"> Basecamp SDK
 
 Official SDKs for the [Basecamp 3 API](https://github.com/basecamp/bc3-api).
 
