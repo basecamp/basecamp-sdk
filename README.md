@@ -1,6 +1,8 @@
 # <img src="assets/basecamp-badge.svg" height="28" alt="Basecamp"> Basecamp SDK
 
-Official SDKs for the [Basecamp 3 API](https://github.com/basecamp/bc3-api).
+Official [Basecamp](https://basecamp.com) [API](https://github.com/basecamp/bc3-api) clients, runtimes, and software development kits for Go, Ruby, and TypeScript.
+
+OpenAPI 3.1 spec included.
 
 ## Languages
 
