@@ -10,6 +10,22 @@ Official SDKs for the [Basecamp 3 API](https://github.com/basecamp/bc3-api).
 | [Ruby](ruby/) | `ruby/` | Active | `basecamp-sdk` |
 | [TypeScript](typescript/) | `typescript/` | Active | `@basecamp/sdk` |
 
+| Feature | Go | TypeScript | Ruby |
+|---------|:--:|:----------:|:----:|
+| OAuth 2.0 Authentication | ✓ | ✓ | ✓ |
+| Static Token Authentication | ✓ | ✓ | ✓ |
+| ETag HTTP Caching (opt-in) | ✓ | ✓ | via Faraday† |
+| Automatic Retry with Backoff | ✓ | ✓ | ✓ |
+| Pagination Handling | ✓ | ✓ | ✓ |
+| Observability Hooks | ✓ | ✓ | ✓ |
+| Structured Errors | ✓ | ✓ | ✓ |
+
+† Ruby SDK uses Faraday - add caching via [faraday-http-cache](https://github.com/sourcelevel/faraday-http-cache)
+
+**Note:** HTTP caching is disabled by default. Enable explicitly via configuration:
+- **Go:** `cfg.CacheEnabled = true` or `BASECAMP_CACHE_ENABLED=true`
+- **TypeScript:** `enableCache: true` in client options
+
 All SDKs are generated from a single [Smithy](https://smithy.io/) specification, ensuring consistent behavior and API coverage across languages.
 
 ## Quick Start
