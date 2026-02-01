@@ -64,6 +64,23 @@ behavior-model-check:
 	@rm -f behavior-model.json.tmp
 	@echo "behavior-model.json is up to date"
 
+.PHONY: url-routes url-routes-check
+
+# Generate url-routes.json from OpenAPI spec
+url-routes:
+	@echo "==> Generating URL routes..."
+	./scripts/generate-url-routes
+	@echo "Updated go/pkg/basecamp/url-routes.json"
+
+# Check that url-routes.json is up to date
+url-routes-check:
+	@echo "==> Checking URL routes freshness..."
+	@./scripts/generate-url-routes openapi.json go/pkg/basecamp/url-routes.json.tmp
+	@diff -q go/pkg/basecamp/url-routes.json go/pkg/basecamp/url-routes.json.tmp > /dev/null 2>&1 || \
+		(rm -f go/pkg/basecamp/url-routes.json.tmp && echo "ERROR: url-routes.json is out of date. Run 'make url-routes'" && exit 1)
+	@rm -f go/pkg/basecamp/url-routes.json.tmp
+	@echo "url-routes.json is up to date"
+
 #------------------------------------------------------------------------------
 # Go SDK targets (delegates to go/Makefile)
 #------------------------------------------------------------------------------
@@ -222,6 +239,10 @@ help:
 	@echo "Behavior Model:"
 	@echo "  behavior-model       Generate behavior-model.json from Smithy spec"
 	@echo "  behavior-model-check Verify behavior-model.json is up to date"
+	@echo ""
+	@echo "URL Routes:"
+	@echo "  url-routes           Generate url-routes.json from OpenAPI spec"
+	@echo "  url-routes-check     Verify url-routes.json is up to date"
 	@echo ""
 	@echo "Go SDK:"
 	@echo "  go-test          Run Go tests"
