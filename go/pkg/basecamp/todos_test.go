@@ -1,21 +1,15 @@
 package basecamp
 
 import (
-	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-// unmarshalTodosWithNumbers decodes JSON into a map preserving numbers as json.Number
-// which can be cleanly converted to int64 without float64 precision loss.
-func unmarshalTodosWithNumbers(data []byte) (map[string]interface{}, error) {
-	var result map[string]interface{}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	return result, decoder.Decode(&result)
-}
+// unmarshalTodosWithNumbers is an alias for the shared unmarshalWithNumbers helper.
+// This preserves the existing function name for backwards compatibility.
+var unmarshalTodosWithNumbers = unmarshalWithNumbers
 
 func todosFixturesDir() string {
 	return filepath.Join("..", "..", "..", "spec", "fixtures", "todos")
