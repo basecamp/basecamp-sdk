@@ -77,3 +77,40 @@ export function redactHeadersRecord(
 
   return result;
 }
+
+/**
+ * Checks if a hostname represents localhost for development/testing purposes.
+ *
+ * Matches:
+ * - "localhost" exactly
+ * - Any subdomain of localhost (e.g., "api.localhost", "dev.api.localhost")
+ * - IPv4 loopback "127.0.0.1"
+ * - IPv6 loopback "::1"
+ * - The .localhost TLD (RFC 6761) - any hostname ending in ".localhost"
+ *
+ * This is used to allow HTTP (non-HTTPS) connections during local development
+ * while enforcing HTTPS for all production traffic.
+ *
+ * @param hostname - The hostname to check (without port)
+ * @returns true if the hostname represents localhost
+ *
+ * @example
+ * ```ts
+ * isLocalhost("localhost");           // true
+ * isLocalhost("api.localhost");       // true
+ * isLocalhost("myapp.localhost");     // true
+ * isLocalhost("127.0.0.1");           // true
+ * isLocalhost("::1");                 // true
+ * isLocalhost("example.com");         // false
+ * isLocalhost("localhost.example.com"); // false
+ * ```
+ */
+export function isLocalhost(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  return (
+    normalized === "localhost" ||
+    normalized === "127.0.0.1" ||
+    normalized === "::1" ||
+    normalized.endsWith(".localhost")
+  );
+}

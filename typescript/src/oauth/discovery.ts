@@ -5,6 +5,7 @@
  */
 
 import { BasecampError } from "../errors.js";
+import { isLocalhost } from "../security.js";
 import type { OAuthConfig } from "./types.js";
 
 /**
@@ -55,10 +56,7 @@ export async function discover(
   // Validate HTTPS before making any network request (allow localhost for testing)
   try {
     const parsed = new URL(baseUrl);
-    const isLocalhost = parsed.hostname === "localhost" ||
-                        parsed.hostname === "127.0.0.1" ||
-                        parsed.hostname === "::1";
-    if (parsed.protocol !== "https:" && !isLocalhost) {
+    if (parsed.protocol !== "https:" && !isLocalhost(parsed.hostname)) {
       throw new BasecampError("validation", `OAuth discovery base URL must use HTTPS: ${baseUrl}`);
     }
   } catch (err) {

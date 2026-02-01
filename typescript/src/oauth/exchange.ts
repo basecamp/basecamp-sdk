@@ -6,6 +6,7 @@
  */
 
 import { BasecampError } from "../errors.js";
+import { isLocalhost } from "../security.js";
 import type {
   ExchangeRequest,
   RefreshRequest,
@@ -170,10 +171,7 @@ export async function refreshToken(
 function requireHTTPS(url: string, label: string): void {
   try {
     const parsed = new URL(url);
-    const isLocalhost = parsed.hostname === "localhost" ||
-                        parsed.hostname === "127.0.0.1" ||
-                        parsed.hostname === "::1";
-    if (parsed.protocol !== "https:" && !isLocalhost) {
+    if (parsed.protocol !== "https:" && !isLocalhost(parsed.hostname)) {
       throw new BasecampError("validation", `${label} must use HTTPS: ${url}`);
     }
   } catch (err) {

@@ -11,6 +11,7 @@ import { createRequire } from "node:module";
 import type { paths } from "./generated/schema.js";
 import type { BasecampHooks, RequestInfo, RequestResult } from "./hooks.js";
 import { BasecampError } from "./errors.js";
+import { isLocalhost } from "./security.js";
 
 // Use createRequire for JSON import (Node 18+ compatible)
 const require = createRequire(import.meta.url);
@@ -225,10 +226,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   if (baseUrl) {
     try {
       const parsed = new URL(baseUrl);
-      const isLocalhost = parsed.hostname === "localhost" ||
-                          parsed.hostname === "127.0.0.1" ||
-                          parsed.hostname === "::1";
-      if (parsed.protocol !== "https:" && !isLocalhost) {
+      if (parsed.protocol !== "https:" && !isLocalhost(parsed.hostname)) {
         throw new BasecampError("usage", `Base URL must use HTTPS: ${baseUrl}`);
       }
     } catch (err) {

@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
 // Exchanger handles OAuth 2.0 token exchange and refresh operations.
@@ -98,14 +100,8 @@ const maxErrorMessageLen = 500
 func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, data url.Values) (*Token, error) {
 	// Validate HTTPS to prevent sending tokens/credentials over plaintext
 	// Allow localhost for testing against local mock OAuth servers
-	u, err := url.Parse(tokenEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("invalid token endpoint URL: %w", err)
-	}
-	host := u.Hostname()
-	isLocalhost := host == "localhost" || host == "127.0.0.1" || host == "::1"
-	if !strings.EqualFold(u.Scheme, "https") && !isLocalhost {
-		return nil, fmt.Errorf("token endpoint must use HTTPS: %s", tokenEndpoint)
+	if err := basecamp.RequireSecureEndpoint(tokenEndpoint); err != nil {
+		return nil, fmt.Errorf("token endpoint validation failed for %q: %w", tokenEndpoint, err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", tokenEndpoint, strings.NewReader(data.Encode()))

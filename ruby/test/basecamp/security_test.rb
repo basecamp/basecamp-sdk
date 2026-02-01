@@ -34,6 +34,49 @@ class SecurityTruncateTest < Minitest::Test
   end
 end
 
+class SecurityLocalhostTest < Minitest::Test
+  def test_localhost_hostname
+    assert Basecamp::Security.localhost?("http://localhost:3000/path")
+  end
+
+  def test_localhost_127_0_0_1
+    assert Basecamp::Security.localhost?("http://127.0.0.1:3000/path")
+  end
+
+  def test_localhost_ipv6
+    assert Basecamp::Security.localhost?("http://[::1]:3000/path")
+  end
+
+  def test_localhost_tld
+    assert Basecamp::Security.localhost?("http://app.localhost/path")
+  end
+
+  def test_localhost_tld_subdomain
+    assert Basecamp::Security.localhost?("http://3.basecamp.localhost/path")
+  end
+
+  def test_localhost_tld_with_port
+    assert Basecamp::Security.localhost?("http://myapp.localhost:3000/api")
+  end
+
+  def test_not_localhost_remote_host
+    assert_not Basecamp::Security.localhost?("https://example.com/path")
+  end
+
+  def test_not_localhost_suffix_in_hostname
+    # "mylocalhost.com" should not match
+    assert_not Basecamp::Security.localhost?("https://mylocalhost.com/path")
+  end
+
+  def test_not_localhost_nil_host
+    assert_not Basecamp::Security.localhost?("/relative/path")
+  end
+
+  def test_not_localhost_invalid_uri
+    assert_not Basecamp::Security.localhost?("://bad")
+  end
+end
+
 class SecurityRequireHttpsTest < Minitest::Test
   def test_accepts_https
     Basecamp::Security.require_https!("https://example.com/path")

@@ -63,7 +63,13 @@ module Basecamp
     def self.localhost?(url)
       uri = URI.parse(url.to_s)
       host = uri.host&.downcase
-      host == "localhost" || host == "127.0.0.1" || host == "::1"
+      return false if host.nil?
+
+      host == "localhost" ||
+        host == "127.0.0.1" ||
+        host == "::1" ||
+        host == "[::1]" ||
+        host.end_with?(".localhost")
     rescue URI::InvalidURIError
       false
     end

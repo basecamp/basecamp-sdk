@@ -112,7 +112,7 @@ func (s *AuthorizationService) GetInfo(ctx context.Context, opts *GetInfoOptions
 	if opts != nil && opts.Endpoint != "" {
 		endpoint = opts.Endpoint
 		// Validate custom endpoint uses HTTPS (allow localhost for testing)
-		if err := requireHTTPSUnlessLocalhost(endpoint); err != nil {
+		if err := RequireSecureEndpoint(endpoint); err != nil {
 			return nil, fmt.Errorf("authorization endpoint validation failed: %w", err)
 		}
 	}
