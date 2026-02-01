@@ -5,6 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
+	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
 
 // unmarshalTodosWithNumbers is an alias for the shared unmarshalWithNumbers helper.
@@ -602,5 +606,326 @@ func TestCreateTodoRequest_CompletionSubscriberIDs_Omitted(t *testing.T) {
 
 	if _, ok := data["completion_subscriber_ids"]; ok {
 		t.Error("expected completion_subscriber_ids to be omitted when empty")
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Conversion function tests (todoFromGenerated)
+// -----------------------------------------------------------------------------
+
+// TestTodoFromGenerated_FullPopulated tests conversion with all fields set.
+func TestTodoFromGenerated_FullPopulated(t *testing.T) {
+	id := int64(12345)
+	parentID := int64(11111)
+	bucketID := int64(22222)
+	creatorID := int64(33333)
+	assigneeID := int64(44444)
+
+	gt := generated.Todo{
+		Id:             &id,
+		Status:         "active",
+		Title:          "Test Todo",
+		Type:           "Todo",
+		Url:            "https://example.com/todo",
+		AppUrl:         "https://example.com/app/todo",
+		BookmarkUrl:    "https://example.com/bookmark",
+		Content:        "Test content",
+		Description:    "<div>Test description</div>",
+		StartsOn:       types.Date{Year: 2024, Month: 1, Day: 15},
+		DueOn:          types.Date{Year: 2024, Month: 2, Day: 28},
+		Completed:      false,
+		Position:       3,
+		CreatedAt:      time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+		UpdatedAt:      time.Date(2024, 1, 5, 15, 30, 0, 0, time.UTC),
+		InheritsStatus: true,
+		Parent: generated.TodoParent{
+			Id:     &parentID,
+			Title:  "Parent Todolist",
+			Type:   "Todolist",
+			Url:    "https://example.com/parent",
+			AppUrl: "https://example.com/app/parent",
+		},
+		Bucket: generated.TodoBucket{
+			Id:   &bucketID,
+			Name: "Test Project",
+			Type: "Project",
+		},
+		Creator: generated.Person{
+			Id:           &creatorID,
+			Name:         "Test Creator",
+			EmailAddress: "creator@example.com",
+			AvatarUrl:    "https://example.com/avatar",
+			Admin:        true,
+			Owner:        true,
+		},
+		Assignees: []generated.Person{
+			{
+				Id:           &assigneeID,
+				Name:         "Test Assignee",
+				EmailAddress: "assignee@example.com",
+			},
+		},
+	}
+
+	todo := todoFromGenerated(gt)
+
+	// Verify basic fields
+	if todo.ID != id {
+		t.Errorf("expected ID %d, got %d", id, todo.ID)
+	}
+	if todo.Status != "active" {
+		t.Errorf("expected status 'active', got %q", todo.Status)
+	}
+	if todo.Title != "Test Todo" {
+		t.Errorf("expected title 'Test Todo', got %q", todo.Title)
+	}
+	if todo.Type != "Todo" {
+		t.Errorf("expected type 'Todo', got %q", todo.Type)
+	}
+	if todo.Content != "Test content" {
+		t.Errorf("expected content 'Test content', got %q", todo.Content)
+	}
+	if todo.Description != "<div>Test description</div>" {
+		t.Errorf("expected description with HTML, got %q", todo.Description)
+	}
+
+	// Verify date conversions
+	if todo.StartsOn != "2024-01-15" {
+		t.Errorf("expected starts_on '2024-01-15', got %q", todo.StartsOn)
+	}
+	if todo.DueOn != "2024-02-28" {
+		t.Errorf("expected due_on '2024-02-28', got %q", todo.DueOn)
+	}
+
+	// Verify timestamps
+	if todo.CreatedAt.IsZero() {
+		t.Error("expected CreatedAt to be non-zero")
+	}
+	if todo.UpdatedAt.IsZero() {
+		t.Error("expected UpdatedAt to be non-zero")
+	}
+
+	// Verify Parent conversion
+	if todo.Parent == nil {
+		t.Fatal("expected Parent to be non-nil")
+	}
+	if todo.Parent.ID != parentID {
+		t.Errorf("expected Parent.ID %d, got %d", parentID, todo.Parent.ID)
+	}
+	if todo.Parent.Title != "Parent Todolist" {
+		t.Errorf("expected Parent.Title 'Parent Todolist', got %q", todo.Parent.Title)
+	}
+
+	// Verify Bucket conversion
+	if todo.Bucket == nil {
+		t.Fatal("expected Bucket to be non-nil")
+	}
+	if todo.Bucket.ID != bucketID {
+		t.Errorf("expected Bucket.ID %d, got %d", bucketID, todo.Bucket.ID)
+	}
+	if todo.Bucket.Name != "Test Project" {
+		t.Errorf("expected Bucket.Name 'Test Project', got %q", todo.Bucket.Name)
+	}
+
+	// Verify Creator conversion
+	if todo.Creator == nil {
+		t.Fatal("expected Creator to be non-nil")
+	}
+	if todo.Creator.ID != creatorID {
+		t.Errorf("expected Creator.ID %d, got %d", creatorID, todo.Creator.ID)
+	}
+	if todo.Creator.Name != "Test Creator" {
+		t.Errorf("expected Creator.Name 'Test Creator', got %q", todo.Creator.Name)
+	}
+	if !todo.Creator.Admin {
+		t.Error("expected Creator.Admin to be true")
+	}
+	if !todo.Creator.Owner {
+		t.Error("expected Creator.Owner to be true")
+	}
+
+	// Verify Assignees conversion
+	if len(todo.Assignees) != 1 {
+		t.Fatalf("expected 1 assignee, got %d", len(todo.Assignees))
+	}
+	if todo.Assignees[0].ID != assigneeID {
+		t.Errorf("expected assignee ID %d, got %d", assigneeID, todo.Assignees[0].ID)
+	}
+	if todo.Assignees[0].Name != "Test Assignee" {
+		t.Errorf("expected assignee name 'Test Assignee', got %q", todo.Assignees[0].Name)
+	}
+
+	// Verify other fields
+	if todo.InheritsVis != true {
+		t.Error("expected InheritsVis to be true")
+	}
+	if todo.Position != 3 {
+		t.Errorf("expected position 3, got %d", todo.Position)
+	}
+}
+
+// TestTodoFromGenerated_NilFields tests conversion with nil optional fields.
+func TestTodoFromGenerated_NilFields(t *testing.T) {
+	// Create a generated.Todo with nil ID and empty nested structs
+	gt := generated.Todo{
+		Id:      nil, // nil ID
+		Status:  "active",
+		Title:   "Minimal Todo",
+		Type:    "Todo",
+		Content: "Content",
+		Parent:  generated.TodoParent{}, // empty parent
+		Bucket:  generated.TodoBucket{}, // empty bucket
+		Creator: generated.Person{},     // empty creator
+	}
+
+	todo := todoFromGenerated(gt)
+
+	// Nil ID should result in 0
+	if todo.ID != 0 {
+		t.Errorf("expected ID 0 for nil input, got %d", todo.ID)
+	}
+
+	// Empty nested structs should NOT create non-nil pointers
+	// (the conversion checks for Id != nil || field != "")
+	if todo.Parent != nil {
+		t.Error("expected Parent to be nil for empty TodoParent")
+	}
+	if todo.Bucket != nil {
+		t.Error("expected Bucket to be nil for empty TodoBucket")
+	}
+	if todo.Creator != nil {
+		t.Error("expected Creator to be nil for empty Person")
+	}
+}
+
+// TestTodoFromGenerated_ZeroDates tests conversion with zero/empty dates.
+func TestTodoFromGenerated_ZeroDates(t *testing.T) {
+	id := int64(12345)
+	gt := generated.Todo{
+		Id:       &id,
+		Status:   "active",
+		Title:    "Todo without dates",
+		Type:     "Todo",
+		Content:  "Content",
+		StartsOn: types.Date{}, // zero date
+		DueOn:    types.Date{}, // zero date
+	}
+
+	todo := todoFromGenerated(gt)
+
+	// Zero dates should result in empty strings
+	if todo.StartsOn != "" {
+		t.Errorf("expected empty starts_on for zero date, got %q", todo.StartsOn)
+	}
+	if todo.DueOn != "" {
+		t.Errorf("expected empty due_on for zero date, got %q", todo.DueOn)
+	}
+}
+
+// TestTodoFromGenerated_EmptyAssignees tests conversion with empty assignees array.
+func TestTodoFromGenerated_EmptyAssignees(t *testing.T) {
+	id := int64(12345)
+	gt := generated.Todo{
+		Id:        &id,
+		Status:    "active",
+		Title:     "Todo without assignees",
+		Type:      "Todo",
+		Content:   "Content",
+		Assignees: []generated.Person{}, // empty array
+	}
+
+	todo := todoFromGenerated(gt)
+
+	// Empty assignees should remain nil or empty
+	if len(todo.Assignees) != 0 {
+		t.Errorf("expected 0 assignees, got %d", len(todo.Assignees))
+	}
+}
+
+// TestTodoFromGenerated_MultipleAssignees tests conversion with multiple assignees.
+func TestTodoFromGenerated_MultipleAssignees(t *testing.T) {
+	id := int64(12345)
+	id1 := int64(111)
+	id2 := int64(222)
+	id3 := int64(333)
+
+	gt := generated.Todo{
+		Id:      &id,
+		Status:  "active",
+		Title:   "Todo with multiple assignees",
+		Type:    "Todo",
+		Content: "Content",
+		Assignees: []generated.Person{
+			{Id: &id1, Name: "Alice"},
+			{Id: &id2, Name: "Bob"},
+			{Id: &id3, Name: "Charlie"},
+		},
+	}
+
+	todo := todoFromGenerated(gt)
+
+	if len(todo.Assignees) != 3 {
+		t.Fatalf("expected 3 assignees, got %d", len(todo.Assignees))
+	}
+	if todo.Assignees[0].Name != "Alice" {
+		t.Errorf("expected assignee[0].Name 'Alice', got %q", todo.Assignees[0].Name)
+	}
+	if todo.Assignees[1].Name != "Bob" {
+		t.Errorf("expected assignee[1].Name 'Bob', got %q", todo.Assignees[1].Name)
+	}
+	if todo.Assignees[2].Name != "Charlie" {
+		t.Errorf("expected assignee[2].Name 'Charlie', got %q", todo.Assignees[2].Name)
+	}
+}
+
+// TestTodoFromGenerated_PartialNestedFields tests conversion when nested structs
+// have partial data (e.g., only ID set, or only name set).
+func TestTodoFromGenerated_PartialNestedFields(t *testing.T) {
+	parentID := int64(11111)
+	creatorID := int64(33333)
+
+	gt := generated.Todo{
+		Status:  "active",
+		Title:   "Todo with partial nested",
+		Type:    "Todo",
+		Content: "Content",
+		Parent: generated.TodoParent{
+			Id: &parentID, // Only ID, no title
+		},
+		Bucket: generated.TodoBucket{
+			Name: "Project Name", // Only name, no ID
+		},
+		Creator: generated.Person{
+			Id: &creatorID, // Only ID, no name
+		},
+	}
+
+	todo := todoFromGenerated(gt)
+
+	// Parent should be created because ID is set
+	if todo.Parent == nil {
+		t.Fatal("expected Parent to be non-nil when ID is set")
+	}
+	if todo.Parent.ID != parentID {
+		t.Errorf("expected Parent.ID %d, got %d", parentID, todo.Parent.ID)
+	}
+	if todo.Parent.Title != "" {
+		t.Errorf("expected Parent.Title to be empty, got %q", todo.Parent.Title)
+	}
+
+	// Bucket should be created because Name is set
+	if todo.Bucket == nil {
+		t.Fatal("expected Bucket to be non-nil when Name is set")
+	}
+	if todo.Bucket.Name != "Project Name" {
+		t.Errorf("expected Bucket.Name 'Project Name', got %q", todo.Bucket.Name)
+	}
+
+	// Creator should be created because ID is set
+	if todo.Creator == nil {
+		t.Fatal("expected Creator to be non-nil when ID is set")
+	}
+	if todo.Creator.ID != creatorID {
+		t.Errorf("expected Creator.ID %d, got %d", creatorID, todo.Creator.ID)
 	}
 }
