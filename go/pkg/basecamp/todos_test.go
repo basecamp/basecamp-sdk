@@ -501,3 +501,106 @@ func TestTodoListOptions_StatusFilter(t *testing.T) {
 		})
 	}
 }
+
+// TestCreateTodoRequest_CompletionSubscriberIDs tests that CompletionSubscriberIDs
+// field serializes correctly.
+func TestCreateTodoRequest_CompletionSubscriberIDs(t *testing.T) {
+	req := CreateTodoRequest{
+		Content:                 "Task with completion subscribers",
+		CompletionSubscriberIDs: []int64{1049715920, 1049715915, 1049715914},
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateTodoRequest: %v", err)
+	}
+
+	data, err := unmarshalTodosWithNumbers(out)
+	if err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	// Verify completion_subscriber_ids is present
+	subscriberIDs, ok := data["completion_subscriber_ids"].([]interface{})
+	if !ok {
+		t.Fatalf("expected completion_subscriber_ids to be array, got %T", data["completion_subscriber_ids"])
+	}
+	if len(subscriberIDs) != 3 {
+		t.Errorf("expected 3 completion_subscriber_ids, got %d", len(subscriberIDs))
+	}
+
+	// Verify IDs are preserved correctly
+	expectedIDs := []int64{1049715920, 1049715915, 1049715914}
+	for i, id := range subscriberIDs {
+		num, ok := id.(json.Number)
+		if !ok {
+			t.Fatalf("expected completion_subscriber_ids[%d] to be json.Number, got %T", i, id)
+		}
+		parsed, err := num.Int64()
+		if err != nil {
+			t.Fatalf("failed to parse completion_subscriber_ids[%d]: %v", i, err)
+		}
+		if parsed != expectedIDs[i] {
+			t.Errorf("expected completion_subscriber_ids[%d] = %d, got %d", i, expectedIDs[i], parsed)
+		}
+	}
+
+	// Round-trip test
+	var roundtrip CreateTodoRequest
+	if err := json.Unmarshal(out, &roundtrip); err != nil {
+		t.Fatalf("failed to unmarshal round-trip: %v", err)
+	}
+	if len(roundtrip.CompletionSubscriberIDs) != 3 {
+		t.Errorf("expected 3 completion_subscriber_ids after roundtrip, got %d", len(roundtrip.CompletionSubscriberIDs))
+	}
+}
+
+// TestUpdateTodoRequest_CompletionSubscriberIDs tests that CompletionSubscriberIDs
+// field serializes correctly in update requests.
+func TestUpdateTodoRequest_CompletionSubscriberIDs(t *testing.T) {
+	req := UpdateTodoRequest{
+		Content:                 "Updated task with completion subscribers",
+		CompletionSubscriberIDs: []int64{1049715920},
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal UpdateTodoRequest: %v", err)
+	}
+
+	data, err := unmarshalTodosWithNumbers(out)
+	if err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	// Verify completion_subscriber_ids is present
+	subscriberIDs, ok := data["completion_subscriber_ids"].([]interface{})
+	if !ok {
+		t.Fatalf("expected completion_subscriber_ids to be array, got %T", data["completion_subscriber_ids"])
+	}
+	if len(subscriberIDs) != 1 {
+		t.Errorf("expected 1 completion_subscriber_id, got %d", len(subscriberIDs))
+	}
+}
+
+// TestCreateTodoRequest_CompletionSubscriberIDs_Omitted tests that
+// CompletionSubscriberIDs is omitted when empty (omitempty behavior).
+func TestCreateTodoRequest_CompletionSubscriberIDs_Omitted(t *testing.T) {
+	req := CreateTodoRequest{
+		Content: "Task without completion subscribers",
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateTodoRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if _, ok := data["completion_subscriber_ids"]; ok {
+		t.Error("expected completion_subscriber_ids to be omitted when empty")
+	}
+}
