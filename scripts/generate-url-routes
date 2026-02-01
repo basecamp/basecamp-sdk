@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+#
+# Generate url-routes.json from OpenAPI spec.
+#
+# Extracts URL route patterns grouped by path, with resource tags,
+# operations (method → operationId), and typed parameter metadata.
+# This is the SDK's equivalent of Rails route recognition data.
+#
+# Prerequisites: openapi.json must exist (produced by `make smithy-build`).
+#
+# Usage: ./generate-url-routes [openapi.json] [output.json]
+#        ./generate-url-routes  # uses defaults
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+OPENAPI_FILE="${1:-$PROJECT_ROOT/openapi.json}"
+OUTPUT_FILE="${2:-$PROJECT_ROOT/go/pkg/basecamp/url-routes.json}"
+
+if [[ ! -f "$OPENAPI_FILE" ]]; then
+    echo "Error: OpenAPI file not found: $OPENAPI_FILE" >&2
+    echo "Run 'make smithy-build' first to generate the OpenAPI spec." >&2
+    exit 1
+fi
+
+# Generate url-routes using jq
+jq '
+# Infer parameter role from its name.
+# - accountId → "account"
+# - projectId → "bucket"
+# - Terminal resource IDs (todoId, messageId, cardId) → "recording"
+# - Mid-path parent IDs (todolistId, boardId, columnId) → "parent"
+# The role is refined per-route below based on position in the pattern.
+def param_role($name; $pattern):
+  if $name == "accountId" then "account"
+  elif $name == "projectId" then "bucket"
+  else
+    # Check if this param is the last path segment in the pattern
+    ($pattern | split("/") | last) as $last_seg |
+    if $last_seg == ("{\($name)}") then "recording"
+    else "parent"
+    end
+  end;
+
+# Extract parameter type from OpenAPI schema
+def param_type:
+  if .schema.type == "integer" then
+    if .schema.format == "int64" then "int64" else "int" end
+  else "string"
+  end;
+
+{
+  "$schema": "https://basecamp.com/schemas/url-routes.json",
+  version: "1.0.0",
+  generated: true,
+  routes: [
+    .paths | to_entries[] |
+    .key as $raw_path |
+    (.key | gsub("\\.json$"; "")) as $pattern |
+    .value as $path_item |
+
+    # Collect all operations on this path
+    ($path_item | to_entries | map(
+      select(.key | IN("get","post","put","patch","delete"))
+    )) as $ops |
+
+    # Use the first operation's tags as the resource tag
+    ($ops | first | .value.tags // [] | first // null) as $resource |
+
+    # Build operations map: method → operationId
+    ([$ops[] | {key: (.key | ascii_upcase), value: .value.operationId}] | from_entries) as $operations |
+
+    # Extract path parameters with roles and types.
+    # Parameters may be at path level or operation level; merge both.
+    (
+      [
+        (($path_item.parameters // [])[] | select(.in == "path")),
+        (($ops[0].value.parameters // [])[] | select(.in == "path"))
+      ] | unique_by(.name) |
+      map({
+        key: .name,
+        value: {
+          role: param_role(.name; $pattern),
+          type: param_type
+        }
+      }) | from_entries
+    ) as $params |
+
+    {
+      pattern: $pattern,
+      resource: $resource,
+      operations: $operations,
+      params: $params
+    }
+  ] | sort_by(.pattern)
+}
+' "$OPENAPI_FILE" > "${OUTPUT_FILE}.tmp"
+
+mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
+
+# Summary output
+route_count=$(jq '.routes | length' "$OUTPUT_FILE")
+resource_count=$(jq '[.routes[].resource] | unique | length' "$OUTPUT_FILE")
+op_count=$(jq '[.routes[].operations | to_entries[]] | length' "$OUTPUT_FILE")
+
+echo "Generated $OUTPUT_FILE"
+echo "  Routes: $route_count (across $resource_count resources, $op_count operations)"
