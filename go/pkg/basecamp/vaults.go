@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -912,6 +914,88 @@ func (s *UploadsService) ListVersions(ctx context.Context, bucketID, uploadID in
 		uploads = append(uploads, uploadFromGenerated(gu))
 	}
 	return uploads, nil
+}
+
+// DownloadResult contains the result from downloading an upload.
+type DownloadResult struct {
+	// Body is the file content. Caller must close this.
+	Body io.ReadCloser
+	// ContentType is the MIME type of the file.
+	ContentType string
+	// ContentLength is the size of the file in bytes (-1 if unknown).
+	ContentLength int64
+	// Filename is the name of the file.
+	Filename string
+}
+
+// Download fetches the file content from an upload's download URL.
+// bucketID is the project ID, uploadID is the upload ID.
+// The caller is responsible for closing the returned Body.
+//
+// This method first fetches the upload metadata to get the download URL,
+// then fetches the file content from that URL. The download URL is a
+// signed S3 URL that doesn't require authentication headers.
+func (s *UploadsService) Download(ctx context.Context, bucketID, uploadID int64) (result *DownloadResult, err error) {
+	op := OperationInfo{
+		Service: "Uploads", Operation: "Download",
+		ResourceType: "upload", IsMutation: false,
+		BucketID: bucketID, ResourceID: uploadID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	// First, get the upload metadata to retrieve the download URL
+	upload, err := s.Get(ctx, bucketID, uploadID)
+	if err != nil {
+		return nil, err
+	}
+
+	if upload.DownloadURL == "" {
+		err = ErrUsage("upload has no download URL")
+		return nil, err
+	}
+
+	// Fetch the file content from the download URL
+	// The download URL is a signed S3 URL that doesn't require auth headers
+	req, err := http.NewRequestWithContext(ctx, "GET", upload.DownloadURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create download request: %w", err)
+	}
+
+	// Use a plain HTTP client for S3 downloads (no auth headers).
+	// Reuse the parent's transport to preserve proxy settings, custom CA/mTLS,
+	// and connection pooling, but skip the auth-adding loggingTransport wrapper.
+	transport := s.client.parent.httpOpts.Transport
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+	httpClient := &http.Client{
+		Transport: transport,
+		Timeout:   s.client.parent.httpOpts.Timeout,
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download file: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
+	}
+
+	return &DownloadResult{
+		Body:          resp.Body,
+		ContentType:   resp.Header.Get("Content-Type"),
+		ContentLength: resp.ContentLength,
+		Filename:      upload.Filename,
+	}, nil
 }
 
 // vaultFromGenerated converts a generated Vault to our clean Vault type.

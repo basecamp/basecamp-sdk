@@ -1,9 +1,14 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -525,5 +530,127 @@ func TestUpload_TimestampParsing(t *testing.T) {
 	}
 	if upload.CreatedAt.Year() != 2022 {
 		t.Errorf("expected year 2022, got %d", upload.CreatedAt.Year())
+	}
+}
+
+// UploadsService.Download tests
+
+func TestUploadsService_Download_MissingDownloadURL(t *testing.T) {
+	// Test that Download returns an error when the upload has no download URL
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Return an upload without a download_url
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":       1069479400,
+			"title":    "logo.png",
+			"filename": "logo.png",
+			// Deliberately omit download_url
+		})
+	}))
+	defer apiServer.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+
+	ac := client.ForAccount("12345")
+	_, err := ac.Uploads().Download(context.Background(), 999, 1069479400)
+
+	if err == nil {
+		t.Fatal("expected error for missing download URL")
+	}
+	if !strings.Contains(err.Error(), "no download URL") {
+		t.Errorf("expected 'no download URL' error, got: %v", err)
+	}
+}
+
+func TestUploadsService_Download_S3Error(t *testing.T) {
+	// Test that Download handles non-200 responses from S3
+	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer s3Server.Close()
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":           1069479400,
+			"title":        "logo.png",
+			"filename":     "logo.png",
+			"download_url": s3Server.URL + "/bucket/file.png",
+		})
+	}))
+	defer apiServer.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token,
+		WithTransport(apiServer.Client().Transport))
+
+	ac := client.ForAccount("12345")
+	_, err := ac.Uploads().Download(context.Background(), 999, 1069479400)
+
+	if err == nil {
+		t.Fatal("expected error for S3 403 response")
+	}
+	if !strings.Contains(err.Error(), "status 403") {
+		t.Errorf("expected 'status 403' error, got: %v", err)
+	}
+}
+
+func TestUploadsService_Download_Success(t *testing.T) {
+	// Test successful download with proper header extraction
+	fileContent := "test file content"
+
+	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Content-Length", "17")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(fileContent))
+	}))
+	defer s3Server.Close()
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":           1069479400,
+			"title":        "logo.png",
+			"filename":     "logo.png",
+			"download_url": s3Server.URL + "/bucket/file.png",
+		})
+	}))
+	defer apiServer.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token,
+		WithTransport(apiServer.Client().Transport))
+
+	ac := client.ForAccount("12345")
+	result, err := ac.Uploads().Download(context.Background(), 999, 1069479400)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer result.Body.Close()
+
+	if result.ContentType != "image/png" {
+		t.Errorf("expected Content-Type 'image/png', got %q", result.ContentType)
+	}
+	if result.Filename != "logo.png" {
+		t.Errorf("expected Filename 'logo.png', got %q", result.Filename)
+	}
+
+	body, err := io.ReadAll(result.Body)
+	if err != nil {
+		t.Fatalf("failed to read body: %v", err)
+	}
+	if string(body) != fileContent {
+		t.Errorf("expected body %q, got %q", fileContent, string(body))
 	}
 }
