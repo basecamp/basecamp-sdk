@@ -109,17 +109,37 @@ func normalizeHost(u *url.URL) string {
 }
 
 // isLocalhost checks if a URL points to localhost (for test environments).
+// Recognizes:
+//   - "localhost" exactly
+//   - Any subdomain of localhost (e.g., "app.localhost") per RFC 6761
+//   - The .localhost TLD (e.g., "myapp.localhost") per RFC 6761
+//   - IPv4 loopback: 127.0.0.1
+//   - IPv6 loopback: ::1
 func isLocalhost(rawURL string) bool {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return false
 	}
 	host := u.Hostname()
-	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+
+	// Exact matches for localhost and loopback IPs
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return true
+	}
+
+	// RFC 6761: .localhost TLD and subdomains of localhost
+	// Matches: "foo.localhost", "app.localhost", "sub.app.localhost", etc.
+	if strings.HasSuffix(host, ".localhost") {
+		return true
+	}
+
+	return false
 }
 
-// requireHTTPSUnlessLocalhost validates HTTPS but allows localhost for testing.
-func requireHTTPSUnlessLocalhost(rawURL string) error {
+// RequireSecureEndpoint validates that an endpoint URL is secure.
+// Secure means HTTPS, or localhost (including .localhost TLD per RFC 6761)
+// which is trusted for local development.
+func RequireSecureEndpoint(rawURL string) error {
 	if isLocalhost(rawURL) {
 		return nil
 	}

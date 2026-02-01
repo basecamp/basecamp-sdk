@@ -645,3 +645,57 @@ func TestRedactHeaders_SkipsAbsentSensitiveHeaders(t *testing.T) {
 		t.Errorf("Expected Authorization to be absent, got: %q", redacted.Get("Authorization"))
 	}
 }
+
+// =============================================================================
+// isLocalhost Tests
+// =============================================================================
+
+func TestIsLocalhost(t *testing.T) {
+	tests := []struct {
+		url  string
+		want bool
+	}{
+		// Exact localhost matches
+		{"http://localhost/path", true},
+		{"https://localhost:3000/path", true},
+		{"http://localhost", true},
+
+		// IPv4 loopback
+		{"http://127.0.0.1/path", true},
+		{"https://127.0.0.1:8080/api", true},
+
+		// IPv6 loopback
+		{"http://[::1]/path", true},
+		{"https://[::1]:3000/api", true},
+
+		// RFC 6761: .localhost TLD
+		{"http://myapp.localhost/path", true},
+		{"https://myapp.localhost:3000/api", true},
+		{"http://app.localhost", true},
+
+		// RFC 6761: subdomains of localhost
+		{"http://sub.app.localhost/path", true},
+		{"https://deep.nested.sub.localhost:8080/api", true},
+
+		// Non-localhost URLs should return false
+		{"https://example.com/path", false},
+		{"https://api.example.com/path", false},
+		{"https://3.basecampapi.com/12345/projects.json", false},
+
+		// Tricky cases that should NOT match
+		{"https://notlocalhost.com/path", false},        // localhost as substring
+		{"https://localhost.example.com/path", false},   // localhost as subdomain of non-localhost
+		{"https://fakelocalhostdomain.com/path", false}, // localhost embedded in domain
+
+		// Invalid URLs
+		{"://invalid", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		got := isLocalhost(tt.url)
+		if got != tt.want {
+			t.Errorf("isLocalhost(%q) = %v, want %v", tt.url, got, tt.want)
+		}
+	}
+}

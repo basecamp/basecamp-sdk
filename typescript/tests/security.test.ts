@@ -286,6 +286,41 @@ describe("HTTPS enforcement", () => {
 
     expect(result.accessToken).toBe("new-access-token");
   });
+
+  it("exchangeCode allows .localhost TLD (RFC 6761)", async () => {
+    server.use(
+      http.post("http://myapp.localhost:3000/token", () => {
+        return HttpResponse.json({
+          access_token: "token-localhost-tld",
+          token_type: "Bearer",
+        });
+      })
+    );
+
+    const result = await exchangeCode({
+      tokenEndpoint: "http://myapp.localhost:3000/token",
+      code: "auth-code",
+      redirectUri: "http://myapp.localhost:3000/callback",
+      clientId: "client-id",
+    });
+
+    expect(result.accessToken).toBe("token-localhost-tld");
+  });
+
+  it("discover allows .localhost TLD (RFC 6761)", async () => {
+    server.use(
+      http.get("http://myapp.localhost:3000/.well-known/oauth-authorization-server", () => {
+        return HttpResponse.json({
+          issuer: "http://myapp.localhost:3000",
+          authorization_endpoint: "http://myapp.localhost:3000/authorize",
+          token_endpoint: "http://myapp.localhost:3000/token",
+        });
+      })
+    );
+
+    const config = await discover("http://myapp.localhost:3000");
+    expect(config.issuer).toBe("http://myapp.localhost:3000");
+  });
 });
 
 // =============================================================================
@@ -569,6 +604,24 @@ describe("Client config validation", () => {
     });
     expect(client).toBeDefined();
   });
+
+  it("createBasecampClient allows .localhost TLD (RFC 6761)", () => {
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      baseUrl: "http://myapp.localhost:3000/12345",
+    });
+    expect(client).toBeDefined();
+  });
+
+  it("createBasecampClient allows nested .localhost subdomains", () => {
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      baseUrl: "http://api.myapp.localhost:3000/12345",
+    });
+    expect(client).toBeDefined();
+  });
 });
 
 // =============================================================================
@@ -637,6 +690,47 @@ describe("Service cache concurrency", () => {
     expect(projects).not.toBe(todos);
     expect(todos).not.toBe(people);
     expect(projects).not.toBe(people);
+  });
+});
+
+// =============================================================================
+// isLocalhost Function
+// =============================================================================
+
+describe("isLocalhost", () => {
+  it("returns true for 'localhost'", async () => {
+    const { isLocalhost } = await import("../src/security.js");
+    expect(isLocalhost("localhost")).toBe(true);
+  });
+
+  it("returns true for '127.0.0.1'", async () => {
+    const { isLocalhost } = await import("../src/security.js");
+    expect(isLocalhost("127.0.0.1")).toBe(true);
+  });
+
+  it("returns true for '::1' (IPv6 loopback)", async () => {
+    const { isLocalhost } = await import("../src/security.js");
+    expect(isLocalhost("::1")).toBe(true);
+  });
+
+  it("returns true for .localhost TLD (RFC 6761)", async () => {
+    const { isLocalhost } = await import("../src/security.js");
+    expect(isLocalhost("myapp.localhost")).toBe(true);
+    expect(isLocalhost("api.localhost")).toBe(true);
+    expect(isLocalhost("dev.api.localhost")).toBe(true);
+  });
+
+  it("returns false for external hosts", async () => {
+    const { isLocalhost } = await import("../src/security.js");
+    expect(isLocalhost("example.com")).toBe(false);
+    expect(isLocalhost("api.example.com")).toBe(false);
+    expect(isLocalhost("3.basecampapi.com")).toBe(false);
+  });
+
+  it("returns false for hosts that contain but don't end with localhost", async () => {
+    const { isLocalhost } = await import("../src/security.js");
+    expect(isLocalhost("localhost.example.com")).toBe(false);
+    expect(isLocalhost("notlocalhost")).toBe(false);
   });
 });
 

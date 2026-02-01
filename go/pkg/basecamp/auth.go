@@ -310,7 +310,7 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	if tokenEndpoint == "" {
 		return ErrAuth("No token endpoint stored")
 	}
-	if err := requireHTTPSUnlessLocalhost(tokenEndpoint); err != nil {
+	if err := RequireSecureEndpoint(tokenEndpoint); err != nil {
 		return ErrAuth(fmt.Sprintf("Token endpoint must use HTTPS: %s", tokenEndpoint))
 	}
 
