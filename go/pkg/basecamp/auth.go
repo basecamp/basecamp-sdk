@@ -223,7 +223,7 @@ type AuthManager struct {
 func NewAuthManager(cfg *Config, httpClient *http.Client) *AuthManager {
 	return &AuthManager{
 		cfg:        cfg,
-		store:      NewCredentialStore(globalConfigDir()),
+		store:      NewCredentialStore(GlobalConfigDir()),
 		httpClient: httpClient,
 	}
 }
