@@ -35,9 +35,9 @@ class SchedulesServiceTest < Minitest::Test
   end
 
   def test_get
-    stub_get("/12345/buckets/100/schedules/456", response_body: sample_schedule)
+    stub_get("/12345/schedules/456", response_body: sample_schedule)
 
-    result = @account.schedules.get(project_id: 100, schedule_id: 456)
+    result = @account.schedules.get(schedule_id: 456)
 
     assert_equal 456, result["id"]
     assert_equal "Schedule", result["title"]
@@ -45,18 +45,18 @@ class SchedulesServiceTest < Minitest::Test
 
   def test_list_entries
     entries = [ sample_entry, sample_entry(id: 790, summary: "Another Event") ]
-    stub_get("/12345/buckets/100/schedules/456/entries.json", response_body: entries)
+    stub_get("/12345/schedules/456/entries.json", response_body: entries)
 
-    result = @account.schedules.list_entries(project_id: 100, schedule_id: 456).to_a
+    result = @account.schedules.list_entries(schedule_id: 456).to_a
 
     assert_equal 2, result.length
     assert_equal "Team Meeting", result[0]["summary"]
   end
 
   def test_get_entry
-    stub_get("/12345/buckets/100/schedule_entries/789", response_body: sample_entry)
+    stub_get("/12345/schedule_entries/789", response_body: sample_entry)
 
-    result = @account.schedules.get_entry(project_id: 100, entry_id: 789)
+    result = @account.schedules.get_entry(entry_id: 789)
 
     assert_equal 789, result["id"]
     assert_equal "Team Meeting", result["summary"]
@@ -64,10 +64,9 @@ class SchedulesServiceTest < Minitest::Test
 
   def test_create_entry
     new_entry = sample_entry(id: 999, summary: "New Event")
-    stub_post("/12345/buckets/100/schedules/456/entries.json", response_body: new_entry)
+    stub_post("/12345/schedules/456/entries.json", response_body: new_entry)
 
     result = @account.schedules.create_entry(
-      project_id: 100,
       schedule_id: 456,
       summary: "New Event",
       starts_at: "2024-12-20T14:00:00Z",
@@ -80,10 +79,9 @@ class SchedulesServiceTest < Minitest::Test
 
   def test_create_entry_with_all_options
     new_entry = sample_entry(id: 1000, summary: "Full Event")
-    stub_post("/12345/buckets/100/schedules/456/entries.json", response_body: new_entry)
+    stub_post("/12345/schedules/456/entries.json", response_body: new_entry)
 
     result = @account.schedules.create_entry(
-      project_id: 100,
       schedule_id: 456,
       summary: "Full Event",
       starts_at: "2024-12-25T00:00:00Z",
@@ -99,10 +97,9 @@ class SchedulesServiceTest < Minitest::Test
 
   def test_update_entry
     updated_entry = sample_entry(summary: "Updated Meeting")
-    stub_put("/12345/buckets/100/schedule_entries/789", response_body: updated_entry)
+    stub_put("/12345/schedule_entries/789", response_body: updated_entry)
 
     result = @account.schedules.update_entry(
-      project_id: 100,
       entry_id: 789,
       summary: "Updated Meeting"
     )
@@ -112,19 +109,18 @@ class SchedulesServiceTest < Minitest::Test
 
   def test_get_entry_occurrence
     occurrence = sample_entry.merge("occurrence_date" => "2024-12-22")
-    stub_get("/12345/buckets/100/schedule_entries/789/occurrences/2024-12-22", response_body: occurrence)
+    stub_get("/12345/schedule_entries/789/occurrences/2024-12-22", response_body: occurrence)
 
-    result = @account.schedules.get_entry_occurrence(project_id: 100, entry_id: 789, date: "2024-12-22")
+    result = @account.schedules.get_entry_occurrence(entry_id: 789, date: "2024-12-22")
 
     assert_equal "2024-12-22", result["occurrence_date"]
   end
 
   def test_update_settings
     updated_schedule = sample_schedule.merge("include_due_assignments" => false)
-    stub_put("/12345/buckets/100/schedules/456", response_body: updated_schedule)
+    stub_put("/12345/schedules/456", response_body: updated_schedule)
 
     result = @account.schedules.update_settings(
-      project_id: 100,
       schedule_id: 456,
       include_due_assignments: false
     )

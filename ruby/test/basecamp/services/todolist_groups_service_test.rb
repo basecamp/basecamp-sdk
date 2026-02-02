@@ -19,10 +19,10 @@ class TodolistGroupsServiceTest < Minitest::Test
   def test_list
     response = [ { "id" => 1, "name" => "Phase 1" } ]
 
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/todolists/\d+/groups\.json})
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/todolists/\d+/groups\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.todolist_groups.list(project_id: 1, todolist_id: 2).to_a
+    result = @account.todolist_groups.list(todolist_id: 2).to_a
     assert_kind_of Array, result
     assert_equal "Phase 1", result.first["name"]
   end
@@ -30,18 +30,18 @@ class TodolistGroupsServiceTest < Minitest::Test
   def test_create
     response = { "id" => 1, "name" => "New Group" }
 
-    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/todolists/\d+/groups\.json})
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/todolists/\d+/groups\.json})
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.todolist_groups.create(project_id: 1, todolist_id: 2, name: "New Group")
+    result = @account.todolist_groups.create(todolist_id: 2, name: "New Group")
     assert_equal "New Group", result["name"]
   end
 
   def test_reposition
-    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/todolists/\d+/position\.json})
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/todolists/\d+/position\.json})
       .to_return(status: 204)
 
-    result = @account.todolist_groups.reposition(project_id: 1, group_id: 2, position: 1)
+    result = @account.todolist_groups.reposition(group_id: 2, position: 1)
     assert_nil result
   end
 

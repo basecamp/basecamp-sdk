@@ -29,9 +29,9 @@ class MessagesServiceTest < Minitest::Test
 
   def test_list
     messages = [ sample_message, sample_message(id: 790, subject: "Another Message") ]
-    stub_get("/12345/buckets/100/message_boards/456/messages.json", response_body: messages)
+    stub_get("/12345/message_boards/456/messages.json", response_body: messages)
 
-    result = @account.messages.list(project_id: 100, board_id: 456).to_a
+    result = @account.messages.list(board_id: 456).to_a
 
     assert_equal 2, result.length
     assert_equal "Test Message", result[0]["subject"]
@@ -39,9 +39,9 @@ class MessagesServiceTest < Minitest::Test
 
   def test_get
     # Generated service: /messages/{id} without .json
-    stub_get("/12345/buckets/100/messages/789", response_body: sample_message)
+    stub_get("/12345/messages/789", response_body: sample_message)
 
-    result = @account.messages.get(project_id: 100, message_id: 789)
+    result = @account.messages.get(message_id: 789)
 
     assert_equal 789, result["id"]
     assert_equal "Test Message", result["subject"]
@@ -49,10 +49,9 @@ class MessagesServiceTest < Minitest::Test
 
   def test_create
     new_message = sample_message(id: 999, subject: "New Post")
-    stub_post("/12345/buckets/100/message_boards/456/messages.json", response_body: new_message)
+    stub_post("/12345/message_boards/456/messages.json", response_body: new_message)
 
     result = @account.messages.create(
-      project_id: 100,
       board_id: 456,
       subject: "New Post",
       content: "<p>Content here</p>"
@@ -64,10 +63,9 @@ class MessagesServiceTest < Minitest::Test
 
   def test_create_with_category
     new_message = sample_message(id: 1000, subject: "Announcement")
-    stub_post("/12345/buckets/100/message_boards/456/messages.json", response_body: new_message)
+    stub_post("/12345/message_boards/456/messages.json", response_body: new_message)
 
     result = @account.messages.create(
-      project_id: 100,
       board_id: 456,
       subject: "Announcement",
       category_id: 1
@@ -79,25 +77,25 @@ class MessagesServiceTest < Minitest::Test
   def test_update
     # Generated service: /messages/{id} without .json
     updated_message = sample_message(subject: "Updated Subject")
-    stub_put("/12345/buckets/100/messages/789", response_body: updated_message)
+    stub_put("/12345/messages/789", response_body: updated_message)
 
-    result = @account.messages.update(project_id: 100, message_id: 789, subject: "Updated Subject")
+    result = @account.messages.update(message_id: 789, subject: "Updated Subject")
 
     assert_equal "Updated Subject", result["subject"]
   end
 
   def test_pin
-    stub_post("/12345/buckets/100/recordings/789/pin.json", response_body: {})
+    stub_post("/12345/recordings/789/pin.json", response_body: {})
 
-    result = @account.messages.pin(project_id: 100, message_id: 789)
+    result = @account.messages.pin(message_id: 789)
 
     assert_nil result
   end
 
   def test_unpin
-    stub_delete("/12345/buckets/100/recordings/789/pin.json")
+    stub_delete("/12345/recordings/789/pin.json")
 
-    result = @account.messages.unpin(project_id: 100, message_id: 789)
+    result = @account.messages.unpin(message_id: 789)
 
     assert_nil result
   end

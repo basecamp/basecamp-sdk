@@ -26,10 +26,10 @@ class DocumentsServiceTest < Minitest::Test
   end
 
   def test_list_documents
-    stub_get("/12345/buckets/100/vaults/200/documents.json",
+    stub_get("/12345/vaults/200/documents.json",
              response_body: [ sample_document, sample_document(id: 2, title: "Project Plan") ])
 
-    documents = @account.documents.list(project_id: 100, vault_id: 200).to_a
+    documents = @account.documents.list(vault_id: 200).to_a
 
     assert_equal 2, documents.length
     assert_equal "Meeting Notes", documents[0]["title"]
@@ -38,9 +38,9 @@ class DocumentsServiceTest < Minitest::Test
 
   def test_get_document
     # Generated service: /documents/{id} without .json
-    stub_get("/12345/buckets/100/documents/200", response_body: sample_document(id: 200))
+    stub_get("/12345/documents/200", response_body: sample_document(id: 200))
 
-    document = @account.documents.get(project_id: 100, document_id: 200)
+    document = @account.documents.get(document_id: 200)
 
     assert_equal 200, document["id"]
     assert_equal "Meeting Notes", document["title"]
@@ -48,10 +48,9 @@ class DocumentsServiceTest < Minitest::Test
 
   def test_create_document
     new_document = sample_document(id: 999, title: "New Document")
-    stub_post("/12345/buckets/100/vaults/200/documents.json", response_body: new_document)
+    stub_post("/12345/vaults/200/documents.json", response_body: new_document)
 
     document = @account.documents.create(
-      project_id: 100,
       vault_id: 200,
       title: "New Document",
       content: "<p>Document content</p>",
@@ -65,10 +64,9 @@ class DocumentsServiceTest < Minitest::Test
   def test_create_draft_document
     draft_document = sample_document(id: 999, title: "Draft Document")
     draft_document["status"] = "drafted"
-    stub_post("/12345/buckets/100/vaults/200/documents.json", response_body: draft_document)
+    stub_post("/12345/vaults/200/documents.json", response_body: draft_document)
 
     document = @account.documents.create(
-      project_id: 100,
       vault_id: 200,
       title: "Draft Document",
       status: "drafted"
@@ -80,10 +78,9 @@ class DocumentsServiceTest < Minitest::Test
   def test_update_document
     # Generated service: /documents/{id} without .json
     updated_document = sample_document(id: 200, title: "Updated Title")
-    stub_put("/12345/buckets/100/documents/200", response_body: updated_document)
+    stub_put("/12345/documents/200", response_body: updated_document)
 
     document = @account.documents.update(
-      project_id: 100,
       document_id: 200,
       title: "Updated Title",
       content: "<p>New content</p>"

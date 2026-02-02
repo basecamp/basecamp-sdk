@@ -19,14 +19,14 @@ class EventsServiceTest < Minitest::Test
   end
 
   def test_list_events
-    stub_get("/12345/buckets/100/recordings/200/events.json",
+    stub_get("/12345/recordings/200/events.json",
              response_body: [
                sample_event(id: 1, action: "created"),
                sample_event(id: 2, action: "updated"),
                sample_event(id: 3, action: "completed")
              ])
 
-    events = @account.events.list(project_id: 100, recording_id: 200).to_a
+    events = @account.events.list(recording_id: 200).to_a
 
     assert_equal 3, events.length
     assert_equal "created", events[0]["action"]
@@ -35,10 +35,10 @@ class EventsServiceTest < Minitest::Test
   end
 
   def test_list_events_shows_creator
-    stub_get("/12345/buckets/100/recordings/200/events.json",
+    stub_get("/12345/recordings/200/events.json",
              response_body: [ sample_event ])
 
-    events = @account.events.list(project_id: 100, recording_id: 200).to_a
+    events = @account.events.list(recording_id: 200).to_a
 
     assert_equal "Test User", events[0]["creator"]["name"]
   end
