@@ -37,12 +37,12 @@ describe("DocumentsService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/documents/5001`, () => {
+        http.get(`${BASE_URL}/documents/5001`, () => {
           return HttpResponse.json(document);
         })
       );
 
-      const result = await service.get(123, 5001);
+      const result = await service.get(5001);
 
       expect(result.id).toBe(5001);
       expect(result.title).toBe("Meeting Notes");
@@ -51,15 +51,15 @@ describe("DocumentsService", () => {
 
     it("should throw not_found error for 404 response", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/documents/9999`, () => {
+        http.get(`${BASE_URL}/documents/9999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
-      await expect(service.get(123, 9999)).rejects.toThrow(BasecampError);
+      await expect(service.get(9999)).rejects.toThrow(BasecampError);
 
       try {
-        await service.get(123, 9999);
+        await service.get(9999);
       } catch (err) {
         expect((err as BasecampError).code).toBe("not_found");
       }
@@ -74,12 +74,12 @@ describe("DocumentsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, () => {
+        http.get(`${BASE_URL}/vaults/1001/documents.json`, () => {
           return HttpResponse.json(documents);
         })
       );
 
-      const result = await service.list(123, 1001);
+      const result = await service.list(1001);
 
       expect(result).toHaveLength(2);
       expect(result[0].title).toBe("Document 1");
@@ -88,12 +88,12 @@ describe("DocumentsService", () => {
 
     it("should return empty array when no documents", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, () => {
+        http.get(`${BASE_URL}/vaults/1001/documents.json`, () => {
           return HttpResponse.json([]);
         })
       );
 
-      const result = await service.list(123, 1001);
+      const result = await service.list(1001);
 
       expect(result).toHaveLength(0);
     });
@@ -109,12 +109,12 @@ describe("DocumentsService", () => {
       };
 
       server.use(
-        http.post(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, () => {
+        http.post(`${BASE_URL}/vaults/1001/documents.json`, () => {
           return HttpResponse.json(newDocument);
         })
       );
 
-      const result = await service.create(123, 1001, {
+      const result = await service.create(1001, {
         title: "New Document",
         content: "<p>Content here</p>",
       });
@@ -127,13 +127,13 @@ describe("DocumentsService", () => {
       let capturedBody: { title?: string; content?: string; status?: string } | null = null;
 
       server.use(
-        http.post(`${BASE_URL}/buckets/123/vaults/1001/documents.json`, async ({ request }) => {
+        http.post(`${BASE_URL}/vaults/1001/documents.json`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string; content?: string; status?: string };
           return HttpResponse.json({ id: 1, title: "Test" });
         })
       );
 
-      await service.create(123, 1001, {
+      await service.create(1001, {
         title: "Test Doc",
         content: "<h1>Hello</h1>",
         status: "drafted",
@@ -157,12 +157,12 @@ describe("DocumentsService", () => {
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/123/documents/5001`, () => {
+        http.put(`${BASE_URL}/documents/5001`, () => {
           return HttpResponse.json(updatedDocument);
         })
       );
 
-      const result = await service.update(123, 5001, {
+      const result = await service.update(5001, {
         title: "Updated Title",
         content: "<p>Updated content</p>",
       });
@@ -175,18 +175,18 @@ describe("DocumentsService", () => {
       let capturedBody: { title?: string; content?: string } | null = null;
 
       server.use(
-        http.put(`${BASE_URL}/buckets/123/documents/5001`, async ({ request }) => {
+        http.put(`${BASE_URL}/documents/5001`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string; content?: string };
           return HttpResponse.json({ id: 5001, title: "Updated" });
         })
       );
 
-      await service.update(123, 5001, { title: "New Title" });
+      await service.update(5001, { title: "New Title" });
 
       expect(capturedBody?.title).toBe("New Title");
     });
   });
 
   // Note: trash() is on RecordingsService, not DocumentsService (spec-conformant)
-  // Use client.recordings.trash(projectId, documentId) instead
+  // Use client.recordings.trash(documentId) instead
 });

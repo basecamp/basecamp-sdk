@@ -217,21 +217,20 @@ describe("consoleHooks", () => {
       );
     });
 
-    it("should include resource and project IDs", () => {
+    it("should include resource ID", () => {
       const hooks = consoleHooks({ logger: mockLogger });
       const info: OperationInfo = {
         service: "Todos",
         operation: "Get",
         resourceType: "todo",
         isMutation: false,
-        projectId: 123,
         resourceId: 456,
       };
 
       hooks.onOperationStart?.(info);
 
       expect(mockLogger.log).toHaveBeenCalledWith(
-        "[Basecamp] Todos.Get #456 (project: 123)"
+        "[Basecamp] Todos.Get #456"
       );
     });
 

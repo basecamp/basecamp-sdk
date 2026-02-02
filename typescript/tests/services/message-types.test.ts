@@ -30,7 +30,7 @@ describe("MessageTypesService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/categories.json`, () => {
+        http.get(`${BASE_URL}/categories.json`, () => {
           return HttpResponse.json(mockTypes);
         })
       );
@@ -45,7 +45,7 @@ describe("MessageTypesService", () => {
 
     it("should return empty array when no types exist", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/1/categories.json`, () => {
+        http.get(`${BASE_URL}/categories.json`, () => {
           return HttpResponse.json([]);
         })
       );
@@ -66,12 +66,12 @@ describe("MessageTypesService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/categories/1`, () => {
+        http.get(`${BASE_URL}/categories/1`, () => {
           return HttpResponse.json(mockType);
         })
       );
 
-      const type = await client.messageTypes.get(1, 1);
+      const type = await client.messageTypes.get(1);
 
       expect(type.id).toBe(1);
       expect(type.name).toBe("Announcement");
@@ -90,7 +90,7 @@ describe("MessageTypesService", () => {
       };
 
       server.use(
-        http.post(`${BASE_URL}/buckets/1/categories.json`, async ({ request }) => {
+        http.post(`${BASE_URL}/categories.json`, async ({ request }) => {
           const body = await request.json() as { name: string; icon: string };
           expect(body.name).toBe("Update");
           expect(body.icon).toBe("🔄");
@@ -98,7 +98,7 @@ describe("MessageTypesService", () => {
         })
       );
 
-      const type = await client.messageTypes.create(1, {
+      const type = await client.messageTypes.create({
         name: "Update",
         icon: "🔄",
       });
@@ -121,12 +121,12 @@ describe("MessageTypesService", () => {
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/1/categories/1`, () => {
+        http.put(`${BASE_URL}/categories/1`, () => {
           return HttpResponse.json(mockType);
         })
       );
 
-      const type = await client.messageTypes.update(1, 1, {
+      const type = await client.messageTypes.update(1, {
         name: "Updated Name",
         icon: "🎉",
       });
@@ -139,13 +139,13 @@ describe("MessageTypesService", () => {
   describe("delete", () => {
     it("should delete a message type", async () => {
       server.use(
-        http.delete(`${BASE_URL}/buckets/1/categories/1`, () => {
+        http.delete(`${BASE_URL}/categories/1`, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
 
       // Should not throw
-      await client.messageTypes.delete(1, 1);
+      await client.messageTypes.delete(1);
     });
   });
 });

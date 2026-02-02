@@ -32,8 +32,8 @@ describe("WebhooksService", () => {
           updated_at: "2024-01-01T00:00:00Z",
           payload_url: "https://example.com/webhook1",
           types: ["Todo", "Comment"],
-          url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
+          url: "https://3.basecampapi.com/12345/webhooks/1.json",
+          app_url: "https://3.basecamp.com/12345/webhooks/1",
         },
         {
           id: 2,
@@ -42,13 +42,13 @@ describe("WebhooksService", () => {
           updated_at: "2024-01-02T00:00:00Z",
           payload_url: "https://example.com/webhook2",
           types: ["Message"],
-          url: "https://3.basecampapi.com/12345/buckets/1/webhooks/2.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/2",
+          url: "https://3.basecampapi.com/12345/webhooks/2.json",
+          app_url: "https://3.basecamp.com/12345/webhooks/2",
         },
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/webhooks.json`, () => {
+        http.get(`${BASE_URL}/webhooks.json`, () => {
           return HttpResponse.json(mockWebhooks);
         })
       );
@@ -64,7 +64,7 @@ describe("WebhooksService", () => {
 
     it("should return empty array when no webhooks exist", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/1/webhooks.json`, () => {
+        http.get(`${BASE_URL}/webhooks.json`, () => {
           return HttpResponse.json([]);
         })
       );
@@ -83,17 +83,17 @@ describe("WebhooksService", () => {
         updated_at: "2024-01-01T00:00:00Z",
         payload_url: "https://example.com/webhook1",
         types: ["Todo", "Comment", "Todolist"],
-        url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
+        url: "https://3.basecampapi.com/12345/webhooks/1.json",
+        app_url: "https://3.basecamp.com/12345/webhooks/1",
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/webhooks/1`, () => {
+        http.get(`${BASE_URL}/webhooks/1`, () => {
           return HttpResponse.json(mockWebhook);
         })
       );
 
-      const webhook = await client.webhooks.get(1, 1);
+      const webhook = await client.webhooks.get(1);
 
       expect(webhook.id).toBe(1);
       expect(webhook.payload_url).toBe("https://example.com/webhook1");
@@ -127,13 +127,13 @@ describe("WebhooksService", () => {
 
     it("should throw not_found for non-existent webhook", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/1/webhooks/999`, () => {
+        http.get(`${BASE_URL}/webhooks/999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
       try {
-        await client.webhooks.get(1, 999);
+        await client.webhooks.get(999);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).toBeInstanceOf(BasecampError);
@@ -151,12 +151,12 @@ describe("WebhooksService", () => {
         updated_at: "2024-01-03T00:00:00Z",
         payload_url: "https://example.com/new-webhook",
         types: ["Todo", "Message"],
-        url: "https://3.basecampapi.com/12345/buckets/1/webhooks/3.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/3",
+        url: "https://3.basecampapi.com/12345/webhooks/3.json",
+        app_url: "https://3.basecamp.com/12345/webhooks/3",
       };
 
       server.use(
-        http.post(`${BASE_URL}/buckets/1/webhooks.json`, async ({ request }) => {
+        http.post(`${BASE_URL}/webhooks.json`, async ({ request }) => {
           const body = (await request.json()) as {
             payload_url: string;
             types: string[];
@@ -169,7 +169,7 @@ describe("WebhooksService", () => {
         })
       );
 
-      const webhook = await client.webhooks.create(1, {
+      const webhook = await client.webhooks.create({
         payloadUrl: "https://example.com/new-webhook",
         types: ["Todo", "Message"],
         active: true,
@@ -191,17 +191,17 @@ describe("WebhooksService", () => {
         updated_at: "2024-01-04T00:00:00Z",
         payload_url: "https://example.com/webhook1",
         types: ["Todo", "Comment"],
-        url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
+        url: "https://3.basecampapi.com/12345/webhooks/1.json",
+        app_url: "https://3.basecamp.com/12345/webhooks/1",
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/1/webhooks/1`, () => {
+        http.put(`${BASE_URL}/webhooks/1`, () => {
           return HttpResponse.json(mockWebhook);
         })
       );
 
-      const webhook = await client.webhooks.update(1, 1, {
+      const webhook = await client.webhooks.update(1, {
         active: false,
       });
 
@@ -216,12 +216,12 @@ describe("WebhooksService", () => {
         updated_at: "2024-01-04T00:00:00Z",
         payload_url: "https://new-example.com/webhook",
         types: ["Message", "Document"],
-        url: "https://3.basecampapi.com/12345/buckets/1/webhooks/1.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/webhooks/1",
+        url: "https://3.basecampapi.com/12345/webhooks/1.json",
+        app_url: "https://3.basecamp.com/12345/webhooks/1",
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/1/webhooks/1`, async ({ request }) => {
+        http.put(`${BASE_URL}/webhooks/1`, async ({ request }) => {
           const body = (await request.json()) as {
             payload_url: string;
             types: string[];
@@ -232,7 +232,7 @@ describe("WebhooksService", () => {
         })
       );
 
-      const webhook = await client.webhooks.update(1, 1, {
+      const webhook = await client.webhooks.update(1, {
         payloadUrl: "https://new-example.com/webhook",
         types: ["Message", "Document"],
       });
@@ -245,13 +245,13 @@ describe("WebhooksService", () => {
   describe("delete", () => {
     it("should delete a webhook", async () => {
       server.use(
-        http.delete(`${BASE_URL}/buckets/1/webhooks/1`, () => {
+        http.delete(`${BASE_URL}/webhooks/1`, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
 
       // Should not throw
-      await client.webhooks.delete(1, 1);
+      await client.webhooks.delete(1);
     });
   });
 });

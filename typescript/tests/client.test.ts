@@ -122,7 +122,7 @@ describe("BasecampClient", () => {
       let attempts = 0;
 
       server.use(
-        http.post(`${BASE_URL}/buckets/123/todolists/456/todos.json`, () => {
+        http.post(`${BASE_URL}/todolists/456/todos.json`, () => {
           attempts++;
           return new HttpResponse(null, { status: 503 });
         })
@@ -134,9 +134,9 @@ describe("BasecampClient", () => {
       });
 
       const { error } = await client.POST(
-        "/buckets/{projectId}/todolists/{todolistId}/todos.json",
+        "/todolists/{todolistId}/todos.json",
         {
-          params: { path: { projectId: 123, todolistId: 456 } },
+          params: { path: { todolistId: 456 } },
           body: { content: "Test todo" },
         }
       );
@@ -207,7 +207,7 @@ describe("BasecampClient", () => {
 
     it("should return error for 404", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/todolists/999.json`, () => {
+        http.get(`${BASE_URL}/todolists/999.json`, () => {
           return HttpResponse.json(
             { error: "Not found" },
             { status: 404 }
@@ -221,9 +221,9 @@ describe("BasecampClient", () => {
       });
 
       const { data, error } = await client.GET(
-        "/buckets/{projectId}/todolists/{todolistId}.json",
+        "/todolists/{todolistId}.json",
         {
-          params: { path: { projectId: 123, todolistId: 999 } },
+          params: { path: { todolistId: 999 } },
         }
       );
 

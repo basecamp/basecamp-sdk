@@ -90,32 +90,30 @@ describe("TimesheetsService", () => {
 
   describe("forProject", () => {
     it("should return timesheet entries for a specific project", async () => {
-      const projectId = 67890;
       const mockEntries = [
         {
           id: 1,
           date: "2024-01-15",
           hours: "2.0",
-          bucket: { id: projectId, name: "Project X" },
+          bucket: { id: 123, name: "Project X" },
         },
       ];
 
       server.use(
-        http.get(`${BASE_URL}/projects/${projectId}/timesheet.json`, () => {
+        http.get(`${BASE_URL}/timesheet.json`, () => {
           return HttpResponse.json(mockEntries);
         })
       );
 
-      const entries = await client.timesheets.forProject(projectId);
+      const entries = await client.timesheets.forProject();
       expect(entries).toHaveLength(1);
       expect(entries[0]!.hours).toBe("2.0");
     });
 
     it("should support filtering options", async () => {
-      const projectId = 67890;
 
       server.use(
-        http.get(`${BASE_URL}/projects/${projectId}/timesheet.json`, ({ request }) => {
+        http.get(`${BASE_URL}/timesheet.json`, ({ request }) => {
           const url = new URL(request.url);
           expect(url.searchParams.get("from")).toBe("2024-02-01");
           expect(url.searchParams.get("person_id")).toBe("999");
@@ -123,7 +121,7 @@ describe("TimesheetsService", () => {
         })
       );
 
-      const entries = await client.timesheets.forProject(projectId, {
+      const entries = await client.timesheets.forProject({
         from: "2024-02-01",
         personId: 999,
       });
@@ -133,7 +131,6 @@ describe("TimesheetsService", () => {
 
   describe("forRecording", () => {
     it("should return timesheet entries for a specific recording", async () => {
-      const projectId = 67890;
       const recordingId = 11111;
       const mockEntries = [
         {
@@ -146,14 +143,14 @@ describe("TimesheetsService", () => {
 
       server.use(
         http.get(
-          `${BASE_URL}/projects/${projectId}/recordings/${recordingId}/timesheet.json`,
+          `${BASE_URL}/recordings/${recordingId}/timesheet.json`,
           () => {
             return HttpResponse.json(mockEntries);
           }
         )
       );
 
-      const entries = await client.timesheets.forRecording(projectId, recordingId);
+      const entries = await client.timesheets.forRecording(recordingId);
       expect(entries).toHaveLength(1);
       expect(entries[0]!.hours).toBe("1.5");
     });

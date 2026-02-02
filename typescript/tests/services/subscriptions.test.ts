@@ -27,7 +27,7 @@ describe("SubscriptionsService", () => {
       const mockSubscription = {
         subscribed: true,
         count: 3,
-        url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
+        url: "https://3.basecampapi.com/12345/recordings/100/subscription.json",
         subscribers: [
           { id: 1, name: "User One", email_address: "one@example.com" },
           { id: 2, name: "User Two", email_address: "two@example.com" },
@@ -36,12 +36,12 @@ describe("SubscriptionsService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/recordings/100/subscription.json`, () => {
+        http.get(`${BASE_URL}/recordings/100/subscription.json`, () => {
           return HttpResponse.json(mockSubscription);
         })
       );
 
-      const subscription = await client.subscriptions.get(1, 100);
+      const subscription = await client.subscriptions.get(100);
 
       expect(subscription.subscribed).toBe(true);
       expect(subscription.count).toBe(3);
@@ -55,7 +55,7 @@ describe("SubscriptionsService", () => {
       const mockSubscription = {
         subscribed: true,
         count: 4,
-        url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
+        url: "https://3.basecampapi.com/12345/recordings/100/subscription.json",
         subscribers: [
           { id: 1, name: "User One" },
           { id: 2, name: "User Two" },
@@ -65,12 +65,12 @@ describe("SubscriptionsService", () => {
       };
 
       server.use(
-        http.post(`${BASE_URL}/buckets/1/recordings/100/subscription.json`, () => {
+        http.post(`${BASE_URL}/recordings/100/subscription.json`, () => {
           return HttpResponse.json(mockSubscription);
         })
       );
 
-      const subscription = await client.subscriptions.subscribe(1, 100);
+      const subscription = await client.subscriptions.subscribe(100);
 
       expect(subscription.subscribed).toBe(true);
       expect(subscription.count).toBe(4);
@@ -80,13 +80,13 @@ describe("SubscriptionsService", () => {
   describe("unsubscribe", () => {
     it("should unsubscribe the current user from a recording", async () => {
       server.use(
-        http.delete(`${BASE_URL}/buckets/1/recordings/100/subscription.json`, () => {
+        http.delete(`${BASE_URL}/recordings/100/subscription.json`, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
 
       // Should not throw
-      await client.subscriptions.unsubscribe(1, 100);
+      await client.subscriptions.unsubscribe(100);
     });
   });
 
@@ -95,7 +95,7 @@ describe("SubscriptionsService", () => {
       const mockSubscription = {
         subscribed: true,
         count: 4,
-        url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
+        url: "https://3.basecampapi.com/12345/recordings/100/subscription.json",
         subscribers: [
           { id: 1, name: "User One" },
           { id: 2, name: "User Two" },
@@ -105,7 +105,7 @@ describe("SubscriptionsService", () => {
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/1/recordings/100/subscription.json`, async ({ request }) => {
+        http.put(`${BASE_URL}/recordings/100/subscription.json`, async ({ request }) => {
           const body = await request.json() as { subscriptions: number[]; unsubscriptions: number[] };
           expect(body.subscriptions).toEqual([4, 5]);
           expect(body.unsubscriptions).toEqual([3]);
@@ -113,7 +113,7 @@ describe("SubscriptionsService", () => {
         })
       );
 
-      const subscription = await client.subscriptions.update(1, 100, {
+      const subscription = await client.subscriptions.update(100, {
         subscriptions: [4, 5],
         unsubscriptions: [3],
       });
@@ -128,19 +128,19 @@ describe("SubscriptionsService", () => {
       const mockSubscription = {
         subscribed: true,
         count: 5,
-        url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
+        url: "https://3.basecampapi.com/12345/recordings/100/subscription.json",
         subscribers: [],
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/1/recordings/100/subscription.json`, async ({ request }) => {
+        http.put(`${BASE_URL}/recordings/100/subscription.json`, async ({ request }) => {
           const body = await request.json() as { subscriptions: number[] };
           expect(body.subscriptions).toEqual([6, 7]);
           return HttpResponse.json(mockSubscription);
         })
       );
 
-      const subscription = await client.subscriptions.update(1, 100, {
+      const subscription = await client.subscriptions.update(100, {
         subscriptions: [6, 7],
       });
 
@@ -151,19 +151,19 @@ describe("SubscriptionsService", () => {
       const mockSubscription = {
         subscribed: true,
         count: 2,
-        url: "https://3.basecampapi.com/12345/buckets/1/recordings/100/subscription.json",
+        url: "https://3.basecampapi.com/12345/recordings/100/subscription.json",
         subscribers: [],
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/1/recordings/100/subscription.json`, async ({ request }) => {
+        http.put(`${BASE_URL}/recordings/100/subscription.json`, async ({ request }) => {
           const body = await request.json() as { unsubscriptions: number[] };
           expect(body.unsubscriptions).toEqual([1, 2]);
           return HttpResponse.json(mockSubscription);
         })
       );
 
-      const subscription = await client.subscriptions.update(1, 100, {
+      const subscription = await client.subscriptions.update(100, {
         unsubscriptions: [1, 2],
       });
 

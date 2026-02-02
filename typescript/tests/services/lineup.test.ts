@@ -30,8 +30,7 @@ describe("LineupService", () => {
       server.use(
         http.post(`${BASE_URL}/lineup/markers.json`, async ({ request }) => {
           const body = (await request.json()) as {
-            title: string;
-            starts_on: string;
+            name: string;
             date: string;
           };
           expect(body.name).toBe("Product Launch");
@@ -47,8 +46,6 @@ describe("LineupService", () => {
         })
       ).resolves.toBeUndefined();
     });
-
-    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("update", () => {
@@ -78,19 +75,17 @@ describe("LineupService", () => {
       server.use(
         http.put(`${BASE_URL}/lineup/markers/${markerId}`, async ({ request }) => {
           const body = (await request.json()) as { name?: string };
-          expect(body.name).toBe("Just a name update");
+          expect(body.name).toBe("New Name");
           return new HttpResponse(null, { status: 204 });
         })
       );
 
       await expect(
         client.lineup.update(markerId, {
-          name: "Just a name update",
+          name: "New Name",
         })
       ).resolves.toBeUndefined();
     });
-
-    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("delete", () => {

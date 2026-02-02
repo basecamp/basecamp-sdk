@@ -33,23 +33,23 @@ describe("CheckinsService", () => {
         title: "Automatic Check-ins",
         inherits_status: true,
         type: "Questionnaire",
-        url: "https://3.basecampapi.com/12345/buckets/1/questionnaires/100.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/questionnaires/100",
+        url: "https://3.basecampapi.com/12345/questionnaires/100.json",
+        app_url: "https://3.basecamp.com/12345/questionnaires/100",
         bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
         questions_url:
-          "https://3.basecampapi.com/12345/buckets/1/questionnaires/100/questions.json",
+          "https://3.basecampapi.com/12345/questionnaires/100/questions.json",
         questions_count: 2,
         name: "Automatic Check-ins",
         bucket: { id: 1, name: "Test Project", type: "Project" },
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/questionnaires/100`, () => {
+        http.get(`${BASE_URL}/questionnaires/100`, () => {
           return HttpResponse.json(mockQuestionnaire);
         })
       );
 
-      const questionnaire = await client.checkins.getQuestionnaire(1, 100);
+      const questionnaire = await client.checkins.getQuestionnaire(100);
 
       expect(questionnaire.id).toBe(100);
       expect(questionnaire.name).toBe("Automatic Check-ins");
@@ -69,11 +69,11 @@ describe("CheckinsService", () => {
           title: "What did you work on today?",
           inherits_status: true,
           type: "Question",
-          url: "https://3.basecampapi.com/12345/buckets/1/questions/1.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/questions/1",
+          url: "https://3.basecampapi.com/12345/questions/1.json",
+          app_url: "https://3.basecamp.com/12345/questions/1",
           bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
           subscription_url:
-            "https://3.basecampapi.com/12345/buckets/1/recordings/1/subscription.json",
+            "https://3.basecampapi.com/12345/recordings/1/subscription.json",
           paused: false,
           schedule: {
             frequency: "every_day",
@@ -83,17 +83,17 @@ describe("CheckinsService", () => {
           },
           answers_count: 10,
           answers_url:
-            "https://3.basecampapi.com/12345/buckets/1/questions/1/answers.json",
+            "https://3.basecampapi.com/12345/questions/1/answers.json",
         },
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/questionnaires/100/questions.json`, () => {
+        http.get(`${BASE_URL}/questionnaires/100/questions.json`, () => {
           return HttpResponse.json(mockQuestions);
         })
       );
 
-      const questions = await client.checkins.listQuestions(1, 100);
+      const questions = await client.checkins.listQuestions(100);
 
       expect(questions).toHaveLength(1);
       expect(questions[0].title).toBe("What did you work on today?");
@@ -113,11 +113,11 @@ describe("CheckinsService", () => {
         title: "What did you work on today?",
         inherits_status: true,
         type: "Question",
-        url: "https://3.basecampapi.com/12345/buckets/1/questions/1.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/questions/1",
+        url: "https://3.basecampapi.com/12345/questions/1.json",
+        app_url: "https://3.basecamp.com/12345/questions/1",
         bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
         subscription_url:
-          "https://3.basecampapi.com/12345/buckets/1/recordings/1/subscription.json",
+          "https://3.basecampapi.com/12345/recordings/1/subscription.json",
         paused: false,
         schedule: {
           frequency: "every_day",
@@ -127,16 +127,16 @@ describe("CheckinsService", () => {
         },
         answers_count: 10,
         answers_url:
-          "https://3.basecampapi.com/12345/buckets/1/questions/1/answers.json",
+          "https://3.basecampapi.com/12345/questions/1/answers.json",
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/questions/1`, () => {
+        http.get(`${BASE_URL}/questions/1`, () => {
           return HttpResponse.json(mockQuestion);
         })
       );
 
-      const question = await client.checkins.getQuestion(1, 1);
+      const question = await client.checkins.getQuestion(1);
 
       expect(question.id).toBe(1);
       expect(question.title).toBe("What did you work on today?");
@@ -154,11 +154,11 @@ describe("CheckinsService", () => {
         title: "What are your blockers?",
         inherits_status: true,
         type: "Question",
-        url: "https://3.basecampapi.com/12345/buckets/1/questions/2.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/questions/2",
+        url: "https://3.basecampapi.com/12345/questions/2.json",
+        app_url: "https://3.basecamp.com/12345/questions/2",
         bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
         subscription_url:
-          "https://3.basecampapi.com/12345/buckets/1/recordings/2/subscription.json",
+          "https://3.basecampapi.com/12345/recordings/2/subscription.json",
         paused: false,
         schedule: {
           frequency: "every_week",
@@ -168,12 +168,12 @@ describe("CheckinsService", () => {
         },
         answers_count: 0,
         answers_url:
-          "https://3.basecampapi.com/12345/buckets/1/questions/2/answers.json",
+          "https://3.basecampapi.com/12345/questions/2/answers.json",
       };
 
       server.use(
         http.post(
-          `${BASE_URL}/buckets/1/questionnaires/100/questions.json`,
+          `${BASE_URL}/questionnaires/100/questions.json`,
           async ({ request }) => {
             const body = (await request.json()) as { title: string };
             expect(body.title).toBe("What are your blockers?");
@@ -182,7 +182,7 @@ describe("CheckinsService", () => {
         )
       );
 
-      const question = await client.checkins.createQuestion(1, 100, {
+      const question = await client.checkins.createQuestion(100, {
         title: "What are your blockers?",
         schedule: {
           frequency: "every_week",
@@ -210,11 +210,11 @@ describe("CheckinsService", () => {
         title: "What did you work on today?",
         inherits_status: true,
         type: "Question",
-        url: "https://3.basecampapi.com/12345/buckets/1/questions/1.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/questions/1",
+        url: "https://3.basecampapi.com/12345/questions/1.json",
+        app_url: "https://3.basecamp.com/12345/questions/1",
         bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
         subscription_url:
-          "https://3.basecampapi.com/12345/buckets/1/recordings/1/subscription.json",
+          "https://3.basecampapi.com/12345/recordings/1/subscription.json",
         paused: true,
         schedule: {
           frequency: "every_day",
@@ -224,16 +224,16 @@ describe("CheckinsService", () => {
         },
         answers_count: 10,
         answers_url:
-          "https://3.basecampapi.com/12345/buckets/1/questions/1/answers.json",
+          "https://3.basecampapi.com/12345/questions/1/answers.json",
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/1/questions/1`, () => {
+        http.put(`${BASE_URL}/questions/1`, () => {
           return HttpResponse.json(mockQuestion);
         })
       );
 
-      const question = await client.checkins.updateQuestion(1, 1, {
+      const question = await client.checkins.updateQuestion(1, {
         paused: true,
       });
 
@@ -253,14 +253,14 @@ describe("CheckinsService", () => {
           title: "",
           inherits_status: true,
           type: "Question::Answer",
-          url: "https://3.basecampapi.com/12345/buckets/1/question_answers/50.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/question_answers/50",
+          url: "https://3.basecampapi.com/12345/question_answers/50.json",
+          app_url: "https://3.basecamp.com/12345/question_answers/50",
           bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
           subscription_url:
-            "https://3.basecampapi.com/12345/buckets/1/recordings/50/subscription.json",
+            "https://3.basecampapi.com/12345/recordings/50/subscription.json",
           comments_count: 0,
           comments_url:
-            "https://3.basecampapi.com/12345/buckets/1/recordings/50/comments.json",
+            "https://3.basecampapi.com/12345/recordings/50/comments.json",
           content: "<p>Worked on the new feature</p>",
           group_on: "2024-01-01",
           creator: { id: 999, name: "Test User" },
@@ -268,12 +268,12 @@ describe("CheckinsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/questions/1/answers.json`, () => {
+        http.get(`${BASE_URL}/questions/1/answers.json`, () => {
           return HttpResponse.json(mockAnswers);
         })
       );
 
-      const answers = await client.checkins.listAnswers(1, 1);
+      const answers = await client.checkins.listAnswers(1);
 
       expect(answers).toHaveLength(1);
       expect(answers[0].content).toBe("<p>Worked on the new feature</p>");
@@ -292,25 +292,25 @@ describe("CheckinsService", () => {
         title: "",
         inherits_status: true,
         type: "Question::Answer",
-        url: "https://3.basecampapi.com/12345/buckets/1/question_answers/50.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/question_answers/50",
+        url: "https://3.basecampapi.com/12345/question_answers/50.json",
+        app_url: "https://3.basecamp.com/12345/question_answers/50",
         bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
         subscription_url:
-          "https://3.basecampapi.com/12345/buckets/1/recordings/50/subscription.json",
+          "https://3.basecampapi.com/12345/recordings/50/subscription.json",
         comments_count: 0,
         comments_url:
-          "https://3.basecampapi.com/12345/buckets/1/recordings/50/comments.json",
+          "https://3.basecampapi.com/12345/recordings/50/comments.json",
         content: "<p>Worked on the new feature</p>",
         group_on: "2024-01-01",
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/question_answers/50`, () => {
+        http.get(`${BASE_URL}/question_answers/50`, () => {
           return HttpResponse.json(mockAnswer);
         })
       );
 
-      const answer = await client.checkins.getAnswer(1, 50);
+      const answer = await client.checkins.getAnswer(50);
 
       expect(answer.id).toBe(50);
       expect(answer.content).toBe("<p>Worked on the new feature</p>");
@@ -328,21 +328,21 @@ describe("CheckinsService", () => {
         title: "",
         inherits_status: true,
         type: "Question::Answer",
-        url: "https://3.basecampapi.com/12345/buckets/1/question_answers/51.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/question_answers/51",
+        url: "https://3.basecampapi.com/12345/question_answers/51.json",
+        app_url: "https://3.basecamp.com/12345/question_answers/51",
         bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
         subscription_url:
-          "https://3.basecampapi.com/12345/buckets/1/recordings/51/subscription.json",
+          "https://3.basecampapi.com/12345/recordings/51/subscription.json",
         comments_count: 0,
         comments_url:
-          "https://3.basecampapi.com/12345/buckets/1/recordings/51/comments.json",
+          "https://3.basecampapi.com/12345/recordings/51/comments.json",
         content: "<p>Finished the feature!</p>",
         group_on: "2024-01-02",
       };
 
       server.use(
         http.post(
-          `${BASE_URL}/buckets/1/questions/1/answers.json`,
+          `${BASE_URL}/questions/1/answers.json`,
           async ({ request }) => {
             const body = (await request.json()) as { content: string };
             expect(body.content).toBe("<p>Finished the feature!</p>");
@@ -351,7 +351,7 @@ describe("CheckinsService", () => {
         )
       );
 
-      const answer = await client.checkins.createAnswer(1, 1, {
+      const answer = await client.checkins.createAnswer(1, {
         content: "<p>Finished the feature!</p>",
       });
 
@@ -365,13 +365,13 @@ describe("CheckinsService", () => {
   describe("updateAnswer", () => {
     it("should update an answer", async () => {
       server.use(
-        http.put(`${BASE_URL}/buckets/1/question_answers/50`, () => {
+        http.put(`${BASE_URL}/question_answers/50`, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
 
       // Should not throw
-      await client.checkins.updateAnswer(1, 50, {
+      await client.checkins.updateAnswer(50, {
         content: "<p>Updated content</p>",
       });
     });
