@@ -6,8 +6,6 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
-import { ListResult } from "../../pagination.js";
-import type { PaginationOptions } from "../../pagination.js";
 
 // =============================================================================
 // Types
@@ -15,13 +13,6 @@ import type { PaginationOptions } from "../../pagination.js";
 
 /** ClientApproval entity from the Basecamp API. */
 export type ClientApproval = components["schemas"]["ClientApproval"];
-
-/**
- * Options for list.
- */
-export interface ListClientApprovalOptions extends PaginationOptions {
-}
-
 
 // =============================================================================
 // Service
@@ -34,60 +25,52 @@ export class ClientApprovalsService extends BaseService {
 
   /**
    * List all client approvals in a project
-   * @param projectId - The project ID
-   * @param options - Optional query parameters
-   * @returns All ClientApproval across all pages, with .meta.totalCount
+   * @returns Array of ClientApproval
    *
    * @example
    * ```ts
-   * const result = await client.clientApprovals.list(123);
+   * const result = await client.clientApprovals.list();
    * ```
    */
-  async list(projectId: number, options?: ListClientApprovalOptions): Promise<ListResult<ClientApproval>> {
-    return this.requestPaginated(
+  async list(): Promise<ClientApproval[]> {
+    const response = await this.request(
       {
         service: "ClientApprovals",
         operation: "ListClientApprovals",
         resourceType: "client_approval",
         isMutation: false,
-        projectId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/client/approvals.json", {
-          params: {
-            path: { projectId },
-          },
+        this.client.GET("/client/approvals.json", {
         })
-      , options
     );
+    return response ?? [];
   }
 
   /**
    * Get a single client approval by id
-   * @param projectId - The project ID
    * @param approvalId - The approval ID
    * @returns The ClientApproval
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.clientApprovals.get(123, 123);
+   * const result = await client.clientApprovals.get(123);
    * ```
    */
-  async get(projectId: number, approvalId: number): Promise<ClientApproval> {
+  async get(approvalId: number): Promise<ClientApproval> {
     const response = await this.request(
       {
         service: "ClientApprovals",
         operation: "GetClientApproval",
         resourceType: "client_approval",
         isMutation: false,
-        projectId,
         resourceId: approvalId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/client/approvals/{approvalId}", {
+        this.client.GET("/client/approvals/{approvalId}", {
           params: {
-            path: { projectId, approvalId },
+            path: { approvalId },
           },
         })
     );

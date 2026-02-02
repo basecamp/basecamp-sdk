@@ -21,25 +21,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/boosts/{boostId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get a single boost */
-        get: operations["GetBoost"];
-        put?: never;
-        post?: never;
-        /** @description Delete a boost */
-        delete: operations["DeleteBoost"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/buckets/{projectId}/card_tables/cards/{cardId}": {
+    "/card_tables/cards/{cardId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -57,7 +39,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/cards/{cardId}/moves.json": {
+    "/card_tables/cards/{cardId}/moves.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -74,7 +56,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/cards/{cardId}/positions.json": {
+    "/card_tables/cards/{cardId}/positions.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -91,7 +73,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/cards/{cardId}/steps.json": {
+    "/card_tables/cards/{cardId}/steps.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -108,7 +90,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/columns/{columnId}": {
+    "/card_tables/columns/{columnId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -126,7 +108,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/columns/{columnId}/color.json": {
+    "/card_tables/columns/{columnId}/color.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -143,7 +125,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json": {
+    "/card_tables/columns/{columnId}/on_hold.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -161,7 +143,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/lists/{columnId}/cards.json": {
+    "/card_tables/lists/{columnId}/cards.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -184,7 +166,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json": {
+    "/card_tables/lists/{columnId}/subscription.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -202,7 +184,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/steps/{stepId}": {
+    "/card_tables/steps/{stepId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -219,7 +201,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": {
+    "/card_tables/steps/{stepId}/completions.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -236,7 +218,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/{cardTableId}": {
+    "/card_tables/{cardTableId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -253,7 +235,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/{cardTableId}/columns.json": {
+    "/card_tables/{cardTableId}/columns.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -270,7 +252,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/card_tables/{cardTableId}/moves.json": {
+    "/card_tables/{cardTableId}/moves.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -287,7 +269,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/categories.json": {
+    "/categories.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -310,7 +292,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/categories/{typeId}": {
+    "/categories/{typeId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -329,7 +311,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/chats/{campfireId}": {
+    "/chats/{campfireId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -346,7 +328,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/chats/{campfireId}/integrations.json": {
+    "/chats/{campfireId}/integrations.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -369,7 +351,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}": {
+    "/chats/{campfireId}/integrations/{chatbotId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -388,7 +370,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/chats/{campfireId}/lines.json": {
+    "/chats/{campfireId}/lines.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -411,7 +393,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/chats/{campfireId}/lines/{lineId}": {
+    "/chats/{campfireId}/lines/{lineId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -429,7 +411,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/client/approvals.json": {
+    "/client/approvals.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -451,7 +433,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/client/approvals/{approvalId}": {
+    "/client/approvals/{approvalId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -468,7 +450,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/client/correspondences.json": {
+    "/client/correspondences.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -490,7 +472,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/client/correspondences/{correspondenceId}": {
+    "/client/correspondences/{correspondenceId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -507,7 +489,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/client/recordings/{recordingId}/replies.json": {
+    "/client/recordings/{recordingId}/replies.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -529,7 +511,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}": {
+    "/client/recordings/{recordingId}/replies/{replyId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -546,7 +528,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/comments/{commentId}": {
+    "/comments/{commentId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -564,7 +546,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/dock/tools.json": {
+    "/dock/tools.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -581,7 +563,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/dock/tools/{toolId}": {
+    "/dock/tools/{toolId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -600,7 +582,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/documents/{documentId}": {
+    "/documents/{documentId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -618,7 +600,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/inbox_forwards/{forwardId}": {
+    "/inbox_forwards/{forwardId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -635,7 +617,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json": {
+    "/inbox_forwards/{forwardId}/replies.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -658,7 +640,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}": {
+    "/inbox_forwards/{forwardId}/replies/{replyId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -675,7 +657,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/inboxes/{inboxId}": {
+    "/inboxes/{inboxId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -692,7 +674,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/inboxes/{inboxId}/forwards.json": {
+    "/inboxes/{inboxId}/forwards.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -714,7 +696,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/message_boards/{boardId}": {
+    "/message_boards/{boardId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -731,7 +713,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/message_boards/{boardId}/messages.json": {
+    "/message_boards/{boardId}/messages.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -754,7 +736,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/messages/{messageId}": {
+    "/messages/{messageId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -772,7 +754,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/question_answers/{answerId}": {
+    "/question_answers/{answerId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -790,7 +772,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/questionnaires/{questionnaireId}": {
+    "/questionnaires/{questionnaireId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -807,7 +789,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json": {
+    "/questionnaires/{questionnaireId}/questions.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -830,7 +812,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/questions/{questionId}": {
+    "/questions/{questionId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -848,7 +830,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/questions/{questionId}/answers.json": {
+    "/questions/{questionId}/answers.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -871,7 +853,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/questions/{questionId}/answers/by.json": {
+    "/questions/{questionId}/answers/by.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -893,7 +875,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/questions/{questionId}/answers/by/{personId}": {
+    "/questions/{questionId}/answers/by/{personId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -915,7 +897,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/questions/{questionId}/notification_settings.json": {
+    "/questions/{questionId}/notification_settings.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -932,7 +914,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/questions/{questionId}/pause.json": {
+    "/questions/{questionId}/pause.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -950,7 +932,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/recordings/{messageId}/pin.json": {
+    "/recordings/{messageId}/pin.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -968,7 +950,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/recordings/{recordingId}": {
+    "/recordings/{recordingId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -985,25 +967,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/recordings/{recordingId}/boosts.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description List boosts on a recording */
-        get: operations["ListRecordingBoosts"];
-        put?: never;
-        /** @description Create a boost on a recording */
-        post: operations["CreateRecordingBoost"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/buckets/{projectId}/recordings/{recordingId}/client_visibility.json": {
+    "/recordings/{recordingId}/client_visibility.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1020,7 +984,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/recordings/{recordingId}/comments.json": {
+    "/recordings/{recordingId}/comments.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1043,7 +1007,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/recordings/{recordingId}/events.json": {
+    "/recordings/{recordingId}/events.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1065,25 +1029,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/recordings/{recordingId}/events/{eventId}/boosts.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description List boosts on a specific event within a recording */
-        get: operations["ListEventBoosts"];
-        put?: never;
-        /** @description Create a boost on a specific event within a recording */
-        post: operations["CreateEventBoost"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/buckets/{projectId}/recordings/{recordingId}/status/active.json": {
+    "/recordings/{recordingId}/status/active.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1100,7 +1046,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/recordings/{recordingId}/status/archived.json": {
+    "/recordings/{recordingId}/status/archived.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1117,7 +1063,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/recordings/{recordingId}/status/trashed.json": {
+    "/recordings/{recordingId}/status/trashed.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1134,7 +1080,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/recordings/{recordingId}/subscription.json": {
+    "/recordings/{recordingId}/subscription.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1154,7 +1100,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/recordings/{toolId}/position.json": {
+    "/recordings/{toolId}/position.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1173,7 +1119,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/schedule_entries/{entryId}": {
+    "/schedule_entries/{entryId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1195,7 +1141,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}": {
+    "/schedule_entries/{entryId}/occurrences/{date}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1212,7 +1158,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/schedules/{scheduleId}": {
+    "/schedules/{scheduleId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1230,7 +1176,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/schedules/{scheduleId}/entries.json": {
+    "/schedules/{scheduleId}/entries.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1253,7 +1199,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/todolists/{groupId}/position.json": {
+    "/todolists/{groupId}/position.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1270,7 +1216,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/todolists/{id}": {
+    "/todolists/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1294,7 +1240,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/todolists/{todolistId}/groups.json": {
+    "/todolists/{todolistId}/groups.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1317,7 +1263,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/todolists/{todolistId}/todos.json": {
+    "/todolists/{todolistId}/todos.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1340,7 +1286,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/todos/{todoId}": {
+    "/todos/{todoId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1359,7 +1305,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/todos/{todoId}/completion.json": {
+    "/todos/{todoId}/completion.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1377,7 +1323,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/todos/{todoId}/position.json": {
+    "/todos/{todoId}/position.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1394,7 +1340,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/todosets/{todosetId}": {
+    "/todosets/{todosetId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1411,7 +1357,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/todosets/{todosetId}/todolists.json": {
+    "/todosets/{todosetId}/todolists.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1434,7 +1380,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/uploads/{uploadId}": {
+    "/uploads/{uploadId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1452,7 +1398,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/uploads/{uploadId}/versions.json": {
+    "/uploads/{uploadId}/versions.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1474,7 +1420,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/vaults/{vaultId}": {
+    "/vaults/{vaultId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1492,7 +1438,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/vaults/{vaultId}/documents.json": {
+    "/vaults/{vaultId}/documents.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1515,7 +1461,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/vaults/{vaultId}/uploads.json": {
+    "/vaults/{vaultId}/uploads.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1538,7 +1484,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/vaults/{vaultId}/vaults.json": {
+    "/vaults/{vaultId}/vaults.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1561,7 +1507,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/webhooks.json": {
+    "/webhooks.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1584,7 +1530,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/webhooks/{webhookId}": {
+    "/webhooks/{webhookId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1865,7 +1811,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{projectId}/recordings/{recordingId}/timesheet.json": {
+    "/recordings/{recordingId}/timesheet.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1899,7 +1845,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{projectId}/timeline.json": {
+    "/timeline.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1916,7 +1862,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{projectId}/timesheet.json": {
+    "/timesheet.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -1933,7 +1879,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{projectId}/timesheet/entries/{entryId}": {
+    "/buckets/{projectId}/timesheet/entries/{entryId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2201,68 +2147,57 @@ export interface components {
             error: string;
             message?: string;
         };
-        Boost: {
-            /** Format: int64 */
-            id: number;
-            content?: string;
-            created_at: string;
-            booster?: components["schemas"]["Person"];
-            recording?: components["schemas"]["RecordingParent"];
-        };
         Campfire: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
             position?: number;
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             topic?: string;
             lines_url?: string;
         };
         CampfireLine: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
-            content: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
+            content?: string;
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
         };
         Card: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -2276,29 +2211,26 @@ export interface components {
             comments_count?: number;
             comments_url?: string;
             completion_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             completer?: components["schemas"]["Person"];
             assignees?: components["schemas"]["Person"][];
             completion_subscribers?: components["schemas"]["Person"][];
             steps?: components["schemas"]["CardStep"][];
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
         };
         CardColumn: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
@@ -2309,61 +2241,61 @@ export interface components {
             /** Format: int32 */
             comments_count?: number;
             cards_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             subscribers?: components["schemas"]["Person"][];
         };
         CardStep: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
             due_on?: string;
             completed?: boolean;
             completed_at?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             completer?: components["schemas"]["Person"];
             assignees?: components["schemas"]["Person"][];
             completion_url?: string;
         };
         CardTable: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             subscribers?: components["schemas"]["Person"][];
             lists?: components["schemas"]["CardColumn"][];
         };
         Chatbot: {
             /** Format: int64 */
-            id: number;
-            created_at: string;
-            updated_at: string;
-            service_name: string;
+            id?: number;
+            created_at?: string;
+            updated_at?: string;
+            service_name?: string;
             command_url?: string;
             url?: string;
             app_url?: string;
@@ -2371,21 +2303,21 @@ export interface components {
         };
         ClientApproval: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["RecordingBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["RecordingBucket"];
+            creator?: components["schemas"]["Person"];
             content?: string;
             subject?: string;
             due_on?: string;
@@ -2416,49 +2348,49 @@ export interface components {
         };
         ClientCompany: {
             /** Format: int64 */
-            id: number;
-            name: string;
+            id?: number;
+            name?: string;
         };
         ClientCorrespondence: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["RecordingBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["RecordingBucket"];
+            creator?: components["schemas"]["Person"];
             content?: string;
-            subject: string;
+            subject?: string;
             /** Format: int32 */
             replies_count?: number;
             replies_url?: string;
         };
         ClientReply: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["RecordingBucket"];
-            creator: components["schemas"]["Person"];
-            content: string;
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["RecordingBucket"];
+            creator?: components["schemas"]["Person"];
+            content?: string;
         };
         /**
          * @deprecated
@@ -2475,24 +2407,21 @@ export interface components {
         CloneToolResponseContent: components["schemas"]["Tool"];
         Comment: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
-            content: string;
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
+            content?: string;
         };
         CreateAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         CreateAttachmentInputPayload: string;
@@ -2501,7 +2430,6 @@ export interface components {
         };
         CreateCampfireLineRequestContent: {
             content: string;
-            content_type?: string;
         };
         CreateCampfireLineResponseContent: components["schemas"]["CampfireLine"];
         CreateCardColumnRequestContent: {
@@ -2538,10 +2466,6 @@ export interface components {
             status?: string;
         };
         CreateDocumentResponseContent: components["schemas"]["Document"];
-        CreateEventBoostRequestContent: {
-            content: string;
-        };
-        CreateEventBoostResponseContent: components["schemas"]["Boost"];
         CreateForwardReplyRequestContent: {
             content: string;
         };
@@ -2589,10 +2513,6 @@ export interface components {
             schedule: components["schemas"]["QuestionSchedule"];
         };
         CreateQuestionResponseContent: components["schemas"]["Question"];
-        CreateRecordingBoostRequestContent: {
-            content: string;
-        };
-        CreateRecordingBoostResponseContent: components["schemas"]["Boost"];
         CreateScheduleEntryRequestContent: {
             summary: string;
             starts_at: string;
@@ -2654,27 +2574,27 @@ export interface components {
         DisableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         DockItem: {
             /** Format: int64 */
-            id: number;
-            title: string;
-            name: string;
-            enabled: boolean;
+            id?: number;
+            title?: string;
+            name?: string;
+            enabled?: boolean;
             /** Format: int32 */
             position?: number;
-            url: string;
-            app_url: string;
+            url?: string;
+            app_url?: string;
         };
         Document: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -2682,27 +2602,21 @@ export interface components {
             comments_url?: string;
             /** Format: int32 */
             position?: number;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             content?: string;
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
         };
         EnableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         Event: {
             /** Format: int64 */
-            id: number;
+            id?: number;
             /** Format: int64 */
-            recording_id: number;
-            action: string;
+            recording_id?: number;
+            action?: string;
             details?: components["schemas"]["EventDetails"];
-            created_at: string;
-            creator: components["schemas"]["Person"];
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
+            created_at?: string;
+            creator?: components["schemas"]["Person"];
         };
         EventDetails: {
             added_person_ids?: number[];
@@ -2715,23 +2629,23 @@ export interface components {
         };
         Forward: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             content?: string;
-            subject: string;
+            subject?: string;
             from?: string;
             /** Format: int32 */
             replies_count?: number;
@@ -2739,24 +2653,21 @@ export interface components {
         };
         ForwardReply: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
-            content: string;
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
+            content?: string;
         };
         GetAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         GetAnswersByPersonResponseContent: components["schemas"]["QuestionAnswer"][];
@@ -2765,7 +2676,6 @@ export interface components {
             grouped_by?: string;
             todos?: components["schemas"]["Todo"][];
         };
-        GetBoostResponseContent: components["schemas"]["Boost"];
         GetCampfireLineResponseContent: components["schemas"]["CampfireLine"];
         GetCampfireResponseContent: components["schemas"]["Campfire"];
         GetCardColumnResponseContent: components["schemas"]["CardColumn"];
@@ -2827,21 +2737,21 @@ export interface components {
         GetWebhookResponseContent: components["schemas"]["Webhook"];
         Inbox: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             /** Format: int32 */
             forwards_count?: number;
             forwards_url?: string;
@@ -2861,7 +2771,6 @@ export interface components {
         ListClientRepliesResponseContent: components["schemas"]["ClientReply"][];
         ListCommentsResponseContent: components["schemas"]["Comment"][];
         ListDocumentsResponseContent: components["schemas"]["Document"][];
-        ListEventBoostsResponseContent: components["schemas"]["Boost"][];
         ListEventsResponseContent: components["schemas"]["Event"][];
         ListForwardRepliesResponseContent: components["schemas"]["ForwardReply"][];
         ListForwardsResponseContent: components["schemas"]["Forward"][];
@@ -2873,7 +2782,6 @@ export interface components {
         ListProjectsResponseContent: components["schemas"]["Project"][];
         ListQuestionAnswerersResponseContent: components["schemas"]["Person"][];
         ListQuestionsResponseContent: components["schemas"]["Question"][];
-        ListRecordingBoostsResponseContent: components["schemas"]["Boost"][];
         ListRecordingsResponseContent: components["schemas"]["Recording"][];
         ListScheduleEntriesResponseContent: components["schemas"]["ScheduleEntry"][];
         ListTemplatesResponseContent: components["schemas"]["Template"][];
@@ -2886,48 +2794,45 @@ export interface components {
         ListWebhooksResponseContent: components["schemas"]["Webhook"][];
         Message: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
-            subject: string;
-            content: string;
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
+            subject?: string;
+            content?: string;
             category?: components["schemas"]["MessageType"];
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
         };
         MessageBoard: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             /** Format: int32 */
             messages_count?: number;
             messages_url?: string;
@@ -2935,11 +2840,11 @@ export interface components {
         };
         MessageType: {
             /** Format: int64 */
-            id: number;
-            name: string;
-            icon: string;
-            created_at: string;
-            updated_at: string;
+            id?: number;
+            name?: string;
+            icon?: string;
+            created_at?: string;
+            updated_at?: string;
         };
         MoveCardColumnRequestContent: {
             /** Format: int64 */
@@ -2962,10 +2867,10 @@ export interface components {
         };
         Person: {
             /** Format: int64 */
-            id: number;
+            id?: number;
             attachable_sgid?: string;
             /** Format: password */
-            name: string;
+            name?: string;
             /** Format: password */
             email_address?: string;
             personable_type?: string;
@@ -2993,24 +2898,24 @@ export interface components {
         };
         PersonCompany: {
             /** Format: int64 */
-            id: number;
+            id?: number;
             /** Format: password */
-            name: string;
+            name?: string;
         };
         Project: {
             /** Format: int64 */
-            id: number;
+            id?: number;
             /** @description active|archived|trashed */
-            status: string;
-            created_at: string;
-            updated_at: string;
-            name: string;
+            status?: string;
+            created_at?: string;
+            updated_at?: string;
+            name?: string;
             description?: string;
             purpose?: string;
             clients_enabled?: boolean;
             bookmark_url?: string;
-            url: string;
-            app_url: string;
+            url?: string;
+            app_url?: string;
             dock?: components["schemas"]["DockItem"][];
             bookmarked?: boolean;
             client_company?: components["schemas"]["ClientCompany"];
@@ -3023,28 +2928,28 @@ export interface components {
         };
         ProjectConstruction: {
             /** Format: int64 */
-            id: number;
-            status: string;
+            id?: number;
+            status?: string;
             url?: string;
             project?: components["schemas"]["Project"];
         };
         Question: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["RecordingBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["RecordingBucket"];
+            creator?: components["schemas"]["Person"];
             paused?: boolean;
             schedule?: components["schemas"]["QuestionSchedule"];
             /** Format: int32 */
@@ -3053,29 +2958,26 @@ export interface components {
         };
         QuestionAnswer: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
-            content: string;
+            content?: string;
             group_on?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["RecordingBucket"];
-            creator: components["schemas"]["Person"];
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["RecordingBucket"];
+            creator?: components["schemas"]["Person"];
         };
         QuestionAnswerPayload: {
             content: string;
@@ -3109,23 +3011,23 @@ export interface components {
         };
         Questionnaire: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             questions_url?: string;
             /** Format: int32 */
             questions_count?: number;
-            name: string;
-            bucket: components["schemas"]["RecordingBucket"];
-            creator: components["schemas"]["Person"];
+            name?: string;
+            bucket?: components["schemas"]["RecordingBucket"];
+            creator?: components["schemas"]["Person"];
         };
         RateLimitErrorResponseContent: {
             error: string;
@@ -3135,39 +3037,39 @@ export interface components {
         };
         Recording: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             content?: string;
             /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
             subscription_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["RecordingBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["RecordingBucket"];
+            creator?: components["schemas"]["Person"];
         };
         RecordingBucket: {
             /** Format: int64 */
-            id: number;
-            name: string;
-            type: string;
+            id?: number;
+            name?: string;
+            type?: string;
         };
         RecordingParent: {
             /** Format: int64 */
-            id: number;
-            title: string;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            title?: string;
+            type?: string;
+            url?: string;
+            app_url?: string;
         };
         RepositionCardStepRequestContent: {
             /** Format: int64 */
@@ -3200,21 +3102,21 @@ export interface components {
         };
         Schedule: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             include_due_assignments?: boolean;
             /** Format: int32 */
             entries_count?: number;
@@ -3226,33 +3128,30 @@ export interface components {
         };
         ScheduleEntry: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
-            summary: string;
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
+            summary?: string;
             description?: string;
             all_day?: boolean;
             starts_at?: string;
             ends_at?: string;
             participants?: components["schemas"]["Person"][];
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
         };
         SearchMetadata: {
             projects?: components["schemas"]["SearchProject"][];
@@ -3265,16 +3164,16 @@ export interface components {
         SearchResponseContent: components["schemas"]["SearchResult"][];
         SearchResult: {
             /** Format: int64 */
-            id: number;
+            id?: number;
             status?: string;
             visible_to_clients?: boolean;
             created_at?: string;
             updated_at?: string;
-            title: string;
+            title?: string;
             inherits_status?: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["RecordingBucket"];
@@ -3299,19 +3198,19 @@ export interface components {
         SetClientVisibilityResponseContent: components["schemas"]["Recording"];
         SubscribeResponseContent: components["schemas"]["Subscription"];
         Subscription: {
-            subscribed: boolean;
+            subscribed?: boolean;
             /** Format: int32 */
-            count: number;
-            url: string;
+            count?: number;
+            url?: string;
             subscribers?: components["schemas"]["Person"][];
         };
         Template: {
             /** Format: int64 */
-            id: number;
+            id?: number;
             status?: string;
-            created_at: string;
-            updated_at: string;
-            name: string;
+            created_at?: string;
+            updated_at?: string;
+            name?: string;
             description?: string;
             url?: string;
             app_url?: string;
@@ -3335,20 +3234,20 @@ export interface components {
         };
         TimesheetEntry: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             date?: string;
             description?: string;
             hours?: string;
@@ -3356,17 +3255,17 @@ export interface components {
         };
         Todo: {
             /** Format: int64 */
-            id: number;
+            id?: number;
             /** @description active|archived|trashed */
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -3374,48 +3273,45 @@ export interface components {
             comments_url?: string;
             /** Format: int32 */
             position?: number;
-            parent: components["schemas"]["TodoParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["TodoParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             description?: string;
             completed?: boolean;
-            content: string;
+            content?: string;
             starts_on?: string;
             due_on?: string;
             assignees?: components["schemas"]["Person"][];
             completion_subscribers?: components["schemas"]["Person"][];
             completion_url?: string;
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
         };
         TodoBucket: {
             /** Format: int64 */
-            id: number;
-            name: string;
-            type: string;
+            id?: number;
+            name?: string;
+            type?: string;
         };
         TodoParent: {
             /** Format: int64 */
-            id: number;
-            title: string;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            title?: string;
+            type?: string;
+            url?: string;
+            app_url?: string;
         };
         Todolist: {
             /** Format: int64 */
-            id: number;
+            id?: number;
             /** @description active|archived|trashed */
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -3423,32 +3319,29 @@ export interface components {
             comments_url?: string;
             /** Format: int32 */
             position?: number;
-            parent: components["schemas"]["TodoParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["TodoParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             description?: string;
             completed?: boolean;
             completed_ratio?: string;
-            name: string;
+            name?: string;
             todos_url?: string;
             groups_url?: string;
             app_todos_url?: string;
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
         };
         TodolistGroup: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -3456,10 +3349,10 @@ export interface components {
             comments_url?: string;
             /** Format: int32 */
             position?: number;
-            parent: components["schemas"]["TodoParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
-            name: string;
+            parent?: components["schemas"]["TodoParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
+            name?: string;
             completed?: boolean;
             completed_ratio?: string;
             todos_url?: string;
@@ -3473,22 +3366,22 @@ export interface components {
         };
         Todoset: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
-            name: string;
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
+            name?: string;
             /** Format: int32 */
             todolists_count?: number;
             todolists_url?: string;
@@ -3504,13 +3397,13 @@ export interface components {
         };
         Tool: {
             /** Format: int64 */
-            id: number;
+            id?: number;
             status?: string;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            name: string;
-            enabled: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            name?: string;
+            enabled?: boolean;
             /** Format: int32 */
             position?: number;
             url?: string;
@@ -3671,16 +3564,16 @@ export interface components {
         UpdateWebhookResponseContent: components["schemas"]["Webhook"];
         Upload: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -3688,9 +3581,9 @@ export interface components {
             comments_url?: string;
             /** Format: int32 */
             position?: number;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             description?: string;
             content_type?: string;
             /** Format: int64 */
@@ -3701,9 +3594,6 @@ export interface components {
             height?: number;
             download_url?: string;
             filename?: string;
-            /** Format: int32 */
-            boosts_count?: number;
-            boosts_url?: string;
         };
         ValidationErrorResponseContent: {
             error: string;
@@ -3711,22 +3601,22 @@ export interface components {
         };
         Vault: {
             /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            type?: string;
+            url?: string;
+            app_url?: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
             parent?: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
             /** Format: int32 */
             documents_count?: number;
             documents_url?: string;
@@ -3739,14 +3629,14 @@ export interface components {
         };
         Webhook: {
             /** Format: int64 */
-            id: number;
+            id?: number;
             active?: boolean;
-            created_at: string;
-            updated_at: string;
-            payload_url: string;
+            created_at?: string;
+            updated_at?: string;
+            payload_url?: string;
             types?: string[];
-            url: string;
-            app_url: string;
+            url?: string;
+            app_url?: string;
             recent_deliveries?: components["schemas"]["WebhookDelivery"][];
         };
         /** @description Reference to a copied/moved recording in copy events. */
@@ -3880,128 +3770,11 @@ export interface operations {
             };
         };
     };
-    GetBoost: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                boostId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetBoost 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetBoostResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    DeleteBoost: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                boostId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description DeleteBoost 204 response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
     GetCard: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 cardId: number;
             };
             cookie?: never;
@@ -4060,7 +3833,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 cardId: number;
             };
             cookie?: never;
@@ -4132,7 +3904,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 cardId: number;
             };
             cookie?: never;
@@ -4202,7 +3973,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 cardId: number;
             };
             cookie?: never;
@@ -4272,7 +4042,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 cardId: number;
             };
             cookie?: never;
@@ -4344,7 +4113,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 columnId: number;
             };
             cookie?: never;
@@ -4403,7 +4171,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 columnId: number;
             };
             cookie?: never;
@@ -4475,7 +4242,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 columnId: number;
             };
             cookie?: never;
@@ -4547,7 +4313,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 columnId: number;
             };
             cookie?: never;
@@ -4615,7 +4380,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 columnId: number;
             };
             cookie?: never;
@@ -4674,7 +4438,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 columnId: number;
             };
             cookie?: never;
@@ -4733,7 +4496,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 columnId: number;
             };
             cookie?: never;
@@ -4805,7 +4567,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 columnId: number;
             };
             cookie?: never;
@@ -4871,7 +4632,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 columnId: number;
             };
             cookie?: never;
@@ -4928,7 +4688,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 stepId: number;
             };
             cookie?: never;
@@ -5000,7 +4759,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 stepId: number;
             };
             cookie?: never;
@@ -5072,7 +4830,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 cardTableId: number;
             };
             cookie?: never;
@@ -5131,7 +4888,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 cardTableId: number;
             };
             cookie?: never;
@@ -5203,7 +4959,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 cardTableId: number;
             };
             cookie?: never;
@@ -5272,9 +5027,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                projectId: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5330,9 +5083,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                projectId: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -5402,7 +5153,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 typeId: number;
             };
             cookie?: never;
@@ -5461,7 +5211,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 typeId: number;
             };
             cookie?: never;
@@ -5533,7 +5282,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 typeId: number;
             };
             cookie?: never;
@@ -5590,7 +5338,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 campfireId: number;
             };
             cookie?: never;
@@ -5649,7 +5396,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 campfireId: number;
             };
             cookie?: never;
@@ -5708,7 +5454,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 campfireId: number;
             };
             cookie?: never;
@@ -5780,7 +5525,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 campfireId: number;
                 chatbotId: number;
             };
@@ -5840,7 +5584,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 campfireId: number;
                 chatbotId: number;
             };
@@ -5913,7 +5656,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 campfireId: number;
                 chatbotId: number;
             };
@@ -5971,7 +5713,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 campfireId: number;
             };
             cookie?: never;
@@ -6030,7 +5771,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 campfireId: number;
             };
             cookie?: never;
@@ -6102,7 +5842,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 campfireId: number;
                 lineId: number;
             };
@@ -6162,7 +5901,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 campfireId: number;
                 lineId: number;
             };
@@ -6219,9 +5957,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                projectId: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -6278,7 +6014,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 approvalId: number;
             };
             cookie?: never;
@@ -6336,9 +6071,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                projectId: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -6395,7 +6128,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 correspondenceId: number;
             };
             cookie?: never;
@@ -6454,7 +6186,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -6513,7 +6244,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
                 replyId: number;
             };
@@ -6573,7 +6303,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 commentId: number;
             };
             cookie?: never;
@@ -6632,7 +6361,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 commentId: number;
             };
             cookie?: never;
@@ -6703,9 +6431,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                projectId: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -6775,7 +6501,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 toolId: number;
             };
             cookie?: never;
@@ -6834,7 +6559,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 toolId: number;
             };
             cookie?: never;
@@ -6906,7 +6630,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 toolId: number;
             };
             cookie?: never;
@@ -6963,7 +6686,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 documentId: number;
             };
             cookie?: never;
@@ -7022,7 +6744,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 documentId: number;
             };
             cookie?: never;
@@ -7094,7 +6815,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 forwardId: number;
             };
             cookie?: never;
@@ -7153,7 +6873,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 forwardId: number;
             };
             cookie?: never;
@@ -7212,7 +6931,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 forwardId: number;
             };
             cookie?: never;
@@ -7284,7 +7002,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 forwardId: number;
                 replyId: number;
             };
@@ -7344,7 +7061,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 inboxId: number;
             };
             cookie?: never;
@@ -7403,7 +7119,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 inboxId: number;
             };
             cookie?: never;
@@ -7462,7 +7177,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 boardId: number;
             };
             cookie?: never;
@@ -7521,7 +7235,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 boardId: number;
             };
             cookie?: never;
@@ -7580,7 +7293,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 boardId: number;
             };
             cookie?: never;
@@ -7652,7 +7364,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 messageId: number;
             };
             cookie?: never;
@@ -7711,7 +7422,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 messageId: number;
             };
             cookie?: never;
@@ -7783,7 +7493,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 answerId: number;
             };
             cookie?: never;
@@ -7842,7 +7551,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 answerId: number;
             };
             cookie?: never;
@@ -7912,7 +7620,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionnaireId: number;
             };
             cookie?: never;
@@ -7971,7 +7678,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionnaireId: number;
             };
             cookie?: never;
@@ -8030,7 +7736,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionnaireId: number;
             };
             cookie?: never;
@@ -8102,7 +7807,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionId: number;
             };
             cookie?: never;
@@ -8161,7 +7865,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionId: number;
             };
             cookie?: never;
@@ -8233,7 +7936,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionId: number;
             };
             cookie?: never;
@@ -8292,7 +7994,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionId: number;
             };
             cookie?: never;
@@ -8364,7 +8065,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionId: number;
             };
             cookie?: never;
@@ -8432,7 +8132,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionId: number;
                 personId: number;
             };
@@ -8501,7 +8200,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionId: number;
             };
             cookie?: never;
@@ -8573,7 +8271,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionId: number;
             };
             cookie?: never;
@@ -8641,7 +8338,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 questionId: number;
             };
             cookie?: never;
@@ -8700,7 +8396,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 messageId: number;
             };
             cookie?: never;
@@ -8766,7 +8461,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 messageId: number;
             };
             cookie?: never;
@@ -8823,7 +8517,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -8877,143 +8570,11 @@ export interface operations {
             };
         };
     };
-    ListRecordingBoosts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                recordingId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ListRecordingBoosts 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListRecordingBoostsResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    CreateRecordingBoost: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                recordingId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateRecordingBoostRequestContent"];
-            };
-        };
-        responses: {
-            /** @description CreateRecordingBoost 201 response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreateRecordingBoostResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
     SetClientVisibility: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -9085,7 +8646,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -9144,7 +8704,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -9216,7 +8775,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -9270,145 +8828,11 @@ export interface operations {
             };
         };
     };
-    ListEventBoosts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                recordingId: number;
-                eventId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ListEventBoosts 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListEventBoostsResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    CreateEventBoost: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                recordingId: number;
-                eventId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateEventBoostRequestContent"];
-            };
-        };
-        responses: {
-            /** @description CreateEventBoost 201 response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreateEventBoostResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
     UnarchiveRecording: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -9474,7 +8898,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -9540,7 +8963,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -9606,7 +9028,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -9665,7 +9086,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -9737,7 +9157,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -9805,7 +9224,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -9862,7 +9280,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 toolId: number;
             };
             cookie?: never;
@@ -9932,7 +9349,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 toolId: number;
             };
             cookie?: never;
@@ -9998,7 +9414,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 toolId: number;
             };
             cookie?: never;
@@ -10055,7 +9470,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 entryId: number;
             };
             cookie?: never;
@@ -10114,7 +9528,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 entryId: number;
             };
             cookie?: never;
@@ -10186,7 +9599,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 entryId: number;
                 date: string;
             };
@@ -10246,7 +9658,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 scheduleId: number;
             };
             cookie?: never;
@@ -10305,7 +9716,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 scheduleId: number;
             };
             cookie?: never;
@@ -10380,7 +9790,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                projectId: number;
                 scheduleId: number;
             };
             cookie?: never;
@@ -10439,7 +9848,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 scheduleId: number;
             };
             cookie?: never;
@@ -10511,7 +9919,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 groupId: number;
             };
             cookie?: never;
@@ -10581,7 +9988,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 id: number;
             };
             cookie?: never;
@@ -10640,7 +10046,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 id: number;
             };
             cookie?: never;
@@ -10712,7 +10117,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 todolistId: number;
             };
             cookie?: never;
@@ -10771,7 +10175,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 todolistId: number;
             };
             cookie?: never;
@@ -10847,7 +10250,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                projectId: number;
                 todolistId: number;
             };
             cookie?: never;
@@ -10906,7 +10308,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 todolistId: number;
             };
             cookie?: never;
@@ -10978,7 +10379,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 todoId: number;
             };
             cookie?: never;
@@ -11037,7 +10437,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 todoId: number;
             };
             cookie?: never;
@@ -11109,7 +10508,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 todoId: number;
             };
             cookie?: never;
@@ -11166,7 +10564,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 todoId: number;
             };
             cookie?: never;
@@ -11232,7 +10629,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 todoId: number;
             };
             cookie?: never;
@@ -11289,7 +10685,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 todoId: number;
             };
             cookie?: never;
@@ -11359,7 +10754,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 todosetId: number;
             };
             cookie?: never;
@@ -11421,7 +10815,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                projectId: number;
                 todosetId: number;
             };
             cookie?: never;
@@ -11480,7 +10873,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 todosetId: number;
             };
             cookie?: never;
@@ -11552,7 +10944,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 uploadId: number;
             };
             cookie?: never;
@@ -11611,7 +11002,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 uploadId: number;
             };
             cookie?: never;
@@ -11683,7 +11073,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 uploadId: number;
             };
             cookie?: never;
@@ -11742,7 +11131,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 vaultId: number;
             };
             cookie?: never;
@@ -11801,7 +11189,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 vaultId: number;
             };
             cookie?: never;
@@ -11873,7 +11260,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 vaultId: number;
             };
             cookie?: never;
@@ -11932,7 +11318,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 vaultId: number;
             };
             cookie?: never;
@@ -12004,7 +11389,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 vaultId: number;
             };
             cookie?: never;
@@ -12063,7 +11447,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 vaultId: number;
             };
             cookie?: never;
@@ -12135,7 +11518,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 vaultId: number;
             };
             cookie?: never;
@@ -12194,7 +11576,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 vaultId: number;
             };
             cookie?: never;
@@ -12265,9 +11646,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                projectId: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -12323,9 +11702,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                projectId: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -12404,7 +11781,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 webhookId: number;
             };
             cookie?: never;
@@ -12463,7 +11839,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 webhookId: number;
             };
             cookie?: never;
@@ -12544,7 +11919,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                projectId: number;
                 webhookId: number;
             };
             cookie?: never;
@@ -13652,7 +13026,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                projectId: number;
                 recordingId: number;
             };
             cookie?: never;
@@ -13782,9 +13155,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                projectId: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -13853,9 +13224,7 @@ export interface operations {
                 person_id?: number;
             };
             header?: never;
-            path: {
-                projectId: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;

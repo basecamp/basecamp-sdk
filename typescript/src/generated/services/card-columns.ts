@@ -67,30 +67,28 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Get a card column by ID
-   * @param projectId - The project ID
    * @param columnId - The column ID
    * @returns The CardColumn
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.cardColumns.get(123, 123);
+   * const result = await client.cardColumns.get(123);
    * ```
    */
-  async get(projectId: number, columnId: number): Promise<CardColumn> {
+  async get(columnId: number): Promise<CardColumn> {
     const response = await this.request(
       {
         service: "CardColumns",
         operation: "GetCardColumn",
         resourceType: "card_column",
         isMutation: false,
-        projectId,
         resourceId: columnId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/card_tables/columns/{columnId}", {
+        this.client.GET("/card_tables/columns/{columnId}", {
           params: {
-            path: { projectId, columnId },
+            path: { columnId },
           },
         })
     );
@@ -99,7 +97,6 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Update an existing column
-   * @param projectId - The project ID
    * @param columnId - The column ID
    * @param req - Card_column update parameters
    * @returns The CardColumn
@@ -107,23 +104,22 @@ export class CardColumnsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.cardColumns.update(123, 123, { });
+   * const result = await client.cardColumns.update(123, { });
    * ```
    */
-  async update(projectId: number, columnId: number, req: UpdateCardColumnRequest): Promise<CardColumn> {
+  async update(columnId: number, req: UpdateCardColumnRequest): Promise<CardColumn> {
     const response = await this.request(
       {
         service: "CardColumns",
         operation: "UpdateCardColumn",
         resourceType: "card_column",
         isMutation: true,
-        projectId,
         resourceId: columnId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/card_tables/columns/{columnId}", {
+        this.client.PUT("/card_tables/columns/{columnId}", {
           params: {
-            path: { projectId, columnId },
+            path: { columnId },
           },
           body: {
             title: req.title,
@@ -136,7 +132,6 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Set the color of a column
-   * @param projectId - The project ID
    * @param columnId - The column ID
    * @param req - Card_column_color request parameters
    * @returns The CardColumn
@@ -144,10 +139,10 @@ export class CardColumnsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.cardColumns.setColor(123, 123, { color: "example" });
+   * const result = await client.cardColumns.setColor(123, { color: "example" });
    * ```
    */
-  async setColor(projectId: number, columnId: number, req: SetColorCardColumnRequest): Promise<CardColumn> {
+  async setColor(columnId: number, req: SetColorCardColumnRequest): Promise<CardColumn> {
     if (!req.color) {
       throw Errors.validation("Color is required");
     }
@@ -157,13 +152,12 @@ export class CardColumnsService extends BaseService {
         operation: "SetCardColumnColor",
         resourceType: "card_column_color",
         isMutation: true,
-        projectId,
         resourceId: columnId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/card_tables/columns/{columnId}/color.json", {
+        this.client.PUT("/card_tables/columns/{columnId}/color.json", {
           params: {
-            path: { projectId, columnId },
+            path: { columnId },
           },
           body: {
             color: req.color,
@@ -175,30 +169,28 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Enable on-hold section in a column
-   * @param projectId - The project ID
    * @param columnId - The column ID
    * @returns The CardColumn
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * const result = await client.cardColumns.enableOnHold(123, 123);
+   * const result = await client.cardColumns.enableOnHold(123);
    * ```
    */
-  async enableOnHold(projectId: number, columnId: number): Promise<CardColumn> {
+  async enableOnHold(columnId: number): Promise<CardColumn> {
     const response = await this.request(
       {
         service: "CardColumns",
         operation: "EnableCardColumnOnHold",
         resourceType: "card_column_on_hold",
         isMutation: true,
-        projectId,
         resourceId: columnId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json", {
+        this.client.POST("/card_tables/columns/{columnId}/on_hold.json", {
           params: {
-            path: { projectId, columnId },
+            path: { columnId },
           },
         })
     );
@@ -207,30 +199,28 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Disable on-hold section in a column
-   * @param projectId - The project ID
    * @param columnId - The column ID
    * @returns The CardColumn
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * const result = await client.cardColumns.disableOnHold(123, 123);
+   * const result = await client.cardColumns.disableOnHold(123);
    * ```
    */
-  async disableOnHold(projectId: number, columnId: number): Promise<CardColumn> {
+  async disableOnHold(columnId: number): Promise<CardColumn> {
     const response = await this.request(
       {
         service: "CardColumns",
         operation: "DisableCardColumnOnHold",
         resourceType: "card_column_on_hold",
         isMutation: true,
-        projectId,
         resourceId: columnId,
       },
       () =>
-        this.client.DELETE("/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json", {
+        this.client.DELETE("/card_tables/columns/{columnId}/on_hold.json", {
           params: {
-            path: { projectId, columnId },
+            path: { columnId },
           },
         })
     );
@@ -239,30 +229,28 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Subscribe to a card column (watch for changes)
-   * @param projectId - The project ID
    * @param columnId - The column ID
    * @returns void
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * await client.cardColumns.subscribeToColumn(123, 123);
+   * await client.cardColumns.subscribeToColumn(123);
    * ```
    */
-  async subscribeToColumn(projectId: number, columnId: number): Promise<void> {
+  async subscribeToColumn(columnId: number): Promise<void> {
     await this.request(
       {
         service: "CardColumns",
         operation: "SubscribeToCardColumn",
         resourceType: "to_card_column",
         isMutation: true,
-        projectId,
         resourceId: columnId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json", {
+        this.client.POST("/card_tables/lists/{columnId}/subscription.json", {
           params: {
-            path: { projectId, columnId },
+            path: { columnId },
           },
         })
     );
@@ -270,30 +258,28 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Unsubscribe from a card column (stop watching for changes)
-   * @param projectId - The project ID
    * @param columnId - The column ID
    * @returns void
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * await client.cardColumns.unsubscribeFromColumn(123, 123);
+   * await client.cardColumns.unsubscribeFromColumn(123);
    * ```
    */
-  async unsubscribeFromColumn(projectId: number, columnId: number): Promise<void> {
+  async unsubscribeFromColumn(columnId: number): Promise<void> {
     await this.request(
       {
         service: "CardColumns",
         operation: "UnsubscribeFromCardColumn",
         resourceType: "from_card_column",
         isMutation: true,
-        projectId,
         resourceId: columnId,
       },
       () =>
-        this.client.DELETE("/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json", {
+        this.client.DELETE("/card_tables/lists/{columnId}/subscription.json", {
           params: {
-            path: { projectId, columnId },
+            path: { columnId },
           },
         })
     );
@@ -301,7 +287,6 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Create a column in a card table
-   * @param projectId - The project ID
    * @param cardTableId - The card table ID
    * @param req - Card_column creation parameters
    * @returns The CardColumn
@@ -309,10 +294,10 @@ export class CardColumnsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.cardColumns.create(123, 123, { title: "example" });
+   * const result = await client.cardColumns.create(123, { title: "example" });
    * ```
    */
-  async create(projectId: number, cardTableId: number, req: CreateCardColumnRequest): Promise<CardColumn> {
+  async create(cardTableId: number, req: CreateCardColumnRequest): Promise<CardColumn> {
     if (!req.title) {
       throw Errors.validation("Title is required");
     }
@@ -322,13 +307,12 @@ export class CardColumnsService extends BaseService {
         operation: "CreateCardColumn",
         resourceType: "card_column",
         isMutation: true,
-        projectId,
         resourceId: cardTableId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/card_tables/{cardTableId}/columns.json", {
+        this.client.POST("/card_tables/{cardTableId}/columns.json", {
           params: {
-            path: { projectId, cardTableId },
+            path: { cardTableId },
           },
           body: {
             title: req.title,
@@ -341,7 +325,6 @@ export class CardColumnsService extends BaseService {
 
   /**
    * Move a column within a card table
-   * @param projectId - The project ID
    * @param cardTableId - The card table ID
    * @param req - Card_column request parameters
    * @returns void
@@ -349,23 +332,22 @@ export class CardColumnsService extends BaseService {
    *
    * @example
    * ```ts
-   * await client.cardColumns.move(123, 123, { sourceId: 1, targetId: 1 });
+   * await client.cardColumns.move(123, { sourceId: 1, targetId: 1 });
    * ```
    */
-  async move(projectId: number, cardTableId: number, req: MoveCardColumnRequest): Promise<void> {
+  async move(cardTableId: number, req: MoveCardColumnRequest): Promise<void> {
     await this.request(
       {
         service: "CardColumns",
         operation: "MoveCardColumn",
         resourceType: "card_column",
         isMutation: true,
-        projectId,
         resourceId: cardTableId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/card_tables/{cardTableId}/moves.json", {
+        this.client.POST("/card_tables/{cardTableId}/moves.json", {
           params: {
-            path: { projectId, cardTableId },
+            path: { cardTableId },
           },
           body: {
             source_id: req.sourceId,

@@ -25,30 +25,28 @@ export class CardTablesService extends BaseService {
 
   /**
    * Get a card table by ID
-   * @param projectId - The project ID
    * @param cardTableId - The card table ID
    * @returns The CardTable
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.cardTables.get(123, 123);
+   * const result = await client.cardTables.get(123);
    * ```
    */
-  async get(projectId: number, cardTableId: number): Promise<CardTable> {
+  async get(cardTableId: number): Promise<CardTable> {
     const response = await this.request(
       {
         service: "CardTables",
         operation: "GetCardTable",
         resourceType: "card_table",
         isMutation: false,
-        projectId,
         resourceId: cardTableId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/card_tables/{cardTableId}", {
+        this.client.GET("/card_tables/{cardTableId}", {
           params: {
-            path: { projectId, cardTableId },
+            path: { cardTableId },
           },
         })
     );

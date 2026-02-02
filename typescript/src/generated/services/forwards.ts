@@ -53,30 +53,28 @@ export class ForwardsService extends BaseService {
 
   /**
    * Get a forward by ID
-   * @param projectId - The project ID
    * @param forwardId - The forward ID
    * @returns The Forward
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.forwards.get(123, 123);
+   * const result = await client.forwards.get(123);
    * ```
    */
-  async get(projectId: number, forwardId: number): Promise<Forward> {
+  async get(forwardId: number): Promise<Forward> {
     const response = await this.request(
       {
         service: "Forwards",
         operation: "GetForward",
         resourceType: "forward",
         isMutation: false,
-        projectId,
         resourceId: forwardId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/inbox_forwards/{forwardId}", {
+        this.client.GET("/inbox_forwards/{forwardId}", {
           params: {
-            path: { projectId, forwardId },
+            path: { forwardId },
           },
         })
     );
@@ -85,30 +83,28 @@ export class ForwardsService extends BaseService {
 
   /**
    * List all replies to a forward
-   * @param projectId - The project ID
    * @param forwardId - The forward ID
    * @param options - Optional query parameters
    * @returns All ForwardReply across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.forwards.listReplies(123, 123);
+   * const result = await client.forwards.listReplies(123);
    * ```
    */
-  async listReplies(projectId: number, forwardId: number, options?: ListRepliesForwardOptions): Promise<ListResult<ForwardReply>> {
+  async listReplies(forwardId: number, options?: ListRepliesForwardOptions): Promise<ListResult<ForwardReply>> {
     return this.requestPaginated(
       {
         service: "Forwards",
         operation: "ListForwardReplies",
         resourceType: "forward_replie",
         isMutation: false,
-        projectId,
         resourceId: forwardId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json", {
+        this.client.GET("/inbox_forwards/{forwardId}/replies.json", {
           params: {
-            path: { projectId, forwardId },
+            path: { forwardId },
           },
         })
       , options
@@ -117,7 +113,6 @@ export class ForwardsService extends BaseService {
 
   /**
    * Create a reply to a forward
-   * @param projectId - The project ID
    * @param forwardId - The forward ID
    * @param req - Forward_reply creation parameters
    * @returns The ForwardReply
@@ -125,10 +120,10 @@ export class ForwardsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.forwards.createReply(123, 123, { content: "Hello world" });
+   * const result = await client.forwards.createReply(123, { content: "Hello world" });
    * ```
    */
-  async createReply(projectId: number, forwardId: number, req: CreateReplyForwardRequest): Promise<ForwardReply> {
+  async createReply(forwardId: number, req: CreateReplyForwardRequest): Promise<ForwardReply> {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }
@@ -138,13 +133,12 @@ export class ForwardsService extends BaseService {
         operation: "CreateForwardReply",
         resourceType: "forward_reply",
         isMutation: true,
-        projectId,
         resourceId: forwardId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json", {
+        this.client.POST("/inbox_forwards/{forwardId}/replies.json", {
           params: {
-            path: { projectId, forwardId },
+            path: { forwardId },
           },
           body: {
             content: req.content,
@@ -156,7 +150,6 @@ export class ForwardsService extends BaseService {
 
   /**
    * Get a forward reply by ID
-   * @param projectId - The project ID
    * @param forwardId - The forward ID
    * @param replyId - The reply ID
    * @returns The ForwardReply
@@ -164,23 +157,22 @@ export class ForwardsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.forwards.getReply(123, 123, 123);
+   * const result = await client.forwards.getReply(123, 123);
    * ```
    */
-  async getReply(projectId: number, forwardId: number, replyId: number): Promise<ForwardReply> {
+  async getReply(forwardId: number, replyId: number): Promise<ForwardReply> {
     const response = await this.request(
       {
         service: "Forwards",
         operation: "GetForwardReply",
         resourceType: "forward_reply",
         isMutation: false,
-        projectId,
         resourceId: forwardId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}", {
+        this.client.GET("/inbox_forwards/{forwardId}/replies/{replyId}", {
           params: {
-            path: { projectId, forwardId, replyId },
+            path: { forwardId, replyId },
           },
         })
     );
@@ -189,30 +181,28 @@ export class ForwardsService extends BaseService {
 
   /**
    * Get an inbox by ID
-   * @param projectId - The project ID
    * @param inboxId - The inbox ID
    * @returns The Inbox
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.forwards.getInbox(123, 123);
+   * const result = await client.forwards.getInbox(123);
    * ```
    */
-  async getInbox(projectId: number, inboxId: number): Promise<Inbox> {
+  async getInbox(inboxId: number): Promise<Inbox> {
     const response = await this.request(
       {
         service: "Forwards",
         operation: "GetInbox",
         resourceType: "inbox",
         isMutation: false,
-        projectId,
         resourceId: inboxId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/inboxes/{inboxId}", {
+        this.client.GET("/inboxes/{inboxId}", {
           params: {
-            path: { projectId, inboxId },
+            path: { inboxId },
           },
         })
     );
@@ -221,30 +211,28 @@ export class ForwardsService extends BaseService {
 
   /**
    * List all forwards in an inbox
-   * @param projectId - The project ID
    * @param inboxId - The inbox ID
    * @param options - Optional query parameters
    * @returns All Forward across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.forwards.list(123, 123);
+   * const result = await client.forwards.list(123);
    * ```
    */
-  async list(projectId: number, inboxId: number, options?: ListForwardOptions): Promise<ListResult<Forward>> {
+  async list(inboxId: number, options?: ListForwardOptions): Promise<ListResult<Forward>> {
     return this.requestPaginated(
       {
         service: "Forwards",
         operation: "ListForwards",
         resourceType: "forward",
         isMutation: false,
-        projectId,
         resourceId: inboxId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/inboxes/{inboxId}/forwards.json", {
+        this.client.GET("/inboxes/{inboxId}/forwards.json", {
           params: {
-            path: { projectId, inboxId },
+            path: { inboxId },
           },
         })
       , options

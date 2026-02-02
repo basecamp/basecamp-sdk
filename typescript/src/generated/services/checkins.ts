@@ -6,8 +6,6 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
-import { ListResult } from "../../pagination.js";
-import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -29,12 +27,6 @@ export type Person = components["schemas"]["Person"];
 export interface UpdateAnswerCheckinRequest {
   /** Text content */
   content: string;
-}
-
-/**
- * Options for listQuestions.
- */
-export interface ListQuestionsCheckinOptions extends PaginationOptions {
 }
 
 /**
@@ -60,12 +52,6 @@ export interface UpdateQuestionCheckinRequest {
 }
 
 /**
- * Options for listAnswers.
- */
-export interface ListAnswersCheckinOptions extends PaginationOptions {
-}
-
-/**
  * Request parameters for createAnswer.
  */
 export interface CreateAnswerCheckinRequest {
@@ -76,18 +62,6 @@ export interface CreateAnswerCheckinRequest {
 }
 
 /**
- * Options for answerers.
- */
-export interface AnswerersCheckinOptions extends PaginationOptions {
-}
-
-/**
- * Options for byPerson.
- */
-export interface ByPersonCheckinOptions extends PaginationOptions {
-}
-
-/**
  * Request parameters for updateNotificationSettings.
  */
 export interface UpdateNotificationSettingsCheckinRequest {
@@ -95,12 +69,6 @@ export interface UpdateNotificationSettingsCheckinRequest {
   notifyOnAnswer?: boolean;
   /** Include unanswered in digest */
   digestIncludeUnanswered?: boolean;
-}
-
-/**
- * Options for reminders.
- */
-export interface RemindersCheckinOptions extends PaginationOptions {
 }
 
 
@@ -114,31 +82,53 @@ export interface RemindersCheckinOptions extends PaginationOptions {
 export class CheckinsService extends BaseService {
 
   /**
+   * Get pending check-in reminders for the current user
+   * @returns Array of results
+   *
+   * @example
+   * ```ts
+   * const result = await client.checkins.reminders();
+   * ```
+   */
+  async reminders(): Promise<components["schemas"]["GetQuestionRemindersResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Checkins",
+        operation: "GetQuestionReminders",
+        resourceType: "question_reminder",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/my/question_reminders.json", {
+        })
+    );
+    return response ?? [];
+  }
+
+  /**
    * Get a single answer by id
-   * @param projectId - The project ID
    * @param answerId - The answer ID
    * @returns The Answer
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.checkins.getAnswer(123, 123);
+   * const result = await client.checkins.getAnswer(123);
    * ```
    */
-  async getAnswer(projectId: number, answerId: number): Promise<Answer> {
+  async getAnswer(answerId: number): Promise<Answer> {
     const response = await this.request(
       {
         service: "Checkins",
         operation: "GetAnswer",
         resourceType: "answer",
         isMutation: false,
-        projectId,
         resourceId: answerId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/question_answers/{answerId}", {
+        this.client.GET("/question_answers/{answerId}", {
           params: {
-            path: { projectId, answerId },
+            path: { answerId },
           },
         })
     );
@@ -147,7 +137,6 @@ export class CheckinsService extends BaseService {
 
   /**
    * Update an existing answer
-   * @param projectId - The project ID
    * @param answerId - The answer ID
    * @param req - Answer update parameters
    * @returns void
@@ -155,10 +144,10 @@ export class CheckinsService extends BaseService {
    *
    * @example
    * ```ts
-   * await client.checkins.updateAnswer(123, 123, { content: "Hello world" });
+   * await client.checkins.updateAnswer(123, { content: "Hello world" });
    * ```
    */
-  async updateAnswer(projectId: number, answerId: number, req: UpdateAnswerCheckinRequest): Promise<void> {
+  async updateAnswer(answerId: number, req: UpdateAnswerCheckinRequest): Promise<void> {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }
@@ -168,13 +157,12 @@ export class CheckinsService extends BaseService {
         operation: "UpdateAnswer",
         resourceType: "answer",
         isMutation: true,
-        projectId,
         resourceId: answerId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/question_answers/{answerId}", {
+        this.client.PUT("/question_answers/{answerId}", {
           params: {
-            path: { projectId, answerId },
+            path: { answerId },
           },
           body: {
             content: req.content,
@@ -185,30 +173,28 @@ export class CheckinsService extends BaseService {
 
   /**
    * Get a questionnaire (automatic check-ins container) by id
-   * @param projectId - The project ID
    * @param questionnaireId - The questionnaire ID
    * @returns The Questionnaire
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.checkins.getQuestionnaire(123, 123);
+   * const result = await client.checkins.getQuestionnaire(123);
    * ```
    */
-  async getQuestionnaire(projectId: number, questionnaireId: number): Promise<Questionnaire> {
+  async getQuestionnaire(questionnaireId: number): Promise<Questionnaire> {
     const response = await this.request(
       {
         service: "Checkins",
         operation: "GetQuestionnaire",
         resourceType: "questionnaire",
         isMutation: false,
-        projectId,
         resourceId: questionnaireId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/questionnaires/{questionnaireId}", {
+        this.client.GET("/questionnaires/{questionnaireId}", {
           params: {
-            path: { projectId, questionnaireId },
+            path: { questionnaireId },
           },
         })
     );
@@ -217,39 +203,35 @@ export class CheckinsService extends BaseService {
 
   /**
    * List all questions in a questionnaire
-   * @param projectId - The project ID
    * @param questionnaireId - The questionnaire ID
-   * @param options - Optional query parameters
-   * @returns All Question across all pages, with .meta.totalCount
+   * @returns Array of Question
    *
    * @example
    * ```ts
-   * const result = await client.checkins.listQuestions(123, 123);
+   * const result = await client.checkins.listQuestions(123);
    * ```
    */
-  async listQuestions(projectId: number, questionnaireId: number, options?: ListQuestionsCheckinOptions): Promise<ListResult<Question>> {
-    return this.requestPaginated(
+  async listQuestions(questionnaireId: number): Promise<Question[]> {
+    const response = await this.request(
       {
         service: "Checkins",
         operation: "ListQuestions",
         resourceType: "question",
         isMutation: false,
-        projectId,
         resourceId: questionnaireId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json", {
+        this.client.GET("/questionnaires/{questionnaireId}/questions.json", {
           params: {
-            path: { projectId, questionnaireId },
+            path: { questionnaireId },
           },
         })
-      , options
     );
+    return response ?? [];
   }
 
   /**
    * Create a new question in a questionnaire
-   * @param projectId - The project ID
    * @param questionnaireId - The questionnaire ID
    * @param req - Question creation parameters
    * @returns The Question
@@ -257,10 +239,10 @@ export class CheckinsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.checkins.createQuestion(123, 123, { title: "example", schedule: "example" });
+   * const result = await client.checkins.createQuestion(123, { title: "example", schedule: "example" });
    * ```
    */
-  async createQuestion(projectId: number, questionnaireId: number, req: CreateQuestionCheckinRequest): Promise<Question> {
+  async createQuestion(questionnaireId: number, req: CreateQuestionCheckinRequest): Promise<Question> {
     if (!req.title) {
       throw Errors.validation("Title is required");
     }
@@ -273,13 +255,12 @@ export class CheckinsService extends BaseService {
         operation: "CreateQuestion",
         resourceType: "question",
         isMutation: true,
-        projectId,
         resourceId: questionnaireId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json", {
+        this.client.POST("/questionnaires/{questionnaireId}/questions.json", {
           params: {
-            path: { projectId, questionnaireId },
+            path: { questionnaireId },
           },
           body: {
             title: req.title,
@@ -292,30 +273,28 @@ export class CheckinsService extends BaseService {
 
   /**
    * Get a single question by id
-   * @param projectId - The project ID
    * @param questionId - The question ID
    * @returns The Question
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.checkins.getQuestion(123, 123);
+   * const result = await client.checkins.getQuestion(123);
    * ```
    */
-  async getQuestion(projectId: number, questionId: number): Promise<Question> {
+  async getQuestion(questionId: number): Promise<Question> {
     const response = await this.request(
       {
         service: "Checkins",
         operation: "GetQuestion",
         resourceType: "question",
         isMutation: false,
-        projectId,
         resourceId: questionId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/questions/{questionId}", {
+        this.client.GET("/questions/{questionId}", {
           params: {
-            path: { projectId, questionId },
+            path: { questionId },
           },
         })
     );
@@ -324,7 +303,6 @@ export class CheckinsService extends BaseService {
 
   /**
    * Update an existing question
-   * @param projectId - The project ID
    * @param questionId - The question ID
    * @param req - Question update parameters
    * @returns The Question
@@ -332,23 +310,22 @@ export class CheckinsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.checkins.updateQuestion(123, 123, { });
+   * const result = await client.checkins.updateQuestion(123, { });
    * ```
    */
-  async updateQuestion(projectId: number, questionId: number, req: UpdateQuestionCheckinRequest): Promise<Question> {
+  async updateQuestion(questionId: number, req: UpdateQuestionCheckinRequest): Promise<Question> {
     const response = await this.request(
       {
         service: "Checkins",
         operation: "UpdateQuestion",
         resourceType: "question",
         isMutation: true,
-        projectId,
         resourceId: questionId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/questions/{questionId}", {
+        this.client.PUT("/questions/{questionId}", {
           params: {
-            path: { projectId, questionId },
+            path: { questionId },
           },
           body: {
             title: req.title,
@@ -362,39 +339,35 @@ export class CheckinsService extends BaseService {
 
   /**
    * List all answers for a question
-   * @param projectId - The project ID
    * @param questionId - The question ID
-   * @param options - Optional query parameters
-   * @returns All Answer across all pages, with .meta.totalCount
+   * @returns Array of Answer
    *
    * @example
    * ```ts
-   * const result = await client.checkins.listAnswers(123, 123);
+   * const result = await client.checkins.listAnswers(123);
    * ```
    */
-  async listAnswers(projectId: number, questionId: number, options?: ListAnswersCheckinOptions): Promise<ListResult<Answer>> {
-    return this.requestPaginated(
+  async listAnswers(questionId: number): Promise<Answer[]> {
+    const response = await this.request(
       {
         service: "Checkins",
         operation: "ListAnswers",
         resourceType: "answer",
         isMutation: false,
-        projectId,
         resourceId: questionId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/questions/{questionId}/answers.json", {
+        this.client.GET("/questions/{questionId}/answers.json", {
           params: {
-            path: { projectId, questionId },
+            path: { questionId },
           },
         })
-      , options
     );
+    return response ?? [];
   }
 
   /**
    * Create a new answer for a question
-   * @param projectId - The project ID
    * @param questionId - The question ID
    * @param req - Answer creation parameters
    * @returns The Answer
@@ -402,10 +375,10 @@ export class CheckinsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.checkins.createAnswer(123, 123, { content: "Hello world" });
+   * const result = await client.checkins.createAnswer(123, { content: "Hello world" });
    * ```
    */
-  async createAnswer(projectId: number, questionId: number, req: CreateAnswerCheckinRequest): Promise<Answer> {
+  async createAnswer(questionId: number, req: CreateAnswerCheckinRequest): Promise<Answer> {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }
@@ -418,13 +391,12 @@ export class CheckinsService extends BaseService {
         operation: "CreateAnswer",
         resourceType: "answer",
         isMutation: true,
-        projectId,
         resourceId: questionId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/questions/{questionId}/answers.json", {
+        this.client.POST("/questions/{questionId}/answers.json", {
           params: {
-            path: { projectId, questionId },
+            path: { questionId },
           },
           body: {
             content: req.content,
@@ -437,72 +409,65 @@ export class CheckinsService extends BaseService {
 
   /**
    * List all people who have answered a question (answerers)
-   * @param projectId - The project ID
    * @param questionId - The question ID
-   * @param options - Optional query parameters
-   * @returns All Person across all pages, with .meta.totalCount
+   * @returns Array of Person
    *
    * @example
    * ```ts
-   * const result = await client.checkins.answerers(123, 123);
+   * const result = await client.checkins.answerers(123);
    * ```
    */
-  async answerers(projectId: number, questionId: number, options?: AnswerersCheckinOptions): Promise<ListResult<Person>> {
-    return this.requestPaginated(
+  async answerers(questionId: number): Promise<Person[]> {
+    const response = await this.request(
       {
         service: "Checkins",
         operation: "ListQuestionAnswerers",
         resourceType: "question_answerer",
         isMutation: false,
-        projectId,
         resourceId: questionId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/questions/{questionId}/answers/by.json", {
+        this.client.GET("/questions/{questionId}/answers/by.json", {
           params: {
-            path: { projectId, questionId },
+            path: { questionId },
           },
         })
-      , options
     );
+    return response ?? [];
   }
 
   /**
    * Get all answers from a specific person for a question
-   * @param projectId - The project ID
    * @param questionId - The question ID
    * @param personId - The person ID
-   * @param options - Optional query parameters
-   * @returns All Answer across all pages, with .meta.totalCount
+   * @returns Array of Answer
    *
    * @example
    * ```ts
-   * const result = await client.checkins.byPerson(123, 123, 123);
+   * const result = await client.checkins.byPerson(123, 123);
    * ```
    */
-  async byPerson(projectId: number, questionId: number, personId: number, options?: ByPersonCheckinOptions): Promise<ListResult<Answer>> {
-    return this.requestPaginated(
+  async byPerson(questionId: number, personId: number): Promise<Answer[]> {
+    const response = await this.request(
       {
         service: "Checkins",
         operation: "GetAnswersByPerson",
         resourceType: "answers_by_person",
         isMutation: false,
-        projectId,
         resourceId: questionId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/questions/{questionId}/answers/by/{personId}", {
+        this.client.GET("/questions/{questionId}/answers/by/{personId}", {
           params: {
-            path: { projectId, questionId, personId },
+            path: { questionId, personId },
           },
         })
-      , options
     );
+    return response ?? [];
   }
 
   /**
    * Update notification settings for a check-in question
-   * @param projectId - The project ID
    * @param questionId - The question ID
    * @param req - Question_notification_setting update parameters
    * @returns The question_notification_setting
@@ -510,23 +475,22 @@ export class CheckinsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.checkins.updateNotificationSettings(123, 123, { });
+   * const result = await client.checkins.updateNotificationSettings(123, { });
    * ```
    */
-  async updateNotificationSettings(projectId: number, questionId: number, req: UpdateNotificationSettingsCheckinRequest): Promise<components["schemas"]["UpdateQuestionNotificationSettingsResponseContent"]> {
+  async updateNotificationSettings(questionId: number, req: UpdateNotificationSettingsCheckinRequest): Promise<components["schemas"]["UpdateQuestionNotificationSettingsResponseContent"]> {
     const response = await this.request(
       {
         service: "Checkins",
         operation: "UpdateQuestionNotificationSettings",
         resourceType: "question_notification_setting",
         isMutation: true,
-        projectId,
         resourceId: questionId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/questions/{questionId}/notification_settings.json", {
+        this.client.PUT("/questions/{questionId}/notification_settings.json", {
           params: {
-            path: { projectId, questionId },
+            path: { questionId },
           },
           body: {
             notify_on_answer: req.notifyOnAnswer,
@@ -539,30 +503,28 @@ export class CheckinsService extends BaseService {
 
   /**
    * Pause a check-in question (stops sending reminders)
-   * @param projectId - The project ID
    * @param questionId - The question ID
    * @returns The question
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * const result = await client.checkins.pause(123, 123);
+   * const result = await client.checkins.pause(123);
    * ```
    */
-  async pause(projectId: number, questionId: number): Promise<components["schemas"]["PauseQuestionResponseContent"]> {
+  async pause(questionId: number): Promise<components["schemas"]["PauseQuestionResponseContent"]> {
     const response = await this.request(
       {
         service: "Checkins",
         operation: "PauseQuestion",
         resourceType: "question",
         isMutation: true,
-        projectId,
         resourceId: questionId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/questions/{questionId}/pause.json", {
+        this.client.POST("/questions/{questionId}/pause.json", {
           params: {
-            path: { projectId, questionId },
+            path: { questionId },
           },
         })
     );
@@ -571,58 +533,31 @@ export class CheckinsService extends BaseService {
 
   /**
    * Resume a paused check-in question (resumes sending reminders)
-   * @param projectId - The project ID
    * @param questionId - The question ID
    * @returns The question
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * const result = await client.checkins.resume(123, 123);
+   * const result = await client.checkins.resume(123);
    * ```
    */
-  async resume(projectId: number, questionId: number): Promise<components["schemas"]["ResumeQuestionResponseContent"]> {
+  async resume(questionId: number): Promise<components["schemas"]["ResumeQuestionResponseContent"]> {
     const response = await this.request(
       {
         service: "Checkins",
         operation: "ResumeQuestion",
         resourceType: "question",
         isMutation: true,
-        projectId,
         resourceId: questionId,
       },
       () =>
-        this.client.DELETE("/buckets/{projectId}/questions/{questionId}/pause.json", {
+        this.client.DELETE("/questions/{questionId}/pause.json", {
           params: {
-            path: { projectId, questionId },
+            path: { questionId },
           },
         })
     );
     return response;
-  }
-
-  /**
-   * Get pending check-in reminders for the current user
-   * @param options - Optional query parameters
-   * @returns All results across all pages, with .meta.totalCount
-   *
-   * @example
-   * ```ts
-   * const result = await client.checkins.reminders();
-   * ```
-   */
-  async reminders(options?: RemindersCheckinOptions): Promise<components["schemas"]["GetQuestionRemindersResponseContent"]> {
-    return this.requestPaginated(
-      {
-        service: "Checkins",
-        operation: "GetQuestionReminders",
-        resourceType: "question_reminder",
-        isMutation: false,
-      },
-      () =>
-        this.client.GET("/my/question_reminders.json", {
-        })
-      , options
-    );
   }
 }

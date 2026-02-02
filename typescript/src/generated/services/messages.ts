@@ -63,30 +63,28 @@ export class MessagesService extends BaseService {
 
   /**
    * List messages on a message board
-   * @param projectId - The project ID
    * @param boardId - The board ID
    * @param options - Optional query parameters
    * @returns All Message across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.messages.list(123, 123);
+   * const result = await client.messages.list(123);
    * ```
    */
-  async list(projectId: number, boardId: number, options?: ListMessageOptions): Promise<ListResult<Message>> {
+  async list(boardId: number, options?: ListMessageOptions): Promise<ListResult<Message>> {
     return this.requestPaginated(
       {
         service: "Messages",
         operation: "ListMessages",
         resourceType: "message",
         isMutation: false,
-        projectId,
         resourceId: boardId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/message_boards/{boardId}/messages.json", {
+        this.client.GET("/message_boards/{boardId}/messages.json", {
           params: {
-            path: { projectId, boardId },
+            path: { boardId },
           },
         })
       , options
@@ -95,7 +93,6 @@ export class MessagesService extends BaseService {
 
   /**
    * Create a new message on a message board
-   * @param projectId - The project ID
    * @param boardId - The board ID
    * @param req - Message creation parameters
    * @returns The Message
@@ -103,10 +100,10 @@ export class MessagesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.messages.create(123, 123, { subject: "example" });
+   * const result = await client.messages.create(123, { subject: "example" });
    * ```
    */
-  async create(projectId: number, boardId: number, req: CreateMessageRequest): Promise<Message> {
+  async create(boardId: number, req: CreateMessageRequest): Promise<Message> {
     if (!req.subject) {
       throw Errors.validation("Subject is required");
     }
@@ -116,13 +113,12 @@ export class MessagesService extends BaseService {
         operation: "CreateMessage",
         resourceType: "message",
         isMutation: true,
-        projectId,
         resourceId: boardId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/message_boards/{boardId}/messages.json", {
+        this.client.POST("/message_boards/{boardId}/messages.json", {
           params: {
-            path: { projectId, boardId },
+            path: { boardId },
           },
           body: {
             subject: req.subject,
@@ -137,30 +133,28 @@ export class MessagesService extends BaseService {
 
   /**
    * Get a single message by id
-   * @param projectId - The project ID
    * @param messageId - The message ID
    * @returns The Message
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.messages.get(123, 123);
+   * const result = await client.messages.get(123);
    * ```
    */
-  async get(projectId: number, messageId: number): Promise<Message> {
+  async get(messageId: number): Promise<Message> {
     const response = await this.request(
       {
         service: "Messages",
         operation: "GetMessage",
         resourceType: "message",
         isMutation: false,
-        projectId,
         resourceId: messageId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/messages/{messageId}", {
+        this.client.GET("/messages/{messageId}", {
           params: {
-            path: { projectId, messageId },
+            path: { messageId },
           },
         })
     );
@@ -169,7 +163,6 @@ export class MessagesService extends BaseService {
 
   /**
    * Update an existing message
-   * @param projectId - The project ID
    * @param messageId - The message ID
    * @param req - Message update parameters
    * @returns The Message
@@ -177,23 +170,22 @@ export class MessagesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.messages.update(123, 123, { });
+   * const result = await client.messages.update(123, { });
    * ```
    */
-  async update(projectId: number, messageId: number, req: UpdateMessageRequest): Promise<Message> {
+  async update(messageId: number, req: UpdateMessageRequest): Promise<Message> {
     const response = await this.request(
       {
         service: "Messages",
         operation: "UpdateMessage",
         resourceType: "message",
         isMutation: true,
-        projectId,
         resourceId: messageId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/messages/{messageId}", {
+        this.client.PUT("/messages/{messageId}", {
           params: {
-            path: { projectId, messageId },
+            path: { messageId },
           },
           body: {
             subject: req.subject,
@@ -208,30 +200,28 @@ export class MessagesService extends BaseService {
 
   /**
    * Pin a message to the top of the message board
-   * @param projectId - The project ID
    * @param messageId - The message ID
    * @returns void
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * await client.messages.pin(123, 123);
+   * await client.messages.pin(123);
    * ```
    */
-  async pin(projectId: number, messageId: number): Promise<void> {
+  async pin(messageId: number): Promise<void> {
     await this.request(
       {
         service: "Messages",
         operation: "PinMessage",
         resourceType: "message",
         isMutation: true,
-        projectId,
         resourceId: messageId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/recordings/{messageId}/pin.json", {
+        this.client.POST("/recordings/{messageId}/pin.json", {
           params: {
-            path: { projectId, messageId },
+            path: { messageId },
           },
         })
     );
@@ -239,30 +229,28 @@ export class MessagesService extends BaseService {
 
   /**
    * Unpin a message from the message board
-   * @param projectId - The project ID
    * @param messageId - The message ID
    * @returns void
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * await client.messages.unpin(123, 123);
+   * await client.messages.unpin(123);
    * ```
    */
-  async unpin(projectId: number, messageId: number): Promise<void> {
+  async unpin(messageId: number): Promise<void> {
     await this.request(
       {
         service: "Messages",
         operation: "UnpinMessage",
         resourceType: "message",
         isMutation: true,
-        projectId,
         resourceId: messageId,
       },
       () =>
-        this.client.DELETE("/buckets/{projectId}/recordings/{messageId}/pin.json", {
+        this.client.DELETE("/recordings/{messageId}/pin.json", {
           params: {
-            path: { projectId, messageId },
+            path: { messageId },
           },
         })
     );

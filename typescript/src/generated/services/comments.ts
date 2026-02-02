@@ -51,30 +51,28 @@ export class CommentsService extends BaseService {
 
   /**
    * Get a single comment by id
-   * @param projectId - The project ID
    * @param commentId - The comment ID
    * @returns The Comment
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.comments.get(123, 123);
+   * const result = await client.comments.get(123);
    * ```
    */
-  async get(projectId: number, commentId: number): Promise<Comment> {
+  async get(commentId: number): Promise<Comment> {
     const response = await this.request(
       {
         service: "Comments",
         operation: "GetComment",
         resourceType: "comment",
         isMutation: false,
-        projectId,
         resourceId: commentId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/comments/{commentId}", {
+        this.client.GET("/comments/{commentId}", {
           params: {
-            path: { projectId, commentId },
+            path: { commentId },
           },
         })
     );
@@ -83,7 +81,6 @@ export class CommentsService extends BaseService {
 
   /**
    * Update an existing comment
-   * @param projectId - The project ID
    * @param commentId - The comment ID
    * @param req - Comment update parameters
    * @returns The Comment
@@ -91,10 +88,10 @@ export class CommentsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.comments.update(123, 123, { content: "Hello world" });
+   * const result = await client.comments.update(123, { content: "Hello world" });
    * ```
    */
-  async update(projectId: number, commentId: number, req: UpdateCommentRequest): Promise<Comment> {
+  async update(commentId: number, req: UpdateCommentRequest): Promise<Comment> {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }
@@ -104,13 +101,12 @@ export class CommentsService extends BaseService {
         operation: "UpdateComment",
         resourceType: "comment",
         isMutation: true,
-        projectId,
         resourceId: commentId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/comments/{commentId}", {
+        this.client.PUT("/comments/{commentId}", {
           params: {
-            path: { projectId, commentId },
+            path: { commentId },
           },
           body: {
             content: req.content,
@@ -122,30 +118,28 @@ export class CommentsService extends BaseService {
 
   /**
    * List comments on a recording
-   * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
    * @returns All Comment across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.comments.list(123, 123);
+   * const result = await client.comments.list(123);
    * ```
    */
-  async list(projectId: number, recordingId: number, options?: ListCommentOptions): Promise<ListResult<Comment>> {
+  async list(recordingId: number, options?: ListCommentOptions): Promise<ListResult<Comment>> {
     return this.requestPaginated(
       {
         service: "Comments",
         operation: "ListComments",
         resourceType: "comment",
         isMutation: false,
-        projectId,
         resourceId: recordingId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/recordings/{recordingId}/comments.json", {
+        this.client.GET("/recordings/{recordingId}/comments.json", {
           params: {
-            path: { projectId, recordingId },
+            path: { recordingId },
           },
         })
       , options
@@ -154,7 +148,6 @@ export class CommentsService extends BaseService {
 
   /**
    * Create a new comment on a recording
-   * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @param req - Comment creation parameters
    * @returns The Comment
@@ -162,10 +155,10 @@ export class CommentsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.comments.create(123, 123, { content: "Hello world" });
+   * const result = await client.comments.create(123, { content: "Hello world" });
    * ```
    */
-  async create(projectId: number, recordingId: number, req: CreateCommentRequest): Promise<Comment> {
+  async create(recordingId: number, req: CreateCommentRequest): Promise<Comment> {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }
@@ -175,13 +168,12 @@ export class CommentsService extends BaseService {
         operation: "CreateComment",
         resourceType: "comment",
         isMutation: true,
-        projectId,
         resourceId: recordingId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/recordings/{recordingId}/comments.json", {
+        this.client.POST("/recordings/{recordingId}/comments.json", {
           params: {
-            path: { projectId, recordingId },
+            path: { recordingId },
           },
           body: {
             content: req.content,

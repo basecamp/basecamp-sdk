@@ -57,29 +57,27 @@ export class TodolistsService extends BaseService {
 
   /**
    * Get a single todolist or todolist group by id
-   * @param projectId - The project ID
    * @param id - The id
    * @returns The todolist_or_group
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.todolists.get(123, 123);
+   * const result = await client.todolists.get(123);
    * ```
    */
-  async get(projectId: number, id: number): Promise<components["schemas"]["GetTodolistOrGroupResponseContent"]> {
+  async get(id: number): Promise<components["schemas"]["GetTodolistOrGroupResponseContent"]> {
     const response = await this.request(
       {
         service: "Todolists",
         operation: "GetTodolistOrGroup",
         resourceType: "todolist_or_group",
         isMutation: false,
-        projectId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/todolists/{id}", {
+        this.client.GET("/todolists/{id}", {
           params: {
-            path: { projectId, id },
+            path: { id },
           },
         })
     );
@@ -88,7 +86,6 @@ export class TodolistsService extends BaseService {
 
   /**
    * Update an existing todolist or todolist group
-   * @param projectId - The project ID
    * @param id - The id
    * @param req - Todolist_or_group update parameters
    * @returns The todolist_or_group
@@ -96,22 +93,21 @@ export class TodolistsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.todolists.update(123, 123, { });
+   * const result = await client.todolists.update(123, { });
    * ```
    */
-  async update(projectId: number, id: number, req: UpdateTodolistRequest): Promise<components["schemas"]["UpdateTodolistOrGroupResponseContent"]> {
+  async update(id: number, req: UpdateTodolistRequest): Promise<components["schemas"]["UpdateTodolistOrGroupResponseContent"]> {
     const response = await this.request(
       {
         service: "Todolists",
         operation: "UpdateTodolistOrGroup",
         resourceType: "todolist_or_group",
         isMutation: true,
-        projectId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/todolists/{id}", {
+        this.client.PUT("/todolists/{id}", {
           params: {
-            path: { projectId, id },
+            path: { id },
           },
           body: {
             name: req.name,
@@ -124,33 +120,31 @@ export class TodolistsService extends BaseService {
 
   /**
    * List todolists in a todoset
-   * @param projectId - The project ID
    * @param todosetId - The todoset ID
    * @param options - Optional query parameters
    * @returns All Todolist across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.todolists.list(123, 123);
+   * const result = await client.todolists.list(123);
    *
    * // With options
-   * const filtered = await client.todolists.list(123, 123, { status: "active" });
+   * const filtered = await client.todolists.list(123, { status: "active" });
    * ```
    */
-  async list(projectId: number, todosetId: number, options?: ListTodolistOptions): Promise<ListResult<Todolist>> {
+  async list(todosetId: number, options?: ListTodolistOptions): Promise<ListResult<Todolist>> {
     return this.requestPaginated(
       {
         service: "Todolists",
         operation: "ListTodolists",
         resourceType: "todolist",
         isMutation: false,
-        projectId,
         resourceId: todosetId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/todosets/{todosetId}/todolists.json", {
+        this.client.GET("/todosets/{todosetId}/todolists.json", {
           params: {
-            path: { projectId, todosetId },
+            path: { todosetId },
             query: { status: options?.status },
           },
         })
@@ -160,7 +154,6 @@ export class TodolistsService extends BaseService {
 
   /**
    * Create a new todolist in a todoset
-   * @param projectId - The project ID
    * @param todosetId - The todoset ID
    * @param req - Todolist creation parameters
    * @returns The Todolist
@@ -168,10 +161,10 @@ export class TodolistsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.todolists.create(123, 123, { name: "My example" });
+   * const result = await client.todolists.create(123, { name: "My example" });
    * ```
    */
-  async create(projectId: number, todosetId: number, req: CreateTodolistRequest): Promise<Todolist> {
+  async create(todosetId: number, req: CreateTodolistRequest): Promise<Todolist> {
     if (!req.name) {
       throw Errors.validation("Name is required");
     }
@@ -181,13 +174,12 @@ export class TodolistsService extends BaseService {
         operation: "CreateTodolist",
         resourceType: "todolist",
         isMutation: true,
-        projectId,
         resourceId: todosetId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/todosets/{todosetId}/todolists.json", {
+        this.client.POST("/todosets/{todosetId}/todolists.json", {
           params: {
-            path: { projectId, todosetId },
+            path: { todosetId },
           },
           body: {
             name: req.name,

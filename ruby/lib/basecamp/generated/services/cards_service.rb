@@ -8,62 +8,57 @@ module Basecamp
     class CardsService < BaseService
 
       # Get a card by ID
-      # @param project_id [Integer] project id ID
       # @param card_id [Integer] card id ID
       # @return [Hash] response data
-      def get(project_id:, card_id:)
+      def get(card_id:)
         with_operation(service: "cards", operation: "get", is_mutation: false, project_id: project_id, resource_id: card_id) do
-          http_get(bucket_path(project_id, "/card_tables/cards/#{card_id}")).json
+          http_get("/card_tables/cards/#{card_id}").json
         end
       end
 
       # Update an existing card
-      # @param project_id [Integer] project id ID
       # @param card_id [Integer] card id ID
       # @param title [String, nil] title
       # @param content [String, nil] content
       # @param due_on [String, nil] due on (YYYY-MM-DD)
       # @param assignee_ids [Array, nil] assignee ids
       # @return [Hash] response data
-      def update(project_id:, card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil)
+      def update(card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil)
         with_operation(service: "cards", operation: "update", is_mutation: true, project_id: project_id, resource_id: card_id) do
-          http_put(bucket_path(project_id, "/card_tables/cards/#{card_id}"), body: compact_params(title: title, content: content, due_on: due_on, assignee_ids: assignee_ids)).json
+          http_put("/card_tables/cards/#{card_id}", body: compact_params(title: title, content: content, due_on: due_on, assignee_ids: assignee_ids)).json
         end
       end
 
       # Move a card to a different column
-      # @param project_id [Integer] project id ID
       # @param card_id [Integer] card id ID
       # @param column_id [Integer] column id
       # @return [void]
-      def move(project_id:, card_id:, column_id:)
+      def move(card_id:, column_id:)
         with_operation(service: "cards", operation: "move", is_mutation: true, project_id: project_id, resource_id: card_id) do
-          http_post(bucket_path(project_id, "/card_tables/cards/#{card_id}/moves.json"), body: compact_params(column_id: column_id))
+          http_post("/card_tables/cards/#{card_id}/moves.json", body: compact_params(column_id: column_id))
           nil
         end
       end
 
       # List cards in a column
-      # @param project_id [Integer] project id ID
       # @param column_id [Integer] column id ID
       # @return [Enumerator<Hash>] paginated results
-      def list(project_id:, column_id:)
+      def list(column_id:)
         wrap_paginated(service: "cards", operation: "list", is_mutation: false, project_id: project_id, resource_id: column_id) do
-          paginate(bucket_path(project_id, "/card_tables/lists/#{column_id}/cards.json"))
+          paginate("/card_tables/lists/#{column_id}/cards.json")
         end
       end
 
       # Create a card in a column
-      # @param project_id [Integer] project id ID
       # @param column_id [Integer] column id ID
       # @param title [String] title
       # @param content [String, nil] content
       # @param due_on [String, nil] due on (YYYY-MM-DD)
       # @param notify [Boolean, nil] notify
       # @return [Hash] response data
-      def create(project_id:, column_id:, title:, content: nil, due_on: nil, notify: nil)
+      def create(column_id:, title:, content: nil, due_on: nil, notify: nil)
         with_operation(service: "cards", operation: "create", is_mutation: true, project_id: project_id, resource_id: column_id) do
-          http_post(bucket_path(project_id, "/card_tables/lists/#{column_id}/cards.json"), body: compact_params(title: title, content: content, due_on: due_on, notify: notify)).json
+          http_post("/card_tables/lists/#{column_id}/cards.json", body: compact_params(title: title, content: content, due_on: due_on, notify: notify)).json
         end
       end
     end

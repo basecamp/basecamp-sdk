@@ -34,7 +34,6 @@ export class ClientVisibilityService extends BaseService {
 
   /**
    * Set client visibility for a recording
-   * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @param req - Client_visibility request parameters
    * @returns The Recording
@@ -42,23 +41,22 @@ export class ClientVisibilityService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.clientVisibility.setVisibility(123, 123, { visibleToClients: true });
+   * const result = await client.clientVisibility.setVisibility(123, { visibleToClients: true });
    * ```
    */
-  async setVisibility(projectId: number, recordingId: number, req: SetVisibilityClientVisibilityRequest): Promise<Recording> {
+  async setVisibility(recordingId: number, req: SetVisibilityClientVisibilityRequest): Promise<Recording> {
     const response = await this.request(
       {
         service: "ClientVisibility",
         operation: "SetClientVisibility",
         resourceType: "client_visibility",
         isMutation: true,
-        projectId,
         resourceId: recordingId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/recordings/{recordingId}/client_visibility.json", {
+        this.client.PUT("/recordings/{recordingId}/client_visibility.json", {
           params: {
-            path: { projectId, recordingId },
+            path: { recordingId },
           },
           body: {
             visible_to_clients: req.visibleToClients,

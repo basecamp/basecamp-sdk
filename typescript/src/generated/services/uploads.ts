@@ -63,30 +63,28 @@ export class UploadsService extends BaseService {
 
   /**
    * Get a single upload by id
-   * @param projectId - The project ID
    * @param uploadId - The upload ID
    * @returns The Upload
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.uploads.get(123, 123);
+   * const result = await client.uploads.get(123);
    * ```
    */
-  async get(projectId: number, uploadId: number): Promise<Upload> {
+  async get(uploadId: number): Promise<Upload> {
     const response = await this.request(
       {
         service: "Uploads",
         operation: "GetUpload",
         resourceType: "upload",
         isMutation: false,
-        projectId,
         resourceId: uploadId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/uploads/{uploadId}", {
+        this.client.GET("/uploads/{uploadId}", {
           params: {
-            path: { projectId, uploadId },
+            path: { uploadId },
           },
         })
     );
@@ -95,7 +93,6 @@ export class UploadsService extends BaseService {
 
   /**
    * Update an existing upload
-   * @param projectId - The project ID
    * @param uploadId - The upload ID
    * @param req - Upload update parameters
    * @returns The Upload
@@ -103,23 +100,22 @@ export class UploadsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.uploads.update(123, 123, { });
+   * const result = await client.uploads.update(123, { });
    * ```
    */
-  async update(projectId: number, uploadId: number, req: UpdateUploadRequest): Promise<Upload> {
+  async update(uploadId: number, req: UpdateUploadRequest): Promise<Upload> {
     const response = await this.request(
       {
         service: "Uploads",
         operation: "UpdateUpload",
         resourceType: "upload",
         isMutation: true,
-        projectId,
         resourceId: uploadId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/uploads/{uploadId}", {
+        this.client.PUT("/uploads/{uploadId}", {
           params: {
-            path: { projectId, uploadId },
+            path: { uploadId },
           },
           body: {
             description: req.description,
@@ -132,30 +128,28 @@ export class UploadsService extends BaseService {
 
   /**
    * List versions of an upload
-   * @param projectId - The project ID
    * @param uploadId - The upload ID
    * @param options - Optional query parameters
    * @returns All Upload across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.uploads.listVersions(123, 123);
+   * const result = await client.uploads.listVersions(123);
    * ```
    */
-  async listVersions(projectId: number, uploadId: number, options?: ListVersionsUploadOptions): Promise<ListResult<Upload>> {
+  async listVersions(uploadId: number, options?: ListVersionsUploadOptions): Promise<ListResult<Upload>> {
     return this.requestPaginated(
       {
         service: "Uploads",
         operation: "ListUploadVersions",
         resourceType: "upload_version",
         isMutation: false,
-        projectId,
         resourceId: uploadId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/uploads/{uploadId}/versions.json", {
+        this.client.GET("/uploads/{uploadId}/versions.json", {
           params: {
-            path: { projectId, uploadId },
+            path: { uploadId },
           },
         })
       , options
@@ -164,30 +158,28 @@ export class UploadsService extends BaseService {
 
   /**
    * List uploads in a vault
-   * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @param options - Optional query parameters
    * @returns All Upload across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.uploads.list(123, 123);
+   * const result = await client.uploads.list(123);
    * ```
    */
-  async list(projectId: number, vaultId: number, options?: ListUploadOptions): Promise<ListResult<Upload>> {
+  async list(vaultId: number, options?: ListUploadOptions): Promise<ListResult<Upload>> {
     return this.requestPaginated(
       {
         service: "Uploads",
         operation: "ListUploads",
         resourceType: "upload",
         isMutation: false,
-        projectId,
         resourceId: vaultId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/vaults/{vaultId}/uploads.json", {
+        this.client.GET("/vaults/{vaultId}/uploads.json", {
           params: {
-            path: { projectId, vaultId },
+            path: { vaultId },
           },
         })
       , options
@@ -196,7 +188,6 @@ export class UploadsService extends BaseService {
 
   /**
    * Create a new upload in a vault
-   * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @param req - Upload creation parameters
    * @returns The Upload
@@ -204,10 +195,10 @@ export class UploadsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.uploads.create(123, 123, { attachableSgid: "example" });
+   * const result = await client.uploads.create(123, { attachableSgid: "example" });
    * ```
    */
-  async create(projectId: number, vaultId: number, req: CreateUploadRequest): Promise<Upload> {
+  async create(vaultId: number, req: CreateUploadRequest): Promise<Upload> {
     if (!req.attachableSgid) {
       throw Errors.validation("Attachable sgid is required");
     }
@@ -217,13 +208,12 @@ export class UploadsService extends BaseService {
         operation: "CreateUpload",
         resourceType: "upload",
         isMutation: true,
-        projectId,
         resourceId: vaultId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/vaults/{vaultId}/uploads.json", {
+        this.client.POST("/vaults/{vaultId}/uploads.json", {
           params: {
-            path: { projectId, vaultId },
+            path: { vaultId },
           },
           body: {
             attachable_sgid: req.attachableSgid,

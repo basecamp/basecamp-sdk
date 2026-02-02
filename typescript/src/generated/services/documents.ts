@@ -57,30 +57,28 @@ export class DocumentsService extends BaseService {
 
   /**
    * Get a single document by id
-   * @param projectId - The project ID
    * @param documentId - The document ID
    * @returns The Document
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.documents.get(123, 123);
+   * const result = await client.documents.get(123);
    * ```
    */
-  async get(projectId: number, documentId: number): Promise<Document> {
+  async get(documentId: number): Promise<Document> {
     const response = await this.request(
       {
         service: "Documents",
         operation: "GetDocument",
         resourceType: "document",
         isMutation: false,
-        projectId,
         resourceId: documentId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/documents/{documentId}", {
+        this.client.GET("/documents/{documentId}", {
           params: {
-            path: { projectId, documentId },
+            path: { documentId },
           },
         })
     );
@@ -89,7 +87,6 @@ export class DocumentsService extends BaseService {
 
   /**
    * Update an existing document
-   * @param projectId - The project ID
    * @param documentId - The document ID
    * @param req - Document update parameters
    * @returns The Document
@@ -97,23 +94,22 @@ export class DocumentsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.documents.update(123, 123, { });
+   * const result = await client.documents.update(123, { });
    * ```
    */
-  async update(projectId: number, documentId: number, req: UpdateDocumentRequest): Promise<Document> {
+  async update(documentId: number, req: UpdateDocumentRequest): Promise<Document> {
     const response = await this.request(
       {
         service: "Documents",
         operation: "UpdateDocument",
         resourceType: "document",
         isMutation: true,
-        projectId,
         resourceId: documentId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/documents/{documentId}", {
+        this.client.PUT("/documents/{documentId}", {
           params: {
-            path: { projectId, documentId },
+            path: { documentId },
           },
           body: {
             title: req.title,
@@ -126,30 +122,28 @@ export class DocumentsService extends BaseService {
 
   /**
    * List documents in a vault
-   * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @param options - Optional query parameters
    * @returns All Document across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.documents.list(123, 123);
+   * const result = await client.documents.list(123);
    * ```
    */
-  async list(projectId: number, vaultId: number, options?: ListDocumentOptions): Promise<ListResult<Document>> {
+  async list(vaultId: number, options?: ListDocumentOptions): Promise<ListResult<Document>> {
     return this.requestPaginated(
       {
         service: "Documents",
         operation: "ListDocuments",
         resourceType: "document",
         isMutation: false,
-        projectId,
         resourceId: vaultId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/vaults/{vaultId}/documents.json", {
+        this.client.GET("/vaults/{vaultId}/documents.json", {
           params: {
-            path: { projectId, vaultId },
+            path: { vaultId },
           },
         })
       , options
@@ -158,7 +152,6 @@ export class DocumentsService extends BaseService {
 
   /**
    * Create a new document in a vault
-   * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @param req - Document creation parameters
    * @returns The Document
@@ -166,10 +159,10 @@ export class DocumentsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.documents.create(123, 123, { title: "example" });
+   * const result = await client.documents.create(123, { title: "example" });
    * ```
    */
-  async create(projectId: number, vaultId: number, req: CreateDocumentRequest): Promise<Document> {
+  async create(vaultId: number, req: CreateDocumentRequest): Promise<Document> {
     if (!req.title) {
       throw Errors.validation("Title is required");
     }
@@ -179,13 +172,12 @@ export class DocumentsService extends BaseService {
         operation: "CreateDocument",
         resourceType: "document",
         isMutation: true,
-        projectId,
         resourceId: vaultId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/vaults/{vaultId}/documents.json", {
+        this.client.POST("/vaults/{vaultId}/documents.json", {
           params: {
-            path: { projectId, vaultId },
+            path: { vaultId },
           },
           body: {
             title: req.title,

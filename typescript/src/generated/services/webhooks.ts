@@ -6,8 +6,6 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
-import { ListResult } from "../../pagination.js";
-import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -16,12 +14,6 @@ import { Errors } from "../../errors.js";
 
 /** Webhook entity from the Basecamp API. */
 export type Webhook = components["schemas"]["Webhook"];
-
-/**
- * Options for list.
- */
-export interface ListWebhookOptions extends PaginationOptions {
-}
 
 /**
  * Request parameters for create.
@@ -59,47 +51,40 @@ export class WebhooksService extends BaseService {
 
   /**
    * List all webhooks for a project
-   * @param projectId - The project ID
-   * @param options - Optional query parameters
-   * @returns All Webhook across all pages, with .meta.totalCount
+   * @returns Array of Webhook
    *
    * @example
    * ```ts
-   * const result = await client.webhooks.list(123);
+   * const result = await client.webhooks.list();
    * ```
    */
-  async list(projectId: number, options?: ListWebhookOptions): Promise<ListResult<Webhook>> {
-    return this.requestPaginated(
+  async list(): Promise<Webhook[]> {
+    const response = await this.request(
       {
         service: "Webhooks",
         operation: "ListWebhooks",
         resourceType: "webhook",
         isMutation: false,
-        projectId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/webhooks.json", {
-          params: {
-            path: { projectId },
-          },
+        this.client.GET("/webhooks.json", {
         })
-      , options
     );
+    return response ?? [];
   }
 
   /**
    * Create a new webhook for a project
-   * @param projectId - The project ID
    * @param req - Webhook creation parameters
    * @returns The Webhook
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.webhooks.create(123, { payloadUrl: "example", types: [1234] });
+   * const result = await client.webhooks.create({ payloadUrl: "example", types: [1234] });
    * ```
    */
-  async create(projectId: number, req: CreateWebhookRequest): Promise<Webhook> {
+  async create(req: CreateWebhookRequest): Promise<Webhook> {
     if (!req.payloadUrl) {
       throw Errors.validation("Payload url is required");
     }
@@ -112,13 +97,9 @@ export class WebhooksService extends BaseService {
         operation: "CreateWebhook",
         resourceType: "webhook",
         isMutation: true,
-        projectId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/webhooks.json", {
-          params: {
-            path: { projectId },
-          },
+        this.client.POST("/webhooks.json", {
           body: {
             payload_url: req.payloadUrl,
             types: req.types,
@@ -131,30 +112,28 @@ export class WebhooksService extends BaseService {
 
   /**
    * Get a single webhook by id
-   * @param projectId - The project ID
    * @param webhookId - The webhook ID
    * @returns The Webhook
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.webhooks.get(123, 123);
+   * const result = await client.webhooks.get(123);
    * ```
    */
-  async get(projectId: number, webhookId: number): Promise<Webhook> {
+  async get(webhookId: number): Promise<Webhook> {
     const response = await this.request(
       {
         service: "Webhooks",
         operation: "GetWebhook",
         resourceType: "webhook",
         isMutation: false,
-        projectId,
         resourceId: webhookId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/webhooks/{webhookId}", {
+        this.client.GET("/webhooks/{webhookId}", {
           params: {
-            path: { projectId, webhookId },
+            path: { webhookId },
           },
         })
     );
@@ -163,7 +142,6 @@ export class WebhooksService extends BaseService {
 
   /**
    * Update an existing webhook
-   * @param projectId - The project ID
    * @param webhookId - The webhook ID
    * @param req - Webhook update parameters
    * @returns The Webhook
@@ -171,23 +149,22 @@ export class WebhooksService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.webhooks.update(123, 123, { });
+   * const result = await client.webhooks.update(123, { });
    * ```
    */
-  async update(projectId: number, webhookId: number, req: UpdateWebhookRequest): Promise<Webhook> {
+  async update(webhookId: number, req: UpdateWebhookRequest): Promise<Webhook> {
     const response = await this.request(
       {
         service: "Webhooks",
         operation: "UpdateWebhook",
         resourceType: "webhook",
         isMutation: true,
-        projectId,
         resourceId: webhookId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/webhooks/{webhookId}", {
+        this.client.PUT("/webhooks/{webhookId}", {
           params: {
-            path: { projectId, webhookId },
+            path: { webhookId },
           },
           body: {
             payload_url: req.payloadUrl,
@@ -201,30 +178,28 @@ export class WebhooksService extends BaseService {
 
   /**
    * Delete a webhook
-   * @param projectId - The project ID
    * @param webhookId - The webhook ID
    * @returns void
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * await client.webhooks.delete(123, 123);
+   * await client.webhooks.delete(123);
    * ```
    */
-  async delete(projectId: number, webhookId: number): Promise<void> {
+  async delete(webhookId: number): Promise<void> {
     await this.request(
       {
         service: "Webhooks",
         operation: "DeleteWebhook",
         resourceType: "webhook",
         isMutation: true,
-        projectId,
         resourceId: webhookId,
       },
       () =>
-        this.client.DELETE("/buckets/{projectId}/webhooks/{webhookId}", {
+        this.client.DELETE("/webhooks/{webhookId}", {
           params: {
-            path: { projectId, webhookId },
+            path: { webhookId },
           },
         })
     );

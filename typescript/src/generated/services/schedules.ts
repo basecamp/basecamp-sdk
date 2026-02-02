@@ -87,30 +87,28 @@ export class SchedulesService extends BaseService {
 
   /**
    * Get a single schedule entry by id.
-   * @param projectId - The project ID
    * @param entryId - The entry ID
    * @returns The ScheduleEntry
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.schedules.getEntry(123, 123);
+   * const result = await client.schedules.getEntry(123);
    * ```
    */
-  async getEntry(projectId: number, entryId: number): Promise<ScheduleEntry> {
+  async getEntry(entryId: number): Promise<ScheduleEntry> {
     const response = await this.request(
       {
         service: "Schedules",
         operation: "GetScheduleEntry",
         resourceType: "schedule_entry",
         isMutation: false,
-        projectId,
         resourceId: entryId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/schedule_entries/{entryId}", {
+        this.client.GET("/schedule_entries/{entryId}", {
           params: {
-            path: { projectId, entryId },
+            path: { entryId },
           },
         })
     );
@@ -119,7 +117,6 @@ export class SchedulesService extends BaseService {
 
   /**
    * Update an existing schedule entry
-   * @param projectId - The project ID
    * @param entryId - The entry ID
    * @param req - Schedule_entry update parameters
    * @returns The ScheduleEntry
@@ -127,23 +124,22 @@ export class SchedulesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.schedules.updateEntry(123, 123, { });
+   * const result = await client.schedules.updateEntry(123, { });
    * ```
    */
-  async updateEntry(projectId: number, entryId: number, req: UpdateEntryScheduleRequest): Promise<ScheduleEntry> {
+  async updateEntry(entryId: number, req: UpdateEntryScheduleRequest): Promise<ScheduleEntry> {
     const response = await this.request(
       {
         service: "Schedules",
         operation: "UpdateScheduleEntry",
         resourceType: "schedule_entry",
         isMutation: true,
-        projectId,
         resourceId: entryId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/schedule_entries/{entryId}", {
+        this.client.PUT("/schedule_entries/{entryId}", {
           params: {
-            path: { projectId, entryId },
+            path: { entryId },
           },
           body: {
             summary: req.summary,
@@ -161,7 +157,6 @@ export class SchedulesService extends BaseService {
 
   /**
    * Get a specific occurrence of a recurring schedule entry
-   * @param projectId - The project ID
    * @param entryId - The entry ID
    * @param date - The date
    * @returns The ScheduleEntry
@@ -169,23 +164,22 @@ export class SchedulesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.schedules.getEntryOccurrence(123, 123, "example");
+   * const result = await client.schedules.getEntryOccurrence(123, "example");
    * ```
    */
-  async getEntryOccurrence(projectId: number, entryId: number, date: string): Promise<ScheduleEntry> {
+  async getEntryOccurrence(entryId: number, date: string): Promise<ScheduleEntry> {
     const response = await this.request(
       {
         service: "Schedules",
         operation: "GetScheduleEntryOccurrence",
         resourceType: "schedule_entry_occurrence",
         isMutation: false,
-        projectId,
         resourceId: entryId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}", {
+        this.client.GET("/schedule_entries/{entryId}/occurrences/{date}", {
           params: {
-            path: { projectId, entryId, date },
+            path: { entryId, date },
           },
         })
     );
@@ -194,30 +188,28 @@ export class SchedulesService extends BaseService {
 
   /**
    * Get a schedule
-   * @param projectId - The project ID
    * @param scheduleId - The schedule ID
    * @returns The Schedule
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.schedules.get(123, 123);
+   * const result = await client.schedules.get(123);
    * ```
    */
-  async get(projectId: number, scheduleId: number): Promise<Schedule> {
+  async get(scheduleId: number): Promise<Schedule> {
     const response = await this.request(
       {
         service: "Schedules",
         operation: "GetSchedule",
         resourceType: "schedule",
         isMutation: false,
-        projectId,
         resourceId: scheduleId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/schedules/{scheduleId}", {
+        this.client.GET("/schedules/{scheduleId}", {
           params: {
-            path: { projectId, scheduleId },
+            path: { scheduleId },
           },
         })
     );
@@ -226,7 +218,6 @@ export class SchedulesService extends BaseService {
 
   /**
    * Update schedule settings
-   * @param projectId - The project ID
    * @param scheduleId - The schedule ID
    * @param req - Schedule_setting update parameters
    * @returns The Schedule
@@ -234,23 +225,22 @@ export class SchedulesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.schedules.updateSettings(123, 123, { includeDueAssignments: true });
+   * const result = await client.schedules.updateSettings(123, { includeDueAssignments: true });
    * ```
    */
-  async updateSettings(projectId: number, scheduleId: number, req: UpdateSettingsScheduleRequest): Promise<Schedule> {
+  async updateSettings(scheduleId: number, req: UpdateSettingsScheduleRequest): Promise<Schedule> {
     const response = await this.request(
       {
         service: "Schedules",
         operation: "UpdateScheduleSettings",
         resourceType: "schedule_setting",
         isMutation: true,
-        projectId,
         resourceId: scheduleId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/schedules/{scheduleId}", {
+        this.client.PUT("/schedules/{scheduleId}", {
           params: {
-            path: { projectId, scheduleId },
+            path: { scheduleId },
           },
           body: {
             include_due_assignments: req.includeDueAssignments,
@@ -262,33 +252,31 @@ export class SchedulesService extends BaseService {
 
   /**
    * List entries on a schedule
-   * @param projectId - The project ID
    * @param scheduleId - The schedule ID
    * @param options - Optional query parameters
    * @returns All ScheduleEntry across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.schedules.listEntries(123, 123);
+   * const result = await client.schedules.listEntries(123);
    *
    * // With options
-   * const filtered = await client.schedules.listEntries(123, 123, { status: "active" });
+   * const filtered = await client.schedules.listEntries(123, { status: "active" });
    * ```
    */
-  async listEntries(projectId: number, scheduleId: number, options?: ListEntriesScheduleOptions): Promise<ListResult<ScheduleEntry>> {
+  async listEntries(scheduleId: number, options?: ListEntriesScheduleOptions): Promise<ListResult<ScheduleEntry>> {
     return this.requestPaginated(
       {
         service: "Schedules",
         operation: "ListScheduleEntries",
         resourceType: "schedule_entrie",
         isMutation: false,
-        projectId,
         resourceId: scheduleId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/schedules/{scheduleId}/entries.json", {
+        this.client.GET("/schedules/{scheduleId}/entries.json", {
           params: {
-            path: { projectId, scheduleId },
+            path: { scheduleId },
             query: { status: options?.status },
           },
         })
@@ -298,7 +286,6 @@ export class SchedulesService extends BaseService {
 
   /**
    * Create a new schedule entry
-   * @param projectId - The project ID
    * @param scheduleId - The schedule ID
    * @param req - Schedule_entry creation parameters
    * @returns The ScheduleEntry
@@ -306,10 +293,10 @@ export class SchedulesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.schedules.createEntry(123, 123, { summary: "example", startsAt: "2025-06-01T09:00:00Z", endsAt: "2025-06-01T09:00:00Z" });
+   * const result = await client.schedules.createEntry(123, { summary: "example", startsAt: "2025-06-01T09:00:00Z", endsAt: "2025-06-01T09:00:00Z" });
    * ```
    */
-  async createEntry(projectId: number, scheduleId: number, req: CreateEntryScheduleRequest): Promise<ScheduleEntry> {
+  async createEntry(scheduleId: number, req: CreateEntryScheduleRequest): Promise<ScheduleEntry> {
     if (!req.summary) {
       throw Errors.validation("Summary is required");
     }
@@ -325,13 +312,12 @@ export class SchedulesService extends BaseService {
         operation: "CreateScheduleEntry",
         resourceType: "schedule_entry",
         isMutation: true,
-        projectId,
         resourceId: scheduleId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/schedules/{scheduleId}/entries.json", {
+        this.client.POST("/schedules/{scheduleId}/entries.json", {
           params: {
-            path: { projectId, scheduleId },
+            path: { scheduleId },
           },
           body: {
             summary: req.summary,
