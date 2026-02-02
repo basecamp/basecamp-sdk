@@ -56,11 +56,10 @@ func NewMessageTypesService(client *AccountClient) *MessageTypesService {
 //
 // The returned MessageTypeListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *MessageTypesService) List(ctx context.Context, bucketID int64) (result *MessageTypeListResult, err error) {
+func (s *MessageTypesService) List(ctx context.Context) (result *MessageTypeListResult, err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "List",
 		ResourceType: "message_type", IsMutation: false,
-		BucketID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -71,7 +70,7 @@ func (s *MessageTypesService) List(ctx context.Context, bucketID int64) (result 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListMessageTypesWithResponse(ctx, s.client.accountID, bucketID)
+	resp, err := s.client.parent.gen.ListMessageTypesWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -95,11 +94,11 @@ func (s *MessageTypesService) List(ctx context.Context, bucketID int64) (result 
 
 // Get returns a message type by ID.
 // bucketID is the project ID, typeID is the message type ID.
-func (s *MessageTypesService) Get(ctx context.Context, bucketID, typeID int64) (result *MessageType, err error) {
+func (s *MessageTypesService) Get(ctx context.Context, typeID int64) (result *MessageType, err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "Get",
 		ResourceType: "message_type", IsMutation: false,
-		BucketID: bucketID, ResourceID: typeID,
+		ResourceID: typeID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -110,7 +109,7 @@ func (s *MessageTypesService) Get(ctx context.Context, bucketID, typeID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID)
+	resp, err := s.client.parent.gen.GetMessageTypeWithResponse(ctx, s.client.accountID, typeID)
 	if err != nil {
 		return nil, err
 	}
@@ -129,11 +128,10 @@ func (s *MessageTypesService) Get(ctx context.Context, bucketID, typeID int64) (
 // Create creates a new message type in a project.
 // bucketID is the project ID.
 // Returns the created message type.
-func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *CreateMessageTypeRequest) (result *MessageType, err error) {
+func (s *MessageTypesService) Create(ctx context.Context, req *CreateMessageTypeRequest) (result *MessageType, err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "Create",
 		ResourceType: "message_type", IsMutation: true,
-		BucketID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -158,7 +156,7 @@ func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *C
 		Icon: req.Icon,
 	}
 
-	resp, err := s.client.parent.gen.CreateMessageTypeWithResponse(ctx, s.client.accountID, bucketID, body)
+	resp, err := s.client.parent.gen.CreateMessageTypeWithResponse(ctx, s.client.accountID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -177,11 +175,11 @@ func (s *MessageTypesService) Create(ctx context.Context, bucketID int64, req *C
 // Update updates an existing message type.
 // bucketID is the project ID, typeID is the message type ID.
 // Returns the updated message type.
-func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64, req *UpdateMessageTypeRequest) (result *MessageType, err error) {
+func (s *MessageTypesService) Update(ctx context.Context, typeID int64, req *UpdateMessageTypeRequest) (result *MessageType, err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "Update",
 		ResourceType: "message_type", IsMutation: true,
-		BucketID: bucketID, ResourceID: typeID,
+		ResourceID: typeID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -202,7 +200,7 @@ func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64
 		Icon: req.Icon,
 	}
 
-	resp, err := s.client.parent.gen.UpdateMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID, body)
+	resp, err := s.client.parent.gen.UpdateMessageTypeWithResponse(ctx, s.client.accountID, typeID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -220,11 +218,11 @@ func (s *MessageTypesService) Update(ctx context.Context, bucketID, typeID int64
 
 // Delete deletes a message type from a project.
 // bucketID is the project ID, typeID is the message type ID.
-func (s *MessageTypesService) Delete(ctx context.Context, bucketID, typeID int64) (err error) {
+func (s *MessageTypesService) Delete(ctx context.Context, typeID int64) (err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "Delete",
 		ResourceType: "message_type", IsMutation: true,
-		BucketID: bucketID, ResourceID: typeID,
+		ResourceID: typeID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -235,7 +233,7 @@ func (s *MessageTypesService) Delete(ctx context.Context, bucketID, typeID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DeleteMessageTypeWithResponse(ctx, s.client.accountID, bucketID, typeID)
+	resp, err := s.client.parent.gen.DeleteMessageTypeWithResponse(ctx, s.client.accountID, typeID)
 	if err != nil {
 		return err
 	}

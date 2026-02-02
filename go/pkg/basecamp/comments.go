@@ -80,11 +80,11 @@ func NewCommentsService(client *AccountClient) *CommentsService {
 //
 // The returned CommentListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64, opts *CommentListOptions) (result *CommentListResult, err error) {
+func (s *CommentsService) List(ctx context.Context, recordingID int64, opts *CommentListOptions) (result *CommentListResult, err error) {
 	op := OperationInfo{
 		Service: "Comments", Operation: "List",
 		ResourceType: "comment", IsMutation: false,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -96,7 +96,7 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64,
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListCommentsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ListCommentsWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -155,11 +155,11 @@ func (s *CommentsService) List(ctx context.Context, bucketID, recordingID int64,
 
 // Get returns a comment by ID.
 // bucketID is the project ID, commentID is the comment ID.
-func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (result *Comment, err error) {
+func (s *CommentsService) Get(ctx context.Context, commentID int64) (result *Comment, err error) {
 	op := OperationInfo{
 		Service: "Comments", Operation: "Get",
 		ResourceType: "comment", IsMutation: false,
-		BucketID: bucketID, ResourceID: commentID,
+		ResourceID: commentID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -170,7 +170,7 @@ func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetCommentWithResponse(ctx, s.client.accountID, bucketID, commentID)
+	resp, err := s.client.parent.gen.GetCommentWithResponse(ctx, s.client.accountID, commentID)
 	if err != nil {
 		return nil, err
 	}
@@ -189,11 +189,11 @@ func (s *CommentsService) Get(ctx context.Context, bucketID, commentID int64) (r
 // Create creates a new comment on a recording.
 // bucketID is the project ID, recordingID is the ID of the recording to comment on.
 // Returns the created comment.
-func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int64, req *CreateCommentRequest) (result *Comment, err error) {
+func (s *CommentsService) Create(ctx context.Context, recordingID int64, req *CreateCommentRequest) (result *Comment, err error) {
 	op := OperationInfo{
 		Service: "Comments", Operation: "Create",
 		ResourceType: "comment", IsMutation: true,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -213,7 +213,7 @@ func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int6
 		Content: req.Content,
 	}
 
-	resp, err := s.client.parent.gen.CreateCommentWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
+	resp, err := s.client.parent.gen.CreateCommentWithResponse(ctx, s.client.accountID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -232,11 +232,11 @@ func (s *CommentsService) Create(ctx context.Context, bucketID, recordingID int6
 // Update updates an existing comment.
 // bucketID is the project ID, commentID is the comment ID.
 // Returns the updated comment.
-func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64, req *UpdateCommentRequest) (result *Comment, err error) {
+func (s *CommentsService) Update(ctx context.Context, commentID int64, req *UpdateCommentRequest) (result *Comment, err error) {
 	op := OperationInfo{
 		Service: "Comments", Operation: "Update",
 		ResourceType: "comment", IsMutation: true,
-		BucketID: bucketID, ResourceID: commentID,
+		ResourceID: commentID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -256,7 +256,7 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 		Content: req.Content,
 	}
 
-	resp, err := s.client.parent.gen.UpdateCommentWithResponse(ctx, s.client.accountID, bucketID, commentID, body)
+	resp, err := s.client.parent.gen.UpdateCommentWithResponse(ctx, s.client.accountID, commentID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -275,11 +275,11 @@ func (s *CommentsService) Update(ctx context.Context, bucketID, commentID int64,
 // Trash moves a comment to the trash.
 // bucketID is the project ID, commentID is the comment ID.
 // Trashed comments can be recovered from the trash.
-func (s *CommentsService) Trash(ctx context.Context, bucketID, commentID int64) (err error) {
+func (s *CommentsService) Trash(ctx context.Context, commentID int64) (err error) {
 	op := OperationInfo{
 		Service: "Comments", Operation: "Trash",
 		ResourceType: "comment", IsMutation: true,
-		BucketID: bucketID, ResourceID: commentID,
+		ResourceID: commentID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -290,7 +290,7 @@ func (s *CommentsService) Trash(ctx context.Context, bucketID, commentID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, commentID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, commentID)
 	if err != nil {
 		return err
 	}

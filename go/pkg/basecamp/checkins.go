@@ -185,11 +185,11 @@ func NewCheckinsService(client *AccountClient) *CheckinsService {
 
 // GetQuestionnaire returns a questionnaire by ID.
 // bucketID is the project ID, questionnaireID is the questionnaire ID.
-func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questionnaireID int64) (result *Questionnaire, err error) {
+func (s *CheckinsService) GetQuestionnaire(ctx context.Context, questionnaireID int64) (result *Questionnaire, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "GetQuestionnaire",
 		ResourceType: "questionnaire", IsMutation: false,
-		BucketID: bucketID, ResourceID: questionnaireID,
+		ResourceID: questionnaireID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -200,7 +200,7 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questi
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetQuestionnaireWithResponse(ctx, s.client.accountID, bucketID, questionnaireID)
+	resp, err := s.client.parent.gen.GetQuestionnaireWithResponse(ctx, s.client.accountID, questionnaireID)
 	if err != nil {
 		return nil, err
 	}
@@ -227,11 +227,11 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, bucketID, questi
 //
 // The returned QuestionListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionnaireID int64, opts *QuestionListOptions) (result *QuestionListResult, err error) {
+func (s *CheckinsService) ListQuestions(ctx context.Context, questionnaireID int64, opts *QuestionListOptions) (result *QuestionListResult, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "ListQuestions",
 		ResourceType: "question", IsMutation: false,
-		BucketID: bucketID, ResourceID: questionnaireID,
+		ResourceID: questionnaireID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -243,7 +243,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListQuestionsWithResponse(ctx, s.client.accountID, bucketID, questionnaireID)
+	resp, err := s.client.parent.gen.ListQuestionsWithResponse(ctx, s.client.accountID, questionnaireID)
 	if err != nil {
 		return nil, err
 	}
@@ -298,11 +298,11 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, bucketID, questionn
 
 // GetQuestion returns a question by ID.
 // bucketID is the project ID, questionID is the question ID.
-func (s *CheckinsService) GetQuestion(ctx context.Context, bucketID, questionID int64) (result *Question, err error) {
+func (s *CheckinsService) GetQuestion(ctx context.Context, questionID int64) (result *Question, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "GetQuestion",
 		ResourceType: "question", IsMutation: false,
-		BucketID: bucketID, ResourceID: questionID,
+		ResourceID: questionID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -313,7 +313,7 @@ func (s *CheckinsService) GetQuestion(ctx context.Context, bucketID, questionID 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetQuestionWithResponse(ctx, s.client.accountID, bucketID, questionID)
+	resp, err := s.client.parent.gen.GetQuestionWithResponse(ctx, s.client.accountID, questionID)
 	if err != nil {
 		return nil, err
 	}
@@ -332,11 +332,11 @@ func (s *CheckinsService) GetQuestion(ctx context.Context, bucketID, questionID 
 // CreateQuestion creates a new question in a questionnaire.
 // bucketID is the project ID, questionnaireID is the questionnaire ID.
 // Returns the created question.
-func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, questionnaireID int64, req *CreateQuestionRequest) (result *Question, err error) {
+func (s *CheckinsService) CreateQuestion(ctx context.Context, questionnaireID int64, req *CreateQuestionRequest) (result *Question, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "CreateQuestion",
 		ResourceType: "question", IsMutation: true,
-		BucketID: bucketID, ResourceID: questionnaireID,
+		ResourceID: questionnaireID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -361,7 +361,7 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, question
 		Schedule: questionScheduleToGenerated(req.Schedule),
 	}
 
-	resp, err := s.client.parent.gen.CreateQuestionWithResponse(ctx, s.client.accountID, bucketID, questionnaireID, body)
+	resp, err := s.client.parent.gen.CreateQuestionWithResponse(ctx, s.client.accountID, questionnaireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -380,11 +380,11 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, bucketID, question
 // UpdateQuestion updates an existing question.
 // bucketID is the project ID, questionID is the question ID.
 // Returns the updated question.
-func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, questionID int64, req *UpdateQuestionRequest) (result *Question, err error) {
+func (s *CheckinsService) UpdateQuestion(ctx context.Context, questionID int64, req *UpdateQuestionRequest) (result *Question, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "UpdateQuestion",
 		ResourceType: "question", IsMutation: true,
-		BucketID: bucketID, ResourceID: questionID,
+		ResourceID: questionID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -411,7 +411,7 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 		body.Paused = req.Paused
 	}
 
-	resp, err := s.client.parent.gen.UpdateQuestionWithResponse(ctx, s.client.accountID, bucketID, questionID, body)
+	resp, err := s.client.parent.gen.UpdateQuestionWithResponse(ctx, s.client.accountID, questionID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -438,11 +438,11 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, bucketID, question
 //
 // The returned AnswerListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID int64, opts *AnswerListOptions) (result *AnswerListResult, err error) {
+func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opts *AnswerListOptions) (result *AnswerListResult, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "ListAnswers",
 		ResourceType: "answer", IsMutation: false,
-		BucketID: bucketID, ResourceID: questionID,
+		ResourceID: questionID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -454,7 +454,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListAnswersWithResponse(ctx, s.client.accountID, bucketID, questionID)
+	resp, err := s.client.parent.gen.ListAnswersWithResponse(ctx, s.client.accountID, questionID)
 	if err != nil {
 		return nil, err
 	}
@@ -509,11 +509,11 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, bucketID, questionID 
 
 // GetAnswer returns a question answer by ID.
 // bucketID is the project ID, answerID is the answer ID.
-func (s *CheckinsService) GetAnswer(ctx context.Context, bucketID, answerID int64) (result *QuestionAnswer, err error) {
+func (s *CheckinsService) GetAnswer(ctx context.Context, answerID int64) (result *QuestionAnswer, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "GetAnswer",
 		ResourceType: "answer", IsMutation: false,
-		BucketID: bucketID, ResourceID: answerID,
+		ResourceID: answerID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -524,7 +524,7 @@ func (s *CheckinsService) GetAnswer(ctx context.Context, bucketID, answerID int6
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetAnswerWithResponse(ctx, s.client.accountID, bucketID, answerID)
+	resp, err := s.client.parent.gen.GetAnswerWithResponse(ctx, s.client.accountID, answerID)
 	if err != nil {
 		return nil, err
 	}
@@ -543,11 +543,11 @@ func (s *CheckinsService) GetAnswer(ctx context.Context, bucketID, answerID int6
 // CreateAnswer creates a new answer for a question.
 // bucketID is the project ID, questionID is the question ID.
 // Returns the created answer.
-func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID int64, req *CreateAnswerRequest) (result *QuestionAnswer, err error) {
+func (s *CheckinsService) CreateAnswer(ctx context.Context, questionID int64, req *CreateAnswerRequest) (result *QuestionAnswer, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "CreateAnswer",
 		ResourceType: "answer", IsMutation: true,
-		BucketID: bucketID, ResourceID: questionID,
+		ResourceID: questionID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -572,7 +572,7 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 		}
 	}
 
-	resp, err := s.client.parent.gen.CreateAnswerWithResponse(ctx, s.client.accountID, bucketID, questionID, body)
+	resp, err := s.client.parent.gen.CreateAnswerWithResponse(ctx, s.client.accountID, questionID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -591,11 +591,11 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, bucketID, questionID
 // UpdateAnswer updates an existing question answer.
 // bucketID is the project ID, answerID is the answer ID.
 // Returns nil on success (204 No Content).
-func (s *CheckinsService) UpdateAnswer(ctx context.Context, bucketID, answerID int64, req *UpdateAnswerRequest) (err error) {
+func (s *CheckinsService) UpdateAnswer(ctx context.Context, answerID int64, req *UpdateAnswerRequest) (err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "UpdateAnswer",
 		ResourceType: "answer", IsMutation: true,
-		BucketID: bucketID, ResourceID: answerID,
+		ResourceID: answerID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -615,7 +615,7 @@ func (s *CheckinsService) UpdateAnswer(ctx context.Context, bucketID, answerID i
 		Content: req.Content,
 	}
 
-	resp, err := s.client.parent.gen.UpdateAnswerWithResponse(ctx, s.client.accountID, bucketID, answerID, body)
+	resp, err := s.client.parent.gen.UpdateAnswerWithResponse(ctx, s.client.accountID, answerID, body)
 	if err != nil {
 		return err
 	}

@@ -69,11 +69,10 @@ func (s *TimelineService) Progress(ctx context.Context) (result []TimelineEvent,
 }
 
 // ProjectTimeline returns the activity timeline for a specific project.
-func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64) (result []TimelineEvent, err error) {
+func (s *TimelineService) ProjectTimeline(ctx context.Context) (result []TimelineEvent, err error) {
 	op := OperationInfo{
 		Service: "Timeline", Operation: "ProjectTimeline",
 		ResourceType: "timeline_event", IsMutation: false,
-		BucketID: projectID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -84,7 +83,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetProjectTimelineWithResponse(ctx, s.client.accountID, projectID)
+	resp, err := s.client.parent.gen.GetProjectTimelineWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}

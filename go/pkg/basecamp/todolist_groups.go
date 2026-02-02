@@ -70,11 +70,11 @@ func NewTodolistGroupsService(client *AccountClient) *TodolistGroupsService {
 //
 // The returned TodolistGroupListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID int64) (result *TodolistGroupListResult, err error) {
+func (s *TodolistGroupsService) List(ctx context.Context, todolistID int64) (result *TodolistGroupListResult, err error) {
 	op := OperationInfo{
 		Service: "TodolistGroups", Operation: "List",
 		ResourceType: "todolist_group", IsMutation: false,
-		BucketID: bucketID, ResourceID: todolistID,
+		ResourceID: todolistID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -85,7 +85,7 @@ func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListTodolistGroupsWithResponse(ctx, s.client.accountID, bucketID, todolistID)
+	resp, err := s.client.parent.gen.ListTodolistGroupsWithResponse(ctx, s.client.accountID, todolistID)
 	if err != nil {
 		return nil, err
 	}
@@ -110,11 +110,11 @@ func (s *TodolistGroupsService) List(ctx context.Context, bucketID, todolistID i
 
 // Get returns a todolist group by ID.
 // bucketID is the project ID, groupID is the group ID.
-func (s *TodolistGroupsService) Get(ctx context.Context, bucketID, groupID int64) (result *TodolistGroup, err error) {
+func (s *TodolistGroupsService) Get(ctx context.Context, groupID int64) (result *TodolistGroup, err error) {
 	op := OperationInfo{
 		Service: "TodolistGroups", Operation: "Get",
 		ResourceType: "todolist_group", IsMutation: false,
-		BucketID: bucketID, ResourceID: groupID,
+		ResourceID: groupID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -126,7 +126,7 @@ func (s *TodolistGroupsService) Get(ctx context.Context, bucketID, groupID int64
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Groups are fetched via the todolists endpoint (polymorphic endpoint)
-	resp, err := s.client.parent.gen.GetTodolistOrGroupWithResponse(ctx, s.client.accountID, bucketID, groupID)
+	resp, err := s.client.parent.gen.GetTodolistOrGroupWithResponse(ctx, s.client.accountID, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -152,11 +152,11 @@ func (s *TodolistGroupsService) Get(ctx context.Context, bucketID, groupID int64
 // Create creates a new group in a todolist.
 // bucketID is the project ID, todolistID is the todolist ID.
 // Returns the created group.
-func (s *TodolistGroupsService) Create(ctx context.Context, bucketID, todolistID int64, req *CreateTodolistGroupRequest) (result *TodolistGroup, err error) {
+func (s *TodolistGroupsService) Create(ctx context.Context, todolistID int64, req *CreateTodolistGroupRequest) (result *TodolistGroup, err error) {
 	op := OperationInfo{
 		Service: "TodolistGroups", Operation: "Create",
 		ResourceType: "todolist_group", IsMutation: true,
-		BucketID: bucketID, ResourceID: todolistID,
+		ResourceID: todolistID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -176,7 +176,7 @@ func (s *TodolistGroupsService) Create(ctx context.Context, bucketID, todolistID
 		Name: req.Name,
 	}
 
-	resp, err := s.client.parent.gen.CreateTodolistGroupWithResponse(ctx, s.client.accountID, bucketID, todolistID, body)
+	resp, err := s.client.parent.gen.CreateTodolistGroupWithResponse(ctx, s.client.accountID, todolistID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -195,11 +195,11 @@ func (s *TodolistGroupsService) Create(ctx context.Context, bucketID, todolistID
 // Update updates an existing todolist group.
 // bucketID is the project ID, groupID is the group ID.
 // Returns the updated group.
-func (s *TodolistGroupsService) Update(ctx context.Context, bucketID, groupID int64, req *UpdateTodolistGroupRequest) (result *TodolistGroup, err error) {
+func (s *TodolistGroupsService) Update(ctx context.Context, groupID int64, req *UpdateTodolistGroupRequest) (result *TodolistGroup, err error) {
 	op := OperationInfo{
 		Service: "TodolistGroups", Operation: "Update",
 		ResourceType: "todolist_group", IsMutation: true,
-		BucketID: bucketID, ResourceID: groupID,
+		ResourceID: groupID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -215,7 +215,7 @@ func (s *TodolistGroupsService) Update(ctx context.Context, bucketID, groupID in
 		Name: req.Name,
 	}
 
-	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, bucketID, groupID, body)
+	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, groupID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -241,11 +241,11 @@ func (s *TodolistGroupsService) Update(ctx context.Context, bucketID, groupID in
 // Reposition changes the position of a group within its todolist.
 // bucketID is the project ID, groupID is the group ID.
 // position is 1-based (1 = first position).
-func (s *TodolistGroupsService) Reposition(ctx context.Context, bucketID, groupID int64, position int) (err error) {
+func (s *TodolistGroupsService) Reposition(ctx context.Context, groupID int64, position int) (err error) {
 	op := OperationInfo{
 		Service: "TodolistGroups", Operation: "Reposition",
 		ResourceType: "todolist_group", IsMutation: true,
-		BucketID: bucketID, ResourceID: groupID,
+		ResourceID: groupID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -265,7 +265,7 @@ func (s *TodolistGroupsService) Reposition(ctx context.Context, bucketID, groupI
 		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
 	}
 
-	resp, err := s.client.parent.gen.RepositionTodolistGroupWithResponse(ctx, s.client.accountID, bucketID, groupID, body)
+	resp, err := s.client.parent.gen.RepositionTodolistGroupWithResponse(ctx, s.client.accountID, groupID, body)
 	if err != nil {
 		return err
 	}
@@ -275,11 +275,11 @@ func (s *TodolistGroupsService) Reposition(ctx context.Context, bucketID, groupI
 // Trash moves a todolist group to the trash.
 // bucketID is the project ID, groupID is the group ID.
 // Trashed groups can be recovered from the trash.
-func (s *TodolistGroupsService) Trash(ctx context.Context, bucketID, groupID int64) (err error) {
+func (s *TodolistGroupsService) Trash(ctx context.Context, groupID int64) (err error) {
 	op := OperationInfo{
 		Service: "TodolistGroups", Operation: "Trash",
 		ResourceType: "todolist_group", IsMutation: true,
-		BucketID: bucketID, ResourceID: groupID,
+		ResourceID: groupID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -290,7 +290,7 @@ func (s *TodolistGroupsService) Trash(ctx context.Context, bucketID, groupID int
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, groupID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, groupID)
 	if err != nil {
 		return err
 	}

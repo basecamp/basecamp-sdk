@@ -74,11 +74,11 @@ func NewEventsService(client *AccountClient) *EventsService {
 //
 // The returned EventListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, opts *EventListOptions) (result *EventListResult, err error) {
+func (s *EventsService) List(ctx context.Context, recordingID int64, opts *EventListOptions) (result *EventListResult, err error) {
 	op := OperationInfo{
 		Service: "Events", Operation: "List",
 		ResourceType: "event", IsMutation: false,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -90,7 +90,7 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, o
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListEventsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ListEventsWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return nil, err
 	}

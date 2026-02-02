@@ -117,11 +117,10 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 
 // ProjectReport returns the timesheet report for a specific project.
 // projectID is the project (bucket) ID.
-func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, opts *TimesheetReportOptions) (result []TimesheetEntry, err error) {
+func (s *TimesheetService) ProjectReport(ctx context.Context, opts *TimesheetReportOptions) (result []TimesheetEntry, err error) {
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "ProjectReport",
 		ResourceType: "timesheet_entry", IsMutation: false,
-		BucketID: projectID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -141,7 +140,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 		}
 	}
 
-	resp, err := s.client.parent.gen.GetProjectTimesheetWithResponse(ctx, s.client.accountID, projectID, params)
+	resp, err := s.client.parent.gen.GetProjectTimesheetWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -162,11 +161,11 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 
 // RecordingReport returns the timesheet report for a specific recording within a project.
 // projectID is the project (bucket) ID, recordingID is the recording ID (e.g., a todo).
-func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recordingID int64, opts *TimesheetReportOptions) (result []TimesheetEntry, err error) {
+func (s *TimesheetService) RecordingReport(ctx context.Context, recordingID int64, opts *TimesheetReportOptions) (result []TimesheetEntry, err error) {
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "RecordingReport",
 		ResourceType: "timesheet_entry", IsMutation: false,
-		BucketID: projectID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -186,7 +185,7 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, projectID, recor
 		}
 	}
 
-	resp, err := s.client.parent.gen.GetRecordingTimesheetWithResponse(ctx, s.client.accountID, projectID, recordingID, params)
+	resp, err := s.client.parent.gen.GetRecordingTimesheetWithResponse(ctx, s.client.accountID, recordingID, params)
 	if err != nil {
 		return nil, err
 	}

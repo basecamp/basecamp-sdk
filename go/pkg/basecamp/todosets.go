@@ -48,11 +48,11 @@ func NewTodosetsService(client *AccountClient) *TodosetsService {
 
 // Get returns a todoset by ID.
 // bucketID is the project ID, todosetID is the todoset ID.
-func (s *TodosetsService) Get(ctx context.Context, bucketID, todosetID int64) (result *Todoset, err error) {
+func (s *TodosetsService) Get(ctx context.Context, todosetID int64) (result *Todoset, err error) {
 	op := OperationInfo{
 		Service: "Todosets", Operation: "Get",
 		ResourceType: "todoset", IsMutation: false,
-		BucketID: bucketID, ResourceID: todosetID,
+		ResourceID: todosetID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -63,7 +63,7 @@ func (s *TodosetsService) Get(ctx context.Context, bucketID, todosetID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetTodosetWithResponse(ctx, s.client.accountID, bucketID, todosetID)
+	resp, err := s.client.parent.gen.GetTodosetWithResponse(ctx, s.client.accountID, todosetID)
 	if err != nil {
 		return nil, err
 	}

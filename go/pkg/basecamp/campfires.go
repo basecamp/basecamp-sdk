@@ -165,11 +165,11 @@ func (s *CampfiresService) List(ctx context.Context) (result *CampfireListResult
 
 // Get returns a campfire by ID.
 // bucketID is the project ID, campfireID is the campfire ID.
-func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) (result *Campfire, err error) {
+func (s *CampfiresService) Get(ctx context.Context, campfireID int64) (result *Campfire, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "Get",
 		ResourceType: "campfire", IsMutation: false,
-		BucketID: bucketID, ResourceID: campfireID,
+		ResourceID: campfireID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -180,7 +180,7 @@ func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetCampfireWithResponse(ctx, s.client.accountID, bucketID, campfireID)
+	resp, err := s.client.parent.gen.GetCampfireWithResponse(ctx, s.client.accountID, campfireID)
 	if err != nil {
 		return nil, err
 	}
@@ -201,11 +201,11 @@ func (s *CampfiresService) Get(ctx context.Context, bucketID, campfireID int64) 
 //
 // The returned CampfireLineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID int64) (result *CampfireLineListResult, err error) {
+func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64) (result *CampfireLineListResult, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "ListLines",
 		ResourceType: "campfire_line", IsMutation: false,
-		BucketID: bucketID, ResourceID: campfireID,
+		ResourceID: campfireID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -216,7 +216,7 @@ func (s *CampfiresService) ListLines(ctx context.Context, bucketID, campfireID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListCampfireLinesWithResponse(ctx, s.client.accountID, bucketID, campfireID)
+	resp, err := s.client.parent.gen.ListCampfireLinesWithResponse(ctx, s.client.accountID, campfireID)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +244,7 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 	op := OperationInfo{
 		Service: "Campfires", Operation: "GetLine",
 		ResourceType: "campfire_line", IsMutation: false,
-		BucketID: bucketID, ResourceID: lineID,
+		ResourceID: lineID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -255,7 +255,7 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, lineID)
+	resp, err := s.client.parent.gen.GetCampfireLineWithResponse(ctx, s.client.accountID, campfireID, lineID)
 	if err != nil {
 		return nil, err
 	}
@@ -275,11 +275,11 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 // bucketID is the project ID, campfireID is the campfire ID.
 // opts is optional; pass a CreateLineOptions to set content_type (text/html or text/plain).
 // Returns the created line.
-func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID int64, content string, opts ...*CreateLineOptions) (result *CampfireLine, err error) {
+func (s *CampfiresService) CreateLine(ctx context.Context, campfireID int64, content string, opts ...*CreateLineOptions) (result *CampfireLine, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "CreateLine",
 		ResourceType: "campfire_line", IsMutation: true,
-		BucketID: bucketID, ResourceID: campfireID,
+		ResourceID: campfireID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -313,7 +313,7 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 		}
 	}
 
-	resp, err := s.client.parent.gen.CreateCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, body)
+	resp, err := s.client.parent.gen.CreateCampfireLineWithResponse(ctx, s.client.accountID, campfireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +335,7 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID,
 	op := OperationInfo{
 		Service: "Campfires", Operation: "DeleteLine",
 		ResourceType: "campfire_line", IsMutation: true,
-		BucketID: bucketID, ResourceID: lineID,
+		ResourceID: lineID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -346,7 +346,7 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID,
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DeleteCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, lineID)
+	resp, err := s.client.parent.gen.DeleteCampfireLineWithResponse(ctx, s.client.accountID, campfireID, lineID)
 	if err != nil {
 		return err
 	}
@@ -356,11 +356,11 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID,
 // ListChatbots returns all chatbots for a campfire.
 // bucketID is the project ID, campfireID is the campfire ID.
 // Note: Chatbots are account-wide but with basecamp-specific callback URLs.
-func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireID int64) (result []Chatbot, err error) {
+func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64) (result []Chatbot, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "ListChatbots",
 		ResourceType: "chatbot", IsMutation: false,
-		BucketID: bucketID, ResourceID: campfireID,
+		ResourceID: campfireID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -371,7 +371,7 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireI
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListChatbotsWithResponse(ctx, s.client.accountID, bucketID, campfireID)
+	resp, err := s.client.parent.gen.ListChatbotsWithResponse(ctx, s.client.accountID, campfireID)
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +395,7 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID,
 	op := OperationInfo{
 		Service: "Campfires", Operation: "GetChatbot",
 		ResourceType: "chatbot", IsMutation: false,
-		BucketID: bucketID, ResourceID: chatbotID,
+		ResourceID: chatbotID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -406,7 +406,7 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID,
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID)
+	resp, err := s.client.parent.gen.GetChatbotWithResponse(ctx, s.client.accountID, campfireID, chatbotID)
 	if err != nil {
 		return nil, err
 	}
@@ -426,11 +426,11 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID,
 // bucketID is the project ID, campfireID is the campfire ID.
 // Note: Chatbots are account-wide and can only be managed by administrators.
 // Returns the created chatbot with its lines_url for posting.
-func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfireID int64, req *CreateChatbotRequest) (result *Chatbot, err error) {
+func (s *CampfiresService) CreateChatbot(ctx context.Context, campfireID int64, req *CreateChatbotRequest) (result *Chatbot, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "CreateChatbot",
 		ResourceType: "chatbot", IsMutation: true,
-		BucketID: bucketID, ResourceID: campfireID,
+		ResourceID: campfireID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -453,7 +453,7 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfire
 		body.CommandUrl = req.CommandURL
 	}
 
-	resp, err := s.client.parent.gen.CreateChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, body)
+	resp, err := s.client.parent.gen.CreateChatbotWithResponse(ctx, s.client.accountID, campfireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -477,7 +477,7 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfire
 	op := OperationInfo{
 		Service: "Campfires", Operation: "UpdateChatbot",
 		ResourceType: "chatbot", IsMutation: true,
-		BucketID: bucketID, ResourceID: chatbotID,
+		ResourceID: chatbotID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -500,7 +500,7 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfire
 		body.CommandUrl = req.CommandURL
 	}
 
-	resp, err := s.client.parent.gen.UpdateChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID, body)
+	resp, err := s.client.parent.gen.UpdateChatbotWithResponse(ctx, s.client.accountID, campfireID, chatbotID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +523,7 @@ func (s *CampfiresService) DeleteChatbot(ctx context.Context, bucketID, campfire
 	op := OperationInfo{
 		Service: "Campfires", Operation: "DeleteChatbot",
 		ResourceType: "chatbot", IsMutation: true,
-		BucketID: bucketID, ResourceID: chatbotID,
+		ResourceID: chatbotID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -534,7 +534,7 @@ func (s *CampfiresService) DeleteChatbot(ctx context.Context, bucketID, campfire
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DeleteChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID)
+	resp, err := s.client.parent.gen.DeleteChatbotWithResponse(ctx, s.client.accountID, campfireID, chatbotID)
 	if err != nil {
 		return err
 	}

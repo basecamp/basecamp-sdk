@@ -77,11 +77,10 @@ func NewClientApprovalsService(client *AccountClient) *ClientApprovalsService {
 //
 // The returned ClientApprovalListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (result *ClientApprovalListResult, err error) {
+func (s *ClientApprovalsService) List(ctx context.Context) (result *ClientApprovalListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientApprovals", Operation: "List",
 		ResourceType: "client_approval", IsMutation: false,
-		BucketID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -92,7 +91,7 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (resu
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID, bucketID)
+	resp, err := s.client.parent.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -117,11 +116,11 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (resu
 
 // Get returns a client approval by ID.
 // bucketID is the project ID, approvalID is the client approval ID.
-func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID int64) (result *ClientApproval, err error) {
+func (s *ClientApprovalsService) Get(ctx context.Context, approvalID int64) (result *ClientApproval, err error) {
 	op := OperationInfo{
 		Service: "ClientApprovals", Operation: "Get",
 		ResourceType: "client_approval", IsMutation: false,
-		BucketID: bucketID, ResourceID: approvalID,
+		ResourceID: approvalID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -132,7 +131,7 @@ func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetClientApprovalWithResponse(ctx, s.client.accountID, bucketID, approvalID)
+	resp, err := s.client.parent.gen.GetClientApprovalWithResponse(ctx, s.client.accountID, approvalID)
 	if err != nil {
 		return nil, err
 	}

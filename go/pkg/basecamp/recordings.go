@@ -218,11 +218,11 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 
 // Get returns a recording by ID.
 // bucketID is the project ID, recordingID is the recording ID.
-func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64) (result *Recording, err error) {
+func (s *RecordingsService) Get(ctx context.Context, recordingID int64) (result *Recording, err error) {
 	op := OperationInfo{
 		Service: "Recordings", Operation: "Get",
 		ResourceType: "recording", IsMutation: false,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -233,7 +233,7 @@ func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.GetRecordingWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -252,11 +252,11 @@ func (s *RecordingsService) Get(ctx context.Context, bucketID, recordingID int64
 // Trash moves a recording to the trash.
 // bucketID is the project ID, recordingID is the recording ID.
 // Trashed recordings can be recovered from the trash.
-func (s *RecordingsService) Trash(ctx context.Context, bucketID, recordingID int64) (err error) {
+func (s *RecordingsService) Trash(ctx context.Context, recordingID int64) (err error) {
 	op := OperationInfo{
 		Service: "Recordings", Operation: "Trash",
 		ResourceType: "recording", IsMutation: true,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -267,7 +267,7 @@ func (s *RecordingsService) Trash(ctx context.Context, bucketID, recordingID int
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -277,11 +277,11 @@ func (s *RecordingsService) Trash(ctx context.Context, bucketID, recordingID int
 // Archive archives a recording.
 // bucketID is the project ID, recordingID is the recording ID.
 // Archived recordings are hidden but not deleted.
-func (s *RecordingsService) Archive(ctx context.Context, bucketID, recordingID int64) (err error) {
+func (s *RecordingsService) Archive(ctx context.Context, recordingID int64) (err error) {
 	op := OperationInfo{
 		Service: "Recordings", Operation: "Archive",
 		ResourceType: "recording", IsMutation: true,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -292,7 +292,7 @@ func (s *RecordingsService) Archive(ctx context.Context, bucketID, recordingID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ArchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ArchiveRecordingWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -301,11 +301,11 @@ func (s *RecordingsService) Archive(ctx context.Context, bucketID, recordingID i
 
 // Unarchive restores an archived recording to active status.
 // bucketID is the project ID, recordingID is the recording ID.
-func (s *RecordingsService) Unarchive(ctx context.Context, bucketID, recordingID int64) (err error) {
+func (s *RecordingsService) Unarchive(ctx context.Context, recordingID int64) (err error) {
 	op := OperationInfo{
 		Service: "Recordings", Operation: "Unarchive",
 		ResourceType: "recording", IsMutation: true,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -316,7 +316,7 @@ func (s *RecordingsService) Unarchive(ctx context.Context, bucketID, recordingID
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.UnarchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.UnarchiveRecordingWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -328,11 +328,11 @@ func (s *RecordingsService) Unarchive(ctx context.Context, bucketID, recordingID
 // visible specifies whether the recording should be visible to clients.
 // Returns the updated recording.
 // Note: Not all recordings support client visibility. Some inherit visibility from their parent.
-func (s *RecordingsService) SetClientVisibility(ctx context.Context, bucketID, recordingID int64, visible bool) (result *Recording, err error) {
+func (s *RecordingsService) SetClientVisibility(ctx context.Context, recordingID int64, visible bool) (result *Recording, err error) {
 	op := OperationInfo{
 		Service: "Recordings", Operation: "SetClientVisibility",
 		ResourceType: "recording", IsMutation: true,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -347,7 +347,7 @@ func (s *RecordingsService) SetClientVisibility(ctx context.Context, bucketID, r
 		VisibleToClients: visible,
 	}
 
-	resp, err := s.client.parent.gen.SetClientVisibilityWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
+	resp, err := s.client.parent.gen.SetClientVisibilityWithResponse(ctx, s.client.accountID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}

@@ -36,11 +36,11 @@ func NewMessageBoardsService(client *AccountClient) *MessageBoardsService {
 
 // Get returns a message board by ID.
 // bucketID is the project ID, boardID is the message board ID.
-func (s *MessageBoardsService) Get(ctx context.Context, bucketID, boardID int64) (result *MessageBoard, err error) {
+func (s *MessageBoardsService) Get(ctx context.Context, boardID int64) (result *MessageBoard, err error) {
 	op := OperationInfo{
 		Service: "MessageBoards", Operation: "Get",
 		ResourceType: "message_board", IsMutation: false,
-		BucketID: bucketID, ResourceID: boardID,
+		ResourceID: boardID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -51,7 +51,7 @@ func (s *MessageBoardsService) Get(ctx context.Context, bucketID, boardID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetMessageBoardWithResponse(ctx, s.client.accountID, bucketID, boardID)
+	resp, err := s.client.parent.gen.GetMessageBoardWithResponse(ctx, s.client.accountID, boardID)
 	if err != nil {
 		return nil, err
 	}

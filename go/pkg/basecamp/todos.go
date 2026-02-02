@@ -169,11 +169,10 @@ func NewTodosService(client *AccountClient) *TodosService {
 //
 // The returned TodoListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opts *TodoListOptions) (result *TodoListResult, err error) {
+func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoListOptions) (result *TodoListResult, err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "List",
 		ResourceType: "todo", IsMutation: false,
-		BucketID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -191,7 +190,7 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListTodosWithResponse(ctx, s.client.accountID, bucketID, todolistID, params)
+	resp, err := s.client.parent.gen.ListTodosWithResponse(ctx, s.client.accountID, todolistID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -250,11 +249,11 @@ func (s *TodosService) List(ctx context.Context, bucketID, todolistID int64, opt
 
 // Get returns a todo by ID.
 // bucketID is the project ID, todoID is the todo ID.
-func (s *TodosService) Get(ctx context.Context, bucketID, todoID int64) (result *Todo, err error) {
+func (s *TodosService) Get(ctx context.Context, todoID int64) (result *Todo, err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Get",
 		ResourceType: "todo", IsMutation: false,
-		BucketID: bucketID, ResourceID: todoID,
+		ResourceID: todoID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -265,7 +264,7 @@ func (s *TodosService) Get(ctx context.Context, bucketID, todoID int64) (result 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
+	resp, err := s.client.parent.gen.GetTodoWithResponse(ctx, s.client.accountID, todoID)
 	if err != nil {
 		return nil, err
 	}
@@ -284,11 +283,10 @@ func (s *TodosService) Get(ctx context.Context, bucketID, todoID int64) (result 
 // Create creates a new todo in a todolist.
 // bucketID is the project ID, todolistID is the todolist ID.
 // Returns the created todo.
-func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, req *CreateTodoRequest) (result *Todo, err error) {
+func (s *TodosService) Create(ctx context.Context, todolistID int64, req *CreateTodoRequest) (result *Todo, err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Create",
 		ResourceType: "todo", IsMutation: true,
-		BucketID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -329,7 +327,7 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 		body.StartsOn = d
 	}
 
-	resp, err := s.client.parent.gen.CreateTodoWithResponse(ctx, s.client.accountID, bucketID, todolistID, body)
+	resp, err := s.client.parent.gen.CreateTodoWithResponse(ctx, s.client.accountID, todolistID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -349,11 +347,11 @@ func (s *TodosService) Create(ctx context.Context, bucketID, todolistID int64, r
 // Update updates an existing todo.
 // bucketID is the project ID, todoID is the todo ID.
 // Returns the updated todo.
-func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *UpdateTodoRequest) (result *Todo, err error) {
+func (s *TodosService) Update(ctx context.Context, todoID int64, req *UpdateTodoRequest) (result *Todo, err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Update",
 		ResourceType: "todo", IsMutation: true,
-		BucketID: bucketID, ResourceID: todoID,
+		ResourceID: todoID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -389,7 +387,7 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 		body.StartsOn = d
 	}
 
-	resp, err := s.client.parent.gen.UpdateTodoWithResponse(ctx, s.client.accountID, bucketID, todoID, body)
+	resp, err := s.client.parent.gen.UpdateTodoWithResponse(ctx, s.client.accountID, todoID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -408,11 +406,11 @@ func (s *TodosService) Update(ctx context.Context, bucketID, todoID int64, req *
 // Trash moves a todo to the trash.
 // bucketID is the project ID, todoID is the todo ID.
 // Trashed todos can be recovered from the trash.
-func (s *TodosService) Trash(ctx context.Context, bucketID, todoID int64) (err error) {
+func (s *TodosService) Trash(ctx context.Context, todoID int64) (err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Trash",
 		ResourceType: "todo", IsMutation: true,
-		BucketID: bucketID, ResourceID: todoID,
+		ResourceID: todoID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -423,7 +421,7 @@ func (s *TodosService) Trash(ctx context.Context, bucketID, todoID int64) (err e
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.TrashTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
+	resp, err := s.client.parent.gen.TrashTodoWithResponse(ctx, s.client.accountID, todoID)
 	if err != nil {
 		return err
 	}
@@ -432,11 +430,11 @@ func (s *TodosService) Trash(ctx context.Context, bucketID, todoID int64) (err e
 
 // Complete marks a todo as completed.
 // bucketID is the project ID, todoID is the todo ID.
-func (s *TodosService) Complete(ctx context.Context, bucketID, todoID int64) (err error) {
+func (s *TodosService) Complete(ctx context.Context, todoID int64) (err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Complete",
 		ResourceType: "todo", IsMutation: true,
-		BucketID: bucketID, ResourceID: todoID,
+		ResourceID: todoID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -447,7 +445,7 @@ func (s *TodosService) Complete(ctx context.Context, bucketID, todoID int64) (er
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.CompleteTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
+	resp, err := s.client.parent.gen.CompleteTodoWithResponse(ctx, s.client.accountID, todoID)
 	if err != nil {
 		return err
 	}
@@ -456,11 +454,11 @@ func (s *TodosService) Complete(ctx context.Context, bucketID, todoID int64) (er
 
 // Uncomplete marks a completed todo as incomplete (reopens it).
 // bucketID is the project ID, todoID is the todo ID.
-func (s *TodosService) Uncomplete(ctx context.Context, bucketID, todoID int64) (err error) {
+func (s *TodosService) Uncomplete(ctx context.Context, todoID int64) (err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Uncomplete",
 		ResourceType: "todo", IsMutation: true,
-		BucketID: bucketID, ResourceID: todoID,
+		ResourceID: todoID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -471,7 +469,7 @@ func (s *TodosService) Uncomplete(ctx context.Context, bucketID, todoID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.UncompleteTodoWithResponse(ctx, s.client.accountID, bucketID, todoID)
+	resp, err := s.client.parent.gen.UncompleteTodoWithResponse(ctx, s.client.accountID, todoID)
 	if err != nil {
 		return err
 	}
@@ -481,11 +479,11 @@ func (s *TodosService) Uncomplete(ctx context.Context, bucketID, todoID int64) (
 // Reposition changes the position of a todo within its todolist.
 // bucketID is the project ID, todoID is the todo ID.
 // position is 1-based (1 = first position).
-func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, position int) (err error) {
+func (s *TodosService) Reposition(ctx context.Context, todoID int64, position int) (err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Reposition",
 		ResourceType: "todo", IsMutation: true,
-		BucketID: bucketID, ResourceID: todoID,
+		ResourceID: todoID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -504,7 +502,7 @@ func (s *TodosService) Reposition(ctx context.Context, bucketID, todoID int64, p
 	body := generated.RepositionTodoJSONRequestBody{
 		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
 	}
-	resp, err := s.client.parent.gen.RepositionTodoWithResponse(ctx, s.client.accountID, bucketID, todoID, body)
+	resp, err := s.client.parent.gen.RepositionTodoWithResponse(ctx, s.client.accountID, todoID, body)
 	if err != nil {
 		return err
 	}

@@ -102,11 +102,11 @@ func NewTodolistsService(client *AccountClient) *TodolistsService {
 //
 // The returned TodolistListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, opts *TodolistListOptions) (result *TodolistListResult, err error) {
+func (s *TodolistsService) List(ctx context.Context, todosetID int64, opts *TodolistListOptions) (result *TodolistListResult, err error) {
 	op := OperationInfo{
 		Service: "Todolists", Operation: "List",
 		ResourceType: "todolist", IsMutation: false,
-		BucketID: bucketID, ResourceID: todosetID,
+		ResourceID: todosetID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -124,7 +124,7 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListTodolistsWithResponse(ctx, s.client.accountID, bucketID, todosetID, params)
+	resp, err := s.client.parent.gen.ListTodolistsWithResponse(ctx, s.client.accountID, todosetID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -179,11 +179,11 @@ func (s *TodolistsService) List(ctx context.Context, bucketID, todosetID int64, 
 
 // Get returns a todolist by ID.
 // bucketID is the project ID, todolistID is the todolist ID.
-func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) (result *Todolist, err error) {
+func (s *TodolistsService) Get(ctx context.Context, todolistID int64) (result *Todolist, err error) {
 	op := OperationInfo{
 		Service: "Todolists", Operation: "Get",
 		ResourceType: "todolist", IsMutation: false,
-		BucketID: bucketID, ResourceID: todolistID,
+		ResourceID: todolistID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -194,7 +194,7 @@ func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetTodolistOrGroupWithResponse(ctx, s.client.accountID, bucketID, todolistID)
+	resp, err := s.client.parent.gen.GetTodolistOrGroupWithResponse(ctx, s.client.accountID, todolistID)
 	if err != nil {
 		return nil, err
 	}
@@ -220,11 +220,11 @@ func (s *TodolistsService) Get(ctx context.Context, bucketID, todolistID int64) 
 // Create creates a new todolist in a todoset.
 // bucketID is the project ID, todosetID is the todoset ID.
 // Returns the created todolist.
-func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64, req *CreateTodolistRequest) (result *Todolist, err error) {
+func (s *TodolistsService) Create(ctx context.Context, todosetID int64, req *CreateTodolistRequest) (result *Todolist, err error) {
 	op := OperationInfo{
 		Service: "Todolists", Operation: "Create",
 		ResourceType: "todolist", IsMutation: true,
-		BucketID: bucketID, ResourceID: todosetID,
+		ResourceID: todosetID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -245,7 +245,7 @@ func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64
 		Description: req.Description,
 	}
 
-	resp, err := s.client.parent.gen.CreateTodolistWithResponse(ctx, s.client.accountID, bucketID, todosetID, body)
+	resp, err := s.client.parent.gen.CreateTodolistWithResponse(ctx, s.client.accountID, todosetID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -264,11 +264,11 @@ func (s *TodolistsService) Create(ctx context.Context, bucketID, todosetID int64
 // Update updates an existing todolist.
 // bucketID is the project ID, todolistID is the todolist ID.
 // Returns the updated todolist.
-func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int64, req *UpdateTodolistRequest) (result *Todolist, err error) {
+func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *UpdateTodolistRequest) (result *Todolist, err error) {
 	op := OperationInfo{
 		Service: "Todolists", Operation: "Update",
 		ResourceType: "todolist", IsMutation: true,
-		BucketID: bucketID, ResourceID: todolistID,
+		ResourceID: todolistID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -284,7 +284,7 @@ func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int6
 		Description: req.Description,
 	}
 
-	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, bucketID, todolistID, body)
+	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, todolistID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -310,11 +310,11 @@ func (s *TodolistsService) Update(ctx context.Context, bucketID, todolistID int6
 // Trash moves a todolist to the trash.
 // bucketID is the project ID, todolistID is the todolist ID.
 // Trashed todolists can be recovered from the trash.
-func (s *TodolistsService) Trash(ctx context.Context, bucketID, todolistID int64) (err error) {
+func (s *TodolistsService) Trash(ctx context.Context, todolistID int64) (err error) {
 	op := OperationInfo{
 		Service: "Todolists", Operation: "Trash",
 		ResourceType: "todolist", IsMutation: true,
-		BucketID: bucketID, ResourceID: todolistID,
+		ResourceID: todolistID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -325,7 +325,7 @@ func (s *TodolistsService) Trash(ctx context.Context, bucketID, todolistID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, todolistID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, todolistID)
 	if err != nil {
 		return err
 	}

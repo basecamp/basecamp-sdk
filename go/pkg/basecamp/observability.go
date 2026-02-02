@@ -70,8 +70,6 @@ type OperationInfo struct {
 	ResourceType string
 	// IsMutation indicates if this operation modifies state.
 	IsMutation bool
-	// BucketID is the project/bucket ID if applicable.
-	BucketID int64
 	// ResourceID is the specific resource ID if applicable.
 	ResourceID int64
 }

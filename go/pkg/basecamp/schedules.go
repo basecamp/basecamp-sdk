@@ -135,11 +135,11 @@ func NewSchedulesService(client *AccountClient) *SchedulesService {
 
 // Get returns a schedule by ID.
 // bucketID is the project ID, scheduleID is the schedule ID.
-func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) (result *Schedule, err error) {
+func (s *SchedulesService) Get(ctx context.Context, scheduleID int64) (result *Schedule, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "Get",
 		ResourceType: "schedule", IsMutation: false,
-		BucketID: bucketID, ResourceID: scheduleID,
+		ResourceID: scheduleID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -150,7 +150,7 @@ func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetScheduleWithResponse(ctx, s.client.accountID, bucketID, scheduleID)
+	resp, err := s.client.parent.gen.GetScheduleWithResponse(ctx, s.client.accountID, scheduleID)
 	if err != nil {
 		return nil, err
 	}
@@ -177,11 +177,11 @@ func (s *SchedulesService) Get(ctx context.Context, bucketID, scheduleID int64) 
 //
 // The returned ScheduleEntryListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID int64, opts *ScheduleEntryListOptions) (result *ScheduleEntryListResult, err error) {
+func (s *SchedulesService) ListEntries(ctx context.Context, scheduleID int64, opts *ScheduleEntryListOptions) (result *ScheduleEntryListResult, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "ListEntries",
 		ResourceType: "schedule_entry", IsMutation: false,
-		BucketID: bucketID, ResourceID: scheduleID,
+		ResourceID: scheduleID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -201,7 +201,7 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListScheduleEntriesWithResponse(ctx, s.client.accountID, bucketID, scheduleID, params)
+	resp, err := s.client.parent.gen.ListScheduleEntriesWithResponse(ctx, s.client.accountID, scheduleID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -256,11 +256,11 @@ func (s *SchedulesService) ListEntries(ctx context.Context, bucketID, scheduleID
 
 // GetEntry returns a schedule entry by ID.
 // bucketID is the project ID, entryID is the schedule entry ID.
-func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64) (result *ScheduleEntry, err error) {
+func (s *SchedulesService) GetEntry(ctx context.Context, entryID int64) (result *ScheduleEntry, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "GetEntry",
 		ResourceType: "schedule_entry", IsMutation: false,
-		BucketID: bucketID, ResourceID: entryID,
+		ResourceID: entryID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -271,7 +271,7 @@ func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, entryID)
+	resp, err := s.client.parent.gen.GetScheduleEntryWithResponse(ctx, s.client.accountID, entryID)
 	if err != nil {
 		return nil, err
 	}
@@ -290,11 +290,11 @@ func (s *SchedulesService) GetEntry(ctx context.Context, bucketID, entryID int64
 // CreateEntry creates a new entry on a schedule.
 // bucketID is the project ID, scheduleID is the schedule ID.
 // Returns the created schedule entry.
-func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID int64, req *CreateScheduleEntryRequest) (result *ScheduleEntry, err error) {
+func (s *SchedulesService) CreateEntry(ctx context.Context, scheduleID int64, req *CreateScheduleEntryRequest) (result *ScheduleEntry, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "CreateEntry",
 		ResourceType: "schedule_entry", IsMutation: true,
-		BucketID: bucketID, ResourceID: scheduleID,
+		ResourceID: scheduleID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -339,7 +339,7 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 		Notify:         &req.Notify,
 	}
 
-	resp, err := s.client.parent.gen.CreateScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, scheduleID, body)
+	resp, err := s.client.parent.gen.CreateScheduleEntryWithResponse(ctx, s.client.accountID, scheduleID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -358,11 +358,11 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, bucketID, scheduleID
 // UpdateEntry updates an existing schedule entry.
 // bucketID is the project ID, entryID is the schedule entry ID.
 // Returns the updated schedule entry.
-func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID int64, req *UpdateScheduleEntryRequest) (result *ScheduleEntry, err error) {
+func (s *SchedulesService) UpdateEntry(ctx context.Context, entryID int64, req *UpdateScheduleEntryRequest) (result *ScheduleEntry, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "UpdateEntry",
 		ResourceType: "schedule_entry", IsMutation: true,
-		BucketID: bucketID, ResourceID: entryID,
+		ResourceID: entryID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -402,7 +402,7 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 		body.EndsAt = endsAt
 	}
 
-	resp, err := s.client.parent.gen.UpdateScheduleEntryWithResponse(ctx, s.client.accountID, bucketID, entryID, body)
+	resp, err := s.client.parent.gen.UpdateScheduleEntryWithResponse(ctx, s.client.accountID, entryID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -420,11 +420,11 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, bucketID, entryID in
 
 // GetEntryOccurrence returns a specific occurrence of a recurring schedule entry.
 // bucketID is the project ID, entryID is the schedule entry ID, date is the occurrence date (YYYY-MM-DD format).
-func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, entryID int64, date string) (result *ScheduleEntry, err error) {
+func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, entryID int64, date string) (result *ScheduleEntry, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "GetEntryOccurrence",
 		ResourceType: "schedule_entry", IsMutation: false,
-		BucketID: bucketID, ResourceID: entryID,
+		ResourceID: entryID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -440,7 +440,7 @@ func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, ent
 		return nil, err
 	}
 
-	resp, err := s.client.parent.gen.GetScheduleEntryOccurrenceWithResponse(ctx, s.client.accountID, bucketID, entryID, date)
+	resp, err := s.client.parent.gen.GetScheduleEntryOccurrenceWithResponse(ctx, s.client.accountID, entryID, date)
 	if err != nil {
 		return nil, err
 	}
@@ -459,11 +459,11 @@ func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, bucketID, ent
 // UpdateSettings updates the settings for a schedule.
 // bucketID is the project ID, scheduleID is the schedule ID.
 // Returns the updated schedule.
-func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, scheduleID int64, req *UpdateScheduleSettingsRequest) (result *Schedule, err error) {
+func (s *SchedulesService) UpdateSettings(ctx context.Context, scheduleID int64, req *UpdateScheduleSettingsRequest) (result *Schedule, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "UpdateSettings",
 		ResourceType: "schedule", IsMutation: true,
-		BucketID: bucketID, ResourceID: scheduleID,
+		ResourceID: scheduleID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -483,7 +483,7 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, schedul
 		IncludeDueAssignments: req.IncludeDueAssignments,
 	}
 
-	resp, err := s.client.parent.gen.UpdateScheduleSettingsWithResponse(ctx, s.client.accountID, bucketID, scheduleID, body)
+	resp, err := s.client.parent.gen.UpdateScheduleSettingsWithResponse(ctx, s.client.accountID, scheduleID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -502,11 +502,11 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, bucketID, schedul
 // TrashEntry moves a schedule entry to the trash.
 // bucketID is the project ID, entryID is the schedule entry ID.
 // Trashed entries can be recovered from the trash.
-func (s *SchedulesService) TrashEntry(ctx context.Context, bucketID, entryID int64) (err error) {
+func (s *SchedulesService) TrashEntry(ctx context.Context, entryID int64) (err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "TrashEntry",
 		ResourceType: "schedule_entry", IsMutation: true,
-		BucketID: bucketID, ResourceID: entryID,
+		ResourceID: entryID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -517,7 +517,7 @@ func (s *SchedulesService) TrashEntry(ctx context.Context, bucketID, entryID int
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, entryID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, entryID)
 	if err != nil {
 		return err
 	}

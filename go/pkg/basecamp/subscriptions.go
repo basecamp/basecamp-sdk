@@ -36,11 +36,11 @@ func NewSubscriptionsService(client *AccountClient) *SubscriptionsService {
 
 // Get returns the subscription information for a recording.
 // bucketID is the project ID, recordingID is the ID of the recording.
-func (s *SubscriptionsService) Get(ctx context.Context, bucketID, recordingID int64) (result *Subscription, err error) {
+func (s *SubscriptionsService) Get(ctx context.Context, recordingID int64) (result *Subscription, err error) {
 	op := OperationInfo{
 		Service: "Subscriptions", Operation: "Get",
 		ResourceType: "subscription", IsMutation: false,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -51,7 +51,7 @@ func (s *SubscriptionsService) Get(ctx context.Context, bucketID, recordingID in
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetSubscriptionWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.GetSubscriptionWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -70,11 +70,11 @@ func (s *SubscriptionsService) Get(ctx context.Context, bucketID, recordingID in
 // Subscribe subscribes the current user to the recording.
 // bucketID is the project ID, recordingID is the ID of the recording.
 // Returns the updated subscription information.
-func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordingID int64) (result *Subscription, err error) {
+func (s *SubscriptionsService) Subscribe(ctx context.Context, recordingID int64) (result *Subscription, err error) {
 	op := OperationInfo{
 		Service: "Subscriptions", Operation: "Subscribe",
 		ResourceType: "subscription", IsMutation: true,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -85,7 +85,7 @@ func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordin
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.SubscribeWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.SubscribeWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -104,11 +104,11 @@ func (s *SubscriptionsService) Subscribe(ctx context.Context, bucketID, recordin
 // Unsubscribe unsubscribes the current user from the recording.
 // bucketID is the project ID, recordingID is the ID of the recording.
 // Returns nil on success (204 No Content).
-func (s *SubscriptionsService) Unsubscribe(ctx context.Context, bucketID, recordingID int64) (err error) {
+func (s *SubscriptionsService) Unsubscribe(ctx context.Context, recordingID int64) (err error) {
 	op := OperationInfo{
 		Service: "Subscriptions", Operation: "Unsubscribe",
 		ResourceType: "subscription", IsMutation: true,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -119,7 +119,7 @@ func (s *SubscriptionsService) Unsubscribe(ctx context.Context, bucketID, record
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.UnsubscribeWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.UnsubscribeWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return err
 	}
@@ -129,11 +129,11 @@ func (s *SubscriptionsService) Unsubscribe(ctx context.Context, bucketID, record
 // Update batch modifies subscriptions by adding or removing specific users.
 // bucketID is the project ID, recordingID is the ID of the recording.
 // Returns the updated subscription information.
-func (s *SubscriptionsService) Update(ctx context.Context, bucketID, recordingID int64, req *UpdateSubscriptionRequest) (result *Subscription, err error) {
+func (s *SubscriptionsService) Update(ctx context.Context, recordingID int64, req *UpdateSubscriptionRequest) (result *Subscription, err error) {
 	op := OperationInfo{
 		Service: "Subscriptions", Operation: "Update",
 		ResourceType: "subscription", IsMutation: true,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -154,7 +154,7 @@ func (s *SubscriptionsService) Update(ctx context.Context, bucketID, recordingID
 		Unsubscriptions: req.Unsubscriptions,
 	}
 
-	resp, err := s.client.parent.gen.UpdateSubscriptionWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
+	resp, err := s.client.parent.gen.UpdateSubscriptionWithResponse(ctx, s.client.accountID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}

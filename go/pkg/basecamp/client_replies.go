@@ -50,11 +50,11 @@ func NewClientRepliesService(client *AccountClient) *ClientRepliesService {
 //
 // The returned ClientReplyListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID int64) (result *ClientReplyListResult, err error) {
+func (s *ClientRepliesService) List(ctx context.Context, recordingID int64) (result *ClientReplyListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientReplies", Operation: "List",
 		ResourceType: "client_reply", IsMutation: false,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -65,7 +65,7 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListClientRepliesWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ListClientRepliesWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, r
 	op := OperationInfo{
 		Service: "ClientReplies", Operation: "Get",
 		ResourceType: "client_reply", IsMutation: false,
-		BucketID: bucketID, ResourceID: replyID,
+		ResourceID: replyID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -106,7 +106,7 @@ func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetClientReplyWithResponse(ctx, s.client.accountID, bucketID, recordingID, replyID)
+	resp, err := s.client.parent.gen.GetClientReplyWithResponse(ctx, s.client.accountID, recordingID, replyID)
 	if err != nil {
 		return nil, err
 	}
