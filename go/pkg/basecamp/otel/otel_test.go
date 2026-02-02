@@ -55,7 +55,6 @@ func TestOnOperationStartEnd(t *testing.T) {
 		Operation:    "Complete",
 		ResourceType: "todo",
 		IsMutation:   true,
-		BucketID:     123,
 		ResourceID:   456,
 	}
 
@@ -93,9 +92,6 @@ func TestOnOperationStartEnd(t *testing.T) {
 	}
 	if attrs["basecamp.is_mutation"] != true {
 		t.Errorf("expected basecamp.is_mutation=true, got %v", attrs["basecamp.is_mutation"])
-	}
-	if attrs["basecamp.bucket_id"] != int64(123) {
-		t.Errorf("expected basecamp.bucket_id=123, got %v", attrs["basecamp.bucket_id"])
 	}
 	if attrs["basecamp.resource_id"] != int64(456) {
 		t.Errorf("expected basecamp.resource_id=456, got %v", attrs["basecamp.resource_id"])

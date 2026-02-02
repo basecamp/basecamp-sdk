@@ -148,7 +148,7 @@ func TestCreateMarkerRequest_Marshal(t *testing.T) {
 func TestUpdateMarkerRequest_Marshal(t *testing.T) {
 	req := UpdateMarkerRequest{
 		Name: "Updated Sprint",
-		Date: "2024-04-01",
+		Date: "2024-04-21",
 	}
 
 	out, err := json.Marshal(req)
@@ -164,7 +164,7 @@ func TestUpdateMarkerRequest_Marshal(t *testing.T) {
 	if data["name"] != "Updated Sprint" {
 		t.Errorf("unexpected name: %v", data["name"])
 	}
-	if data["date"] != "2024-04-01" {
+	if data["date"] != "2024-04-21" {
 		t.Errorf("unexpected date: %v", data["date"])
 	}
 
@@ -176,6 +176,9 @@ func TestUpdateMarkerRequest_Marshal(t *testing.T) {
 
 	if roundtrip.Name != req.Name {
 		t.Errorf("expected name %q, got %q", req.Name, roundtrip.Name)
+	}
+	if roundtrip.Date != req.Date {
+		t.Errorf("expected date %q, got %q", req.Date, roundtrip.Date)
 	}
 }
 

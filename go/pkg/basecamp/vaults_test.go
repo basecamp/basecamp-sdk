@@ -556,7 +556,7 @@ func TestUploadsService_Download_MissingDownloadURL(t *testing.T) {
 	client := NewClient(cfg, token)
 
 	ac := client.ForAccount("12345")
-	_, err := ac.Uploads().Download(context.Background(), 999, 1069479400)
+	_, err := ac.Uploads().Download(context.Background(), 1069479400)
 
 	if err == nil {
 		t.Fatal("expected error for missing download URL")
@@ -592,7 +592,7 @@ func TestUploadsService_Download_S3Error(t *testing.T) {
 		WithTransport(apiServer.Client().Transport))
 
 	ac := client.ForAccount("12345")
-	_, err := ac.Uploads().Download(context.Background(), 999, 1069479400)
+	_, err := ac.Uploads().Download(context.Background(), 1069479400)
 
 	if err == nil {
 		t.Fatal("expected error for S3 403 response")
@@ -633,7 +633,7 @@ func TestUploadsService_Download_Success(t *testing.T) {
 		WithTransport(apiServer.Client().Transport))
 
 	ac := client.ForAccount("12345")
-	result, err := ac.Uploads().Download(context.Background(), 999, 1069479400)
+	result, err := ac.Uploads().Download(context.Background(), 1069479400)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

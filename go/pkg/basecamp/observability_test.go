@@ -143,7 +143,6 @@ func TestChainHooks_OperationLevel(t *testing.T) {
 		Operation:    "Complete",
 		ResourceType: "todo",
 		IsMutation:   true,
-		BucketID:     123,
 		ResourceID:   456,
 	}
 
