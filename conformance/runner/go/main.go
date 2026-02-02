@@ -211,7 +211,6 @@ func runTest(tc TestCase) TestResult {
 		sdkResp, sdkErr = client.TrashProject(ctx, testAccountID, projectId)
 
 	case "CreateTodo":
-		projectId := getInt64Param(tc.PathParams, "projectId")
 		todolistId := getInt64Param(tc.PathParams, "todolistId")
 		body := generated.CreateTodoJSONRequestBody{
 			Content: getStringParam(tc.RequestBody, "content"),
@@ -221,12 +220,11 @@ func runTest(tc TestCase) TestResult {
 				body.DueOn = d
 			}
 		}
-		sdkResp, sdkErr = client.CreateTodo(ctx, testAccountID, projectId, todolistId, body)
+		sdkResp, sdkErr = client.CreateTodo(ctx, testAccountID, todolistId, body)
 
 	case "ListTodos":
-		projectId := getInt64Param(tc.PathParams, "projectId")
 		todolistId := getInt64Param(tc.PathParams, "todolistId")
-		sdkResp, sdkErr = client.ListTodos(ctx, testAccountID, projectId, todolistId, nil)
+		sdkResp, sdkErr = client.ListTodos(ctx, testAccountID, todolistId, nil)
 
 	case "GetTimesheetEntry":
 		projectId := getInt64Param(tc.PathParams, "projectId")
