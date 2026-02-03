@@ -25,7 +25,7 @@
     },
     "path": {
       "type": "string",
-      "description": "URL path pattern (e.g., /projects.json, /buckets/{projectId}/todos/{todoId})"
+      "description": "URL path pattern (e.g., /projects.json, /todos/{todoId})"
     },
     "pathParams": {
       "type": "object",

@@ -27,8 +27,8 @@
     "description": "Verifies that X-Total-Count header is parsed and accessible",
     "operation": "ListTodos",
     "method": "GET",
-    "path": "/buckets/{projectId}/todolists/{todolistId}/todos.json",
-    "pathParams": {"projectId": 12345, "todolistId": 67890},
+    "path": "/todolists/{todolistId}/todos.json",
+    "pathParams": {"todolistId": 67890},
     "mockResponses": [
       {
         "status": 200,

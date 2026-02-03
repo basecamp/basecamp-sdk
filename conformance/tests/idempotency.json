@@ -39,8 +39,8 @@
     "description": "Verifies that POST operations do NOT retry since they are not idempotent",
     "operation": "CreateTodo",
     "method": "POST",
-    "path": "/buckets/{projectId}/todolists/{todolistId}/todos.json",
-    "pathParams": {"projectId": 12345, "todolistId": 67890},
+    "path": "/todolists/{todolistId}/todos.json",
+    "pathParams": {"todolistId": 67890},
     "requestBody": {"content": "New todo", "due_on": "2024-01-01"},
     "mockResponses": [
       {"status": 503}
