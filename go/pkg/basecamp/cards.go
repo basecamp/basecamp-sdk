@@ -227,7 +227,6 @@ func NewCardTablesService(client *AccountClient) *CardTablesService {
 }
 
 // Get returns a card table by ID.
-// bucketID is the project ID, cardTableID is the card table ID.
 func (s *CardTablesService) Get(ctx context.Context, cardTableID int64) (result *CardTable, err error) {
 	op := OperationInfo{
 		Service: "CardTables", Operation: "Get",
@@ -270,7 +269,6 @@ func NewCardsService(client *AccountClient) *CardsService {
 }
 
 // List returns all cards in a column.
-// bucketID is the project ID, columnID is the column ID.
 //
 // By default, returns all cards (no limit). Use Limit to cap results.
 //
@@ -350,7 +348,6 @@ func (s *CardsService) List(ctx context.Context, columnID int64, opts *CardListO
 }
 
 // Get returns a card by ID.
-// bucketID is the project ID, cardID is the card ID.
 func (s *CardsService) Get(ctx context.Context, cardID int64) (result *Card, err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "Get",
@@ -383,7 +380,6 @@ func (s *CardsService) Get(ctx context.Context, cardID int64) (result *Card, err
 }
 
 // Create creates a new card in a column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns the created card.
 func (s *CardsService) Create(ctx context.Context, columnID int64, req *CreateCardRequest) (result *Card, err error) {
 	op := OperationInfo{
@@ -441,7 +437,6 @@ func (s *CardsService) Create(ctx context.Context, columnID int64, req *CreateCa
 }
 
 // Update updates an existing card.
-// bucketID is the project ID, cardID is the card ID.
 // Returns the updated card.
 func (s *CardsService) Update(ctx context.Context, cardID int64, req *UpdateCardRequest) (result *Card, err error) {
 	op := OperationInfo{
@@ -499,8 +494,7 @@ func (s *CardsService) Update(ctx context.Context, cardID int64, req *UpdateCard
 }
 
 // Move moves a card to a different column.
-// bucketID is the project ID, cardID is the card ID, columnID is the destination column ID.
-func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int64) (err error) {
+func (s *CardsService) Move(ctx context.Context, cardID, columnID int64) (err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "Move",
 		ResourceType: "card", IsMutation: true,
@@ -527,7 +521,6 @@ func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int6
 }
 
 // Trash moves a card to the trash.
-// bucketID is the project ID, cardID is the card ID.
 // Trashed cards can be recovered from the trash.
 func (s *CardsService) Trash(ctx context.Context, cardID int64) (err error) {
 	op := OperationInfo{
@@ -562,7 +555,6 @@ func NewCardColumnsService(client *AccountClient) *CardColumnsService {
 }
 
 // Get returns a column by ID.
-// bucketID is the project ID, columnID is the column ID.
 func (s *CardColumnsService) Get(ctx context.Context, columnID int64) (result *CardColumn, err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "Get",
@@ -595,7 +587,6 @@ func (s *CardColumnsService) Get(ctx context.Context, columnID int64) (result *C
 }
 
 // Create creates a new column in a card table.
-// bucketID is the project ID, cardTableID is the card table ID.
 // Returns the created column.
 func (s *CardColumnsService) Create(ctx context.Context, cardTableID int64, req *CreateColumnRequest) (result *CardColumn, err error) {
 	op := OperationInfo{
@@ -640,7 +631,6 @@ func (s *CardColumnsService) Create(ctx context.Context, cardTableID int64, req 
 }
 
 // Update updates an existing column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns the updated column.
 func (s *CardColumnsService) Update(ctx context.Context, columnID int64, req *UpdateColumnRequest) (result *CardColumn, err error) {
 	op := OperationInfo{
@@ -684,7 +674,6 @@ func (s *CardColumnsService) Update(ctx context.Context, columnID int64, req *Up
 }
 
 // Move moves a column within a card table.
-// bucketID is the project ID, cardTableID is the card table ID.
 func (s *CardColumnsService) Move(ctx context.Context, cardTableID int64, req *MoveColumnRequest) (err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "Move",
@@ -719,7 +708,6 @@ func (s *CardColumnsService) Move(ctx context.Context, cardTableID int64, req *M
 }
 
 // SetColor sets the color of a column.
-// bucketID is the project ID, columnID is the column ID.
 // Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown.
 // Returns the updated column.
 func (s *CardColumnsService) SetColor(ctx context.Context, columnID int64, color string) (result *CardColumn, err error) {
@@ -763,7 +751,6 @@ func (s *CardColumnsService) SetColor(ctx context.Context, columnID int64, color
 }
 
 // EnableOnHold adds an on-hold section to a column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns the updated column.
 func (s *CardColumnsService) EnableOnHold(ctx context.Context, columnID int64) (result *CardColumn, err error) {
 	op := OperationInfo{
@@ -797,7 +784,6 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, columnID int64) (
 }
 
 // DisableOnHold removes the on-hold section from a column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns the updated column.
 func (s *CardColumnsService) DisableOnHold(ctx context.Context, columnID int64) (result *CardColumn, err error) {
 	op := OperationInfo{
@@ -831,7 +817,6 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, columnID int64) 
 }
 
 // Watch subscribes the current user to the column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns the updated subscription information.
 func (s *CardColumnsService) Watch(ctx context.Context, columnID int64) (result *Subscription, err error) {
 	op := OperationInfo{
@@ -865,7 +850,6 @@ func (s *CardColumnsService) Watch(ctx context.Context, columnID int64) (result 
 }
 
 // Unwatch unsubscribes the current user from the column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns nil on success (204 No Content).
 func (s *CardColumnsService) Unwatch(ctx context.Context, columnID int64) (err error) {
 	op := OperationInfo{
@@ -900,7 +884,6 @@ func NewCardStepsService(client *AccountClient) *CardStepsService {
 }
 
 // Create creates a new step on a card.
-// bucketID is the project ID, cardID is the card ID.
 // Returns the created step.
 func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *CreateStepRequest) (result *CardStep, err error) {
 	op := OperationInfo{
@@ -953,7 +936,6 @@ func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *Create
 }
 
 // Update updates an existing step.
-// bucketID is the project ID, stepID is the step ID.
 // Returns the updated step.
 func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *UpdateStepRequest) (result *CardStep, err error) {
 	op := OperationInfo{
@@ -1005,7 +987,6 @@ func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *Update
 }
 
 // Complete marks a step as completed.
-// bucketID is the project ID, stepID is the step ID.
 // Returns the updated step.
 func (s *CardStepsService) Complete(ctx context.Context, stepID int64) (result *CardStep, err error) {
 	op := OperationInfo{
@@ -1040,7 +1021,6 @@ func (s *CardStepsService) Complete(ctx context.Context, stepID int64) (result *
 }
 
 // Uncomplete marks a step as incomplete.
-// stepID is the step ID.
 // Returns the updated step.
 func (s *CardStepsService) Uncomplete(ctx context.Context, stepID int64) (result *CardStep, err error) {
 	op := OperationInfo{
@@ -1075,9 +1055,8 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, stepID int64) (result
 }
 
 // Reposition changes the position of a step within a card.
-// bucketID is the project ID, cardID is the card ID, stepID is the step ID.
 // position is 0-indexed.
-func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, stepID int64, position int) (err error) {
+func (s *CardStepsService) Reposition(ctx context.Context, cardID, stepID int64, position int) (err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Reposition",
 		ResourceType: "card_step", IsMutation: true,
@@ -1110,7 +1089,6 @@ func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, ste
 }
 
 // Delete deletes a step (moves it to trash).
-// bucketID is the project ID, stepID is the step ID.
 func (s *CardStepsService) Delete(ctx context.Context, stepID int64) (err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Delete",

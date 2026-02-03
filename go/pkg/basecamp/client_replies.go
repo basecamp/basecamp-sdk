@@ -46,7 +46,6 @@ func NewClientRepliesService(client *AccountClient) *ClientRepliesService {
 }
 
 // List returns all replies for a client recording (correspondence or approval).
-// bucketID is the project ID, recordingID is the parent correspondence/approval ID.
 //
 // The returned ClientReplyListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -89,9 +88,7 @@ func (s *ClientRepliesService) List(ctx context.Context, recordingID int64) (res
 }
 
 // Get returns a specific client reply.
-// bucketID is the project ID, recordingID is the parent correspondence/approval ID,
-// replyID is the client reply ID.
-func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, replyID int64) (result *ClientReply, err error) {
+func (s *ClientRepliesService) Get(ctx context.Context, recordingID, replyID int64) (result *ClientReply, err error) {
 	op := OperationInfo{
 		Service: "ClientReplies", Operation: "Get",
 		ResourceType: "client_reply", IsMutation: false,

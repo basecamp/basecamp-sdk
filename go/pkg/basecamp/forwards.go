@@ -112,7 +112,6 @@ func NewForwardsService(client *AccountClient) *ForwardsService {
 }
 
 // GetInbox returns an inbox by ID.
-// bucketID is the project ID, inboxID is the inbox ID.
 func (s *ForwardsService) GetInbox(ctx context.Context, inboxID int64) (result *Inbox, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "GetInbox",
@@ -145,7 +144,6 @@ func (s *ForwardsService) GetInbox(ctx context.Context, inboxID int64) (result *
 }
 
 // List returns all forwards in an inbox.
-// bucketID is the project ID, inboxID is the inbox ID.
 //
 // By default, returns all forwards (no limit). Use Limit to cap results.
 //
@@ -225,7 +223,6 @@ func (s *ForwardsService) List(ctx context.Context, inboxID int64, opts *Forward
 }
 
 // Get returns a forward by ID.
-// bucketID is the project ID, forwardID is the forward ID.
 func (s *ForwardsService) Get(ctx context.Context, forwardID int64) (result *Forward, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "Get",
@@ -258,7 +255,6 @@ func (s *ForwardsService) Get(ctx context.Context, forwardID int64) (result *For
 }
 
 // ListReplies returns all replies to a forward.
-// bucketID is the project ID, forwardID is the forward ID.
 //
 // By default, returns all replies (no limit). Use Limit to cap results.
 //
@@ -338,8 +334,7 @@ func (s *ForwardsService) ListReplies(ctx context.Context, forwardID int64, opts
 }
 
 // GetReply returns a forward reply by ID.
-// bucketID is the project ID, forwardID is the forward ID, replyID is the reply ID.
-func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, replyID int64) (result *ForwardReply, err error) {
+func (s *ForwardsService) GetReply(ctx context.Context, forwardID, replyID int64) (result *ForwardReply, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "GetReply",
 		ResourceType: "forward_reply", IsMutation: false,
@@ -371,7 +366,6 @@ func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, rep
 }
 
 // CreateReply creates a new reply to a forwarded email.
-// bucketID is the project ID, forwardID is the forward ID.
 // Returns the created reply.
 func (s *ForwardsService) CreateReply(ctx context.Context, forwardID int64, req *CreateForwardReplyRequest) (result *ForwardReply, err error) {
 	op := OperationInfo{

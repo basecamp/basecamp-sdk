@@ -164,7 +164,6 @@ func (s *CampfiresService) List(ctx context.Context) (result *CampfireListResult
 }
 
 // Get returns a campfire by ID.
-// bucketID is the project ID, campfireID is the campfire ID.
 func (s *CampfiresService) Get(ctx context.Context, campfireID int64) (result *Campfire, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "Get",
@@ -197,7 +196,6 @@ func (s *CampfiresService) Get(ctx context.Context, campfireID int64) (result *C
 }
 
 // ListLines returns all lines (messages) in a campfire.
-// bucketID is the project ID, campfireID is the campfire ID.
 //
 // The returned CampfireLineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -239,8 +237,7 @@ func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64) (res
 }
 
 // GetLine returns a single line (message) from a campfire.
-// bucketID is the project ID, campfireID is the campfire ID, lineID is the line ID.
-func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, lineID int64) (result *CampfireLine, err error) {
+func (s *CampfiresService) GetLine(ctx context.Context, campfireID, lineID int64) (result *CampfireLine, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "GetLine",
 		ResourceType: "campfire_line", IsMutation: false,
@@ -272,7 +269,6 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 }
 
 // CreateLine creates a new line (message) in a campfire.
-// bucketID is the project ID, campfireID is the campfire ID.
 // opts is optional; pass a CreateLineOptions to set content_type (text/html or text/plain).
 // Returns the created line.
 func (s *CampfiresService) CreateLine(ctx context.Context, campfireID int64, content string, opts ...*CreateLineOptions) (result *CampfireLine, err error) {
@@ -330,8 +326,7 @@ func (s *CampfiresService) CreateLine(ctx context.Context, campfireID int64, con
 }
 
 // DeleteLine deletes a line (message) from a campfire.
-// bucketID is the project ID, campfireID is the campfire ID, lineID is the line ID.
-func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID, lineID int64) (err error) {
+func (s *CampfiresService) DeleteLine(ctx context.Context, campfireID, lineID int64) (err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "DeleteLine",
 		ResourceType: "campfire_line", IsMutation: true,
@@ -354,7 +349,6 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, bucketID, campfireID,
 }
 
 // ListChatbots returns all chatbots for a campfire.
-// bucketID is the project ID, campfireID is the campfire ID.
 // Note: Chatbots are account-wide but with basecamp-specific callback URLs.
 func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64) (result []Chatbot, err error) {
 	op := OperationInfo{
@@ -390,8 +384,7 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64) (
 }
 
 // GetChatbot returns a chatbot by ID.
-// bucketID is the project ID, campfireID is the campfire ID, chatbotID is the chatbot ID.
-func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64) (result *Chatbot, err error) {
+func (s *CampfiresService) GetChatbot(ctx context.Context, campfireID, chatbotID int64) (result *Chatbot, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "GetChatbot",
 		ResourceType: "chatbot", IsMutation: false,
@@ -423,7 +416,6 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID,
 }
 
 // CreateChatbot creates a new chatbot for a campfire.
-// bucketID is the project ID, campfireID is the campfire ID.
 // Note: Chatbots are account-wide and can only be managed by administrators.
 // Returns the created chatbot with its lines_url for posting.
 func (s *CampfiresService) CreateChatbot(ctx context.Context, campfireID int64, req *CreateChatbotRequest) (result *Chatbot, err error) {
@@ -470,10 +462,9 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, campfireID int64, 
 }
 
 // UpdateChatbot updates an existing chatbot.
-// bucketID is the project ID, campfireID is the campfire ID, chatbotID is the chatbot ID.
 // Note: Updates to chatbots are account-wide.
 // Returns the updated chatbot.
-func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64, req *UpdateChatbotRequest) (result *Chatbot, err error) {
+func (s *CampfiresService) UpdateChatbot(ctx context.Context, campfireID, chatbotID int64, req *UpdateChatbotRequest) (result *Chatbot, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "UpdateChatbot",
 		ResourceType: "chatbot", IsMutation: true,
@@ -517,9 +508,8 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfire
 }
 
 // DeleteChatbot deletes a chatbot.
-// bucketID is the project ID, campfireID is the campfire ID, chatbotID is the chatbot ID.
 // Note: Deleting a chatbot removes it from the entire account.
-func (s *CampfiresService) DeleteChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64) (err error) {
+func (s *CampfiresService) DeleteChatbot(ctx context.Context, campfireID, chatbotID int64) (err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "DeleteChatbot",
 		ResourceType: "chatbot", IsMutation: true,
