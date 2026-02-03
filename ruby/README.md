@@ -188,7 +188,7 @@ account.projects.list.each do |project|
 end
 
 # Take only what you need
-first_10 = account.todos.list(project_id: 123, todolist_id: 456).take(10)
+first_10 = account.todos.list(todolist_id: 456).take(10)
 
 # Convert to array (fetches all pages)
 all_projects = account.projects.list.to_a

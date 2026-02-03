@@ -628,7 +628,7 @@ const MAX_JITTER_MS = 100;
 
 /**
  * Normalizes a URL path by replacing numeric IDs with placeholder tokens.
- * For example: /buckets/123/todos/456 → /buckets/{projectId}/todos/{todoId}
+ * For example: /12345/todos/456 → /{accountId}/todos/{todoId}
  */
 function normalizeUrlPath(url: string): string {
   // Parse the URL and extract the pathname

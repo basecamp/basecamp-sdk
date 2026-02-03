@@ -296,7 +296,7 @@ The SDK provides structured errors with codes, hints, and exit codes for CLI app
 import { BasecampError, isBasecampError, isErrorCode } from "@basecamp/sdk";
 
 try {
-  await client.todos.get(projectId, todoId);
+  await client.todos.get(todoId);
 } catch (err) {
   if (isBasecampError(err)) {
     console.error(`Error [${err.code}]: ${err.message}`);
@@ -480,10 +480,10 @@ const client = createBasecampClient({
 
 ```ts
 // List todos in a todolist
-const todos = await client.todos.list(projectId, todolistId);
+const todos = await client.todos.list(todolistId);
 
 // Create a todo with assignees
-const todo = await client.todos.create(projectId, todolistId, {
+const todo = await client.todos.create(todolistId, {
   content: "Review pull request",
   description: "<p>Check the new auth flow</p>",
   dueOn: "2026-02-01",
@@ -491,29 +491,29 @@ const todo = await client.todos.create(projectId, todolistId, {
 });
 
 // Complete a todo
-await client.todos.complete(projectId, todo.id);
+await client.todos.complete(todo.id);
 
 // Reposition a todo to the top
-await client.todos.reposition(projectId, todo.id, { position: 1 });
+await client.todos.reposition(todo.id, { position: 1 });
 ```
 
 ### Working with Messages
 
 ```ts
-// Get the message board for a project
-const board = await client.messageBoards.get(projectId);
+// Get a message board
+const board = await client.messageBoards.get(boardId);
 
 // List messages
-const messages = await client.messages.list(projectId, board.id);
+const messages = await client.messages.list(board.id);
 
 // Create a message
-const msg = await client.messages.create(projectId, board.id, {
+const msg = await client.messages.create(board.id, {
   subject: "Weekly Update",
   content: "<p>Here's what we accomplished...</p>",
 });
 
 // Pin a message
-await client.messages.pin(projectId, msg.id);
+await client.messages.pin(msg.id);
 ```
 
 ### Working with Campfire
@@ -523,28 +523,28 @@ await client.messages.pin(projectId, msg.id);
 const campfires = await client.campfires.list();
 
 // Send a message
-await client.campfires.createLine(projectId, campfireId, {
+await client.campfires.createLine(campfireId, {
   content: "Hello, team!",
 });
 
 // List recent messages
-const lines = await client.campfires.listLines(projectId, campfireId);
+const lines = await client.campfires.listLines(campfireId);
 ```
 
 ### Working with Webhooks
 
 ```ts
 // Create a webhook
-const webhook = await client.webhooks.create(projectId, {
+const webhook = await client.webhooks.create({
   payloadUrl: "https://example.com/webhook",
   types: ["Todo", "Comment"],
 });
 
 // List webhooks
-const webhooks = await client.webhooks.list(projectId);
+const webhooks = await client.webhooks.list();
 
 // Delete a webhook
-await client.webhooks.delete(projectId, webhook.id);
+await client.webhooks.delete(webhook.id);
 ```
 
 ## TypeScript Types
@@ -567,7 +567,7 @@ function processTodo(todo: Todo): void {
 }
 
 function createTodo(data: CreateTodoRequest): Promise<Todo> {
-  return client.todos.create(projectId, todolistId, data);
+  return client.todos.create(todolistId, data);
 }
 ```
 
