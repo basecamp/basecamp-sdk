@@ -159,7 +159,6 @@ func NewTodosService(client *AccountClient) *TodosService {
 }
 
 // List returns todos in a todolist.
-// bucketID is the project ID, todolistID is the todolist ID.
 //
 // By default, returns up to 100 todos. Use Limit: -1 for unlimited.
 //
@@ -248,7 +247,6 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 }
 
 // Get returns a todo by ID.
-// bucketID is the project ID, todoID is the todo ID.
 func (s *TodosService) Get(ctx context.Context, todoID int64) (result *Todo, err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Get",
@@ -281,7 +279,6 @@ func (s *TodosService) Get(ctx context.Context, todoID int64) (result *Todo, err
 }
 
 // Create creates a new todo in a todolist.
-// bucketID is the project ID, todolistID is the todolist ID.
 // Returns the created todo.
 func (s *TodosService) Create(ctx context.Context, todolistID int64, req *CreateTodoRequest) (result *Todo, err error) {
 	op := OperationInfo{
@@ -345,7 +342,6 @@ func (s *TodosService) Create(ctx context.Context, todolistID int64, req *Create
 }
 
 // Update updates an existing todo.
-// bucketID is the project ID, todoID is the todo ID.
 // Returns the updated todo.
 func (s *TodosService) Update(ctx context.Context, todoID int64, req *UpdateTodoRequest) (result *Todo, err error) {
 	op := OperationInfo{
@@ -404,7 +400,6 @@ func (s *TodosService) Update(ctx context.Context, todoID int64, req *UpdateTodo
 }
 
 // Trash moves a todo to the trash.
-// bucketID is the project ID, todoID is the todo ID.
 // Trashed todos can be recovered from the trash.
 func (s *TodosService) Trash(ctx context.Context, todoID int64) (err error) {
 	op := OperationInfo{
@@ -429,7 +424,6 @@ func (s *TodosService) Trash(ctx context.Context, todoID int64) (err error) {
 }
 
 // Complete marks a todo as completed.
-// bucketID is the project ID, todoID is the todo ID.
 func (s *TodosService) Complete(ctx context.Context, todoID int64) (err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Complete",
@@ -453,7 +447,6 @@ func (s *TodosService) Complete(ctx context.Context, todoID int64) (err error) {
 }
 
 // Uncomplete marks a completed todo as incomplete (reopens it).
-// bucketID is the project ID, todoID is the todo ID.
 func (s *TodosService) Uncomplete(ctx context.Context, todoID int64) (err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Uncomplete",
@@ -477,7 +470,6 @@ func (s *TodosService) Uncomplete(ctx context.Context, todoID int64) (err error)
 }
 
 // Reposition changes the position of a todo within its todolist.
-// bucketID is the project ID, todoID is the todo ID.
 // position is 1-based (1 = first position).
 func (s *TodosService) Reposition(ctx context.Context, todoID int64, position int) (err error) {
 	op := OperationInfo{

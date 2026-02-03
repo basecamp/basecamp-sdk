@@ -134,7 +134,6 @@ func NewSchedulesService(client *AccountClient) *SchedulesService {
 }
 
 // Get returns a schedule by ID.
-// bucketID is the project ID, scheduleID is the schedule ID.
 func (s *SchedulesService) Get(ctx context.Context, scheduleID int64) (result *Schedule, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "Get",
@@ -167,7 +166,6 @@ func (s *SchedulesService) Get(ctx context.Context, scheduleID int64) (result *S
 }
 
 // ListEntries returns all entries on a schedule.
-// bucketID is the project ID, scheduleID is the schedule ID.
 //
 // By default, returns all entries (no limit). Use Limit to cap results.
 //
@@ -255,7 +253,6 @@ func (s *SchedulesService) ListEntries(ctx context.Context, scheduleID int64, op
 }
 
 // GetEntry returns a schedule entry by ID.
-// bucketID is the project ID, entryID is the schedule entry ID.
 func (s *SchedulesService) GetEntry(ctx context.Context, entryID int64) (result *ScheduleEntry, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "GetEntry",
@@ -288,7 +285,6 @@ func (s *SchedulesService) GetEntry(ctx context.Context, entryID int64) (result 
 }
 
 // CreateEntry creates a new entry on a schedule.
-// bucketID is the project ID, scheduleID is the schedule ID.
 // Returns the created schedule entry.
 func (s *SchedulesService) CreateEntry(ctx context.Context, scheduleID int64, req *CreateScheduleEntryRequest) (result *ScheduleEntry, err error) {
 	op := OperationInfo{
@@ -356,7 +352,6 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, scheduleID int64, re
 }
 
 // UpdateEntry updates an existing schedule entry.
-// bucketID is the project ID, entryID is the schedule entry ID.
 // Returns the updated schedule entry.
 func (s *SchedulesService) UpdateEntry(ctx context.Context, entryID int64, req *UpdateScheduleEntryRequest) (result *ScheduleEntry, err error) {
 	op := OperationInfo{
@@ -419,7 +414,6 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, entryID int64, req *
 }
 
 // GetEntryOccurrence returns a specific occurrence of a recurring schedule entry.
-// bucketID is the project ID, entryID is the schedule entry ID, date is the occurrence date (YYYY-MM-DD format).
 func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, entryID int64, date string) (result *ScheduleEntry, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "GetEntryOccurrence",
@@ -457,7 +451,6 @@ func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, entryID int64
 }
 
 // UpdateSettings updates the settings for a schedule.
-// bucketID is the project ID, scheduleID is the schedule ID.
 // Returns the updated schedule.
 func (s *SchedulesService) UpdateSettings(ctx context.Context, scheduleID int64, req *UpdateScheduleSettingsRequest) (result *Schedule, err error) {
 	op := OperationInfo{
@@ -500,7 +493,6 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, scheduleID int64,
 }
 
 // TrashEntry moves a schedule entry to the trash.
-// bucketID is the project ID, entryID is the schedule entry ID.
 // Trashed entries can be recovered from the trash.
 func (s *SchedulesService) TrashEntry(ctx context.Context, entryID int64) (err error) {
 	op := OperationInfo{

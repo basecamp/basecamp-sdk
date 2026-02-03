@@ -50,7 +50,6 @@ func NewClientCorrespondencesService(client *AccountClient) *ClientCorrespondenc
 }
 
 // List returns all client correspondences in a project.
-// bucketID is the project ID.
 //
 // The returned ClientCorrespondenceListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -92,7 +91,6 @@ func (s *ClientCorrespondencesService) List(ctx context.Context) (result *Client
 }
 
 // Get returns a client correspondence by ID.
-// bucketID is the project ID, correspondenceID is the client correspondence ID.
 func (s *ClientCorrespondencesService) Get(ctx context.Context, correspondenceID int64) (result *ClientCorrespondence, err error) {
 	op := OperationInfo{
 		Service: "ClientCorrespondences", Operation: "Get",

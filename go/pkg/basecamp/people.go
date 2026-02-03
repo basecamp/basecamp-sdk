@@ -209,7 +209,6 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 }
 
 // ListProjectPeople returns all active people on a project.
-// bucketID is the project ID.
 //
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
@@ -321,7 +320,6 @@ func (s *PeopleService) Pingable(ctx context.Context) (result []Person, err erro
 }
 
 // UpdateProjectAccess grants or revokes project access for people.
-// bucketID is the project ID.
 // Returns the list of people who were granted and revoked access.
 func (s *PeopleService) UpdateProjectAccess(ctx context.Context, projectID int64, req *UpdateProjectAccessRequest) (result *UpdateProjectAccessResponse, err error) {
 	op := OperationInfo{

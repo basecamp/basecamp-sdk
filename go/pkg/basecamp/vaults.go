@@ -210,7 +210,6 @@ func NewVaultsService(client *AccountClient) *VaultsService {
 }
 
 // Get returns a vault by ID.
-// bucketID is the project ID, vaultID is the vault ID.
 func (s *VaultsService) Get(ctx context.Context, vaultID int64) (result *Vault, err error) {
 	op := OperationInfo{
 		Service: "Vaults", Operation: "Get",
@@ -243,7 +242,6 @@ func (s *VaultsService) Get(ctx context.Context, vaultID int64) (result *Vault, 
 }
 
 // List returns all subfolders (child vaults) in a vault.
-// bucketID is the project ID, vaultID is the parent vault ID.
 //
 // By default, returns all vaults (no limit). Use Limit to cap results.
 //
@@ -323,7 +321,6 @@ func (s *VaultsService) List(ctx context.Context, vaultID int64, opts *VaultList
 }
 
 // Create creates a new subfolder (child vault) in a vault.
-// bucketID is the project ID, vaultID is the parent vault ID.
 // Returns the created vault.
 func (s *VaultsService) Create(ctx context.Context, vaultID int64, req *CreateVaultRequest) (result *Vault, err error) {
 	op := OperationInfo{
@@ -366,7 +363,6 @@ func (s *VaultsService) Create(ctx context.Context, vaultID int64, req *CreateVa
 }
 
 // Update updates an existing vault.
-// bucketID is the project ID, vaultID is the vault ID.
 // Returns the updated vault.
 func (s *VaultsService) Update(ctx context.Context, vaultID int64, req *UpdateVaultRequest) (result *Vault, err error) {
 	op := OperationInfo{
@@ -419,7 +415,6 @@ func NewDocumentsService(client *AccountClient) *DocumentsService {
 }
 
 // Get returns a document by ID.
-// bucketID is the project ID, documentID is the document ID.
 func (s *DocumentsService) Get(ctx context.Context, documentID int64) (result *Document, err error) {
 	op := OperationInfo{
 		Service: "Documents", Operation: "Get",
@@ -452,7 +447,6 @@ func (s *DocumentsService) Get(ctx context.Context, documentID int64) (result *D
 }
 
 // List returns all documents in a vault.
-// bucketID is the project ID, vaultID is the vault ID.
 //
 // By default, returns all documents (no limit). Use Limit to cap results.
 //
@@ -532,7 +526,6 @@ func (s *DocumentsService) List(ctx context.Context, vaultID int64, opts *Docume
 }
 
 // Create creates a new document in a vault.
-// bucketID is the project ID, vaultID is the vault ID.
 // Returns the created document.
 func (s *DocumentsService) Create(ctx context.Context, vaultID int64, req *CreateDocumentRequest) (result *Document, err error) {
 	op := OperationInfo{
@@ -577,7 +570,6 @@ func (s *DocumentsService) Create(ctx context.Context, vaultID int64, req *Creat
 }
 
 // Update updates an existing document.
-// bucketID is the project ID, documentID is the document ID.
 // Returns the updated document.
 func (s *DocumentsService) Update(ctx context.Context, documentID int64, req *UpdateDocumentRequest) (result *Document, err error) {
 	op := OperationInfo{
@@ -621,7 +613,6 @@ func (s *DocumentsService) Update(ctx context.Context, documentID int64, req *Up
 }
 
 // Trash moves a document to the trash.
-// bucketID is the project ID, documentID is the document ID.
 // Trashed documents can be recovered from the trash.
 func (s *DocumentsService) Trash(ctx context.Context, documentID int64) (err error) {
 	op := OperationInfo{
@@ -656,7 +647,6 @@ func NewUploadsService(client *AccountClient) *UploadsService {
 }
 
 // Get returns an upload by ID.
-// bucketID is the project ID, uploadID is the upload ID.
 func (s *UploadsService) Get(ctx context.Context, uploadID int64) (result *Upload, err error) {
 	op := OperationInfo{
 		Service: "Uploads", Operation: "Get",
@@ -689,7 +679,6 @@ func (s *UploadsService) Get(ctx context.Context, uploadID int64) (result *Uploa
 }
 
 // List returns all uploads in a vault.
-// bucketID is the project ID, vaultID is the vault ID.
 //
 // By default, returns all uploads (no limit). Use Limit to cap results.
 //
@@ -769,7 +758,6 @@ func (s *UploadsService) List(ctx context.Context, vaultID int64, opts *UploadLi
 }
 
 // Update updates an existing upload.
-// bucketID is the project ID, uploadID is the upload ID.
 // Returns the updated upload.
 func (s *UploadsService) Update(ctx context.Context, uploadID int64, req *UpdateUploadRequest) (result *Upload, err error) {
 	op := OperationInfo{
@@ -813,7 +801,6 @@ func (s *UploadsService) Update(ctx context.Context, uploadID int64, req *Update
 }
 
 // Create creates a new upload in a vault.
-// bucketID is the project ID, vaultID is the vault ID.
 // The attachable_sgid must be obtained from the Create Attachment endpoint.
 // Returns the created upload.
 func (s *UploadsService) Create(ctx context.Context, vaultID int64, req *CreateUploadRequest) (result *Upload, err error) {
@@ -859,7 +846,6 @@ func (s *UploadsService) Create(ctx context.Context, vaultID int64, req *CreateU
 }
 
 // Trash moves an upload to the trash.
-// bucketID is the project ID, uploadID is the upload ID.
 // Trashed uploads can be recovered from the trash.
 func (s *UploadsService) Trash(ctx context.Context, uploadID int64) (err error) {
 	op := OperationInfo{
@@ -884,7 +870,6 @@ func (s *UploadsService) Trash(ctx context.Context, uploadID int64) (err error) 
 }
 
 // ListVersions returns all versions of an upload.
-// bucketID is the project ID, uploadID is the upload ID.
 func (s *UploadsService) ListVersions(ctx context.Context, uploadID int64) (result []Upload, err error) {
 	op := OperationInfo{
 		Service: "Uploads", Operation: "ListVersions",
@@ -931,7 +916,6 @@ type DownloadResult struct {
 }
 
 // Download fetches the file content from an upload's download URL.
-// bucketID is the project ID, uploadID is the upload ID.
 // The caller is responsible for closing the returned Body.
 //
 // This method first fetches the upload metadata to get the download URL,

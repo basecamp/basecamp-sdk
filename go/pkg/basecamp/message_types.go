@@ -52,7 +52,6 @@ func NewMessageTypesService(client *AccountClient) *MessageTypesService {
 }
 
 // List returns all message types in a project.
-// bucketID is the project ID.
 //
 // The returned MessageTypeListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -93,7 +92,6 @@ func (s *MessageTypesService) List(ctx context.Context) (result *MessageTypeList
 }
 
 // Get returns a message type by ID.
-// bucketID is the project ID, typeID is the message type ID.
 func (s *MessageTypesService) Get(ctx context.Context, typeID int64) (result *MessageType, err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "Get",
@@ -126,7 +124,6 @@ func (s *MessageTypesService) Get(ctx context.Context, typeID int64) (result *Me
 }
 
 // Create creates a new message type in a project.
-// bucketID is the project ID.
 // Returns the created message type.
 func (s *MessageTypesService) Create(ctx context.Context, req *CreateMessageTypeRequest) (result *MessageType, err error) {
 	op := OperationInfo{
@@ -173,7 +170,6 @@ func (s *MessageTypesService) Create(ctx context.Context, req *CreateMessageType
 }
 
 // Update updates an existing message type.
-// bucketID is the project ID, typeID is the message type ID.
 // Returns the updated message type.
 func (s *MessageTypesService) Update(ctx context.Context, typeID int64, req *UpdateMessageTypeRequest) (result *MessageType, err error) {
 	op := OperationInfo{
@@ -217,7 +213,6 @@ func (s *MessageTypesService) Update(ctx context.Context, typeID int64, req *Upd
 }
 
 // Delete deletes a message type from a project.
-// bucketID is the project ID, typeID is the message type ID.
 func (s *MessageTypesService) Delete(ctx context.Context, typeID int64) (err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "Delete",

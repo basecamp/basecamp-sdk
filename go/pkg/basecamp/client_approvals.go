@@ -73,7 +73,6 @@ func NewClientApprovalsService(client *AccountClient) *ClientApprovalsService {
 }
 
 // List returns all client approvals in a project.
-// bucketID is the project ID.
 //
 // The returned ClientApprovalListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -115,7 +114,6 @@ func (s *ClientApprovalsService) List(ctx context.Context) (result *ClientApprov
 }
 
 // Get returns a client approval by ID.
-// bucketID is the project ID, approvalID is the client approval ID.
 func (s *ClientApprovalsService) Get(ctx context.Context, approvalID int64) (result *ClientApproval, err error) {
 	op := OperationInfo{
 		Service: "ClientApprovals", Operation: "Get",

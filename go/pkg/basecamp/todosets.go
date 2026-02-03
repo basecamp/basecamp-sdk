@@ -47,7 +47,6 @@ func NewTodosetsService(client *AccountClient) *TodosetsService {
 }
 
 // Get returns a todoset by ID.
-// bucketID is the project ID, todosetID is the todoset ID.
 func (s *TodosetsService) Get(ctx context.Context, todosetID int64) (result *Todoset, err error) {
 	op := OperationInfo{
 		Service: "Todosets", Operation: "Get",

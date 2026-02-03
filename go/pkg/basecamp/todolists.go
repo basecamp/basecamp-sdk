@@ -92,7 +92,6 @@ func NewTodolistsService(client *AccountClient) *TodolistsService {
 }
 
 // List returns todolists in a todoset.
-// bucketID is the project ID, todosetID is the todoset ID.
 //
 // By default, returns all todolists (no limit). Use Limit to cap results.
 //
@@ -178,7 +177,6 @@ func (s *TodolistsService) List(ctx context.Context, todosetID int64, opts *Todo
 }
 
 // Get returns a todolist by ID.
-// bucketID is the project ID, todolistID is the todolist ID.
 func (s *TodolistsService) Get(ctx context.Context, todolistID int64) (result *Todolist, err error) {
 	op := OperationInfo{
 		Service: "Todolists", Operation: "Get",
@@ -218,7 +216,6 @@ func (s *TodolistsService) Get(ctx context.Context, todolistID int64) (result *T
 }
 
 // Create creates a new todolist in a todoset.
-// bucketID is the project ID, todosetID is the todoset ID.
 // Returns the created todolist.
 func (s *TodolistsService) Create(ctx context.Context, todosetID int64, req *CreateTodolistRequest) (result *Todolist, err error) {
 	op := OperationInfo{
@@ -262,7 +259,6 @@ func (s *TodolistsService) Create(ctx context.Context, todosetID int64, req *Cre
 }
 
 // Update updates an existing todolist.
-// bucketID is the project ID, todolistID is the todolist ID.
 // Returns the updated todolist.
 func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *UpdateTodolistRequest) (result *Todolist, err error) {
 	op := OperationInfo{
@@ -308,7 +304,6 @@ func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *Up
 }
 
 // Trash moves a todolist to the trash.
-// bucketID is the project ID, todolistID is the todolist ID.
 // Trashed todolists can be recovered from the trash.
 func (s *TodolistsService) Trash(ctx context.Context, todolistID int64) (err error) {
 	op := OperationInfo{

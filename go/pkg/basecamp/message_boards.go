@@ -35,7 +35,6 @@ func NewMessageBoardsService(client *AccountClient) *MessageBoardsService {
 }
 
 // Get returns a message board by ID.
-// bucketID is the project ID, boardID is the message board ID.
 func (s *MessageBoardsService) Get(ctx context.Context, boardID int64) (result *MessageBoard, err error) {
 	op := OperationInfo{
 		Service: "MessageBoards", Operation: "Get",

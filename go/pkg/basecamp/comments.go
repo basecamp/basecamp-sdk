@@ -70,7 +70,6 @@ func NewCommentsService(client *AccountClient) *CommentsService {
 }
 
 // List returns comments on a recording.
-// bucketID is the project ID, recordingID is the ID of the recording (todo, message, etc.).
 //
 // By default, returns up to 100 comments. Use Limit: -1 for unlimited.
 //
@@ -154,7 +153,6 @@ func (s *CommentsService) List(ctx context.Context, recordingID int64, opts *Com
 }
 
 // Get returns a comment by ID.
-// bucketID is the project ID, commentID is the comment ID.
 func (s *CommentsService) Get(ctx context.Context, commentID int64) (result *Comment, err error) {
 	op := OperationInfo{
 		Service: "Comments", Operation: "Get",
@@ -187,7 +185,6 @@ func (s *CommentsService) Get(ctx context.Context, commentID int64) (result *Com
 }
 
 // Create creates a new comment on a recording.
-// bucketID is the project ID, recordingID is the ID of the recording to comment on.
 // Returns the created comment.
 func (s *CommentsService) Create(ctx context.Context, recordingID int64, req *CreateCommentRequest) (result *Comment, err error) {
 	op := OperationInfo{
@@ -230,7 +227,6 @@ func (s *CommentsService) Create(ctx context.Context, recordingID int64, req *Cr
 }
 
 // Update updates an existing comment.
-// bucketID is the project ID, commentID is the comment ID.
 // Returns the updated comment.
 func (s *CommentsService) Update(ctx context.Context, commentID int64, req *UpdateCommentRequest) (result *Comment, err error) {
 	op := OperationInfo{
@@ -273,7 +269,6 @@ func (s *CommentsService) Update(ctx context.Context, commentID int64, req *Upda
 }
 
 // Trash moves a comment to the trash.
-// bucketID is the project ID, commentID is the comment ID.
 // Trashed comments can be recovered from the trash.
 func (s *CommentsService) Trash(ctx context.Context, commentID int64) (err error) {
 	op := OperationInfo{

@@ -85,7 +85,6 @@ func NewMessagesService(client *AccountClient) *MessagesService {
 }
 
 // List returns messages on a message board.
-// bucketID is the project ID, boardID is the message board ID.
 //
 // By default, returns up to 100 messages. Use Limit: -1 for unlimited.
 //
@@ -169,7 +168,6 @@ func (s *MessagesService) List(ctx context.Context, boardID int64, opts *Message
 }
 
 // Get returns a message by ID.
-// bucketID is the project ID, messageID is the message ID.
 func (s *MessagesService) Get(ctx context.Context, messageID int64) (result *Message, err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Get",
@@ -202,7 +200,6 @@ func (s *MessagesService) Get(ctx context.Context, messageID int64) (result *Mes
 }
 
 // Create creates a new message on a message board.
-// bucketID is the project ID, boardID is the message board ID.
 // Returns the created message.
 func (s *MessagesService) Create(ctx context.Context, boardID int64, req *CreateMessageRequest) (result *Message, err error) {
 	op := OperationInfo{
@@ -251,7 +248,6 @@ func (s *MessagesService) Create(ctx context.Context, boardID int64, req *Create
 }
 
 // Update updates an existing message.
-// bucketID is the project ID, messageID is the message ID.
 // Returns the updated message.
 func (s *MessagesService) Update(ctx context.Context, messageID int64, req *UpdateMessageRequest) (result *Message, err error) {
 	op := OperationInfo{
@@ -299,7 +295,6 @@ func (s *MessagesService) Update(ctx context.Context, messageID int64, req *Upda
 }
 
 // Pin pins a message to the top of the message board.
-// bucketID is the project ID, messageID is the message ID.
 func (s *MessagesService) Pin(ctx context.Context, messageID int64) (err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Pin",
@@ -323,7 +318,6 @@ func (s *MessagesService) Pin(ctx context.Context, messageID int64) (err error) 
 }
 
 // Unpin unpins a message from the top of the message board.
-// bucketID is the project ID, messageID is the message ID.
 func (s *MessagesService) Unpin(ctx context.Context, messageID int64) (err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Unpin",
@@ -347,7 +341,6 @@ func (s *MessagesService) Unpin(ctx context.Context, messageID int64) (err error
 }
 
 // Trash moves a message to the trash.
-// bucketID is the project ID, messageID is the message ID.
 // Trashed messages can be recovered from the trash.
 func (s *MessagesService) Trash(ctx context.Context, messageID int64) (err error) {
 	op := OperationInfo{
@@ -372,7 +365,6 @@ func (s *MessagesService) Trash(ctx context.Context, messageID int64) (err error
 }
 
 // Archive moves a message to the archive.
-// bucketID is the project ID, messageID is the message ID.
 // Archived messages can be unarchived.
 func (s *MessagesService) Archive(ctx context.Context, messageID int64) (err error) {
 	op := OperationInfo{
@@ -397,7 +389,6 @@ func (s *MessagesService) Archive(ctx context.Context, messageID int64) (err err
 }
 
 // Unarchive restores an archived message to active status.
-// bucketID is the project ID, messageID is the message ID.
 func (s *MessagesService) Unarchive(ctx context.Context, messageID int64) (err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Unarchive",

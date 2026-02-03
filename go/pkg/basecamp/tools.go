@@ -40,7 +40,6 @@ func NewToolsService(client *AccountClient) *ToolsService {
 }
 
 // Get returns a tool by ID.
-// bucketID is the project ID, toolID is the tool ID.
 func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Get",
@@ -73,7 +72,6 @@ func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err
 }
 
 // Create clones an existing tool to create a new one.
-// bucketID is the project ID, sourceToolID is the ID of the tool to clone.
 // Returns the newly created tool.
 func (s *ToolsService) Create(ctx context.Context, sourceToolID int64) (result *Tool, err error) {
 	op := OperationInfo{
@@ -111,7 +109,6 @@ func (s *ToolsService) Create(ctx context.Context, sourceToolID int64) (result *
 }
 
 // Update updates (renames) an existing tool.
-// bucketID is the project ID, toolID is the tool ID.
 // Returns the updated tool.
 func (s *ToolsService) Update(ctx context.Context, toolID int64, title string) (result *Tool, err error) {
 	op := OperationInfo{
@@ -154,7 +151,6 @@ func (s *ToolsService) Update(ctx context.Context, toolID int64, title string) (
 }
 
 // Delete moves a tool to the trash.
-// bucketID is the project ID, toolID is the tool ID.
 // Trashed tools can be recovered from the trash.
 func (s *ToolsService) Delete(ctx context.Context, toolID int64) (err error) {
 	op := OperationInfo{
@@ -179,7 +175,6 @@ func (s *ToolsService) Delete(ctx context.Context, toolID int64) (err error) {
 }
 
 // Enable enables (shows) a tool on the project dock.
-// bucketID is the project ID, toolID is the tool ID.
 // The tool will be placed at the end of the dock.
 func (s *ToolsService) Enable(ctx context.Context, toolID int64) (err error) {
 	op := OperationInfo{
@@ -204,7 +199,6 @@ func (s *ToolsService) Enable(ctx context.Context, toolID int64) (err error) {
 }
 
 // Disable disables (hides) a tool from the project dock.
-// bucketID is the project ID, toolID is the tool ID.
 // The tool is not deleted, just hidden from the dock.
 func (s *ToolsService) Disable(ctx context.Context, toolID int64) (err error) {
 	op := OperationInfo{
@@ -229,7 +223,6 @@ func (s *ToolsService) Disable(ctx context.Context, toolID int64) (err error) {
 }
 
 // Reposition changes the position of a tool on the project dock.
-// bucketID is the project ID, toolID is the tool ID.
 // position is 1-based (1 = first position on dock).
 func (s *ToolsService) Reposition(ctx context.Context, toolID int64, position int) (err error) {
 	op := OperationInfo{

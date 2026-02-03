@@ -82,7 +82,6 @@ func NewWebhooksService(client *AccountClient) *WebhooksService {
 }
 
 // List returns all webhooks for a project (bucket).
-// bucketID is the project ID.
 //
 // The returned WebhookListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -124,7 +123,6 @@ func (s *WebhooksService) List(ctx context.Context) (result *WebhookListResult, 
 }
 
 // Get returns a webhook by ID.
-// bucketID is the project ID, webhookID is the webhook ID.
 func (s *WebhooksService) Get(ctx context.Context, webhookID int64) (result *Webhook, err error) {
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "Get",
@@ -157,7 +155,6 @@ func (s *WebhooksService) Get(ctx context.Context, webhookID int64) (result *Web
 }
 
 // Create creates a new webhook for a project (bucket).
-// bucketID is the project ID.
 // Returns the created webhook.
 func (s *WebhooksService) Create(ctx context.Context, req *CreateWebhookRequest) (result *Webhook, err error) {
 	op := OperationInfo{
@@ -214,7 +211,6 @@ func (s *WebhooksService) Create(ctx context.Context, req *CreateWebhookRequest)
 }
 
 // Update updates an existing webhook.
-// bucketID is the project ID, webhookID is the webhook ID.
 // Returns the updated webhook.
 func (s *WebhooksService) Update(ctx context.Context, webhookID int64, req *UpdateWebhookRequest) (result *Webhook, err error) {
 	op := OperationInfo{
@@ -261,7 +257,6 @@ func (s *WebhooksService) Update(ctx context.Context, webhookID int64, req *Upda
 }
 
 // Delete removes a webhook.
-// bucketID is the project ID, webhookID is the webhook ID.
 func (s *WebhooksService) Delete(ctx context.Context, webhookID int64) (err error) {
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "Delete",

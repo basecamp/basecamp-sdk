@@ -184,7 +184,6 @@ func NewCheckinsService(client *AccountClient) *CheckinsService {
 }
 
 // GetQuestionnaire returns a questionnaire by ID.
-// bucketID is the project ID, questionnaireID is the questionnaire ID.
 func (s *CheckinsService) GetQuestionnaire(ctx context.Context, questionnaireID int64) (result *Questionnaire, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "GetQuestionnaire",
@@ -217,7 +216,6 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, questionnaireID 
 }
 
 // ListQuestions returns all questions in a questionnaire.
-// bucketID is the project ID, questionnaireID is the questionnaire ID.
 //
 // By default, returns all questions (no limit). Use Limit to cap results.
 //
@@ -297,7 +295,6 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, questionnaireID int
 }
 
 // GetQuestion returns a question by ID.
-// bucketID is the project ID, questionID is the question ID.
 func (s *CheckinsService) GetQuestion(ctx context.Context, questionID int64) (result *Question, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "GetQuestion",
@@ -330,7 +327,6 @@ func (s *CheckinsService) GetQuestion(ctx context.Context, questionID int64) (re
 }
 
 // CreateQuestion creates a new question in a questionnaire.
-// bucketID is the project ID, questionnaireID is the questionnaire ID.
 // Returns the created question.
 func (s *CheckinsService) CreateQuestion(ctx context.Context, questionnaireID int64, req *CreateQuestionRequest) (result *Question, err error) {
 	op := OperationInfo{
@@ -378,7 +374,6 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, questionnaireID in
 }
 
 // UpdateQuestion updates an existing question.
-// bucketID is the project ID, questionID is the question ID.
 // Returns the updated question.
 func (s *CheckinsService) UpdateQuestion(ctx context.Context, questionID int64, req *UpdateQuestionRequest) (result *Question, err error) {
 	op := OperationInfo{
@@ -428,7 +423,6 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, questionID int64, 
 }
 
 // ListAnswers returns all answers for a question.
-// bucketID is the project ID, questionID is the question ID.
 //
 // By default, returns all answers (no limit). Use Limit to cap results.
 //
@@ -508,7 +502,6 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 }
 
 // GetAnswer returns a question answer by ID.
-// bucketID is the project ID, answerID is the answer ID.
 func (s *CheckinsService) GetAnswer(ctx context.Context, answerID int64) (result *QuestionAnswer, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "GetAnswer",
@@ -541,7 +534,6 @@ func (s *CheckinsService) GetAnswer(ctx context.Context, answerID int64) (result
 }
 
 // CreateAnswer creates a new answer for a question.
-// bucketID is the project ID, questionID is the question ID.
 // Returns the created answer.
 func (s *CheckinsService) CreateAnswer(ctx context.Context, questionID int64, req *CreateAnswerRequest) (result *QuestionAnswer, err error) {
 	op := OperationInfo{
@@ -589,7 +581,6 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, questionID int64, re
 }
 
 // UpdateAnswer updates an existing question answer.
-// bucketID is the project ID, answerID is the answer ID.
 // Returns nil on success (204 No Content).
 func (s *CheckinsService) UpdateAnswer(ctx context.Context, answerID int64, req *UpdateAnswerRequest) (err error) {
 	op := OperationInfo{

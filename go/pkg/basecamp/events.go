@@ -64,7 +64,6 @@ func NewEventsService(client *AccountClient) *EventsService {
 }
 
 // List returns all events for a recording.
-// bucketID is the project ID, recordingID is the ID of the recording.
 //
 // By default, returns up to 100 events. Use Limit: -1 for unlimited.
 //

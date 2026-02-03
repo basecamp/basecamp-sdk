@@ -35,7 +35,6 @@ func NewSubscriptionsService(client *AccountClient) *SubscriptionsService {
 }
 
 // Get returns the subscription information for a recording.
-// bucketID is the project ID, recordingID is the ID of the recording.
 func (s *SubscriptionsService) Get(ctx context.Context, recordingID int64) (result *Subscription, err error) {
 	op := OperationInfo{
 		Service: "Subscriptions", Operation: "Get",
@@ -68,7 +67,6 @@ func (s *SubscriptionsService) Get(ctx context.Context, recordingID int64) (resu
 }
 
 // Subscribe subscribes the current user to the recording.
-// bucketID is the project ID, recordingID is the ID of the recording.
 // Returns the updated subscription information.
 func (s *SubscriptionsService) Subscribe(ctx context.Context, recordingID int64) (result *Subscription, err error) {
 	op := OperationInfo{
@@ -102,7 +100,6 @@ func (s *SubscriptionsService) Subscribe(ctx context.Context, recordingID int64)
 }
 
 // Unsubscribe unsubscribes the current user from the recording.
-// bucketID is the project ID, recordingID is the ID of the recording.
 // Returns nil on success (204 No Content).
 func (s *SubscriptionsService) Unsubscribe(ctx context.Context, recordingID int64) (err error) {
 	op := OperationInfo{
@@ -127,7 +124,6 @@ func (s *SubscriptionsService) Unsubscribe(ctx context.Context, recordingID int6
 }
 
 // Update batch modifies subscriptions by adding or removing specific users.
-// bucketID is the project ID, recordingID is the ID of the recording.
 // Returns the updated subscription information.
 func (s *SubscriptionsService) Update(ctx context.Context, recordingID int64, req *UpdateSubscriptionRequest) (result *Subscription, err error) {
 	op := OperationInfo{

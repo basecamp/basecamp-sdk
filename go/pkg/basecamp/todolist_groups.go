@@ -66,7 +66,6 @@ func NewTodolistGroupsService(client *AccountClient) *TodolistGroupsService {
 }
 
 // List returns all groups in a todolist.
-// bucketID is the project ID, todolistID is the todolist ID.
 //
 // The returned TodolistGroupListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -109,7 +108,6 @@ func (s *TodolistGroupsService) List(ctx context.Context, todolistID int64) (res
 }
 
 // Get returns a todolist group by ID.
-// bucketID is the project ID, groupID is the group ID.
 func (s *TodolistGroupsService) Get(ctx context.Context, groupID int64) (result *TodolistGroup, err error) {
 	op := OperationInfo{
 		Service: "TodolistGroups", Operation: "Get",
@@ -150,7 +148,6 @@ func (s *TodolistGroupsService) Get(ctx context.Context, groupID int64) (result 
 }
 
 // Create creates a new group in a todolist.
-// bucketID is the project ID, todolistID is the todolist ID.
 // Returns the created group.
 func (s *TodolistGroupsService) Create(ctx context.Context, todolistID int64, req *CreateTodolistGroupRequest) (result *TodolistGroup, err error) {
 	op := OperationInfo{
@@ -193,7 +190,6 @@ func (s *TodolistGroupsService) Create(ctx context.Context, todolistID int64, re
 }
 
 // Update updates an existing todolist group.
-// bucketID is the project ID, groupID is the group ID.
 // Returns the updated group.
 func (s *TodolistGroupsService) Update(ctx context.Context, groupID int64, req *UpdateTodolistGroupRequest) (result *TodolistGroup, err error) {
 	op := OperationInfo{
@@ -239,7 +235,6 @@ func (s *TodolistGroupsService) Update(ctx context.Context, groupID int64, req *
 }
 
 // Reposition changes the position of a group within its todolist.
-// bucketID is the project ID, groupID is the group ID.
 // position is 1-based (1 = first position).
 func (s *TodolistGroupsService) Reposition(ctx context.Context, groupID int64, position int) (err error) {
 	op := OperationInfo{
@@ -273,7 +268,6 @@ func (s *TodolistGroupsService) Reposition(ctx context.Context, groupID int64, p
 }
 
 // Trash moves a todolist group to the trash.
-// bucketID is the project ID, groupID is the group ID.
 // Trashed groups can be recovered from the trash.
 func (s *TodolistGroupsService) Trash(ctx context.Context, groupID int64) (err error) {
 	op := OperationInfo{

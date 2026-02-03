@@ -217,7 +217,6 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 }
 
 // Get returns a recording by ID.
-// bucketID is the project ID, recordingID is the recording ID.
 func (s *RecordingsService) Get(ctx context.Context, recordingID int64) (result *Recording, err error) {
 	op := OperationInfo{
 		Service: "Recordings", Operation: "Get",
@@ -250,7 +249,6 @@ func (s *RecordingsService) Get(ctx context.Context, recordingID int64) (result 
 }
 
 // Trash moves a recording to the trash.
-// bucketID is the project ID, recordingID is the recording ID.
 // Trashed recordings can be recovered from the trash.
 func (s *RecordingsService) Trash(ctx context.Context, recordingID int64) (err error) {
 	op := OperationInfo{
@@ -275,7 +273,6 @@ func (s *RecordingsService) Trash(ctx context.Context, recordingID int64) (err e
 }
 
 // Archive archives a recording.
-// bucketID is the project ID, recordingID is the recording ID.
 // Archived recordings are hidden but not deleted.
 func (s *RecordingsService) Archive(ctx context.Context, recordingID int64) (err error) {
 	op := OperationInfo{
@@ -300,7 +297,6 @@ func (s *RecordingsService) Archive(ctx context.Context, recordingID int64) (err
 }
 
 // Unarchive restores an archived recording to active status.
-// bucketID is the project ID, recordingID is the recording ID.
 func (s *RecordingsService) Unarchive(ctx context.Context, recordingID int64) (err error) {
 	op := OperationInfo{
 		Service: "Recordings", Operation: "Unarchive",
@@ -324,7 +320,6 @@ func (s *RecordingsService) Unarchive(ctx context.Context, recordingID int64) (e
 }
 
 // SetClientVisibility sets whether a recording is visible to clients.
-// bucketID is the project ID, recordingID is the recording ID.
 // visible specifies whether the recording should be visible to clients.
 // Returns the updated recording.
 // Note: Not all recordings support client visibility. Some inherit visibility from their parent.
