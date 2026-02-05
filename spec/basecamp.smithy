@@ -2490,7 +2490,7 @@ structure GetRecordingTimesheetOutput {
 /// Get a single timesheet entry
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/projects/{projectId}/timesheet/entries/{entryId}")
+@http(method: "GET", uri: "/{accountId}/timesheet/entries/{entryId}")
 operation GetTimesheetEntry {
   input: GetTimesheetEntryInput
   output: GetTimesheetEntryOutput
@@ -2504,10 +2504,6 @@ structure GetTimesheetEntryInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   entryId: TimesheetEntryId
 }
 
@@ -2517,7 +2513,7 @@ structure GetTimesheetEntryOutput {
 
 /// Create a timesheet entry on a recording
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/projects/{projectId}/recordings/{recordingId}/timesheet/entries.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/timesheet/entries.json", code: 201)
 operation CreateTimesheetEntry {
   input: CreateTimesheetEntryInput
   output: CreateTimesheetEntryOutput
@@ -2528,10 +2524,6 @@ structure CreateTimesheetEntryInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2556,7 +2548,7 @@ structure CreateTimesheetEntryOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/projects/{projectId}/timesheet/entries/{entryId}")
+@http(method: "PUT", uri: "/{accountId}/timesheet/entries/{entryId}")
 operation UpdateTimesheetEntry {
   input: UpdateTimesheetEntryInput
   output: UpdateTimesheetEntryOutput
@@ -2567,10 +2559,6 @@ structure UpdateTimesheetEntryInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel

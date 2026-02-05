@@ -227,12 +227,10 @@ func runTest(tc TestCase) TestResult {
 		sdkResp, sdkErr = client.ListTodos(ctx, testAccountID, todolistId, nil)
 
 	case "GetTimesheetEntry":
-		projectId := getInt64Param(tc.PathParams, "projectId")
 		entryId := getInt64Param(tc.PathParams, "entryId")
-		sdkResp, sdkErr = client.GetTimesheetEntry(ctx, testAccountID, projectId, entryId)
+		sdkResp, sdkErr = client.GetTimesheetEntry(ctx, testAccountID, entryId)
 
 	case "CreateTimesheetEntry":
-		projectId := getInt64Param(tc.PathParams, "projectId")
 		recordingId := getInt64Param(tc.PathParams, "recordingId")
 		body := generated.CreateTimesheetEntryJSONRequestBody{
 			Date:  getStringParam(tc.RequestBody, "date"),
@@ -241,10 +239,9 @@ func runTest(tc TestCase) TestResult {
 		if desc := getStringParam(tc.RequestBody, "description"); desc != "" {
 			body.Description = desc
 		}
-		sdkResp, sdkErr = client.CreateTimesheetEntry(ctx, testAccountID, projectId, recordingId, body)
+		sdkResp, sdkErr = client.CreateTimesheetEntry(ctx, testAccountID, recordingId, body)
 
 	case "UpdateTimesheetEntry":
-		projectId := getInt64Param(tc.PathParams, "projectId")
 		entryId := getInt64Param(tc.PathParams, "entryId")
 		body := generated.UpdateTimesheetEntryJSONRequestBody{}
 		if date := getStringParam(tc.RequestBody, "date"); date != "" {
@@ -256,7 +253,7 @@ func runTest(tc TestCase) TestResult {
 		if desc := getStringParam(tc.RequestBody, "description"); desc != "" {
 			body.Description = desc
 		}
-		sdkResp, sdkErr = client.UpdateTimesheetEntry(ctx, testAccountID, projectId, entryId, body)
+		sdkResp, sdkErr = client.UpdateTimesheetEntry(ctx, testAccountID, entryId, body)
 
 	case "GetProjectTimeline":
 		projectId := getInt64Param(tc.PathParams, "projectId")

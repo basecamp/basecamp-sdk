@@ -89,7 +89,6 @@ export class TimesheetsService extends BaseService {
 
   /**
    * Create a timesheet entry on a recording
-   * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @param req - Timesheet_entry creation parameters
    * @returns The timesheet_entry
@@ -97,10 +96,10 @@ export class TimesheetsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.timesheets.create(123, 123, { date: "example", hours: "example" });
+   * const result = await client.timesheets.create(123, { date: "example", hours: "example" });
    * ```
    */
-  async create(projectId: number, recordingId: number, req: CreateTimesheetRequest): Promise<components["schemas"]["CreateTimesheetEntryResponseContent"]> {
+  async create(recordingId: number, req: CreateTimesheetRequest): Promise<components["schemas"]["CreateTimesheetEntryResponseContent"]> {
     if (!req.date) {
       throw Errors.validation("Date is required");
     }
@@ -113,13 +112,12 @@ export class TimesheetsService extends BaseService {
         operation: "CreateTimesheetEntry",
         resourceType: "timesheet_entry",
         isMutation: true,
-        projectId,
         resourceId: recordingId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/recordings/{recordingId}/timesheet/entries.json", {
+        this.client.POST("/recordings/{recordingId}/timesheet/entries.json", {
           params: {
-            path: { projectId, recordingId },
+            path: { recordingId },
           },
           body: {
             date: req.date,
@@ -134,30 +132,28 @@ export class TimesheetsService extends BaseService {
 
   /**
    * Get a single timesheet entry
-   * @param projectId - The project ID
    * @param entryId - The entry ID
    * @returns The timesheet_entry
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.timesheets.get(123, 123);
+   * const result = await client.timesheets.get(123);
    * ```
    */
-  async get(projectId: number, entryId: number): Promise<components["schemas"]["GetTimesheetEntryResponseContent"]> {
+  async get(entryId: number): Promise<components["schemas"]["GetTimesheetEntryResponseContent"]> {
     const response = await this.request(
       {
         service: "Timesheets",
         operation: "GetTimesheetEntry",
         resourceType: "timesheet_entry",
         isMutation: false,
-        projectId,
         resourceId: entryId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/timesheet/entries/{entryId}", {
+        this.client.GET("/timesheet/entries/{entryId}", {
           params: {
-            path: { projectId, entryId },
+            path: { entryId },
           },
         })
     );
@@ -166,7 +162,6 @@ export class TimesheetsService extends BaseService {
 
   /**
    * Update a timesheet entry
-   * @param projectId - The project ID
    * @param entryId - The entry ID
    * @param req - Timesheet_entry update parameters
    * @returns The timesheet_entry
@@ -174,23 +169,22 @@ export class TimesheetsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.timesheets.update(123, 123, { });
+   * const result = await client.timesheets.update(123, { });
    * ```
    */
-  async update(projectId: number, entryId: number, req: UpdateTimesheetRequest): Promise<components["schemas"]["UpdateTimesheetEntryResponseContent"]> {
+  async update(entryId: number, req: UpdateTimesheetRequest): Promise<components["schemas"]["UpdateTimesheetEntryResponseContent"]> {
     const response = await this.request(
       {
         service: "Timesheets",
         operation: "UpdateTimesheetEntry",
         resourceType: "timesheet_entry",
         isMutation: true,
-        projectId,
         resourceId: entryId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/timesheet/entries/{entryId}", {
+        this.client.PUT("/timesheet/entries/{entryId}", {
           params: {
-            path: { projectId, entryId },
+            path: { entryId },
           },
           body: {
             date: req.date,

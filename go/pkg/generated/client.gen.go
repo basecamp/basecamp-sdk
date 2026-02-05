@@ -2118,12 +2118,6 @@ type ListTodolistsParams struct {
 	Status string `form:"status,omitempty" json:"status,omitempty"`
 }
 
-// CreateTimesheetEntryJSONRequestBody defines body for CreateTimesheetEntry for application/json ContentType.
-type CreateTimesheetEntryJSONRequestBody = CreateTimesheetEntryRequestContent
-
-// UpdateTimesheetEntryJSONRequestBody defines body for UpdateTimesheetEntry for application/json ContentType.
-type UpdateTimesheetEntryJSONRequestBody = UpdateTimesheetEntryRequestContent
-
 // UpdateCardJSONRequestBody defines body for UpdateCard for application/json ContentType.
 type UpdateCardJSONRequestBody = UpdateCardRequestContent
 
@@ -2232,6 +2226,9 @@ type CreateCommentJSONRequestBody = CreateCommentRequestContent
 // UpdateSubscriptionJSONRequestBody defines body for UpdateSubscription for application/json ContentType.
 type UpdateSubscriptionJSONRequestBody = UpdateSubscriptionRequestContent
 
+// CreateTimesheetEntryJSONRequestBody defines body for CreateTimesheetEntry for application/json ContentType.
+type CreateTimesheetEntryJSONRequestBody = CreateTimesheetEntryRequestContent
+
 // RepositionToolJSONRequestBody defines body for RepositionTool for application/json ContentType.
 type RepositionToolJSONRequestBody = RepositionToolRequestContent
 
@@ -2252,6 +2249,9 @@ type UpdateTemplateJSONRequestBody = UpdateTemplateRequestContent
 
 // CreateProjectFromTemplateJSONRequestBody defines body for CreateProjectFromTemplate for application/json ContentType.
 type CreateProjectFromTemplateJSONRequestBody = CreateProjectFromTemplateRequestContent
+
+// UpdateTimesheetEntryJSONRequestBody defines body for UpdateTimesheetEntry for application/json ContentType.
+type UpdateTimesheetEntryJSONRequestBody = UpdateTimesheetEntryRequestContent
 
 // RepositionTodolistGroupJSONRequestBody defines body for RepositionTodolistGroup for application/json ContentType.
 type RepositionTodolistGroupJSONRequestBody = RepositionTodolistGroupRequestContent
@@ -2587,19 +2587,6 @@ func (c *Client) doWithRetry(ctx context.Context, buildRequest func() (*http.Req
 type ClientInterface interface {
 	// CreateAttachmentWithBody request with any body
 	CreateAttachmentWithBody(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateTimesheetEntryWithBody request with any body
-	CreateTimesheetEntryWithBody(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CreateTimesheetEntry(ctx context.Context, accountId string, projectId int64, recordingId int64, body CreateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetTimesheetEntry request
-	GetTimesheetEntry(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateTimesheetEntryWithBody request with any body
-	UpdateTimesheetEntryWithBody(ctx context.Context, accountId string, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	UpdateTimesheetEntry(ctx context.Context, accountId string, projectId int64, entryId int64, body UpdateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCard request
 	GetCard(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2988,6 +2975,11 @@ type ClientInterface interface {
 	// GetRecordingTimesheet request
 	GetRecordingTimesheet(ctx context.Context, accountId string, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateTimesheetEntryWithBody request with any body
+	CreateTimesheetEntryWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateTimesheetEntry(ctx context.Context, accountId string, recordingId int64, body CreateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DisableTool request
 	DisableTool(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3085,6 +3077,14 @@ type ClientInterface interface {
 
 	// GetProjectTimesheet request
 	GetProjectTimesheet(ctx context.Context, accountId string, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTimesheetEntry request
+	GetTimesheetEntry(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateTimesheetEntryWithBody request with any body
+	UpdateTimesheetEntryWithBody(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateTimesheetEntry(ctx context.Context, accountId string, entryId int64, body UpdateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RepositionTodolistGroupWithBody request with any body
 	RepositionTodolistGroupWithBody(ctx context.Context, accountId string, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3224,64 +3224,6 @@ func (c *Client) CreateAttachmentWithBody(ctx context.Context, accountId string,
 		return nil, err
 	}
 	return c.Client.Do(req)
-
-}
-
-// CreateTimesheetEntryWithBody executes the CreateTimesheetEntry operation.
-
-func (c *Client) CreateTimesheetEntryWithBody(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCreateTimesheetEntryRequestWithBody(c.Server, accountId, projectId, recordingId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-func (c *Client) CreateTimesheetEntry(ctx context.Context, accountId string, projectId int64, recordingId int64, body CreateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCreateTimesheetEntryRequest(c.Server, accountId, projectId, recordingId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-// GetTimesheetEntry is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) GetTimesheetEntry(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetTimesheetEntryRequest(c.Server, accountId, projectId, entryId)
-	}, true, "GetTimesheetEntry", reqEditors...)
-
-}
-
-// UpdateTimesheetEntryWithBody is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) UpdateTimesheetEntryWithBody(ctx context.Context, accountId string, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateTimesheetEntryRequestWithBody(c.Server, accountId, projectId, entryId, contentType, body)
-	}, true, "UpdateTimesheetEntry", reqEditors...)
-
-}
-
-func (c *Client) UpdateTimesheetEntry(ctx context.Context, accountId string, projectId int64, entryId int64, body UpdateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateTimesheetEntryRequest(c.Server, accountId, projectId, entryId, body)
-	}, true, "UpdateTimesheetEntry", reqEditors...)
 
 }
 
@@ -4845,6 +4787,36 @@ func (c *Client) GetRecordingTimesheet(ctx context.Context, accountId string, re
 
 }
 
+// CreateTimesheetEntryWithBody executes the CreateTimesheetEntry operation.
+
+func (c *Client) CreateTimesheetEntryWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTimesheetEntryRequestWithBody(c.Server, accountId, recordingId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateTimesheetEntry(ctx context.Context, accountId string, recordingId int64, body CreateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTimesheetEntryRequest(c.Server, accountId, recordingId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
 // DisableTool is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) DisableTool(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5220,6 +5192,34 @@ func (c *Client) GetProjectTimesheet(ctx context.Context, accountId string, para
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetProjectTimesheetRequest(c.Server, accountId, params)
 	}, true, "GetProjectTimesheet", reqEditors...)
+
+}
+
+// GetTimesheetEntry is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetTimesheetEntry(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetTimesheetEntryRequest(c.Server, accountId, entryId)
+	}, true, "GetTimesheetEntry", reqEditors...)
+
+}
+
+// UpdateTimesheetEntryWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateTimesheetEntryWithBody(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateTimesheetEntryRequestWithBody(c.Server, accountId, entryId, contentType, body)
+	}, true, "UpdateTimesheetEntry", reqEditors...)
+
+}
+
+func (c *Client) UpdateTimesheetEntry(ctx context.Context, accountId string, entryId int64, body UpdateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateTimesheetEntryRequest(c.Server, accountId, entryId, body)
+	}, true, "UpdateTimesheetEntry", reqEditors...)
 
 }
 
@@ -5784,176 +5784,6 @@ func NewCreateAttachmentRequestWithBody(server string, accountId string, params 
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewCreateTimesheetEntryRequest calls the generic CreateTimesheetEntry builder with application/json body
-func NewCreateTimesheetEntryRequest(server string, accountId string, projectId int64, recordingId int64, body CreateTimesheetEntryJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateTimesheetEntryRequestWithBody(server, accountId, projectId, recordingId, "application/json", bodyReader)
-}
-
-// NewCreateTimesheetEntryRequestWithBody generates requests for CreateTimesheetEntry with any type of body
-func NewCreateTimesheetEntryRequestWithBody(server string, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/timesheet/entries.json", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetTimesheetEntryRequest generates requests for GetTimesheetEntry
-func NewGetTimesheetEntryRequest(server string, accountId string, projectId int64, entryId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "entryId", runtime.ParamLocationPath, entryId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/timesheet/entries/%s", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUpdateTimesheetEntryRequest calls the generic UpdateTimesheetEntry builder with application/json body
-func NewUpdateTimesheetEntryRequest(server string, accountId string, projectId int64, entryId int64, body UpdateTimesheetEntryJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateTimesheetEntryRequestWithBody(server, accountId, projectId, entryId, "application/json", bodyReader)
-}
-
-// NewUpdateTimesheetEntryRequestWithBody generates requests for UpdateTimesheetEntry with any type of body
-func NewUpdateTimesheetEntryRequestWithBody(server string, accountId string, projectId int64, entryId int64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "entryId", runtime.ParamLocationPath, entryId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/timesheet/entries/%s", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -10820,6 +10650,60 @@ func NewGetRecordingTimesheetRequest(server string, accountId string, recordingI
 	return req, nil
 }
 
+// NewCreateTimesheetEntryRequest calls the generic CreateTimesheetEntry builder with application/json body
+func NewCreateTimesheetEntryRequest(server string, accountId string, recordingId int64, body CreateTimesheetEntryJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTimesheetEntryRequestWithBody(server, accountId, recordingId, "application/json", bodyReader)
+}
+
+// NewCreateTimesheetEntryRequestWithBody generates requests for CreateTimesheetEntry with any type of body
+func NewCreateTimesheetEntryRequestWithBody(server string, accountId string, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/timesheet/entries.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewDisableToolRequest generates requests for DisableTool
 func NewDisableToolRequest(server string, accountId string, toolId int64) (*http.Request, error) {
 	var err error
@@ -12202,6 +12086,101 @@ func NewGetProjectTimesheetRequest(server string, accountId string, params *GetP
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetTimesheetEntryRequest generates requests for GetTimesheetEntry
+func NewGetTimesheetEntryRequest(server string, accountId string, entryId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "entryId", runtime.ParamLocationPath, entryId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/timesheet/entries/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateTimesheetEntryRequest calls the generic UpdateTimesheetEntry builder with application/json body
+func NewUpdateTimesheetEntryRequest(server string, accountId string, entryId int64, body UpdateTimesheetEntryJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateTimesheetEntryRequestWithBody(server, accountId, entryId, "application/json", bodyReader)
+}
+
+// NewUpdateTimesheetEntryRequestWithBody generates requests for UpdateTimesheetEntry with any type of body
+func NewUpdateTimesheetEntryRequestWithBody(server string, accountId string, entryId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "entryId", runtime.ParamLocationPath, entryId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/timesheet/entries/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -13761,9 +13740,6 @@ type OperationMetadata struct {
 // GET/HEAD operations are always considered idempotent for retry purposes.
 var operationMetadata = map[string]OperationMetadata{
 	"CreateAttachment":                   {Idempotent: false, HasSensitiveParams: false},
-	"CreateTimesheetEntry":               {Idempotent: false, HasSensitiveParams: false},
-	"GetTimesheetEntry":                  {Idempotent: true, HasSensitiveParams: false},
-	"UpdateTimesheetEntry":               {Idempotent: true, HasSensitiveParams: false},
 	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
 	"UpdateCard":                         {Idempotent: true, HasSensitiveParams: false},
 	"MoveCard":                           {Idempotent: false, HasSensitiveParams: false},
@@ -13869,6 +13845,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"Subscribe":                          {Idempotent: false, HasSensitiveParams: false},
 	"UpdateSubscription":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetRecordingTimesheet":              {Idempotent: true, HasSensitiveParams: false},
+	"CreateTimesheetEntry":               {Idempotent: false, HasSensitiveParams: false},
 	"DisableTool":                        {Idempotent: true, HasSensitiveParams: false},
 	"EnableTool":                         {Idempotent: false, HasSensitiveParams: false},
 	"RepositionTool":                     {Idempotent: true, HasSensitiveParams: false},
@@ -13897,6 +13874,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetProjectConstruction":             {Idempotent: true, HasSensitiveParams: false},
 	"GetProjectTimeline":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetProjectTimesheet":                {Idempotent: true, HasSensitiveParams: false},
+	"GetTimesheetEntry":                  {Idempotent: true, HasSensitiveParams: false},
+	"UpdateTimesheetEntry":               {Idempotent: true, HasSensitiveParams: false},
 	"RepositionTodolistGroup":            {Idempotent: true, HasSensitiveParams: false},
 	"GetTodolistOrGroup":                 {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTodolistOrGroup":              {Idempotent: true, HasSensitiveParams: false},
@@ -14868,19 +14847,6 @@ type ClientWithResponsesInterface interface {
 	// CreateAttachmentWithBodyWithResponse request with any body
 	CreateAttachmentWithBodyWithResponse(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAttachmentResponse, error)
 
-	// CreateTimesheetEntryWithBodyWithResponse request with any body
-	CreateTimesheetEntryWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimesheetEntryResponse, error)
-
-	CreateTimesheetEntryWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, body CreateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimesheetEntryResponse, error)
-
-	// GetTimesheetEntryWithResponse request
-	GetTimesheetEntryWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*GetTimesheetEntryResponse, error)
-
-	// UpdateTimesheetEntryWithBodyWithResponse request with any body
-	UpdateTimesheetEntryWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimesheetEntryResponse, error)
-
-	UpdateTimesheetEntryWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, body UpdateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimesheetEntryResponse, error)
-
 	// GetCardWithResponse request
 	GetCardWithResponse(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error)
 
@@ -15268,6 +15234,11 @@ type ClientWithResponsesInterface interface {
 	// GetRecordingTimesheetWithResponse request
 	GetRecordingTimesheetWithResponse(ctx context.Context, accountId string, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error)
 
+	// CreateTimesheetEntryWithBodyWithResponse request with any body
+	CreateTimesheetEntryWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimesheetEntryResponse, error)
+
+	CreateTimesheetEntryWithResponse(ctx context.Context, accountId string, recordingId int64, body CreateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimesheetEntryResponse, error)
+
 	// DisableToolWithResponse request
 	DisableToolWithResponse(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error)
 
@@ -15365,6 +15336,14 @@ type ClientWithResponsesInterface interface {
 
 	// GetProjectTimesheetWithResponse request
 	GetProjectTimesheetWithResponse(ctx context.Context, accountId string, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
+
+	// GetTimesheetEntryWithResponse request
+	GetTimesheetEntryWithResponse(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*GetTimesheetEntryResponse, error)
+
+	// UpdateTimesheetEntryWithBodyWithResponse request with any body
+	UpdateTimesheetEntryWithBodyWithResponse(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimesheetEntryResponse, error)
+
+	UpdateTimesheetEntryWithResponse(ctx context.Context, accountId string, entryId int64, body UpdateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimesheetEntryResponse, error)
 
 	// RepositionTodolistGroupWithBodyWithResponse request with any body
 	RepositionTodolistGroupWithBodyWithResponse(ctx context.Context, accountId string, groupId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodolistGroupResponse, error)
@@ -15512,86 +15491,6 @@ func (r CreateAttachmentResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateAttachmentResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type CreateTimesheetEntryResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *CreateTimesheetEntryResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateTimesheetEntryResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateTimesheetEntryResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetTimesheetEntryResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *GetTimesheetEntryResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r GetTimesheetEntryResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetTimesheetEntryResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type UpdateTimesheetEntryResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *UpdateTimesheetEntryResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateTimesheetEntryResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateTimesheetEntryResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -18355,6 +18254,33 @@ func (r GetRecordingTimesheetResponse) StatusCode() int {
 	return 0
 }
 
+type CreateTimesheetEntryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateTimesheetEntryResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTimesheetEntryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTimesheetEntryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type DisableToolResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19084,6 +19010,59 @@ func (r GetProjectTimesheetResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetProjectTimesheetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTimesheetEntryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetTimesheetEntryResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTimesheetEntryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTimesheetEntryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpdateTimesheetEntryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateTimesheetEntryResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateTimesheetEntryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateTimesheetEntryResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -19940,49 +19919,6 @@ func (c *ClientWithResponses) CreateAttachmentWithBodyWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseCreateAttachmentResponse(rsp)
-}
-
-// CreateTimesheetEntryWithBodyWithResponse request with arbitrary body returning *CreateTimesheetEntryResponse
-func (c *ClientWithResponses) CreateTimesheetEntryWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimesheetEntryResponse, error) {
-	rsp, err := c.CreateTimesheetEntryWithBody(ctx, accountId, projectId, recordingId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateTimesheetEntryResponse(rsp)
-}
-
-func (c *ClientWithResponses) CreateTimesheetEntryWithResponse(ctx context.Context, accountId string, projectId int64, recordingId int64, body CreateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimesheetEntryResponse, error) {
-	rsp, err := c.CreateTimesheetEntry(ctx, accountId, projectId, recordingId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateTimesheetEntryResponse(rsp)
-}
-
-// GetTimesheetEntryWithResponse request returning *GetTimesheetEntryResponse
-func (c *ClientWithResponses) GetTimesheetEntryWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, reqEditors ...RequestEditorFn) (*GetTimesheetEntryResponse, error) {
-	rsp, err := c.GetTimesheetEntry(ctx, accountId, projectId, entryId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetTimesheetEntryResponse(rsp)
-}
-
-// UpdateTimesheetEntryWithBodyWithResponse request with arbitrary body returning *UpdateTimesheetEntryResponse
-func (c *ClientWithResponses) UpdateTimesheetEntryWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimesheetEntryResponse, error) {
-	rsp, err := c.UpdateTimesheetEntryWithBody(ctx, accountId, projectId, entryId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateTimesheetEntryResponse(rsp)
-}
-
-func (c *ClientWithResponses) UpdateTimesheetEntryWithResponse(ctx context.Context, accountId string, projectId int64, entryId int64, body UpdateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimesheetEntryResponse, error) {
-	rsp, err := c.UpdateTimesheetEntry(ctx, accountId, projectId, entryId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateTimesheetEntryResponse(rsp)
 }
 
 // GetCardWithResponse request returning *GetCardResponse
@@ -21218,6 +21154,23 @@ func (c *ClientWithResponses) GetRecordingTimesheetWithResponse(ctx context.Cont
 	return ParseGetRecordingTimesheetResponse(rsp)
 }
 
+// CreateTimesheetEntryWithBodyWithResponse request with arbitrary body returning *CreateTimesheetEntryResponse
+func (c *ClientWithResponses) CreateTimesheetEntryWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTimesheetEntryResponse, error) {
+	rsp, err := c.CreateTimesheetEntryWithBody(ctx, accountId, recordingId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTimesheetEntryResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateTimesheetEntryWithResponse(ctx context.Context, accountId string, recordingId int64, body CreateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTimesheetEntryResponse, error) {
+	rsp, err := c.CreateTimesheetEntry(ctx, accountId, recordingId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTimesheetEntryResponse(rsp)
+}
+
 // DisableToolWithResponse request returning *DisableToolResponse
 func (c *ClientWithResponses) DisableToolWithResponse(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*DisableToolResponse, error) {
 	rsp, err := c.DisableTool(ctx, accountId, toolId, reqEditors...)
@@ -21524,6 +21477,32 @@ func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseGetProjectTimesheetResponse(rsp)
+}
+
+// GetTimesheetEntryWithResponse request returning *GetTimesheetEntryResponse
+func (c *ClientWithResponses) GetTimesheetEntryWithResponse(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*GetTimesheetEntryResponse, error) {
+	rsp, err := c.GetTimesheetEntry(ctx, accountId, entryId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTimesheetEntryResponse(rsp)
+}
+
+// UpdateTimesheetEntryWithBodyWithResponse request with arbitrary body returning *UpdateTimesheetEntryResponse
+func (c *ClientWithResponses) UpdateTimesheetEntryWithBodyWithResponse(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTimesheetEntryResponse, error) {
+	rsp, err := c.UpdateTimesheetEntryWithBody(ctx, accountId, entryId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateTimesheetEntryResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateTimesheetEntryWithResponse(ctx context.Context, accountId string, entryId int64, body UpdateTimesheetEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTimesheetEntryResponse, error) {
+	rsp, err := c.UpdateTimesheetEntry(ctx, accountId, entryId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateTimesheetEntryResponse(rsp)
 }
 
 // RepositionTodolistGroupWithBodyWithResponse request with arbitrary body returning *RepositionTodolistGroupResponse
@@ -21974,182 +21953,6 @@ func ParseCreateAttachmentResponse(rsp *http.Response) (*CreateAttachmentRespons
 			return nil, err
 		}
 		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateTimesheetEntryResponse parses an HTTP response from a CreateTimesheetEntryWithResponse call
-func ParseCreateTimesheetEntryResponse(rsp *http.Response) (*CreateTimesheetEntryResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateTimesheetEntryResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest CreateTimesheetEntryResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetTimesheetEntryResponse parses an HTTP response from a GetTimesheetEntryWithResponse call
-func ParseGetTimesheetEntryResponse(rsp *http.Response) (*GetTimesheetEntryResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetTimesheetEntryResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetTimesheetEntryResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUpdateTimesheetEntryResponse parses an HTTP response from a UpdateTimesheetEntryWithResponse call
-func ParseUpdateTimesheetEntryResponse(rsp *http.Response) (*UpdateTimesheetEntryResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateTimesheetEntryResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UpdateTimesheetEntryResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
@@ -28022,6 +27825,67 @@ func ParseGetRecordingTimesheetResponse(rsp *http.Response) (*GetRecordingTimesh
 	return response, nil
 }
 
+// ParseCreateTimesheetEntryResponse parses an HTTP response from a CreateTimesheetEntryWithResponse call
+func ParseCreateTimesheetEntryResponse(rsp *http.Response) (*CreateTimesheetEntryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTimesheetEntryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateTimesheetEntryResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseDisableToolResponse parses an HTTP response from a DisableToolWithResponse call
 func ParseDisableToolResponse(rsp *http.Response) (*DisableToolResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -29570,6 +29434,121 @@ func ParseGetProjectTimesheetResponse(rsp *http.Response) (*GetProjectTimesheetR
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTimesheetEntryResponse parses an HTTP response from a GetTimesheetEntryWithResponse call
+func ParseGetTimesheetEntryResponse(rsp *http.Response) (*GetTimesheetEntryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTimesheetEntryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetTimesheetEntryResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateTimesheetEntryResponse parses an HTTP response from a UpdateTimesheetEntryWithResponse call
+func ParseUpdateTimesheetEntryResponse(rsp *http.Response) (*UpdateTimesheetEntryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateTimesheetEntryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateTimesheetEntryResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

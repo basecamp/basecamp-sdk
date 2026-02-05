@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-02-05T10:40:33Z",
+  "generated": "2026-02-05T10:41:24Z",
   "operations": {
     "CreateAttachment": {
       "retry": {

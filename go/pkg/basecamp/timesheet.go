@@ -205,12 +205,11 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, recordingID int6
 }
 
 // Get returns a single timesheet entry.
-// projectID is the project (bucket) ID, entryID is the timesheet entry ID.
-func (s *TimesheetService) Get(ctx context.Context, projectID, entryID int64) (result *TimesheetEntry, err error) {
+func (s *TimesheetService) Get(ctx context.Context, entryID int64) (result *TimesheetEntry, err error) {
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "Get",
 		ResourceType: "timesheet_entry", IsMutation: false,
-		BucketID: projectID, ResourceID: entryID,
+		ResourceID: entryID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -221,7 +220,7 @@ func (s *TimesheetService) Get(ctx context.Context, projectID, entryID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetTimesheetEntryWithResponse(ctx, s.client.accountID, projectID, entryID)
+	resp, err := s.client.parent.gen.GetTimesheetEntryWithResponse(ctx, s.client.accountID, entryID)
 	if err != nil {
 		return nil, err
 	}
@@ -238,12 +237,10 @@ func (s *TimesheetService) Get(ctx context.Context, projectID, entryID int64) (r
 }
 
 // Create creates a timesheet entry on a recording.
-// projectID is the project (bucket) ID, recordingID is the recording to log time against.
-func (s *TimesheetService) Create(ctx context.Context, projectID, recordingID int64, req *CreateTimesheetEntryRequest) (result *TimesheetEntry, err error) {
+func (s *TimesheetService) Create(ctx context.Context, recordingID int64, req *CreateTimesheetEntryRequest) (result *TimesheetEntry, err error) {
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "Create",
 		ResourceType: "timesheet_entry", IsMutation: true,
-		BucketID: projectID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -272,7 +269,7 @@ func (s *TimesheetService) Create(ctx context.Context, projectID, recordingID in
 		body.PersonId = &req.PersonID
 	}
 
-	resp, err := s.client.parent.gen.CreateTimesheetEntryWithResponse(ctx, s.client.accountID, projectID, recordingID, body)
+	resp, err := s.client.parent.gen.CreateTimesheetEntryWithResponse(ctx, s.client.accountID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -289,12 +286,11 @@ func (s *TimesheetService) Create(ctx context.Context, projectID, recordingID in
 }
 
 // Update updates an existing timesheet entry.
-// projectID is the project (bucket) ID, entryID is the timesheet entry ID.
-func (s *TimesheetService) Update(ctx context.Context, projectID, entryID int64, req *UpdateTimesheetEntryRequest) (result *TimesheetEntry, err error) {
+func (s *TimesheetService) Update(ctx context.Context, entryID int64, req *UpdateTimesheetEntryRequest) (result *TimesheetEntry, err error) {
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "Update",
 		ResourceType: "timesheet_entry", IsMutation: true,
-		BucketID: projectID, ResourceID: entryID,
+		ResourceID: entryID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -314,7 +310,7 @@ func (s *TimesheetService) Update(ctx context.Context, projectID, entryID int64,
 		body.PersonId = &req.PersonID
 	}
 
-	resp, err := s.client.parent.gen.UpdateTimesheetEntryWithResponse(ctx, s.client.accountID, projectID, entryID, body)
+	resp, err := s.client.parent.gen.UpdateTimesheetEntryWithResponse(ctx, s.client.accountID, entryID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -331,12 +327,11 @@ func (s *TimesheetService) Update(ctx context.Context, projectID, entryID int64,
 }
 
 // Trash moves a timesheet entry to the trash.
-// projectID is the project (bucket) ID, entryID is the timesheet entry ID (recording ID).
-func (s *TimesheetService) Trash(ctx context.Context, projectID, entryID int64) (err error) {
+func (s *TimesheetService) Trash(ctx context.Context, entryID int64) (err error) {
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "Trash",
 		ResourceType: "timesheet_entry", IsMutation: true,
-		BucketID: projectID, ResourceID: entryID,
+		ResourceID: entryID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -347,7 +342,7 @@ func (s *TimesheetService) Trash(ctx context.Context, projectID, entryID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, projectID, entryID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, entryID)
 	if err != nil {
 		return err
 	}

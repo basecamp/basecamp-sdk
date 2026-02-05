@@ -117,7 +117,7 @@
         }
       }
     },
-    "/{accountId}/buckets/{projectId}/recordings/{recordingId}/timesheet/entries.json": {
+    "/{accountId}/recordings/{recordingId}/timesheet/entries.json": {
       "post": {
         "description": "Create a timesheet entry on a recording",
         "operationId": "CreateTimesheetEntry",
@@ -140,15 +140,6 @@
               "type": "string",
               "pattern": "^[0-9]+$",
               "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
             },
             "required": true
           },
@@ -238,7 +229,7 @@
         }
       }
     },
-    "/{accountId}/buckets/{projectId}/timesheet/entries/{entryId}": {
+    "/{accountId}/timesheet/entries/{entryId}": {
       "get": {
         "description": "Get a single timesheet entry",
         "operationId": "GetTimesheetEntry",
@@ -251,15 +242,6 @@
               "type": "string",
               "pattern": "^[0-9]+$",
               "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
             },
             "required": true
           },
@@ -359,15 +341,6 @@
               "type": "string",
               "pattern": "^[0-9]+$",
               "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
             },
             "required": true
           },
