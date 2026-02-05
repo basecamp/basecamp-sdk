@@ -77,6 +77,16 @@ class OperationMapper
         todolist_id: path_params["todolistId"],
         content: body["content"]
       )
+    when "GetProjectTimeline"
+      @account.timeline.get_project_timeline(
+        project_id: path_params["projectId"]
+      ).to_a
+    when "GetProgressReport"
+      @account.reports.progress.to_a
+    when "GetPersonProgress"
+      @account.reports.person_progress(
+        person_id: path_params["personId"]
+      )
     else
       raise "Unknown operation: #{operation}"
     end
@@ -184,6 +194,18 @@ class TestRunner
         actual = dig_path(result, path)
         unless actual == expected
           failures << "Expected #{path} to be #{expected}, got #{actual}"
+        end
+
+      when "requestPath"
+        expected = assertion["expected"]
+        requests = @tracker.requests
+        if requests.empty?
+          failures << "Expected a request to be made, but no requests were recorded"
+        else
+          actual_path = URI.parse(requests.first[:uri]).path
+          unless actual_path == expected
+            failures << "Expected request path #{expected.inspect}, got #{actual_path.inspect}"
+          end
         end
       end
     end
