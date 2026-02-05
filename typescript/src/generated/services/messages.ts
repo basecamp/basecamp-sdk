@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -18,13 +19,13 @@ export type Message = components["schemas"]["Message"];
  * Request parameters for create.
  */
 export interface CreateMessageRequest {
-  /** subject */
+  /** Subject line */
   subject: string;
-  /** content */
+  /** Text content */
   content?: string;
-  /** active|drafted */
-  status?: string;
-  /** category id */
+  /** Status */
+  status?: "active" | "drafted";
+  /** Category id */
   categoryId?: number;
 }
 
@@ -32,13 +33,13 @@ export interface CreateMessageRequest {
  * Request parameters for update.
  */
 export interface UpdateMessageRequest {
-  /** subject */
+  /** Subject line */
   subject?: string;
-  /** content */
+  /** Text content */
   content?: string;
-  /** active|drafted */
-  status?: string;
-  /** category id */
+  /** Status */
+  status?: "active" | "drafted";
+  /** Category id */
   categoryId?: number;
 }
 
@@ -57,6 +58,11 @@ export class MessagesService extends BaseService {
    * @param projectId - The project ID
    * @param boardId - The board ID
    * @returns Array of Message
+   *
+   * @example
+   * ```ts
+   * const result = await client.messages.list(123, 123);
+   * ```
    */
   async list(projectId: number, boardId: number): Promise<Message[]> {
     const response = await this.request(
@@ -82,15 +88,19 @@ export class MessagesService extends BaseService {
    * Create a new message on a message board
    * @param projectId - The project ID
    * @param boardId - The board ID
-   * @param req - Request parameters
+   * @param req - Message creation parameters
    * @returns The Message
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.messages.create(123, 123, { ... });
+   * const result = await client.messages.create(123, 123, { subject: "example" });
    * ```
    */
   async create(projectId: number, boardId: number, req: CreateMessageRequest): Promise<Message> {
+    if (!req.subject) {
+      throw Errors.validation("Subject is required");
+    }
     const response = await this.request(
       {
         service: "Messages",
@@ -121,6 +131,12 @@ export class MessagesService extends BaseService {
    * @param projectId - The project ID
    * @param messageId - The message ID
    * @returns The Message
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.messages.get(123, 123);
+   * ```
    */
   async get(projectId: number, messageId: number): Promise<Message> {
     const response = await this.request(
@@ -146,8 +162,14 @@ export class MessagesService extends BaseService {
    * Update an existing message
    * @param projectId - The project ID
    * @param messageId - The message ID
-   * @param req - Request parameters
+   * @param req - Message update parameters
    * @returns The Message
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.messages.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, messageId: number, req: UpdateMessageRequest): Promise<Message> {
     const response = await this.request(
@@ -180,6 +202,12 @@ export class MessagesService extends BaseService {
    * @param projectId - The project ID
    * @param messageId - The message ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.messages.pin(123, 123);
+   * ```
    */
   async pin(projectId: number, messageId: number): Promise<void> {
     await this.request(
@@ -205,6 +233,12 @@ export class MessagesService extends BaseService {
    * @param projectId - The project ID
    * @param messageId - The message ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.messages.unpin(123, 123);
+   * ```
    */
   async unpin(projectId: number, messageId: number): Promise<void> {
     await this.request(

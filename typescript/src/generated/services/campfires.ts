@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -22,9 +23,9 @@ export type CampfireLine = components["schemas"]["CampfireLine"];
  * Request parameters for createChatbot.
  */
 export interface CreateChatbotCampfireRequest {
-  /** service name */
+  /** Service name */
   serviceName: string;
-  /** command url */
+  /** Command url */
   commandUrl?: string;
 }
 
@@ -32,9 +33,9 @@ export interface CreateChatbotCampfireRequest {
  * Request parameters for updateChatbot.
  */
 export interface UpdateChatbotCampfireRequest {
-  /** service name */
+  /** Service name */
   serviceName: string;
-  /** command url */
+  /** Command url */
   commandUrl?: string;
 }
 
@@ -42,7 +43,7 @@ export interface UpdateChatbotCampfireRequest {
  * Request parameters for createLine.
  */
 export interface CreateLineCampfireRequest {
-  /** content */
+  /** Text content */
   content: string;
 }
 
@@ -61,6 +62,12 @@ export class CampfiresService extends BaseService {
    * @param projectId - The project ID
    * @param campfireId - The campfire ID
    * @returns The Campfire
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.get(123, 123);
+   * ```
    */
   async get(projectId: number, campfireId: number): Promise<Campfire> {
     const response = await this.request(
@@ -87,6 +94,11 @@ export class CampfiresService extends BaseService {
    * @param projectId - The project ID
    * @param campfireId - The campfire ID
    * @returns Array of Chatbot
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.listChatbots(123, 123);
+   * ```
    */
   async listChatbots(projectId: number, campfireId: number): Promise<Chatbot[]> {
     const response = await this.request(
@@ -112,15 +124,19 @@ export class CampfiresService extends BaseService {
    * Create a new chatbot for a campfire
    * @param projectId - The project ID
    * @param campfireId - The campfire ID
-   * @param req - Request parameters
+   * @param req - Chatbot creation parameters
    * @returns The Chatbot
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.campfires.createChatbot(123, 123, { ... });
+   * const result = await client.campfires.createChatbot(123, 123, { serviceName: "example" });
    * ```
    */
   async createChatbot(projectId: number, campfireId: number, req: CreateChatbotCampfireRequest): Promise<Chatbot> {
+    if (!req.serviceName) {
+      throw Errors.validation("Service name is required");
+    }
     const response = await this.request(
       {
         service: "Campfires",
@@ -150,6 +166,12 @@ export class CampfiresService extends BaseService {
    * @param campfireId - The campfire ID
    * @param chatbotId - The chatbot ID
    * @returns The Chatbot
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.getChatbot(123, 123, 123);
+   * ```
    */
   async getChatbot(projectId: number, campfireId: number, chatbotId: number): Promise<Chatbot> {
     const response = await this.request(
@@ -176,10 +198,19 @@ export class CampfiresService extends BaseService {
    * @param projectId - The project ID
    * @param campfireId - The campfire ID
    * @param chatbotId - The chatbot ID
-   * @param req - Request parameters
+   * @param req - Chatbot update parameters
    * @returns The Chatbot
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.updateChatbot(123, 123, 123, { serviceName: "example" });
+   * ```
    */
   async updateChatbot(projectId: number, campfireId: number, chatbotId: number, req: UpdateChatbotCampfireRequest): Promise<Chatbot> {
+    if (!req.serviceName) {
+      throw Errors.validation("Service name is required");
+    }
     const response = await this.request(
       {
         service: "Campfires",
@@ -209,6 +240,12 @@ export class CampfiresService extends BaseService {
    * @param campfireId - The campfire ID
    * @param chatbotId - The chatbot ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.campfires.deleteChatbot(123, 123, 123);
+   * ```
    */
   async deleteChatbot(projectId: number, campfireId: number, chatbotId: number): Promise<void> {
     await this.request(
@@ -234,6 +271,11 @@ export class CampfiresService extends BaseService {
    * @param projectId - The project ID
    * @param campfireId - The campfire ID
    * @returns Array of CampfireLine
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.listLines(123, 123);
+   * ```
    */
   async listLines(projectId: number, campfireId: number): Promise<CampfireLine[]> {
     const response = await this.request(
@@ -259,15 +301,19 @@ export class CampfiresService extends BaseService {
    * Create a new line (message) in a campfire
    * @param projectId - The project ID
    * @param campfireId - The campfire ID
-   * @param req - Request parameters
+   * @param req - Campfire_line creation parameters
    * @returns The CampfireLine
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.campfires.createLine(123, 123, { ... });
+   * const result = await client.campfires.createLine(123, 123, { content: "Hello world" });
    * ```
    */
   async createLine(projectId: number, campfireId: number, req: CreateLineCampfireRequest): Promise<CampfireLine> {
+    if (!req.content) {
+      throw Errors.validation("Content is required");
+    }
     const response = await this.request(
       {
         service: "Campfires",
@@ -282,7 +328,9 @@ export class CampfiresService extends BaseService {
           params: {
             path: { projectId, campfireId },
           },
-          body: req as any,
+          body: {
+            content: req.content,
+          },
         })
     );
     return response;
@@ -294,6 +342,12 @@ export class CampfiresService extends BaseService {
    * @param campfireId - The campfire ID
    * @param lineId - The line ID
    * @returns The CampfireLine
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.getLine(123, 123, 123);
+   * ```
    */
   async getLine(projectId: number, campfireId: number, lineId: number): Promise<CampfireLine> {
     const response = await this.request(
@@ -321,6 +375,12 @@ export class CampfiresService extends BaseService {
    * @param campfireId - The campfire ID
    * @param lineId - The line ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.campfires.deleteLine(123, 123, 123);
+   * ```
    */
   async deleteLine(projectId: number, campfireId: number, lineId: number): Promise<void> {
     await this.request(
@@ -344,6 +404,11 @@ export class CampfiresService extends BaseService {
   /**
    * List all campfires across the account
    * @returns Array of Campfire
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.list();
+   * ```
    */
   async list(): Promise<Campfire[]> {
     const response = await this.request(

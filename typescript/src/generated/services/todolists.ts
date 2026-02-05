@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -28,17 +29,17 @@ export interface UpdateTodolistRequest {
  * Options for list.
  */
 export interface ListTodolistOptions {
-  /** active|archived|trashed */
-  status?: string;
+  /** Filter by status */
+  status?: "active" | "archived" | "trashed";
 }
 
 /**
  * Request parameters for create.
  */
 export interface CreateTodolistRequest {
-  /** name */
+  /** Display name */
   name: string;
-  /** description */
+  /** Rich text description (HTML) */
   description?: string;
 }
 
@@ -57,6 +58,12 @@ export class TodolistsService extends BaseService {
    * @param projectId - The project ID
    * @param id - The id
    * @returns The todolist_or_group
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.todolists.get(123, 123);
+   * ```
    */
   async get(projectId: number, id: number): Promise<components["schemas"]["GetTodolistOrGroupResponseContent"]> {
     const response = await this.request(
@@ -81,8 +88,14 @@ export class TodolistsService extends BaseService {
    * Update an existing todolist or todolist group
    * @param projectId - The project ID
    * @param id - The id
-   * @param req - Request parameters
+   * @param req - Todolist_or_group update parameters
    * @returns The todolist_or_group
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.todolists.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, id: number, req: UpdateTodolistRequest): Promise<components["schemas"]["UpdateTodolistOrGroupResponseContent"]> {
     const response = await this.request(
@@ -98,7 +111,10 @@ export class TodolistsService extends BaseService {
           params: {
             path: { projectId, id },
           },
-          body: req as any,
+          body: {
+            name: req.name,
+            description: req.description,
+          },
         })
     );
     return response;
@@ -108,8 +124,16 @@ export class TodolistsService extends BaseService {
    * List todolists in a todoset
    * @param projectId - The project ID
    * @param todosetId - The todoset ID
-   * @param options - Optional parameters
+   * @param options - Optional query parameters
    * @returns Array of Todolist
+   *
+   * @example
+   * ```ts
+   * const result = await client.todolists.list(123, 123);
+   *
+   * // With options
+   * const filtered = await client.todolists.list(123, 123, { status: "active" });
+   * ```
    */
   async list(projectId: number, todosetId: number, options?: ListTodolistOptions): Promise<Todolist[]> {
     const response = await this.request(
@@ -136,15 +160,19 @@ export class TodolistsService extends BaseService {
    * Create a new todolist in a todoset
    * @param projectId - The project ID
    * @param todosetId - The todoset ID
-   * @param req - Request parameters
+   * @param req - Todolist creation parameters
    * @returns The Todolist
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.todolists.create(123, 123, { ... });
+   * const result = await client.todolists.create(123, 123, { name: "My example" });
    * ```
    */
   async create(projectId: number, todosetId: number, req: CreateTodolistRequest): Promise<Todolist> {
+    if (!req.name) {
+      throw Errors.validation("Name is required");
+    }
     const response = await this.request(
       {
         service: "Todolists",
@@ -159,7 +187,10 @@ export class TodolistsService extends BaseService {
           params: {
             path: { projectId, todosetId },
           },
-          body: req as any,
+          body: {
+            name: req.name,
+            description: req.description,
+          },
         })
     );
     return response;

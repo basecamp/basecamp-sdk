@@ -28,6 +28,12 @@ export class CardTablesService extends BaseService {
    * @param projectId - The project ID
    * @param cardTableId - The card table ID
    * @returns The CardTable
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.cardTables.get(123, 123);
+   * ```
    */
   async get(projectId: number, cardTableId: number): Promise<CardTable> {
     const response = await this.request(

@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -16,11 +17,11 @@ import type { components } from "../schema.js";
  * Options for forRecording.
  */
 export interface ForRecordingTimesheetOptions {
-  /** from */
+  /** From */
   from?: string;
-  /** to */
+  /** To */
   to?: string;
-  /** person id */
+  /** Person id */
   personId?: number;
 }
 
@@ -28,13 +29,13 @@ export interface ForRecordingTimesheetOptions {
  * Request parameters for create.
  */
 export interface CreateTimesheetRequest {
-  /** date */
+  /** Date */
   date: string;
-  /** hours */
+  /** Hours */
   hours: string;
-  /** description */
+  /** Rich text description (HTML) */
   description?: string;
-  /** person id */
+  /** Person id */
   personId?: number;
 }
 
@@ -42,11 +43,11 @@ export interface CreateTimesheetRequest {
  * Options for forProject.
  */
 export interface ForProjectTimesheetOptions {
-  /** from */
+  /** From */
   from?: string;
-  /** to */
+  /** To */
   to?: string;
-  /** person id */
+  /** Person id */
   personId?: number;
 }
 
@@ -54,13 +55,13 @@ export interface ForProjectTimesheetOptions {
  * Request parameters for update.
  */
 export interface UpdateTimesheetRequest {
-  /** date */
+  /** Date */
   date?: string;
-  /** hours */
+  /** Hours */
   hours?: string;
-  /** description */
+  /** Rich text description (HTML) */
   description?: string;
-  /** person id */
+  /** Person id */
   personId?: number;
 }
 
@@ -68,11 +69,11 @@ export interface UpdateTimesheetRequest {
  * Options for report.
  */
 export interface ReportTimesheetOptions {
-  /** from */
+  /** From */
   from?: string;
-  /** to */
+  /** To */
   to?: string;
-  /** person id */
+  /** Person id */
   personId?: number;
 }
 
@@ -90,8 +91,13 @@ export class TimesheetsService extends BaseService {
    * Get timesheet for a specific recording
    * @param projectId - The project ID
    * @param recordingId - The recording ID
-   * @param options - Optional parameters
+   * @param options - Optional query parameters
    * @returns Array of results
+   *
+   * @example
+   * ```ts
+   * const result = await client.timesheets.forRecording(123, 123);
+   * ```
    */
   async forRecording(projectId: number, recordingId: number, options?: ForRecordingTimesheetOptions): Promise<components["schemas"]["GetRecordingTimesheetResponseContent"]> {
     const response = await this.request(
@@ -118,15 +124,22 @@ export class TimesheetsService extends BaseService {
    * Create a timesheet entry on a recording
    * @param projectId - The project ID
    * @param recordingId - The recording ID
-   * @param req - Request parameters
+   * @param req - Timesheet_entry creation parameters
    * @returns The timesheet_entry
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.timesheets.create(123, 123, { ... });
+   * const result = await client.timesheets.create(123, 123, { date: "example", hours: "example" });
    * ```
    */
   async create(projectId: number, recordingId: number, req: CreateTimesheetRequest): Promise<components["schemas"]["CreateTimesheetEntryResponseContent"]> {
+    if (!req.date) {
+      throw Errors.validation("Date is required");
+    }
+    if (!req.hours) {
+      throw Errors.validation("Hours is required");
+    }
     const response = await this.request(
       {
         service: "Timesheets",
@@ -155,8 +168,13 @@ export class TimesheetsService extends BaseService {
   /**
    * Get timesheet for a specific project
    * @param projectId - The project ID
-   * @param options - Optional parameters
+   * @param options - Optional query parameters
    * @returns Array of results
+   *
+   * @example
+   * ```ts
+   * const result = await client.timesheets.forProject(123);
+   * ```
    */
   async forProject(projectId: number, options?: ForProjectTimesheetOptions): Promise<components["schemas"]["GetProjectTimesheetResponseContent"]> {
     const response = await this.request(
@@ -183,6 +201,12 @@ export class TimesheetsService extends BaseService {
    * @param projectId - The project ID
    * @param entryId - The entry ID
    * @returns The timesheet_entry
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.timesheets.get(123, 123);
+   * ```
    */
   async get(projectId: number, entryId: number): Promise<components["schemas"]["GetTimesheetEntryResponseContent"]> {
     const response = await this.request(
@@ -208,8 +232,14 @@ export class TimesheetsService extends BaseService {
    * Update a timesheet entry
    * @param projectId - The project ID
    * @param entryId - The entry ID
-   * @param req - Request parameters
+   * @param req - Timesheet_entry update parameters
    * @returns The timesheet_entry
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.timesheets.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, entryId: number, req: UpdateTimesheetRequest): Promise<components["schemas"]["UpdateTimesheetEntryResponseContent"]> {
     const response = await this.request(
@@ -239,8 +269,13 @@ export class TimesheetsService extends BaseService {
 
   /**
    * Get account-wide timesheet report
-   * @param options - Optional parameters
+   * @param options - Optional query parameters
    * @returns Array of results
+   *
+   * @example
+   * ```ts
+   * const result = await client.timesheets.report();
+   * ```
    */
   async report(options?: ReportTimesheetOptions): Promise<components["schemas"]["GetTimesheetReportResponseContent"]> {
     const response = await this.request(

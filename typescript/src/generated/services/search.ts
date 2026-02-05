@@ -16,9 +16,9 @@ import type { components } from "../schema.js";
  * Options for search.
  */
 export interface SearchSearchOptions {
-  /** created_at|updated_at */
-  sort?: string;
-  /** page */
+  /** Filter by sort */
+  sort?: "created_at" | "updated_at";
+  /** Page */
   page?: number;
 }
 
@@ -35,8 +35,13 @@ export class SearchService extends BaseService {
   /**
    * Search for content across the account
    * @param query - query
-   * @param options - Optional parameters
+   * @param options - Optional query parameters
    * @returns Array of results
+   *
+   * @example
+   * ```ts
+   * const result = await client.search.search("query");
+   * ```
    */
   async search(query: string, options?: SearchSearchOptions): Promise<components["schemas"]["SearchResponseContent"]> {
     const response = await this.request(
@@ -59,6 +64,11 @@ export class SearchService extends BaseService {
   /**
    * Get search metadata (available filter options)
    * @returns The search_metadata
+   *
+   * @example
+   * ```ts
+   * const result = await client.search.metadata();
+   * ```
    */
   async metadata(): Promise<components["schemas"]["GetSearchMetadataResponseContent"]> {
     const response = await this.request(

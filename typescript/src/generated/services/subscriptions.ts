@@ -18,9 +18,9 @@ export type Subscription = components["schemas"]["Subscription"];
  * Request parameters for update.
  */
 export interface UpdateSubscriptionRequest {
-  /** subscriptions */
+  /** Subscriptions */
   subscriptions?: number[];
-  /** unsubscriptions */
+  /** Unsubscriptions */
   unsubscriptions?: number[];
 }
 
@@ -39,6 +39,12 @@ export class SubscriptionsService extends BaseService {
    * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @returns The Subscription
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.subscriptions.get(123, 123);
+   * ```
    */
   async get(projectId: number, recordingId: number): Promise<Subscription> {
     const response = await this.request(
@@ -65,6 +71,12 @@ export class SubscriptionsService extends BaseService {
    * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @returns The Subscription
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.subscriptions.subscribe(123, 123);
+   * ```
    */
   async subscribe(projectId: number, recordingId: number): Promise<Subscription> {
     const response = await this.request(
@@ -90,8 +102,14 @@ export class SubscriptionsService extends BaseService {
    * Update subscriptions by adding or removing specific users
    * @param projectId - The project ID
    * @param recordingId - The recording ID
-   * @param req - Request parameters
+   * @param req - Subscription update parameters
    * @returns The Subscription
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.subscriptions.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, recordingId: number, req: UpdateSubscriptionRequest): Promise<Subscription> {
     const response = await this.request(
@@ -108,7 +126,10 @@ export class SubscriptionsService extends BaseService {
           params: {
             path: { projectId, recordingId },
           },
-          body: req as any,
+          body: {
+            subscriptions: req.subscriptions,
+            unsubscriptions: req.unsubscriptions,
+          },
         })
     );
     return response;
@@ -119,6 +140,12 @@ export class SubscriptionsService extends BaseService {
    * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.subscriptions.unsubscribe(123, 123);
+   * ```
    */
   async unsubscribe(projectId: number, recordingId: number): Promise<void> {
     await this.request(

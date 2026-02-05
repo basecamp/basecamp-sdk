@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -18,9 +19,9 @@ export type CardColumn = components["schemas"]["CardColumn"];
  * Request parameters for update.
  */
 export interface UpdateCardColumnRequest {
-  /** title */
+  /** Title */
   title?: string;
-  /** description */
+  /** Rich text description (HTML) */
   description?: string;
 }
 
@@ -36,9 +37,9 @@ export interface SetColorCardColumnRequest {
  * Request parameters for create.
  */
 export interface CreateCardColumnRequest {
-  /** title */
+  /** Title */
   title: string;
-  /** description */
+  /** Rich text description (HTML) */
   description?: string;
 }
 
@@ -46,11 +47,11 @@ export interface CreateCardColumnRequest {
  * Request parameters for move.
  */
 export interface MoveCardColumnRequest {
-  /** source id */
+  /** Source id */
   sourceId: number;
-  /** target id */
+  /** Target id */
   targetId: number;
-  /** position */
+  /** Position for ordering (1-based) */
   position?: number;
 }
 
@@ -69,6 +70,12 @@ export class CardColumnsService extends BaseService {
    * @param projectId - The project ID
    * @param columnId - The column ID
    * @returns The CardColumn
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.cardColumns.get(123, 123);
+   * ```
    */
   async get(projectId: number, columnId: number): Promise<CardColumn> {
     const response = await this.request(
@@ -94,8 +101,14 @@ export class CardColumnsService extends BaseService {
    * Update an existing column
    * @param projectId - The project ID
    * @param columnId - The column ID
-   * @param req - Request parameters
+   * @param req - Card_column update parameters
    * @returns The CardColumn
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.cardColumns.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, columnId: number, req: UpdateCardColumnRequest): Promise<CardColumn> {
     const response = await this.request(
@@ -112,7 +125,10 @@ export class CardColumnsService extends BaseService {
           params: {
             path: { projectId, columnId },
           },
-          body: req as any,
+          body: {
+            title: req.title,
+            description: req.description,
+          },
         })
     );
     return response;
@@ -122,10 +138,19 @@ export class CardColumnsService extends BaseService {
    * Set the color of a column
    * @param projectId - The project ID
    * @param columnId - The column ID
-   * @param req - Request parameters
+   * @param req - Card_column_color request parameters
    * @returns The CardColumn
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.cardColumns.setColor(123, 123, { color: "example" });
+   * ```
    */
   async setColor(projectId: number, columnId: number, req: SetColorCardColumnRequest): Promise<CardColumn> {
+    if (!req.color) {
+      throw Errors.validation("Color is required");
+    }
     const response = await this.request(
       {
         service: "CardColumns",
@@ -140,7 +165,9 @@ export class CardColumnsService extends BaseService {
           params: {
             path: { projectId, columnId },
           },
-          body: req as any,
+          body: {
+            color: req.color,
+          },
         })
     );
     return response;
@@ -151,6 +178,12 @@ export class CardColumnsService extends BaseService {
    * @param projectId - The project ID
    * @param columnId - The column ID
    * @returns The CardColumn
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.cardColumns.enableOnHold(123, 123);
+   * ```
    */
   async enableOnHold(projectId: number, columnId: number): Promise<CardColumn> {
     const response = await this.request(
@@ -177,6 +210,12 @@ export class CardColumnsService extends BaseService {
    * @param projectId - The project ID
    * @param columnId - The column ID
    * @returns The CardColumn
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.cardColumns.disableOnHold(123, 123);
+   * ```
    */
   async disableOnHold(projectId: number, columnId: number): Promise<CardColumn> {
     const response = await this.request(
@@ -203,6 +242,12 @@ export class CardColumnsService extends BaseService {
    * @param projectId - The project ID
    * @param columnId - The column ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.cardColumns.subscribeToColumn(123, 123);
+   * ```
    */
   async subscribeToColumn(projectId: number, columnId: number): Promise<void> {
     await this.request(
@@ -228,6 +273,12 @@ export class CardColumnsService extends BaseService {
    * @param projectId - The project ID
    * @param columnId - The column ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.cardColumns.unsubscribeFromColumn(123, 123);
+   * ```
    */
   async unsubscribeFromColumn(projectId: number, columnId: number): Promise<void> {
     await this.request(
@@ -252,15 +303,19 @@ export class CardColumnsService extends BaseService {
    * Create a column in a card table
    * @param projectId - The project ID
    * @param cardTableId - The card table ID
-   * @param req - Request parameters
+   * @param req - Card_column creation parameters
    * @returns The CardColumn
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.cardColumns.create(123, 123, { ... });
+   * const result = await client.cardColumns.create(123, 123, { title: "example" });
    * ```
    */
   async create(projectId: number, cardTableId: number, req: CreateCardColumnRequest): Promise<CardColumn> {
+    if (!req.title) {
+      throw Errors.validation("Title is required");
+    }
     const response = await this.request(
       {
         service: "CardColumns",
@@ -275,7 +330,10 @@ export class CardColumnsService extends BaseService {
           params: {
             path: { projectId, cardTableId },
           },
-          body: req as any,
+          body: {
+            title: req.title,
+            description: req.description,
+          },
         })
     );
     return response;
@@ -285,8 +343,14 @@ export class CardColumnsService extends BaseService {
    * Move a column within a card table
    * @param projectId - The project ID
    * @param cardTableId - The card table ID
-   * @param req - Request parameters
+   * @param req - Card_column request parameters
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.cardColumns.move(123, 123, { sourceId: 1, targetId: 1 });
+   * ```
    */
   async move(projectId: number, cardTableId: number, req: MoveCardColumnRequest): Promise<void> {
     await this.request(

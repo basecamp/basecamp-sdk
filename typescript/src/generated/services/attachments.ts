@@ -27,6 +27,7 @@ export class AttachmentsService extends BaseService {
    * @param contentType - MIME type of the file (e.g., "image/png", "application/pdf")
    * @param name - name
    * @returns The attachment
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts

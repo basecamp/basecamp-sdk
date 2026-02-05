@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -18,13 +19,13 @@ export type Card = components["schemas"]["Card"];
  * Request parameters for update.
  */
 export interface UpdateCardRequest {
-  /** title */
+  /** Title */
   title?: string;
-  /** content */
+  /** Text content */
   content?: string;
-  /** due on (YYYY-MM-DD) */
+  /** Due date (YYYY-MM-DD) */
   dueOn?: string;
-  /** assignee ids */
+  /** Person IDs to assign to */
   assigneeIds?: number[];
 }
 
@@ -32,7 +33,7 @@ export interface UpdateCardRequest {
  * Request parameters for move.
  */
 export interface MoveCardRequest {
-  /** column id */
+  /** Column id */
   columnId: number;
 }
 
@@ -40,13 +41,13 @@ export interface MoveCardRequest {
  * Request parameters for create.
  */
 export interface CreateCardRequest {
-  /** title */
+  /** Title */
   title: string;
-  /** content */
+  /** Text content */
   content?: string;
-  /** due on (YYYY-MM-DD) */
+  /** Due date (YYYY-MM-DD) */
   dueOn?: string;
-  /** notify */
+  /** Whether to send notifications to relevant people */
   notify?: boolean;
 }
 
@@ -65,6 +66,12 @@ export class CardsService extends BaseService {
    * @param projectId - The project ID
    * @param cardId - The card ID
    * @returns The Card
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.cards.get(123, 123);
+   * ```
    */
   async get(projectId: number, cardId: number): Promise<Card> {
     const response = await this.request(
@@ -90,10 +97,19 @@ export class CardsService extends BaseService {
    * Update an existing card
    * @param projectId - The project ID
    * @param cardId - The card ID
-   * @param req - Request parameters
+   * @param req - Card update parameters
    * @returns The Card
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.cards.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, cardId: number, req: UpdateCardRequest): Promise<Card> {
+    if (req.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.dueOn)) {
+      throw Errors.validation("Due on must be in YYYY-MM-DD format");
+    }
     const response = await this.request(
       {
         service: "Cards",
@@ -123,8 +139,14 @@ export class CardsService extends BaseService {
    * Move a card to a different column
    * @param projectId - The project ID
    * @param cardId - The card ID
-   * @param req - Request parameters
+   * @param req - Card request parameters
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.cards.move(123, 123, { columnId: 1 });
+   * ```
    */
   async move(projectId: number, cardId: number, req: MoveCardRequest): Promise<void> {
     await this.request(
@@ -153,6 +175,11 @@ export class CardsService extends BaseService {
    * @param projectId - The project ID
    * @param columnId - The column ID
    * @returns Array of Card
+   *
+   * @example
+   * ```ts
+   * const result = await client.cards.list(123, 123);
+   * ```
    */
   async list(projectId: number, columnId: number): Promise<Card[]> {
     const response = await this.request(
@@ -178,15 +205,22 @@ export class CardsService extends BaseService {
    * Create a card in a column
    * @param projectId - The project ID
    * @param columnId - The column ID
-   * @param req - Request parameters
+   * @param req - Card creation parameters
    * @returns The Card
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.cards.create(123, 123, { ... });
+   * const result = await client.cards.create(123, 123, { title: "example" });
    * ```
    */
   async create(projectId: number, columnId: number, req: CreateCardRequest): Promise<Card> {
+    if (!req.title) {
+      throw Errors.validation("Title is required");
+    }
+    if (req.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.dueOn)) {
+      throw Errors.validation("Due on must be in YYYY-MM-DD format");
+    }
     const response = await this.request(
       {
         service: "Cards",
