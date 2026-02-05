@@ -59,7 +59,7 @@ class CardStepsServiceTest < Minitest::Test
     completed_step["completed"] = true
     stub_put("/12345/card_tables/steps/200/completions.json", response_body: completed_step)
 
-    step = @account.card_tables.set_card_step_completion(step_id: 200, completion: "on")
+    step = @account.card_steps.set_completion(step_id: 200, completion: "on")
 
     assert step["completed"]
   end
@@ -68,7 +68,7 @@ class CardStepsServiceTest < Minitest::Test
     uncompleted_step = sample_step(id: 200)
     stub_put("/12345/card_tables/steps/200/completions.json", response_body: uncompleted_step)
 
-    step = @account.card_tables.set_card_step_completion(step_id: 200, completion: "")
+    step = @account.card_steps.set_completion(step_id: 200, completion: "")
 
     assert_not step["completed"]
   end
