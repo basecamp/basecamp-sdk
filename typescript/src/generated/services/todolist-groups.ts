@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -18,7 +19,7 @@ export type TodolistGroup = components["schemas"]["TodolistGroup"];
  * Request parameters for reposition.
  */
 export interface RepositionTodolistGroupRequest {
-  /** position */
+  /** Position for ordering (1-based) */
   position: number;
 }
 
@@ -26,7 +27,7 @@ export interface RepositionTodolistGroupRequest {
  * Request parameters for create.
  */
 export interface CreateTodolistGroupRequest {
-  /** name */
+  /** Display name */
   name: string;
 }
 
@@ -44,8 +45,14 @@ export class TodolistGroupsService extends BaseService {
    * Reposition a todolist group
    * @param projectId - The project ID
    * @param groupId - The group ID
-   * @param req - Request parameters
+   * @param req - Todolist_group request parameters
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.todolistGroups.reposition(123, 123, { position: 1 });
+   * ```
    */
   async reposition(projectId: number, groupId: number, req: RepositionTodolistGroupRequest): Promise<void> {
     await this.request(
@@ -62,7 +69,9 @@ export class TodolistGroupsService extends BaseService {
           params: {
             path: { projectId, groupId },
           },
-          body: req as any,
+          body: {
+            position: req.position,
+          },
         })
     );
   }
@@ -72,6 +81,11 @@ export class TodolistGroupsService extends BaseService {
    * @param projectId - The project ID
    * @param todolistId - The todolist ID
    * @returns Array of TodolistGroup
+   *
+   * @example
+   * ```ts
+   * const result = await client.todolistGroups.list(123, 123);
+   * ```
    */
   async list(projectId: number, todolistId: number): Promise<TodolistGroup[]> {
     const response = await this.request(
@@ -97,15 +111,19 @@ export class TodolistGroupsService extends BaseService {
    * Create a new group in a todolist
    * @param projectId - The project ID
    * @param todolistId - The todolist ID
-   * @param req - Request parameters
+   * @param req - Todolist_group creation parameters
    * @returns The TodolistGroup
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.todolistGroups.create(123, 123, { ... });
+   * const result = await client.todolistGroups.create(123, 123, { name: "My example" });
    * ```
    */
   async create(projectId: number, todolistId: number, req: CreateTodolistGroupRequest): Promise<TodolistGroup> {
+    if (!req.name) {
+      throw Errors.validation("Name is required");
+    }
     const response = await this.request(
       {
         service: "TodolistGroups",
@@ -120,7 +138,9 @@ export class TodolistGroupsService extends BaseService {
           params: {
             path: { projectId, todolistId },
           },
-          body: req as any,
+          body: {
+            name: req.name,
+          },
         })
     );
     return response;

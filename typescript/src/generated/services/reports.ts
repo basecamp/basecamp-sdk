@@ -16,9 +16,9 @@ import type { components } from "../schema.js";
  * Options for upcoming.
  */
 export interface UpcomingReportOptions {
-  /** window starts on */
+  /** Window starts on */
   windowStartsOn?: string;
-  /** window ends on */
+  /** Window ends on */
   windowEndsOn?: string;
 }
 
@@ -43,6 +43,11 @@ export class ReportsService extends BaseService {
   /**
    * Get account-wide activity feed (progress report)
    * @returns Array of results
+   *
+   * @example
+   * ```ts
+   * const result = await client.reports.progress();
+   * ```
    */
   async progress(): Promise<components["schemas"]["GetProgressReportResponseContent"]> {
     const response = await this.request(
@@ -61,8 +66,13 @@ export class ReportsService extends BaseService {
 
   /**
    * Get upcoming schedule entries within a date window
-   * @param options - Optional parameters
+   * @param options - Optional query parameters
    * @returns The upcoming_schedule
+   *
+   * @example
+   * ```ts
+   * const result = await client.reports.upcoming();
+   * ```
    */
   async upcoming(options?: UpcomingReportOptions): Promise<components["schemas"]["GetUpcomingScheduleResponseContent"]> {
     const response = await this.request(
@@ -85,8 +95,13 @@ export class ReportsService extends BaseService {
   /**
    * Get todos assigned to a specific person
    * @param personId - The person ID
-   * @param options - Optional parameters
+   * @param options - Optional query parameters
    * @returns The assigned_todo
+   *
+   * @example
+   * ```ts
+   * const result = await client.reports.assigned(123);
+   * ```
    */
   async assigned(personId: number, options?: AssignedReportOptions): Promise<components["schemas"]["GetAssignedTodosResponseContent"]> {
     const response = await this.request(
@@ -111,6 +126,11 @@ export class ReportsService extends BaseService {
   /**
    * Get overdue todos grouped by lateness
    * @returns The overdue_todo
+   *
+   * @example
+   * ```ts
+   * const result = await client.reports.overdue();
+   * ```
    */
   async overdue(): Promise<components["schemas"]["GetOverdueTodosResponseContent"]> {
     const response = await this.request(
@@ -131,6 +151,11 @@ export class ReportsService extends BaseService {
    * Get a person's activity timeline
    * @param personId - The person ID
    * @returns The person_progress
+   *
+   * @example
+   * ```ts
+   * const result = await client.reports.personProgress(123);
+   * ```
    */
   async personProgress(personId: number): Promise<components["schemas"]["GetPersonProgressResponseContent"]> {
     const response = await this.request(

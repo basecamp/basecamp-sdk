@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -18,9 +19,9 @@ export type MessageType = components["schemas"]["MessageType"];
  * Request parameters for create.
  */
 export interface CreateMessageTypeRequest {
-  /** name */
+  /** Display name */
   name: string;
-  /** icon */
+  /** Icon identifier */
   icon: string;
 }
 
@@ -28,9 +29,9 @@ export interface CreateMessageTypeRequest {
  * Request parameters for update.
  */
 export interface UpdateMessageTypeRequest {
-  /** name */
+  /** Display name */
   name?: string;
-  /** icon */
+  /** Icon identifier */
   icon?: string;
 }
 
@@ -48,6 +49,11 @@ export class MessageTypesService extends BaseService {
    * List message types in a project
    * @param projectId - The project ID
    * @returns Array of MessageType
+   *
+   * @example
+   * ```ts
+   * const result = await client.messageTypes.list(123);
+   * ```
    */
   async list(projectId: number): Promise<MessageType[]> {
     const response = await this.request(
@@ -71,15 +77,22 @@ export class MessageTypesService extends BaseService {
   /**
    * Create a new message type in a project
    * @param projectId - The project ID
-   * @param req - Request parameters
+   * @param req - Message_type creation parameters
    * @returns The MessageType
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.messageTypes.create(123, { ... });
+   * const result = await client.messageTypes.create(123, { name: "My example", icon: "example" });
    * ```
    */
   async create(projectId: number, req: CreateMessageTypeRequest): Promise<MessageType> {
+    if (!req.name) {
+      throw Errors.validation("Name is required");
+    }
+    if (!req.icon) {
+      throw Errors.validation("Icon is required");
+    }
     const response = await this.request(
       {
         service: "MessageTypes",
@@ -93,7 +106,10 @@ export class MessageTypesService extends BaseService {
           params: {
             path: { projectId },
           },
-          body: req as any,
+          body: {
+            name: req.name,
+            icon: req.icon,
+          },
         })
     );
     return response;
@@ -104,6 +120,12 @@ export class MessageTypesService extends BaseService {
    * @param projectId - The project ID
    * @param typeId - The type ID
    * @returns The MessageType
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.messageTypes.get(123, 123);
+   * ```
    */
   async get(projectId: number, typeId: number): Promise<MessageType> {
     const response = await this.request(
@@ -129,8 +151,14 @@ export class MessageTypesService extends BaseService {
    * Update an existing message type
    * @param projectId - The project ID
    * @param typeId - The type ID
-   * @param req - Request parameters
+   * @param req - Message_type update parameters
    * @returns The MessageType
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.messageTypes.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, typeId: number, req: UpdateMessageTypeRequest): Promise<MessageType> {
     const response = await this.request(
@@ -147,7 +175,10 @@ export class MessageTypesService extends BaseService {
           params: {
             path: { projectId, typeId },
           },
-          body: req as any,
+          body: {
+            name: req.name,
+            icon: req.icon,
+          },
         })
     );
     return response;
@@ -158,6 +189,12 @@ export class MessageTypesService extends BaseService {
    * @param projectId - The project ID
    * @param typeId - The type ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.messageTypes.delete(123, 123);
+   * ```
    */
   async delete(projectId: number, typeId: number): Promise<void> {
     await this.request(

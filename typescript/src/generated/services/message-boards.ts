@@ -28,6 +28,12 @@ export class MessageBoardsService extends BaseService {
    * @param projectId - The project ID
    * @param boardId - The board ID
    * @returns The MessageBoard
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.messageBoards.get(123, 123);
+   * ```
    */
   async get(projectId: number, boardId: number): Promise<MessageBoard> {
     const response = await this.request(

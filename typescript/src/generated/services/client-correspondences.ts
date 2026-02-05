@@ -27,6 +27,11 @@ export class ClientCorrespondencesService extends BaseService {
    * List all client correspondences in a project
    * @param projectId - The project ID
    * @returns Array of ClientCorrespondence
+   *
+   * @example
+   * ```ts
+   * const result = await client.clientCorrespondences.list(123);
+   * ```
    */
   async list(projectId: number): Promise<ClientCorrespondence[]> {
     const response = await this.request(
@@ -52,6 +57,12 @@ export class ClientCorrespondencesService extends BaseService {
    * @param projectId - The project ID
    * @param correspondenceId - The correspondence ID
    * @returns The ClientCorrespondence
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.clientCorrespondences.get(123, 123);
+   * ```
    */
   async get(projectId: number, correspondenceId: number): Promise<ClientCorrespondence> {
     const response = await this.request(

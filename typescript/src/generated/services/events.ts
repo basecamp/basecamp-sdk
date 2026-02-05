@@ -28,6 +28,11 @@ export class EventsService extends BaseService {
    * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @returns Array of Event
+   *
+   * @example
+   * ```ts
+   * const result = await client.events.list(123, 123);
+   * ```
    */
   async list(projectId: number, recordingId: number): Promise<Event[]> {
     const response = await this.request(

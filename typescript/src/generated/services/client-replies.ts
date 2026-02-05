@@ -28,6 +28,11 @@ export class ClientRepliesService extends BaseService {
    * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @returns Array of ClientReply
+   *
+   * @example
+   * ```ts
+   * const result = await client.clientReplies.list(123, 123);
+   * ```
    */
   async list(projectId: number, recordingId: number): Promise<ClientReply[]> {
     const response = await this.request(
@@ -55,6 +60,12 @@ export class ClientRepliesService extends BaseService {
    * @param recordingId - The recording ID
    * @param replyId - The reply ID
    * @returns The ClientReply
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.clientReplies.get(123, 123, 123);
+   * ```
    */
   async get(projectId: number, recordingId: number, replyId: number): Promise<ClientReply> {
     const response = await this.request(

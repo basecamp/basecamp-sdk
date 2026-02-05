@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -16,9 +17,9 @@ import type { components } from "../schema.js";
  * Request parameters for create.
  */
 export interface CreateLineupRequest {
-  /** name */
+  /** Display name */
   name: string;
-  /** date */
+  /** Date */
   date: string;
 }
 
@@ -26,9 +27,9 @@ export interface CreateLineupRequest {
  * Request parameters for update.
  */
 export interface UpdateLineupRequest {
-  /** name */
+  /** Display name */
   name?: string;
-  /** date */
+  /** Date */
   date?: string;
 }
 
@@ -44,15 +45,22 @@ export class LineupService extends BaseService {
 
   /**
    * Create a new lineup marker
-   * @param req - Request parameters
+   * @param req - Lineup_marker creation parameters
    * @returns void
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.lineup.create({ ... });
+   * await client.lineup.create({ name: "My example", date: "example" });
    * ```
    */
   async create(req: CreateLineupRequest): Promise<void> {
+    if (!req.name) {
+      throw Errors.validation("Name is required");
+    }
+    if (!req.date) {
+      throw Errors.validation("Date is required");
+    }
     await this.request(
       {
         service: "Lineup",
@@ -62,7 +70,10 @@ export class LineupService extends BaseService {
       },
       () =>
         this.client.POST("/lineup/markers.json", {
-          body: req as any,
+          body: {
+            name: req.name,
+            date: req.date,
+          },
         })
     );
   }
@@ -70,8 +81,14 @@ export class LineupService extends BaseService {
   /**
    * Update an existing lineup marker
    * @param markerId - The marker ID
-   * @param req - Request parameters
+   * @param req - Lineup_marker update parameters
    * @returns void
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * await client.lineup.update(123, { });
+   * ```
    */
   async update(markerId: number, req: UpdateLineupRequest): Promise<void> {
     await this.request(
@@ -87,7 +104,10 @@ export class LineupService extends BaseService {
           params: {
             path: { markerId },
           },
-          body: req as any,
+          body: {
+            name: req.name,
+            date: req.date,
+          },
         })
     );
   }
@@ -96,6 +116,12 @@ export class LineupService extends BaseService {
    * Delete a lineup marker
    * @param markerId - The marker ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.lineup.delete(123);
+   * ```
    */
   async delete(markerId: number): Promise<void> {
     await this.request(

@@ -419,6 +419,49 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   ClientReply: ["ClientReply", "entity"],
 };
 
+/**
+ * Human-friendly descriptions for common body/query property names.
+ * Used when the OpenAPI spec has no description for a field.
+ */
+const PROPERTY_HINTS: Record<string, string> = {
+  content: "Text content",
+  description: "Rich text description (HTML)",
+  name: "Display name",
+  title: "Title",
+  subject: "Subject line",
+  summary: "Summary text",
+  notify: "Whether to send notifications to relevant people",
+  position: "Position for ordering (1-based)",
+  status: "Status filter",
+  assignee_ids: "Person IDs to assign to",
+  completion_subscriber_ids: "Person IDs to notify on completion",
+  subscriber_ids: "Person IDs to subscribe",
+  due_on: "Due date",
+  starts_on: "Start date",
+  start_date: "Start date",
+  end_date: "End date",
+  color: "Color value",
+  icon: "Icon identifier",
+  enabled: "Whether this is enabled",
+  parent_id: "Parent resource ID to move under",
+  admissions: "Access policy for the project",
+  schedule_attributes: "Schedule date range settings",
+};
+
+/**
+ * Description enrichments for common method description patterns.
+ * Applied as post-processing to strip implementation details and add context.
+ */
+function enrichDescription(desc: string): string {
+  // Strip "(returns 204 No Content)" — implementation detail, not useful for devs
+  let result = desc.replace(/\s*\(returns \d+ [^)]+\)/g, "");
+  // Add behavioral context for trash operations
+  if (/^Trash /i.test(result) && !/can be recovered/i.test(result)) {
+    result += ". Trashed items can be recovered.";
+  }
+  return result;
+}
+
 // =============================================================================
 // Schema Utilities
 // =============================================================================
@@ -478,6 +521,21 @@ function getFormatHint(schema: Schema): string | undefined {
   if (schema.format === "date") return "YYYY-MM-DD";
   if (schema.format === "date-time") return "RFC3339";
   return undefined;
+}
+
+/**
+ * Detect pipe-separated enum descriptions like "active|archived|trashed"
+ * and return a TypeScript union type string, or null if not an enum pattern.
+ */
+function parsePipeEnum(description: string | undefined): string | null {
+  if (!description) return null;
+  // Must match pattern: word|word (with optional more |word segments)
+  // Words can contain colons (e.g., "Kanban::Card") and underscores
+  const parts = description.split("|");
+  if (parts.length < 2) return null;
+  // Each part must be a non-empty value without spaces
+  if (!parts.every((p) => p.length > 0 && !p.includes(" "))) return null;
+  return parts.map((p) => `"${p}"`).join(" | ");
 }
 
 // =============================================================================
@@ -571,12 +629,15 @@ function parseOperation(
   // Query parameters
   const queryParams: QueryParam[] = (operation.parameters || [])
     .filter((p) => p.in === "query")
-    .map((p) => ({
-      name: p.name,
-      type: schemaToTsType(p.schema),
-      required: p.required || false,
-      description: p.description,
-    }));
+    .map((p) => {
+      const enumUnion = parsePipeEnum(p.description) || parsePipeEnum(p.schema.description);
+      return {
+        name: p.name,
+        type: enumUnion || schemaToTsType(p.schema),
+        required: p.required || false,
+        description: p.description,
+      };
+    });
 
   // Request body
   let bodySchemaRef: string | undefined;
@@ -591,13 +652,16 @@ function parseOperation(
     if (schema.$ref) {
       bodySchemaRef = resolveRef(schema.$ref);
       const { properties, required } = getSchemaProperties(bodySchemaRef);
-      bodyProperties = Object.entries(properties).map(([name, prop]) => ({
-        name,
-        type: schemaToTsType(prop, true), // forInterface=true to use full schema refs
-        required: required.includes(name),
-        description: prop.description,
-        formatHint: getFormatHint(prop),
-      }));
+      bodyProperties = Object.entries(properties).map(([name, prop]) => {
+        const enumUnion = parsePipeEnum(prop.description);
+        return {
+          name,
+          type: enumUnion || schemaToTsType(prop, true), // forInterface=true to use full schema refs
+          required: required.includes(name),
+          description: prop.description,
+          formatHint: getFormatHint(prop),
+        };
+      });
     }
   } else if (operation.requestBody?.content?.["application/octet-stream"]?.schema) {
     bodyRequired = operation.requestBody.required || false;
@@ -738,6 +802,19 @@ function generateService(service: ServiceDefinition): string {
   lines.push(``);
   lines.push(`import { BaseService } from "../../services/base.js";`);
   lines.push(`import type { components } from "../schema.js";`);
+
+  // Import Errors if any operation has validation
+  const needsValidation = service.operations.some((op) =>
+    op.bodyProperties.some((p) => {
+      if (!p.required) return p.formatHint === "YYYY-MM-DD";
+      const baseType = p.type.replace(/\s*\|.*/g, "").replace(/"/g, "").trim();
+      return baseType !== "boolean" && baseType !== "number";
+    })
+  );
+  if (needsValidation) {
+    lines.push(`import { Errors } from "../../errors.js";`);
+  }
+
   lines.push(``);
 
   // Type exports
@@ -847,7 +924,9 @@ function generateRequestInterfaces(service: ServiceDefinition): string[] {
 
       for (const prop of op.bodyProperties) {
         const optional = prop.required ? "" : "?";
-        const desc = prop.description || toHumanReadable(prop.name);
+        const isPipeEnum = parsePipeEnum(prop.description) !== null;
+        // Use human-readable name when description is a pipe enum (type already shows the values)
+        const desc = isPipeEnum ? capitalize(toHumanReadable(prop.name)) : (prop.description || PROPERTY_HINTS[prop.name] || capitalize(toHumanReadable(prop.name)));
         const format = prop.formatHint ? ` (${prop.formatHint})` : "";
         lines.push(`  /** ${desc}${format} */`);
         lines.push(`  ${toCamelCase(prop.name)}${optional}: ${mapPropertyType(prop.type)};`);
@@ -870,7 +949,9 @@ function generateRequestInterfaces(service: ServiceDefinition): string[] {
       lines.push(`export interface ${interfaceName} {`);
 
       for (const param of optionalQueryParams) {
-        const desc = param.description || toHumanReadable(param.name);
+        const isPipeEnum = parsePipeEnum(param.description) !== null;
+        // Use human-readable name when description is a pipe enum (type already shows the values)
+        const desc = isPipeEnum ? `Filter by ${toHumanReadable(param.name)}` : (param.description || PROPERTY_HINTS[param.name] || capitalize(toHumanReadable(param.name)));
         lines.push(`  /** ${desc} */`);
         lines.push(`  ${toCamelCase(param.name)}?: ${param.type};`);
       }
@@ -905,14 +986,17 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
 
   // JSDoc
   lines.push(`  /**`);
-  lines.push(`   * ${op.description.split("\n")[0]}`);
+  lines.push(`   * ${enrichDescription(op.description.split("\n")[0])}`);
 
   // @param tags
   for (const p of op.pathParams) {
-    lines.push(`   * @param ${p.name} - The ${toHumanReadable(p.name)}`);
+    const paramDesc = p.description || `The ${toHumanReadable(p.name)}`;
+    lines.push(`   * @param ${p.name} - ${paramDesc}`);
   }
   if (hasRequest) {
-    lines.push(`   * @param req - Request parameters`);
+    const reqVerb = op.methodName.startsWith("create") || op.methodName === "create" ? "creation" :
+      op.methodName.startsWith("update") || op.methodName === "update" ? "update" : "request";
+    lines.push(`   * @param req - ${capitalize(op.resourceType)} ${reqVerb} parameters`);
   }
   if (op.bodyContentType === "octet-stream") {
     lines.push(`   * @param data - Binary file data to upload`);
@@ -925,7 +1009,7 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
     lines.push(`   * @param ${toCamelCase(q.name)} - ${desc}`);
   }
   if (hasOptions) {
-    lines.push(`   * @param options - Optional parameters`);
+    lines.push(`   * @param options - Optional query parameters`);
   }
 
   // @returns
@@ -939,20 +1023,83 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
     lines.push(`   * @returns The ${entityType || op.resourceType}`);
   }
 
-  // @example for create methods
-  if (op.methodName.startsWith("create") || op.methodName === "create") {
-    lines.push(`   *`);
-    lines.push(`   * @example`);
-    lines.push(`   * \`\`\`ts`);
-    const exampleArgs = generateExampleArgs(op, hasRequest);
-    lines.push(`   * const result = await client.${camelCase(serviceName)}.${op.methodName}(${exampleArgs});`);
-    lines.push(`   * \`\`\``);
+  // @throws — specific to operation type
+  if (op.methodName === "get" || op.methodName.startsWith("get")) {
+    lines.push(`   * @throws {BasecampError} If the resource is not found`);
+  } else if (op.isMutation) {
+    if (op.methodName === "create" || op.methodName.startsWith("create")) {
+      lines.push(`   * @throws {BasecampError} If required fields are missing or invalid`);
+    } else if (op.methodName === "update" || op.methodName.startsWith("update")) {
+      lines.push(`   * @throws {BasecampError} If the resource is not found or fields are invalid`);
+    } else {
+      lines.push(`   * @throws {BasecampError} If the request fails`);
+    }
   }
+
+  // @example on ALL methods
+  lines.push(`   *`);
+  lines.push(`   * @example`);
+  lines.push(`   * \`\`\`ts`);
+  const exampleArgs = generateExampleArgs(op, hasRequest);
+  const clientCall = `client.${camelCase(serviceName)}.${op.methodName}`;
+  if (op.returnsVoid) {
+    lines.push(`   * await ${clientCall}(${exampleArgs});`);
+  } else {
+    lines.push(`   * const result = await ${clientCall}(${exampleArgs});`);
+  }
+  // For list methods with options, show a second example with options
+  if (hasOptions && (op.methodName === "list" || op.methodName.startsWith("list"))) {
+    const optionalQueryParams = op.queryParams.filter((q) => !q.required);
+    if (optionalQueryParams.length > 0) {
+      const firstParam = optionalQueryParams[0];
+      const exampleValue = generateExampleValue(firstParam.name, firstParam.type);
+      const optionField = toCamelCase(firstParam.name);
+      const pathArgs = op.pathParams.map((p) => p.type === "number" ? "123" : '"example"');
+      lines.push(`   *`);
+      lines.push(`   * // With options`);
+      lines.push(`   * const filtered = await ${clientCall}(${[...pathArgs, `{ ${optionField}: ${exampleValue} }`].join(", ")});`);
+    }
+  }
+  lines.push(`   * \`\`\``);
 
   lines.push(`   */`);
 
   // Method signature
   lines.push(`  async ${op.methodName}(${paramString}): Promise<${returnType}> {`);
+
+  // Client-side validation for required body fields (defense-in-depth for JS consumers)
+  if (hasRequest && op.bodyProperties.length > 0) {
+    const validationLines: string[] = [];
+
+    for (const prop of op.bodyProperties) {
+      if (!prop.required) continue;
+      // Skip booleans and numbers — falsy checks don't work (false, 0 are valid values)
+      const baseType = prop.type.replace(/\s*\|.*/g, "").replace(/"/g, "").trim();
+      if (baseType === "boolean" || baseType === "number") continue;
+      const camelName = toCamelCase(prop.name);
+      const snakeName = prop.name;
+      validationLines.push(`    if (!req.${camelName}) {`);
+      validationLines.push(`      throw Errors.validation("${capitalize(toHumanReadable(snakeName))} is required");`);
+      validationLines.push(`    }`);
+    }
+
+    // Date format validation for properties with YYYY-MM-DD format hint
+    for (const prop of op.bodyProperties) {
+      const camelName = toCamelCase(prop.name);
+      if (prop.formatHint === "YYYY-MM-DD") {
+        const check = prop.required ? `req.${camelName}` : `req.${camelName}`;
+        const guard = prop.required ? "" : `req.${camelName} && `;
+        validationLines.push(`    if (${guard}!/^\\d{4}-\\d{2}-\\d{2}$/.test(${check})) {`);
+        validationLines.push(`      throw Errors.validation("${capitalize(toHumanReadable(prop.name))} must be in YYYY-MM-DD format");`);
+        validationLines.push(`    }`);
+      }
+    }
+
+    if (validationLines.length > 0) {
+      lines.push(...validationLines);
+    }
+
+  }
 
   // Method body
   if (op.returnsVoid) {
@@ -1110,16 +1257,9 @@ function buildReturnType(op: ParsedOperation, serviceName: string): string {
 function buildBodyMapping(op: ParsedOperation): string {
   if (!op.bodyProperties.length) return "req";
 
-  // Check if any field names differ between camelCase and snake_case
-  const needsMapping = op.bodyProperties.some((p) => toCamelCase(p.name) !== p.name);
-
-  // If all fields have same name in camelCase (no underscore conversion needed), just cast req
-  if (!needsMapping) return "req as any";
-
-  // Map camelCase request fields to snake_case API fields
+  // Always emit explicit object mapping - never use "req as any"
   const mappings = op.bodyProperties.map((prop) => {
     const camelName = toCamelCase(prop.name);
-    // Always reference from req, and use snake_case key if different
     if (camelName === prop.name) {
       return `${prop.name}: req.${camelName}`;
     }
@@ -1127,6 +1267,23 @@ function buildBodyMapping(op: ParsedOperation): string {
   });
 
   return `{\n            ${mappings.join(",\n            ")},\n          }`;
+}
+
+function generateExampleValue(name: string, type: string, formatHint?: string): string {
+  if (formatHint === "YYYY-MM-DD") return '"2025-06-01"';
+  if (formatHint?.includes("RFC3339")) return '"2025-06-01T09:00:00Z"';
+  if (type.includes("[]") || type === "Array") return "[1234]";
+  if (type === "boolean") return "true";
+  if (type === "number") return "1";
+  // Enum/union types — pick the first value
+  if (type.startsWith('"')) {
+    const first = type.split("|")[0].trim();
+    return first; // Already quoted
+  }
+  if (name === "content") return '"Hello world"';
+  if (name === "name") return '"My example"';
+  if (name === "description") return '"Details here"';
+  return '"example"';
 }
 
 function generateExampleArgs(op: ParsedOperation, hasRequest: boolean): string {
@@ -1137,9 +1294,19 @@ function generateExampleArgs(op: ParsedOperation, hasRequest: boolean): string {
     args.push(p.type === "number" ? "123" : '"example"');
   }
 
-  // Request body (JSON)
+  // Request body (JSON) — show required fields with realistic values
   if (hasRequest) {
-    args.push("{ ... }");
+    const requiredProps = op.bodyProperties.filter((p) => p.required);
+    if (requiredProps.length === 0) {
+      args.push("{ }");
+    } else {
+      const fields = requiredProps.map((p) => {
+        const camelName = toCamelCase(p.name);
+        const value = generateExampleValue(p.name, p.type, p.formatHint);
+        return `${camelName}: ${value}`;
+      });
+      args.push(`{ ${fields.join(", ")} }`);
+    }
   }
 
   // Binary upload

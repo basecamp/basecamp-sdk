@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -18,9 +19,9 @@ export type Todo = components["schemas"]["Todo"];
  * Options for list.
  */
 export interface ListTodoOptions {
-  /** active|archived|trashed */
-  status?: string;
-  /** completed */
+  /** Filter by status */
+  status?: "active" | "archived" | "trashed";
+  /** Completed */
   completed?: boolean;
 }
 
@@ -28,19 +29,19 @@ export interface ListTodoOptions {
  * Request parameters for create.
  */
 export interface CreateTodoRequest {
-  /** content */
+  /** Text content */
   content: string;
-  /** description */
+  /** Rich text description (HTML) */
   description?: string;
-  /** assignee ids */
+  /** Person IDs to assign to */
   assigneeIds?: number[];
-  /** completion subscriber ids */
+  /** Person IDs to notify on completion */
   completionSubscriberIds?: number[];
-  /** notify */
+  /** Whether to send notifications to relevant people */
   notify?: boolean;
-  /** due on (YYYY-MM-DD) */
+  /** Due date (YYYY-MM-DD) */
   dueOn?: string;
-  /** starts on (YYYY-MM-DD) */
+  /** Start date (YYYY-MM-DD) */
   startsOn?: string;
 }
 
@@ -48,19 +49,19 @@ export interface CreateTodoRequest {
  * Request parameters for update.
  */
 export interface UpdateTodoRequest {
-  /** content */
+  /** Text content */
   content?: string;
-  /** description */
+  /** Rich text description (HTML) */
   description?: string;
-  /** assignee ids */
+  /** Person IDs to assign to */
   assigneeIds?: number[];
-  /** completion subscriber ids */
+  /** Person IDs to notify on completion */
   completionSubscriberIds?: number[];
-  /** notify */
+  /** Whether to send notifications to relevant people */
   notify?: boolean;
-  /** due on (YYYY-MM-DD) */
+  /** Due date (YYYY-MM-DD) */
   dueOn?: string;
-  /** starts on (YYYY-MM-DD) */
+  /** Start date (YYYY-MM-DD) */
   startsOn?: string;
 }
 
@@ -68,7 +69,7 @@ export interface UpdateTodoRequest {
  * Request parameters for reposition.
  */
 export interface RepositionTodoRequest {
-  /** position */
+  /** Position for ordering (1-based) */
   position: number;
   /** Optional todolist ID to move the todo to a different parent */
   parentId?: number;
@@ -88,8 +89,16 @@ export class TodosService extends BaseService {
    * List todos in a todolist
    * @param projectId - The project ID
    * @param todolistId - The todolist ID
-   * @param options - Optional parameters
+   * @param options - Optional query parameters
    * @returns Array of Todo
+   *
+   * @example
+   * ```ts
+   * const result = await client.todos.list(123, 123);
+   *
+   * // With options
+   * const filtered = await client.todos.list(123, 123, { status: "active" });
+   * ```
    */
   async list(projectId: number, todolistId: number, options?: ListTodoOptions): Promise<Todo[]> {
     const response = await this.request(
@@ -116,15 +125,25 @@ export class TodosService extends BaseService {
    * Create a new todo in a todolist
    * @param projectId - The project ID
    * @param todolistId - The todolist ID
-   * @param req - Request parameters
+   * @param req - Todo creation parameters
    * @returns The Todo
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.todos.create(123, 123, { ... });
+   * const result = await client.todos.create(123, 123, { content: "Hello world" });
    * ```
    */
   async create(projectId: number, todolistId: number, req: CreateTodoRequest): Promise<Todo> {
+    if (!req.content) {
+      throw Errors.validation("Content is required");
+    }
+    if (req.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.dueOn)) {
+      throw Errors.validation("Due on must be in YYYY-MM-DD format");
+    }
+    if (req.startsOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.startsOn)) {
+      throw Errors.validation("Starts on must be in YYYY-MM-DD format");
+    }
     const response = await this.request(
       {
         service: "Todos",
@@ -158,6 +177,12 @@ export class TodosService extends BaseService {
    * @param projectId - The project ID
    * @param todoId - The todo ID
    * @returns The Todo
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.todos.get(123, 123);
+   * ```
    */
   async get(projectId: number, todoId: number): Promise<Todo> {
     const response = await this.request(
@@ -183,10 +208,22 @@ export class TodosService extends BaseService {
    * Update an existing todo
    * @param projectId - The project ID
    * @param todoId - The todo ID
-   * @param req - Request parameters
+   * @param req - Todo update parameters
    * @returns The Todo
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.todos.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, todoId: number, req: UpdateTodoRequest): Promise<Todo> {
+    if (req.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.dueOn)) {
+      throw Errors.validation("Due on must be in YYYY-MM-DD format");
+    }
+    if (req.startsOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.startsOn)) {
+      throw Errors.validation("Starts on must be in YYYY-MM-DD format");
+    }
     const response = await this.request(
       {
         service: "Todos",
@@ -216,10 +253,16 @@ export class TodosService extends BaseService {
   }
 
   /**
-   * Trash a todo (returns 204 No Content)
+   * Trash a todo. Trashed items can be recovered.
    * @param projectId - The project ID
    * @param todoId - The todo ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.todos.trash(123, 123);
+   * ```
    */
   async trash(projectId: number, todoId: number): Promise<void> {
     await this.request(
@@ -245,6 +288,12 @@ export class TodosService extends BaseService {
    * @param projectId - The project ID
    * @param todoId - The todo ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.todos.complete(123, 123);
+   * ```
    */
   async complete(projectId: number, todoId: number): Promise<void> {
     await this.request(
@@ -270,6 +319,12 @@ export class TodosService extends BaseService {
    * @param projectId - The project ID
    * @param todoId - The todo ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.todos.uncomplete(123, 123);
+   * ```
    */
   async uncomplete(projectId: number, todoId: number): Promise<void> {
     await this.request(
@@ -294,8 +349,14 @@ export class TodosService extends BaseService {
    * Reposition a todo within its todolist
    * @param projectId - The project ID
    * @param todoId - The todo ID
-   * @param req - Request parameters
+   * @param req - Todo request parameters
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.todos.reposition(123, 123, { position: 1 });
+   * ```
    */
   async reposition(projectId: number, todoId: number, req: RepositionTodoRequest): Promise<void> {
     await this.request(

@@ -18,11 +18,11 @@ export type Person = components["schemas"]["Person"];
  * Request parameters for updateProjectAccess.
  */
 export interface UpdateProjectAccessPeopleRequest {
-  /** grant */
+  /** Grant */
   grant?: number[];
-  /** revoke */
+  /** Revoke */
   revoke?: number[];
-  /** create */
+  /** Create */
   create?: components["schemas"]["CreatePersonRequest"][];
 }
 
@@ -39,6 +39,11 @@ export class PeopleService extends BaseService {
   /**
    * List all account users who can be pinged
    * @returns Array of Person
+   *
+   * @example
+   * ```ts
+   * const result = await client.people.listPingable();
+   * ```
    */
   async listPingable(): Promise<Person[]> {
     const response = await this.request(
@@ -58,6 +63,11 @@ export class PeopleService extends BaseService {
   /**
    * Get the current authenticated user's profile
    * @returns The Person
+   *
+   * @example
+   * ```ts
+   * const result = await client.people.me();
+   * ```
    */
   async me(): Promise<Person> {
     const response = await this.request(
@@ -77,6 +87,11 @@ export class PeopleService extends BaseService {
   /**
    * List all people visible to the current user
    * @returns Array of Person
+   *
+   * @example
+   * ```ts
+   * const result = await client.people.list();
+   * ```
    */
   async list(): Promise<Person[]> {
     const response = await this.request(
@@ -97,6 +112,12 @@ export class PeopleService extends BaseService {
    * Get a person by ID
    * @param personId - The person ID
    * @returns The Person
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.people.get(123);
+   * ```
    */
   async get(personId: number): Promise<Person> {
     const response = await this.request(
@@ -121,6 +142,11 @@ export class PeopleService extends BaseService {
    * List all active people on a project
    * @param projectId - The project ID
    * @returns Array of Person
+   *
+   * @example
+   * ```ts
+   * const result = await client.people.listForProject(123);
+   * ```
    */
   async listForProject(projectId: number): Promise<Person[]> {
     const response = await this.request(
@@ -144,8 +170,14 @@ export class PeopleService extends BaseService {
   /**
    * Update project access (grant/revoke/create people)
    * @param projectId - The project ID
-   * @param req - Request parameters
+   * @param req - Project_access update parameters
    * @returns The project_access
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.people.updateProjectAccess(123, { });
+   * ```
    */
   async updateProjectAccess(projectId: number, req: UpdateProjectAccessPeopleRequest): Promise<components["schemas"]["UpdateProjectAccessResponseContent"]> {
     const response = await this.request(
@@ -161,7 +193,11 @@ export class PeopleService extends BaseService {
           params: {
             path: { projectId },
           },
-          body: req as any,
+          body: {
+            grant: req.grant,
+            revoke: req.revoke,
+            create: req.create,
+          },
         })
     );
     return response;
@@ -170,6 +206,11 @@ export class PeopleService extends BaseService {
   /**
    * List people who can be assigned todos
    * @returns Array of Person
+   *
+   * @example
+   * ```ts
+   * const result = await client.people.listAssignable();
+   * ```
    */
   async listAssignable(): Promise<Person[]> {
     const response = await this.request(

@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -18,7 +19,7 @@ export type Vault = components["schemas"]["Vault"];
  * Request parameters for update.
  */
 export interface UpdateVaultRequest {
-  /** title */
+  /** Title */
   title?: string;
 }
 
@@ -26,7 +27,7 @@ export interface UpdateVaultRequest {
  * Request parameters for create.
  */
 export interface CreateVaultRequest {
-  /** title */
+  /** Title */
   title: string;
 }
 
@@ -45,6 +46,12 @@ export class VaultsService extends BaseService {
    * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @returns The Vault
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.vaults.get(123, 123);
+   * ```
    */
   async get(projectId: number, vaultId: number): Promise<Vault> {
     const response = await this.request(
@@ -70,8 +77,14 @@ export class VaultsService extends BaseService {
    * Update an existing vault
    * @param projectId - The project ID
    * @param vaultId - The vault ID
-   * @param req - Request parameters
+   * @param req - Vault update parameters
    * @returns The Vault
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.vaults.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, vaultId: number, req: UpdateVaultRequest): Promise<Vault> {
     const response = await this.request(
@@ -88,7 +101,9 @@ export class VaultsService extends BaseService {
           params: {
             path: { projectId, vaultId },
           },
-          body: req as any,
+          body: {
+            title: req.title,
+          },
         })
     );
     return response;
@@ -99,6 +114,11 @@ export class VaultsService extends BaseService {
    * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @returns Array of Vault
+   *
+   * @example
+   * ```ts
+   * const result = await client.vaults.list(123, 123);
+   * ```
    */
   async list(projectId: number, vaultId: number): Promise<Vault[]> {
     const response = await this.request(
@@ -124,15 +144,19 @@ export class VaultsService extends BaseService {
    * Create a new vault (subfolder) in a vault
    * @param projectId - The project ID
    * @param vaultId - The vault ID
-   * @param req - Request parameters
+   * @param req - Vault creation parameters
    * @returns The Vault
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.vaults.create(123, 123, { ... });
+   * const result = await client.vaults.create(123, 123, { title: "example" });
    * ```
    */
   async create(projectId: number, vaultId: number, req: CreateVaultRequest): Promise<Vault> {
+    if (!req.title) {
+      throw Errors.validation("Title is required");
+    }
     const response = await this.request(
       {
         service: "Vaults",
@@ -147,7 +171,9 @@ export class VaultsService extends BaseService {
           params: {
             path: { projectId, vaultId },
           },
-          body: req as any,
+          body: {
+            title: req.title,
+          },
         })
     );
     return response;

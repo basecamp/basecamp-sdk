@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -18,9 +19,9 @@ export type Upload = components["schemas"]["Upload"];
  * Request parameters for update.
  */
 export interface UpdateUploadRequest {
-  /** description */
+  /** Rich text description (HTML) */
   description?: string;
-  /** base name */
+  /** Base name */
   baseName?: string;
 }
 
@@ -28,11 +29,11 @@ export interface UpdateUploadRequest {
  * Request parameters for create.
  */
 export interface CreateUploadRequest {
-  /** attachable sgid */
+  /** Attachable sgid */
   attachableSgid: string;
-  /** description */
+  /** Rich text description (HTML) */
   description?: string;
-  /** base name */
+  /** Base name */
   baseName?: string;
 }
 
@@ -51,6 +52,12 @@ export class UploadsService extends BaseService {
    * @param projectId - The project ID
    * @param uploadId - The upload ID
    * @returns The Upload
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.uploads.get(123, 123);
+   * ```
    */
   async get(projectId: number, uploadId: number): Promise<Upload> {
     const response = await this.request(
@@ -76,8 +83,14 @@ export class UploadsService extends BaseService {
    * Update an existing upload
    * @param projectId - The project ID
    * @param uploadId - The upload ID
-   * @param req - Request parameters
+   * @param req - Upload update parameters
    * @returns The Upload
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.uploads.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, uploadId: number, req: UpdateUploadRequest): Promise<Upload> {
     const response = await this.request(
@@ -108,6 +121,11 @@ export class UploadsService extends BaseService {
    * @param projectId - The project ID
    * @param uploadId - The upload ID
    * @returns Array of Upload
+   *
+   * @example
+   * ```ts
+   * const result = await client.uploads.listVersions(123, 123);
+   * ```
    */
   async listVersions(projectId: number, uploadId: number): Promise<Upload[]> {
     const response = await this.request(
@@ -134,6 +152,11 @@ export class UploadsService extends BaseService {
    * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @returns Array of Upload
+   *
+   * @example
+   * ```ts
+   * const result = await client.uploads.list(123, 123);
+   * ```
    */
   async list(projectId: number, vaultId: number): Promise<Upload[]> {
     const response = await this.request(
@@ -159,15 +182,19 @@ export class UploadsService extends BaseService {
    * Create a new upload in a vault
    * @param projectId - The project ID
    * @param vaultId - The vault ID
-   * @param req - Request parameters
+   * @param req - Upload creation parameters
    * @returns The Upload
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.uploads.create(123, 123, { ... });
+   * const result = await client.uploads.create(123, 123, { attachableSgid: "example" });
    * ```
    */
   async create(projectId: number, vaultId: number, req: CreateUploadRequest): Promise<Upload> {
+    if (!req.attachableSgid) {
+      throw Errors.validation("Attachable sgid is required");
+    }
     const response = await this.request(
       {
         service: "Uploads",

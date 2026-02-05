@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -18,7 +19,7 @@ export type Comment = components["schemas"]["Comment"];
  * Request parameters for update.
  */
 export interface UpdateCommentRequest {
-  /** content */
+  /** Text content */
   content: string;
 }
 
@@ -26,7 +27,7 @@ export interface UpdateCommentRequest {
  * Request parameters for create.
  */
 export interface CreateCommentRequest {
-  /** content */
+  /** Text content */
   content: string;
 }
 
@@ -45,6 +46,12 @@ export class CommentsService extends BaseService {
    * @param projectId - The project ID
    * @param commentId - The comment ID
    * @returns The Comment
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.comments.get(123, 123);
+   * ```
    */
   async get(projectId: number, commentId: number): Promise<Comment> {
     const response = await this.request(
@@ -70,10 +77,19 @@ export class CommentsService extends BaseService {
    * Update an existing comment
    * @param projectId - The project ID
    * @param commentId - The comment ID
-   * @param req - Request parameters
+   * @param req - Comment update parameters
    * @returns The Comment
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.comments.update(123, 123, { content: "Hello world" });
+   * ```
    */
   async update(projectId: number, commentId: number, req: UpdateCommentRequest): Promise<Comment> {
+    if (!req.content) {
+      throw Errors.validation("Content is required");
+    }
     const response = await this.request(
       {
         service: "Comments",
@@ -88,7 +104,9 @@ export class CommentsService extends BaseService {
           params: {
             path: { projectId, commentId },
           },
-          body: req as any,
+          body: {
+            content: req.content,
+          },
         })
     );
     return response;
@@ -99,6 +117,11 @@ export class CommentsService extends BaseService {
    * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @returns Array of Comment
+   *
+   * @example
+   * ```ts
+   * const result = await client.comments.list(123, 123);
+   * ```
    */
   async list(projectId: number, recordingId: number): Promise<Comment[]> {
     const response = await this.request(
@@ -124,15 +147,19 @@ export class CommentsService extends BaseService {
    * Create a new comment on a recording
    * @param projectId - The project ID
    * @param recordingId - The recording ID
-   * @param req - Request parameters
+   * @param req - Comment creation parameters
    * @returns The Comment
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.comments.create(123, 123, { ... });
+   * const result = await client.comments.create(123, 123, { content: "Hello world" });
    * ```
    */
   async create(projectId: number, recordingId: number, req: CreateCommentRequest): Promise<Comment> {
+    if (!req.content) {
+      throw Errors.validation("Content is required");
+    }
     const response = await this.request(
       {
         service: "Comments",
@@ -147,7 +174,9 @@ export class CommentsService extends BaseService {
           params: {
             path: { projectId, recordingId },
           },
-          body: req as any,
+          body: {
+            content: req.content,
+          },
         })
     );
     return response;

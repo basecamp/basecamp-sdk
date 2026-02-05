@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -18,11 +19,11 @@ export type Webhook = components["schemas"]["Webhook"];
  * Request parameters for create.
  */
 export interface CreateWebhookRequest {
-  /** payload url */
+  /** Payload url */
   payloadUrl: string;
-  /** types */
+  /** Types */
   types: string[];
-  /** active */
+  /** Active */
   active?: boolean;
 }
 
@@ -30,11 +31,11 @@ export interface CreateWebhookRequest {
  * Request parameters for update.
  */
 export interface UpdateWebhookRequest {
-  /** payload url */
+  /** Payload url */
   payloadUrl?: string;
-  /** types */
+  /** Types */
   types?: string[];
-  /** active */
+  /** Active */
   active?: boolean;
 }
 
@@ -52,6 +53,11 @@ export class WebhooksService extends BaseService {
    * List all webhooks for a project
    * @param projectId - The project ID
    * @returns Array of Webhook
+   *
+   * @example
+   * ```ts
+   * const result = await client.webhooks.list(123);
+   * ```
    */
   async list(projectId: number): Promise<Webhook[]> {
     const response = await this.request(
@@ -75,15 +81,22 @@ export class WebhooksService extends BaseService {
   /**
    * Create a new webhook for a project
    * @param projectId - The project ID
-   * @param req - Request parameters
+   * @param req - Webhook creation parameters
    * @returns The Webhook
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.webhooks.create(123, { ... });
+   * const result = await client.webhooks.create(123, { payloadUrl: "example", types: [1234] });
    * ```
    */
   async create(projectId: number, req: CreateWebhookRequest): Promise<Webhook> {
+    if (!req.payloadUrl) {
+      throw Errors.validation("Payload url is required");
+    }
+    if (!req.types) {
+      throw Errors.validation("Types is required");
+    }
     const response = await this.request(
       {
         service: "Webhooks",
@@ -112,6 +125,12 @@ export class WebhooksService extends BaseService {
    * @param projectId - The project ID
    * @param webhookId - The webhook ID
    * @returns The Webhook
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.webhooks.get(123, 123);
+   * ```
    */
   async get(projectId: number, webhookId: number): Promise<Webhook> {
     const response = await this.request(
@@ -137,8 +156,14 @@ export class WebhooksService extends BaseService {
    * Update an existing webhook
    * @param projectId - The project ID
    * @param webhookId - The webhook ID
-   * @param req - Request parameters
+   * @param req - Webhook update parameters
    * @returns The Webhook
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.webhooks.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, webhookId: number, req: UpdateWebhookRequest): Promise<Webhook> {
     const response = await this.request(
@@ -170,6 +195,12 @@ export class WebhooksService extends BaseService {
    * @param projectId - The project ID
    * @param webhookId - The webhook ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.webhooks.delete(123, 123);
+   * ```
    */
   async delete(projectId: number, webhookId: number): Promise<void> {
     await this.request(

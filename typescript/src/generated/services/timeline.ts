@@ -25,6 +25,11 @@ export class TimelineService extends BaseService {
    * Get project timeline
    * @param projectId - The project ID
    * @returns Array of results
+   *
+   * @example
+   * ```ts
+   * const result = await client.timeline.projectTimeline(123);
+   * ```
    */
   async projectTimeline(projectId: number): Promise<components["schemas"]["GetProjectTimelineResponseContent"]> {
     const response = await this.request(

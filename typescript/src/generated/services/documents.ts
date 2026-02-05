@@ -6,6 +6,7 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -18,9 +19,9 @@ export type Document = components["schemas"]["Document"];
  * Request parameters for update.
  */
 export interface UpdateDocumentRequest {
-  /** title */
+  /** Title */
   title?: string;
-  /** content */
+  /** Text content */
   content?: string;
 }
 
@@ -28,12 +29,12 @@ export interface UpdateDocumentRequest {
  * Request parameters for create.
  */
 export interface CreateDocumentRequest {
-  /** title */
+  /** Title */
   title: string;
-  /** content */
+  /** Text content */
   content?: string;
-  /** active|drafted */
-  status?: string;
+  /** Status */
+  status?: "active" | "drafted";
 }
 
 
@@ -51,6 +52,12 @@ export class DocumentsService extends BaseService {
    * @param projectId - The project ID
    * @param documentId - The document ID
    * @returns The Document
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.documents.get(123, 123);
+   * ```
    */
   async get(projectId: number, documentId: number): Promise<Document> {
     const response = await this.request(
@@ -76,8 +83,14 @@ export class DocumentsService extends BaseService {
    * Update an existing document
    * @param projectId - The project ID
    * @param documentId - The document ID
-   * @param req - Request parameters
+   * @param req - Document update parameters
    * @returns The Document
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.documents.update(123, 123, { });
+   * ```
    */
   async update(projectId: number, documentId: number, req: UpdateDocumentRequest): Promise<Document> {
     const response = await this.request(
@@ -94,7 +107,10 @@ export class DocumentsService extends BaseService {
           params: {
             path: { projectId, documentId },
           },
-          body: req as any,
+          body: {
+            title: req.title,
+            content: req.content,
+          },
         })
     );
     return response;
@@ -105,6 +121,11 @@ export class DocumentsService extends BaseService {
    * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @returns Array of Document
+   *
+   * @example
+   * ```ts
+   * const result = await client.documents.list(123, 123);
+   * ```
    */
   async list(projectId: number, vaultId: number): Promise<Document[]> {
     const response = await this.request(
@@ -130,15 +151,19 @@ export class DocumentsService extends BaseService {
    * Create a new document in a vault
    * @param projectId - The project ID
    * @param vaultId - The vault ID
-   * @param req - Request parameters
+   * @param req - Document creation parameters
    * @returns The Document
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.documents.create(123, 123, { ... });
+   * const result = await client.documents.create(123, 123, { title: "example" });
    * ```
    */
   async create(projectId: number, vaultId: number, req: CreateDocumentRequest): Promise<Document> {
+    if (!req.title) {
+      throw Errors.validation("Title is required");
+    }
     const response = await this.request(
       {
         service: "Documents",
@@ -153,7 +178,11 @@ export class DocumentsService extends BaseService {
           params: {
             path: { projectId, vaultId },
           },
-          body: req as any,
+          body: {
+            title: req.title,
+            content: req.content,
+            status: req.status,
+          },
         })
     );
     return response;

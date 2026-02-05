@@ -18,7 +18,7 @@ export type Recording = components["schemas"]["Recording"];
  * Request parameters for setVisibility.
  */
 export interface SetVisibilityClientVisibilityRequest {
-  /** visible to clients */
+  /** Visible to clients */
   visibleToClients: boolean;
 }
 
@@ -36,8 +36,14 @@ export class ClientVisibilityService extends BaseService {
    * Set client visibility for a recording
    * @param projectId - The project ID
    * @param recordingId - The recording ID
-   * @param req - Request parameters
+   * @param req - Client_visibility request parameters
    * @returns The Recording
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.clientVisibility.setVisibility(123, 123, { visibleToClients: true });
+   * ```
    */
   async setVisibility(projectId: number, recordingId: number, req: SetVisibilityClientVisibilityRequest): Promise<Recording> {
     const response = await this.request(

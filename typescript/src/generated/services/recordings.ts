@@ -18,14 +18,14 @@ export type Recording = components["schemas"]["Recording"];
  * Options for list.
  */
 export interface ListRecordingOptions {
-  /** bucket */
+  /** Bucket */
   bucket?: string;
-  /** active|archived|trashed */
-  status?: string;
-  /** created_at|updated_at */
-  sort?: string;
-  /** asc|desc */
-  direction?: string;
+  /** Filter by status */
+  status?: "active" | "archived" | "trashed";
+  /** Filter by sort */
+  sort?: "created_at" | "updated_at";
+  /** Filter by direction */
+  direction?: "asc" | "desc";
 }
 
 
@@ -43,6 +43,12 @@ export class RecordingsService extends BaseService {
    * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @returns The Recording
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.recordings.get(123, 123);
+   * ```
    */
   async get(projectId: number, recordingId: number): Promise<Recording> {
     const response = await this.request(
@@ -69,6 +75,12 @@ export class RecordingsService extends BaseService {
    * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.recordings.unarchive(123, 123);
+   * ```
    */
   async unarchive(projectId: number, recordingId: number): Promise<void> {
     await this.request(
@@ -94,6 +106,12 @@ export class RecordingsService extends BaseService {
    * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.recordings.archive(123, 123);
+   * ```
    */
   async archive(projectId: number, recordingId: number): Promise<void> {
     await this.request(
@@ -115,10 +133,16 @@ export class RecordingsService extends BaseService {
   }
 
   /**
-   * Trash a recording
+   * Trash a recording. Trashed items can be recovered.
    * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.recordings.trash(123, 123);
+   * ```
    */
   async trash(projectId: number, recordingId: number): Promise<void> {
     await this.request(
@@ -142,10 +166,18 @@ export class RecordingsService extends BaseService {
   /**
    * List recordings of a given type across projects
    * @param type - Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
-   * @param options - Optional parameters
+   * @param options - Optional query parameters
    * @returns Array of Recording
+   *
+   * @example
+   * ```ts
+   * const result = await client.recordings.list("type");
+   *
+   * // With options
+   * const filtered = await client.recordings.list({ bucket: "example" });
+   * ```
    */
-  async list(type: string, options?: ListRecordingOptions): Promise<Recording[]> {
+  async list(type: "Comment" | "Document" | "Kanban::Card" | "Kanban::Step" | "Message" | "Question::Answer" | "Schedule::Entry" | "Todo" | "Todolist" | "Upload" | "Vault", options?: ListRecordingOptions): Promise<Recording[]> {
     const response = await this.request(
       {
         service: "Recordings",
