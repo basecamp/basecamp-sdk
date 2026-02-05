@@ -18,6 +18,8 @@ import type { components } from "../schema.js";
 export interface SearchSearchOptions {
   /** created_at|updated_at */
   sort?: string;
+  /** page */
+  page?: number;
 }
 
 
@@ -47,7 +49,7 @@ export class SearchService extends BaseService {
       () =>
         this.client.GET("/search.json", {
           params: {
-            query: { query: query, sort: options?.sort },
+            query: { query: query, sort: options?.sort, page: options?.page },
           },
         })
     );

@@ -4,13 +4,14 @@
  * The Lineup is Basecamp's visual timeline tool for tracking
  * project schedules and milestones.
  *
+ * Note: This hand-written service is NOT loaded at runtime.
+ * Generated services in src/generated/services/ are the runtime default.
+ *
  * @example
  * ```ts
- * const marker = await client.lineup.createMarker({
- *   title: "Launch Day",
- *   startsOn: "2024-03-01",
- *   endsOn: "2024-03-01",
- *   color: "green",
+ * await client.lineup.create({
+ *   name: "Launch Day",
+ *   date: "2024-03-01",
  * });
  * ```
  */
@@ -24,56 +25,23 @@ import { Errors } from "../errors.js";
 // =============================================================================
 
 /**
- * A marker on the Basecamp Lineup.
- */
-// Note: LineupMarker response type was removed because create/update now return 204 No Content.
-
-/**
- * Valid colors for lineup markers.
- */
-export type MarkerColor =
-  | "white"
-  | "red"
-  | "orange"
-  | "yellow"
-  | "green"
-  | "blue"
-  | "aqua"
-  | "purple"
-  | "gray"
-  | "pink"
-  | "brown";
-
-/**
  * Request to create a new lineup marker.
  */
 export interface CreateMarkerRequest {
-  /** Marker title (required) */
-  title: string;
-  /** Start date in YYYY-MM-DD format (required) */
-  startsOn: string;
-  /** End date in YYYY-MM-DD format (required) */
-  endsOn: string;
-  /** Marker color (optional) */
-  color?: MarkerColor;
-  /** Description in HTML (optional) */
-  description?: string;
+  /** Marker name (required) */
+  name: string;
+  /** Date in YYYY-MM-DD format (required) */
+  date: string;
 }
 
 /**
  * Request to update an existing lineup marker.
  */
 export interface UpdateMarkerRequest {
-  /** Marker title (optional) */
-  title?: string;
-  /** Start date in YYYY-MM-DD format (optional) */
-  startsOn?: string;
-  /** End date in YYYY-MM-DD format (optional) */
-  endsOn?: string;
-  /** Marker color (optional) */
-  color?: MarkerColor;
-  /** Description in HTML (optional) */
-  description?: string;
+  /** Marker name (optional) */
+  name?: string;
+  /** Date in YYYY-MM-DD format (optional) */
+  date?: string;
 }
 
 // =============================================================================
@@ -99,35 +67,25 @@ export class LineupService extends BaseService {
    * Creates a new marker on the lineup.
    *
    * @param req - Marker creation parameters
-   * @returns The created marker
    * @throws BasecampError with code "validation" if required fields are missing
    *
    * @example
    * ```ts
-   * const marker = await client.lineup.createMarker({
-   *   title: "Product Launch",
-   *   startsOn: "2024-03-01",
-   *   endsOn: "2024-03-15",
-   *   color: "green",
-   *   description: "<p>Major product release</p>",
+   * await client.lineup.createMarker({
+   *   name: "Product Launch",
+   *   date: "2024-03-01",
    * });
    * ```
    */
   async createMarker(req: CreateMarkerRequest): Promise<void> {
-    if (!req.title) {
-      throw Errors.validation("Marker title is required");
+    if (!req.name) {
+      throw Errors.validation("Marker name is required");
     }
-    if (!req.startsOn) {
-      throw Errors.validation("Marker starts_on date is required");
+    if (!req.date) {
+      throw Errors.validation("Marker date is required");
     }
-    if (!req.endsOn) {
-      throw Errors.validation("Marker ends_on date is required");
-    }
-    if (!isValidDateFormat(req.startsOn)) {
-      throw Errors.validation("Marker starts_on must be in YYYY-MM-DD format");
-    }
-    if (!isValidDateFormat(req.endsOn)) {
-      throw Errors.validation("Marker ends_on must be in YYYY-MM-DD format");
+    if (!isValidDateFormat(req.date)) {
+      throw Errors.validation("Marker date must be in YYYY-MM-DD format");
     }
 
     await this.request(
@@ -140,11 +98,8 @@ export class LineupService extends BaseService {
       () =>
         this.client.POST("/lineup/markers.json", {
           body: {
-            title: req.title,
-            starts_on: req.startsOn,
-            ends_on: req.endsOn,
-            color: req.color,
-            description: req.description,
+            name: req.name,
+            date: req.date,
           },
         })
     );
@@ -155,23 +110,18 @@ export class LineupService extends BaseService {
    *
    * @param markerId - The marker ID
    * @param req - Marker update parameters
-   * @returns The updated marker
    *
    * @example
    * ```ts
-   * const marker = await client.lineup.updateMarker(markerId, {
-   *   title: "Updated Launch Date",
-   *   endsOn: "2024-03-20",
-   *   color: "blue",
+   * await client.lineup.updateMarker(markerId, {
+   *   name: "Updated Launch Date",
+   *   date: "2024-03-20",
    * });
    * ```
    */
   async updateMarker(markerId: number, req: UpdateMarkerRequest): Promise<void> {
-    if (req.startsOn && !isValidDateFormat(req.startsOn)) {
-      throw Errors.validation("Marker starts_on must be in YYYY-MM-DD format");
-    }
-    if (req.endsOn && !isValidDateFormat(req.endsOn)) {
-      throw Errors.validation("Marker ends_on must be in YYYY-MM-DD format");
+    if (req.date && !isValidDateFormat(req.date)) {
+      throw Errors.validation("Marker date must be in YYYY-MM-DD format");
     }
 
     await this.request(
@@ -186,11 +136,8 @@ export class LineupService extends BaseService {
         this.client.PUT("/lineup/markers/{markerId}", {
           params: { path: { markerId } },
           body: {
-            title: req.title,
-            starts_on: req.startsOn,
-            ends_on: req.endsOn,
-            color: req.color,
-            description: req.description,
+            name: req.name,
+            date: req.date,
           },
         })
     );

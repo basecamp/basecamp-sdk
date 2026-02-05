@@ -1354,8 +1354,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "UnsubscribeFromCardColumn 200 response"
+          "204": {
+            "description": "UnsubscribeFromCardColumn 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -1435,8 +1435,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "SubscribeToCardColumn 200 response"
+          "204": {
+            "description": "SubscribeToCardColumn 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -1616,100 +1616,19 @@
       }
     },
     "/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": {
-      "delete": {
-        "description": "Mark a step as incomplete",
-        "operationId": "UncompleteCardStep",
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          },
-          {
-            "name": "stepId",
-            "in": "path",
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "UncompleteCardStep 200 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UncompleteCardStepResponseContent"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "UnauthorizedError 401 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "ForbiddenError 403 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "NotFoundError 404 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "InternalServerError 500 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Card Tables"
-        ],
-        "x-basecamp-idempotent": {
-          "natural": true
-        },
-        "x-basecamp-retry": {
-          "maxAttempts": 3,
-          "baseDelayMs": 1000,
-          "backoff": "exponential",
-          "retryOn": [
-            429,
-            503
-          ]
-        }
-      },
       "put": {
-        "description": "Mark a step as completed",
-        "operationId": "CompleteCardStep",
+        "description": "Set card step completion status (PUT with completion: \"on\" to complete, \"\" to uncomplete)",
+        "operationId": "SetCardStepCompletion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCardStepCompletionRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
         "parameters": [
           {
             "name": "projectId",
@@ -1732,11 +1651,11 @@
         ],
         "responses": {
           "200": {
-            "description": "CompleteCardStep 200 response",
+            "description": "SetCardStepCompletion 200 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompleteCardStepResponseContent"
+                  "$ref": "#/components/schemas/SetCardStepCompletionResponseContent"
                 }
               }
             }
@@ -7651,7 +7570,7 @@
     },
     "/buckets/{projectId}/recordings/{recordingId}/client_visibility.json": {
       "put": {
-        "description": "Set client visibility for a recording\n\nWARNING: BC3 Rails controller only returns 302 redirect (HTML).\nJSON API format is not implemented. This operation may not work via API.",
+        "description": "Set client visibility for a recording",
         "operationId": "SetClientVisibility",
         "requestBody": {
           "content": {
@@ -8913,6 +8832,116 @@
         }
       }
     },
+    "/buckets/{projectId}/recordings/{recordingId}/timesheet/entries.json": {
+      "post": {
+        "description": "Create a timesheet entry on a recording",
+        "operationId": "CreateTimesheetEntry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTimesheetEntryRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "recordingId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "CreateTimesheetEntry 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTimesheetEntryResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Schedule"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/buckets/{projectId}/recordings/{toolId}/position.json": {
       "delete": {
         "description": "Disable a tool (hide it from the project dock)",
@@ -9196,7 +9225,7 @@
     },
     "/buckets/{projectId}/schedule_entries/{entryId}": {
       "get": {
-        "description": "Get a single schedule entry by id",
+        "description": "Get a single schedule entry by id.\nNote: Recurring entries will redirect (302) to their recordable URL.\nUse GetScheduleEntryOccurrence for recurring entries instead.",
         "operationId": "GetScheduleEntry",
         "parameters": [
           {
@@ -9983,7 +10012,8 @@
           }
         },
         "x-basecamp-pagination": {
-          "style": "link_header",
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
           "maxPageSize": 50
         },
         "x-basecamp-retry": {
@@ -10089,6 +10119,206 @@
         "tags": [
           "Schedule"
         ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/buckets/{projectId}/timesheet/entries/{entryId}": {
+      "get": {
+        "description": "Get a single timesheet entry",
+        "operationId": "GetTimesheetEntry",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "entryId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetTimesheetEntry 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTimesheetEntryResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Schedule"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "put": {
+        "description": "Update a timesheet entry",
+        "operationId": "UpdateTimesheetEntry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTimesheetEntryRequestContent"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "entryId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UpdateTimesheetEntry 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateTimesheetEntryResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Schedule"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -10905,8 +11135,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "TrashTodo 200 response"
+          "204": {
+            "description": "TrashTodo 204 response"
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -12973,6 +13203,16 @@
               }
             }
           },
+          "400": {
+            "description": "BadRequestError 400 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponseContent"
+                }
+              }
+            }
+          },
           "401": {
             "description": "UnauthorizedError 401 response",
             "content": {
@@ -12993,16 +13233,6 @@
               }
             }
           },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
-                }
-              }
-            }
-          },
           "429": {
             "description": "RateLimitError 429 response",
             "content": {
@@ -13019,6 +13249,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "WebhookLimitError 507 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookLimitErrorResponseContent"
                 }
               }
             }
@@ -13254,6 +13494,16 @@
               }
             }
           },
+          "400": {
+            "description": "BadRequestError 400 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponseContent"
+                }
+              }
+            }
+          },
           "401": {
             "description": "UnauthorizedError 401 response",
             "content": {
@@ -13284,22 +13534,22 @@
               }
             }
           },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
-                }
-              }
-            }
-          },
           "500": {
             "description": "InternalServerError 500 response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "WebhookLimitError 507 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookLimitErrorResponseContent"
                 }
               }
             }
@@ -14845,6 +15095,16 @@
               }
             }
           },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
           "500": {
             "description": "InternalServerError 500 response",
             "content": {
@@ -14931,7 +15191,8 @@
           }
         },
         "x-basecamp-pagination": {
-          "style": "link_header",
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
           "maxPageSize": 50
         },
         "x-basecamp-retry": {
@@ -15464,6 +15725,14 @@
               "type": "string",
               "description": "created_at|updated_at"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -15521,6 +15790,11 @@
         "tags": [
           "Automation"
         ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -16267,6 +16541,20 @@
             }
           }
         }
+      },
+      "BadRequestErrorResponseContent": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
       },
       "Campfire": {
         "type": "object",
@@ -17052,9 +17340,6 @@
           }
         }
       },
-      "CompleteCardStepResponseContent": {
-        "$ref": "#/components/schemas/CardStep"
-      },
       "CreateAnswerResponseContent": {
         "$ref": "#/components/schemas/QuestionAnswer"
       },
@@ -17217,26 +17502,16 @@
       "CreateLineupMarkerRequestContent": {
         "type": "object",
         "properties": {
-          "title": {
+          "name": {
             "type": "string"
           },
-          "starts_on": {
-            "type": "string"
-          },
-          "ends_on": {
-            "type": "string"
-          },
-          "color": {
-            "type": "string"
-          },
-          "description": {
+          "date": {
             "type": "string"
           }
         },
         "required": [
-          "ends_on",
-          "starts_on",
-          "title"
+          "date",
+          "name"
         ]
       },
       "CreateMessageRequestContent": {
@@ -17413,6 +17688,31 @@
       },
       "CreateTemplateResponseContent": {
         "$ref": "#/components/schemas/Template"
+      },
+      "CreateTimesheetEntryRequestContent": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "hours": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "person_id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "date",
+          "hours"
+        ]
+      },
+      "CreateTimesheetEntryResponseContent": {
+        "$ref": "#/components/schemas/TimesheetEntry"
       },
       "CreateTodoRequestContent": {
         "type": "object",
@@ -18013,6 +18313,9 @@
       },
       "GetTemplateResponseContent": {
         "$ref": "#/components/schemas/Template"
+      },
+      "GetTimesheetEntryResponseContent": {
+        "$ref": "#/components/schemas/TimesheetEntry"
       },
       "GetTimesheetReportResponseContent": {
         "type": "array",
@@ -19118,6 +19421,11 @@
           "position": {
             "type": "integer",
             "format": "int32"
+          },
+          "parent_id": {
+            "type": "integer",
+            "description": "Optional todolist ID to move the todo to a different parent",
+            "format": "int64"
           }
         },
         "required": [
@@ -19406,6 +19714,21 @@
       "SetCardColumnColorResponseContent": {
         "$ref": "#/components/schemas/CardColumn"
       },
+      "SetCardStepCompletionRequestContent": {
+        "type": "object",
+        "properties": {
+          "completion": {
+            "type": "string",
+            "description": "Set to \"on\" to complete the step, \"\" (empty) to uncomplete"
+          }
+        },
+        "required": [
+          "completion"
+        ]
+      },
+      "SetCardStepCompletionResponseContent": {
+        "$ref": "#/components/schemas/CardStep"
+      },
       "SetClientVisibilityRequestContent": {
         "type": "object",
         "properties": {
@@ -19577,6 +19900,9 @@
           },
           "hours": {
             "type": "string"
+          },
+          "person": {
+            "$ref": "#/components/schemas/Person"
           }
         }
       },
@@ -20033,9 +20359,6 @@
           "error"
         ]
       },
-      "UncompleteCardStepResponseContent": {
-        "$ref": "#/components/schemas/CardStep"
-      },
       "UpdateCardColumnRequestContent": {
         "type": "object",
         "properties": {
@@ -20143,19 +20466,10 @@
       "UpdateLineupMarkerRequestContent": {
         "type": "object",
         "properties": {
-          "title": {
+          "name": {
             "type": "string"
           },
-          "starts_on": {
-            "type": "string"
-          },
-          "ends_on": {
-            "type": "string"
-          },
-          "color": {
-            "type": "string"
-          },
-          "description": {
+          "date": {
             "type": "string"
           }
         }
@@ -20371,6 +20685,27 @@
       },
       "UpdateTemplateResponseContent": {
         "$ref": "#/components/schemas/Template"
+      },
+      "UpdateTimesheetEntryRequestContent": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "hours": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "person_id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "UpdateTimesheetEntryResponseContent": {
+        "$ref": "#/components/schemas/TimesheetEntry"
       },
       "UpdateTodoRequestContent": {
         "type": "object",
@@ -20689,6 +21024,20 @@
             "type": "string"
           }
         }
+      },
+      "WebhookLimitErrorResponseContent": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
       }
     }
   }

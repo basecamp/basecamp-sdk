@@ -117,6 +117,9 @@ service Basecamp {
     GetTimesheetReport,
     GetProjectTimesheet,
     GetRecordingTimesheet,
+    GetTimesheetEntry,
+    CreateTimesheetEntry,
+    UpdateTimesheetEntry,
 
     // Batch 4 - Campfires, Chatbots, Forwards/Inboxes (Real-time)
     ListCampfires,
@@ -2599,6 +2602,110 @@ structure GetRecordingTimesheetOutput {
   entries: TimesheetEntryList
 }
 
+/// Get a single timesheet entry
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/timesheet/entries/{entryId}")
+operation GetTimesheetEntry {
+  input: GetTimesheetEntryInput
+  output: GetTimesheetEntryOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure GetTimesheetEntryInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  entryId: TimesheetEntryId
+}
+
+structure GetTimesheetEntryOutput {
+  entry: TimesheetEntry
+}
+
+/// Create a timesheet entry on a recording
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/timesheet/entries.json", code: 201)
+operation CreateTimesheetEntry {
+  input: CreateTimesheetEntryInput
+  output: CreateTimesheetEntryOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateTimesheetEntryInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  @required
+  date: ISO8601Date
+
+  @required
+  hours: String
+
+  description: String
+
+  person_id: PersonId
+}
+
+structure CreateTimesheetEntryOutput {
+  entry: TimesheetEntry
+}
+
+/// Update a timesheet entry
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/timesheet/entries/{entryId}")
+operation UpdateTimesheetEntry {
+  input: UpdateTimesheetEntryInput
+  output: UpdateTimesheetEntryOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure UpdateTimesheetEntryInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  entryId: TimesheetEntryId
+
+  date: ISO8601Date
+
+  hours: String
+
+  description: String
+
+  person_id: PersonId
+}
+
+structure UpdateTimesheetEntryOutput {
+  entry: TimesheetEntry
+}
+
+// Note: Use TrashRecording to trash timesheet entries
+
 // ===== Comment Shapes (Batch 1) =====
 
 long CommentId
@@ -2895,6 +3002,9 @@ structure TimesheetEntry {
   date: ISO8601Date
   description: String
   hours: String
+
+  /// The person the time is logged for (distinct from creator)
+  person: Person
 }
 
 // =============================================================================

@@ -66,7 +66,7 @@ def param_type:
       select(.key | IN("get","post","put","patch","delete"))
     )) as $ops |
 
-    # Use the first operation's tags as the resource tag
+    # Use the first operation tags as the resource tag
     ($ops | first | .value.tags // [] | first // null) as $resource |
 
     # Build operations map: method → operationId

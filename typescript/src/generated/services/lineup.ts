@@ -16,32 +16,20 @@ import type { components } from "../schema.js";
  * Request parameters for create.
  */
 export interface CreateLineupRequest {
-  /** title */
-  title: string;
-  /** starts on (YYYY-MM-DD) */
-  startsOn: string;
-  /** ends on (YYYY-MM-DD) */
-  endsOn: string;
-  /** color */
-  color?: string;
-  /** description */
-  description?: string;
+  /** name */
+  name: string;
+  /** date */
+  date: string;
 }
 
 /**
  * Request parameters for update.
  */
 export interface UpdateLineupRequest {
-  /** title */
-  title?: string;
-  /** starts on (YYYY-MM-DD) */
-  startsOn?: string;
-  /** ends on (YYYY-MM-DD) */
-  endsOn?: string;
-  /** color */
-  color?: string;
-  /** description */
-  description?: string;
+  /** name */
+  name?: string;
+  /** date */
+  date?: string;
 }
 
 
@@ -74,13 +62,7 @@ export class LineupService extends BaseService {
       },
       () =>
         this.client.POST("/lineup/markers.json", {
-          body: {
-            title: req.title,
-            starts_on: req.startsOn,
-            ends_on: req.endsOn,
-            color: req.color,
-            description: req.description,
-          },
+          body: req as any,
         })
     );
   }
@@ -105,13 +87,7 @@ export class LineupService extends BaseService {
           params: {
             path: { markerId },
           },
-          body: {
-            title: req.title,
-            starts_on: req.startsOn,
-            ends_on: req.endsOn,
-            color: req.color,
-            description: req.description,
-          },
+          body: req as any,
         })
     );
   }

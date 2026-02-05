@@ -28,8 +28,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "DELETE:/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json": "UnsubscribeFromCardColumn",
   "POST:/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json": "SubscribeToCardColumn",
   "PUT:/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}": "UpdateCardStep",
-  "DELETE:/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": "UncompleteCardStep",
-  "PUT:/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": "CompleteCardStep",
+  "PUT:/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions.json": "SetCardStepCompletion",
 
   // Message Types
   "GET:/{accountId}/buckets/{projectId}/categories.json": "ListMessageTypes",
@@ -69,6 +68,8 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/{accountId}/buckets/{projectId}/dock/tools/{toolId}": "UpdateTool",
   "GET:/{accountId}/buckets/{projectId}/timeline.json": "GetProjectTimeline",
   "GET:/{accountId}/buckets/{projectId}/timesheet.json": "GetProjectTimesheet",
+  "GET:/{accountId}/buckets/{projectId}/timesheet/entries/{entryId}": "GetTimesheetEntry",
+  "PUT:/{accountId}/buckets/{projectId}/timesheet/entries/{entryId}": "UpdateTimesheetEntry",
   "GET:/{accountId}/chats.json": "ListCampfires",
   "POST:/{accountId}/lineup/markers.json": "CreateLineupMarker",
   "DELETE:/{accountId}/lineup/markers/{markerId}": "DeleteLineupMarker",
@@ -138,6 +139,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/{accountId}/buckets/{projectId}/recordings/{recordingId}/subscription.json": "Subscribe",
   "PUT:/{accountId}/buckets/{projectId}/recordings/{recordingId}/subscription.json": "UpdateSubscription",
   "GET:/{accountId}/buckets/{projectId}/recordings/{recordingId}/timesheet.json": "GetRecordingTimesheet",
+  "POST:/{accountId}/buckets/{projectId}/recordings/{recordingId}/timesheet/entries.json": "CreateTimesheetEntry",
   "DELETE:/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json": "DisableTool",
   "POST:/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json": "EnableTool",
   "PUT:/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json": "RepositionTool",

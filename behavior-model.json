@@ -236,6 +236,17 @@
         ]
       }
     },
+    "CreateTimesheetEntry": {
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "CreateTodo": {
       "retry": {
         "max": 3,
@@ -917,6 +928,18 @@
       }
     },
     "GetTemplate": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetTimesheetEntry": {
       "readonly": true,
       "retry": {
         "max": 3,
@@ -2024,6 +2047,18 @@
       }
     },
     "UpdateTemplate": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateTimesheetEntry": {
       "idempotent": true,
       "retry": {
         "max": 3,

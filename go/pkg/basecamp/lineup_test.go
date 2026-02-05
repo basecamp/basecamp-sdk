@@ -110,11 +110,8 @@ func TestLineupMarker_UnmarshalUpdate(t *testing.T) {
 
 func TestCreateMarkerRequest_Marshal(t *testing.T) {
 	req := CreateMarkerRequest{
-		Title:       "Sprint 1",
-		StartsOn:    "2024-04-01",
-		EndsOn:      "2024-04-14",
-		Color:       "purple",
-		Description: "<div>First sprint</div>",
+		Name: "Sprint 1",
+		Date: "2024-04-01",
 	}
 
 	out, err := json.Marshal(req)
@@ -127,20 +124,11 @@ func TestCreateMarkerRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
-	if data["title"] != "Sprint 1" {
-		t.Errorf("unexpected title: %v", data["title"])
+	if data["name"] != "Sprint 1" {
+		t.Errorf("unexpected name: %v", data["name"])
 	}
-	if data["starts_on"] != "2024-04-01" {
-		t.Errorf("unexpected starts_on: %v", data["starts_on"])
-	}
-	if data["ends_on"] != "2024-04-14" {
-		t.Errorf("unexpected ends_on: %v", data["ends_on"])
-	}
-	if data["color"] != "purple" {
-		t.Errorf("unexpected color: %v", data["color"])
-	}
-	if data["description"] != "<div>First sprint</div>" {
-		t.Errorf("unexpected description: %v", data["description"])
+	if data["date"] != "2024-04-01" {
+		t.Errorf("unexpected date: %v", data["date"])
 	}
 
 	// Round-trip test
@@ -149,60 +137,18 @@ func TestCreateMarkerRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal round-trip: %v", err)
 	}
 
-	if roundtrip.Title != req.Title {
-		t.Errorf("expected title %q, got %q", req.Title, roundtrip.Title)
+	if roundtrip.Name != req.Name {
+		t.Errorf("expected name %q, got %q", req.Name, roundtrip.Name)
 	}
-	if roundtrip.StartsOn != req.StartsOn {
-		t.Errorf("expected starts_on %q, got %q", req.StartsOn, roundtrip.StartsOn)
-	}
-	if roundtrip.EndsOn != req.EndsOn {
-		t.Errorf("expected ends_on %q, got %q", req.EndsOn, roundtrip.EndsOn)
-	}
-}
-
-func TestCreateMarkerRequest_MarshalMinimal(t *testing.T) {
-	// Test with only required fields
-	req := CreateMarkerRequest{
-		Title:    "Quick marker",
-		StartsOn: "2024-05-01",
-		EndsOn:   "2024-05-07",
-	}
-
-	out, err := json.Marshal(req)
-	if err != nil {
-		t.Fatalf("failed to marshal CreateMarkerRequest: %v", err)
-	}
-
-	var data map[string]interface{}
-	if err := json.Unmarshal(out, &data); err != nil {
-		t.Fatalf("failed to unmarshal to map: %v", err)
-	}
-
-	if data["title"] != "Quick marker" {
-		t.Errorf("unexpected title: %v", data["title"])
-	}
-	if data["starts_on"] != "2024-05-01" {
-		t.Errorf("unexpected starts_on: %v", data["starts_on"])
-	}
-	if data["ends_on"] != "2024-05-07" {
-		t.Errorf("unexpected ends_on: %v", data["ends_on"])
-	}
-	// Optional fields with omitempty should not be present
-	if _, ok := data["color"]; ok {
-		t.Error("expected color to be omitted")
-	}
-	if _, ok := data["description"]; ok {
-		t.Error("expected description to be omitted")
+	if roundtrip.Date != req.Date {
+		t.Errorf("expected date %q, got %q", req.Date, roundtrip.Date)
 	}
 }
 
 func TestUpdateMarkerRequest_Marshal(t *testing.T) {
 	req := UpdateMarkerRequest{
-		Title:       "Updated Sprint",
-		StartsOn:    "2024-04-01",
-		EndsOn:      "2024-04-21",
-		Color:       "orange",
-		Description: "<div>Extended sprint</div>",
+		Name: "Updated Sprint",
+		Date: "2024-04-01",
 	}
 
 	out, err := json.Marshal(req)
@@ -215,20 +161,11 @@ func TestUpdateMarkerRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
-	if data["title"] != "Updated Sprint" {
-		t.Errorf("unexpected title: %v", data["title"])
+	if data["name"] != "Updated Sprint" {
+		t.Errorf("unexpected name: %v", data["name"])
 	}
-	if data["starts_on"] != "2024-04-01" {
-		t.Errorf("unexpected starts_on: %v", data["starts_on"])
-	}
-	if data["ends_on"] != "2024-04-21" {
-		t.Errorf("unexpected ends_on: %v", data["ends_on"])
-	}
-	if data["color"] != "orange" {
-		t.Errorf("unexpected color: %v", data["color"])
-	}
-	if data["description"] != "<div>Extended sprint</div>" {
-		t.Errorf("unexpected description: %v", data["description"])
+	if data["date"] != "2024-04-01" {
+		t.Errorf("unexpected date: %v", data["date"])
 	}
 
 	// Round-trip test
@@ -237,18 +174,15 @@ func TestUpdateMarkerRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal round-trip: %v", err)
 	}
 
-	if roundtrip.Title != req.Title {
-		t.Errorf("expected title %q, got %q", req.Title, roundtrip.Title)
-	}
-	if roundtrip.EndsOn != req.EndsOn {
-		t.Errorf("expected ends_on %q, got %q", req.EndsOn, roundtrip.EndsOn)
+	if roundtrip.Name != req.Name {
+		t.Errorf("expected name %q, got %q", req.Name, roundtrip.Name)
 	}
 }
 
 func TestUpdateMarkerRequest_MarshalPartial(t *testing.T) {
 	// Test with only some fields
 	req := UpdateMarkerRequest{
-		Title: "Just updating title",
+		Name: "Just updating name",
 	}
 
 	out, err := json.Marshal(req)
@@ -261,20 +195,11 @@ func TestUpdateMarkerRequest_MarshalPartial(t *testing.T) {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
-	if data["title"] != "Just updating title" {
-		t.Errorf("unexpected title: %v", data["title"])
+	if data["name"] != "Just updating name" {
+		t.Errorf("unexpected name: %v", data["name"])
 	}
 	// Optional fields should be omitted
-	if _, ok := data["starts_on"]; ok {
-		t.Error("expected starts_on to be omitted")
-	}
-	if _, ok := data["ends_on"]; ok {
-		t.Error("expected ends_on to be omitted")
-	}
-	if _, ok := data["color"]; ok {
-		t.Error("expected color to be omitted")
-	}
-	if _, ok := data["description"]; ok {
-		t.Error("expected description to be omitted")
+	if _, ok := data["date"]; ok {
+		t.Error("expected date to be omitted")
 	}
 }

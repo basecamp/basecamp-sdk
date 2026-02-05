@@ -209,11 +209,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description Mark a step as completed */
-        put: operations["CompleteCardStep"];
+        /** @description Set card step completion status (PUT with completion: "on" to complete, "" to uncomplete) */
+        put: operations["SetCardStepCompletion"];
         post?: never;
-        /** @description Mark a step as incomplete */
-        delete: operations["UncompleteCardStep"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -976,12 +975,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description Set client visibility for a recording
-         *
-         *     WARNING: BC3 Rails controller only returns 302 redirect (HTML).
-         *     JSON API format is not implemented. This operation may not work via API.
-         */
+        /** @description Set client visibility for a recording */
         put: operations["SetClientVisibility"];
         post?: never;
         delete?: never;
@@ -1123,6 +1117,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/buckets/{projectId}/recordings/{recordingId}/timesheet/entries.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a timesheet entry on a recording */
+        post: operations["CreateTimesheetEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/buckets/{projectId}/recordings/{toolId}/position.json": {
         parameters: {
             query?: never;
@@ -1149,7 +1160,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Get a single schedule entry by id */
+        /**
+         * @description Get a single schedule entry by id.
+         *     Note: Recurring entries will redirect (302) to their recordable URL.
+         *     Use GetScheduleEntryOccurrence for recurring entries instead.
+         */
         get: operations["GetScheduleEntry"];
         /** @description Update an existing schedule entry */
         put: operations["UpdateScheduleEntry"];
@@ -1245,6 +1260,24 @@ export interface paths {
         /** @description Get timesheet for a specific project */
         get: operations["GetProjectTimesheet"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/buckets/{projectId}/timesheet/entries/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a single timesheet entry */
+        get: operations["GetTimesheetEntry"];
+        /** @description Update a timesheet entry */
+        put: operations["UpdateTimesheetEntry"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2110,6 +2143,10 @@ export interface components {
             starts_on?: string;
             assignees?: components["schemas"]["Person"][];
         };
+        BadRequestErrorResponseContent: {
+            error: string;
+            message?: string;
+        };
         Campfire: {
             /** Format: int64 */
             id?: number;
@@ -2386,7 +2423,6 @@ export interface components {
             creator?: components["schemas"]["Person"];
             content?: string;
         };
-        CompleteCardStepResponseContent: components["schemas"]["CardStep"];
         CreateAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         CreateAttachmentInputPayload: string;
         CreateAttachmentResponseContent: {
@@ -2435,11 +2471,8 @@ export interface components {
         };
         CreateForwardReplyResponseContent: components["schemas"]["ForwardReply"];
         CreateLineupMarkerRequestContent: {
-            title: string;
-            starts_on: string;
-            ends_on: string;
-            color?: string;
-            description?: string;
+            name: string;
+            date: string;
         };
         CreateMessageRequestContent: {
             subject: string;
@@ -2495,6 +2528,14 @@ export interface components {
             description?: string;
         };
         CreateTemplateResponseContent: components["schemas"]["Template"];
+        CreateTimesheetEntryRequestContent: {
+            date: string;
+            hours: string;
+            description?: string;
+            /** Format: int64 */
+            person_id?: number;
+        };
+        CreateTimesheetEntryResponseContent: components["schemas"]["TimesheetEntry"];
         CreateTodoRequestContent: {
             content: string;
             description?: string;
@@ -2680,6 +2721,7 @@ export interface components {
         GetSearchMetadataResponseContent: components["schemas"]["SearchMetadata"];
         GetSubscriptionResponseContent: components["schemas"]["Subscription"];
         GetTemplateResponseContent: components["schemas"]["Template"];
+        GetTimesheetEntryResponseContent: components["schemas"]["TimesheetEntry"];
         GetTimesheetReportResponseContent: components["schemas"]["TimesheetEntry"][];
         GetTodoResponseContent: components["schemas"]["Todo"];
         GetTodolistOrGroupResponseContent: components["schemas"]["TodolistOrGroup"];
@@ -3033,6 +3075,11 @@ export interface components {
         RepositionTodoRequestContent: {
             /** Format: int32 */
             position: number;
+            /**
+             * Format: int64
+             * @description Optional todolist ID to move the todo to a different parent
+             */
+            parent_id?: number;
         };
         RepositionTodolistGroupRequestContent: {
             /** Format: int32 */
@@ -3132,6 +3179,11 @@ export interface components {
             color: string;
         };
         SetCardColumnColorResponseContent: components["schemas"]["CardColumn"];
+        SetCardStepCompletionRequestContent: {
+            /** @description Set to "on" to complete the step, "" (empty) to uncomplete */
+            completion: string;
+        };
+        SetCardStepCompletionResponseContent: components["schemas"]["CardStep"];
         SetClientVisibilityRequestContent: {
             visible_to_clients: boolean;
         };
@@ -3191,6 +3243,7 @@ export interface components {
             date?: string;
             description?: string;
             hours?: string;
+            person?: components["schemas"]["Person"];
         };
         Todo: {
             /** Format: int64 */
@@ -3353,7 +3406,6 @@ export interface components {
             error: string;
             message?: string;
         };
-        UncompleteCardStepResponseContent: components["schemas"]["CardStep"];
         UpdateCardColumnRequestContent: {
             title?: string;
             description?: string;
@@ -3387,11 +3439,8 @@ export interface components {
         };
         UpdateDocumentResponseContent: components["schemas"]["Document"];
         UpdateLineupMarkerRequestContent: {
-            title?: string;
-            starts_on?: string;
-            ends_on?: string;
-            color?: string;
-            description?: string;
+            name?: string;
+            date?: string;
         };
         UpdateMessageRequestContent: {
             subject?: string;
@@ -3461,6 +3510,14 @@ export interface components {
             description?: string;
         };
         UpdateTemplateResponseContent: components["schemas"]["Template"];
+        UpdateTimesheetEntryRequestContent: {
+            date?: string;
+            hours?: string;
+            description?: string;
+            /** Format: int64 */
+            person_id?: number;
+        };
+        UpdateTimesheetEntryResponseContent: components["schemas"]["TimesheetEntry"];
         UpdateTodoRequestContent: {
             content?: string;
             description?: string;
@@ -3572,6 +3629,10 @@ export interface components {
             types?: string[];
             url?: string;
             app_url?: string;
+        };
+        WebhookLimitErrorResponseContent: {
+            error: string;
+            message?: string;
         };
     };
     responses: never;
@@ -4469,8 +4530,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description SubscribeToCardColumn 200 response */
-            200: {
+            /** @description SubscribeToCardColumn 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4535,8 +4596,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description UnsubscribeFromCardColumn 200 response */
-            200: {
+            /** @description UnsubscribeFromCardColumn 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4652,7 +4713,7 @@ export interface operations {
             };
         };
     };
-    CompleteCardStep: {
+    SetCardStepCompletion: {
         parameters: {
             query?: never;
             header?: never;
@@ -4662,15 +4723,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCardStepCompletionRequestContent"];
+            };
+        };
         responses: {
-            /** @description CompleteCardStep 200 response */
+            /** @description SetCardStepCompletion 200 response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CompleteCardStepResponseContent"];
+                    "application/json": components["schemas"]["SetCardStepCompletionResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */
@@ -4707,65 +4772,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    UncompleteCardStep: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                stepId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description UncompleteCardStep 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UncompleteCardStepResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -9368,6 +9374,78 @@ export interface operations {
             };
         };
     };
+    CreateTimesheetEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTimesheetEntryRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateTimesheetEntry 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTimesheetEntryResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     RepositionTool: {
         parameters: {
             query?: never;
@@ -10146,6 +10224,137 @@ export interface operations {
             };
         };
     };
+    GetTimesheetEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                entryId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetTimesheetEntry 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetTimesheetEntryResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateTimesheetEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                entryId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateTimesheetEntryRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateTimesheetEntry 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateTimesheetEntryResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     RepositionTodolistGroup: {
         parameters: {
             query?: never;
@@ -10756,8 +10965,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description TrashTodo 200 response */
-            200: {
+            /** @description TrashTodo 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11983,6 +12192,15 @@ export interface operations {
                     "application/json": components["schemas"]["CreateWebhookResponseContent"];
                 };
             };
+            /** @description BadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                };
+            };
             /** @description UnauthorizedError 401 response */
             401: {
                 headers: {
@@ -12001,15 +12219,6 @@ export interface operations {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
             /** @description RateLimitError 429 response */
             429: {
                 headers: {
@@ -12026,6 +12235,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+            /** @description WebhookLimitError 507 response */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookLimitErrorResponseContent"];
                 };
             };
         };
@@ -12114,6 +12332,15 @@ export interface operations {
                     "application/json": components["schemas"]["UpdateWebhookResponseContent"];
                 };
             };
+            /** @description BadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                };
+            };
             /** @description UnauthorizedError 401 response */
             401: {
                 headers: {
@@ -12141,15 +12368,6 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
             /** @description InternalServerError 500 response */
             500: {
                 headers: {
@@ -12157,6 +12375,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+            /** @description WebhookLimitError 507 response */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookLimitErrorResponseContent"];
                 };
             };
         };
@@ -13245,6 +13472,15 @@ export interface operations {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
             /** @description InternalServerError 500 response */
             500: {
                 headers: {
@@ -13686,6 +13922,7 @@ export interface operations {
                 query: string;
                 /** @description created_at|updated_at */
                 sort?: string;
+                page?: number;
             };
             header?: never;
             path?: never;

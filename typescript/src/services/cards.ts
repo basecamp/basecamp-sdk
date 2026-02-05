@@ -813,6 +813,7 @@ export class CardStepsService extends BaseService {
       () =>
         this.client.PUT("/buckets/{projectId}/card_tables/steps/{stepId}/completions.json", {
           params: { path: { projectId, stepId } },
+          body: { completion: "on" },
         })
     );
 
@@ -842,8 +843,9 @@ export class CardStepsService extends BaseService {
         resourceId: stepId,
       },
       () =>
-        this.client.DELETE("/buckets/{projectId}/card_tables/steps/{stepId}/completions.json", {
+        this.client.PUT("/buckets/{projectId}/card_tables/steps/{stepId}/completions.json", {
           params: { path: { projectId, stepId } },
+          body: { completion: "" },
         })
     );
 

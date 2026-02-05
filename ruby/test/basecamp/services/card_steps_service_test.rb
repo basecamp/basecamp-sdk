@@ -56,23 +56,21 @@ class CardStepsServiceTest < Minitest::Test
     assert_equal "Updated step", step["title"]
   end
 
-  def test_complete_step
+  def test_set_completion_on
     completed_step = sample_step(id: 200)
     completed_step["completed"] = true
     stub_put("/12345/buckets/100/card_tables/steps/200/completions.json", response_body: completed_step)
 
-    step = @account.card_steps.complete(project_id: 100, step_id: 200)
+    step = @account.card_steps.set_completion(project_id: 100, step_id: 200, completion: "on")
 
     assert step["completed"]
   end
 
-  def test_uncomplete_step
+  def test_set_completion_off
     uncompleted_step = sample_step(id: 200)
-    stub_delete("/12345/buckets/100/card_tables/steps/200/completions.json")
-    stub_request(:delete, "https://3.basecampapi.com/12345/buckets/100/card_tables/steps/200/completions.json")
-      .to_return(status: 200, body: uncompleted_step.to_json, headers: { "Content-Type" => "application/json" })
+    stub_put("/12345/buckets/100/card_tables/steps/200/completions.json", response_body: uncompleted_step)
 
-    step = @account.card_steps.uncomplete(project_id: 100, step_id: 200)
+    step = @account.card_steps.set_completion(project_id: 100, step_id: 200, completion: "")
 
     assert_not step["completed"]
   end

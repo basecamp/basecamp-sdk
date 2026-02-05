@@ -264,7 +264,6 @@ export {
 // Lineup service
 export {
   LineupService,
-  type MarkerColor,
   type CreateMarkerRequest,
   type UpdateMarkerRequest,
 } from "./lineup.js";

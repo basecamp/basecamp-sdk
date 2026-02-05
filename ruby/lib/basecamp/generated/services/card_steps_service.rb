@@ -40,20 +40,13 @@ module Basecamp
         http_put(bucket_path(project_id, "/card_tables/steps/#{step_id}"), body: compact_params(title: title, due_on: due_on, assignees: assignees)).json
       end
 
-      # Mark a step as completed
+      # Set card step completion status (PUT with completion: "on" to complete, "" to uncomplete)
       # @param project_id [Integer] project id ID
       # @param step_id [Integer] step id ID
+      # @param completion [String] Set to "on" to complete the step, "" (empty) to uncomplete
       # @return [Hash] response data
-      def complete(project_id:, step_id:)
-        http_put(bucket_path(project_id, "/card_tables/steps/#{step_id}/completions.json")).json
-      end
-
-      # Mark a step as incomplete
-      # @param project_id [Integer] project id ID
-      # @param step_id [Integer] step id ID
-      # @return [Hash] response data
-      def uncomplete(project_id:, step_id:)
-        http_delete(bucket_path(project_id, "/card_tables/steps/#{step_id}/completions.json")).json
+      def set_completion(project_id:, step_id:, completion:)
+        http_put(bucket_path(project_id, "/card_tables/steps/#{step_id}/completions.json"), body: compact_params(completion: completion)).json
       end
     end
   end

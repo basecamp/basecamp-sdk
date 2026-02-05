@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-01-31T00:45:11.926Z",
+  "generated": "2026-02-05T07:44:29.641Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -205,21 +205,7 @@
         "natural": true
       }
     },
-    "CompleteCardStep": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
-    "UncompleteCardStep": {
+    "SetCardStepCompletion": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,
@@ -1164,6 +1150,17 @@
         ]
       }
     },
+    "CreateTimesheetEntry": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
     "EnableTool": {
       "retry": {
         "maxAttempts": 2,
@@ -1302,7 +1299,8 @@
         ]
       },
       "pagination": {
-        "style": "link_header",
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
         "maxPageSize": 50
       }
     },
@@ -1315,6 +1313,31 @@
           429,
           503
         ]
+      }
+    },
+    "GetTimesheetEntry": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateTimesheetEntry": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "RepositionTodolistGroup": {
@@ -1989,7 +2012,8 @@
         ]
       },
       "pagination": {
-        "style": "link_header",
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
         "maxPageSize": 50
       }
     },
@@ -2068,6 +2092,11 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "GetSearchMetadata": {

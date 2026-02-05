@@ -1,0 +1,52 @@
+{
+  "id": 9007199254741099,
+  "status": "active",
+  "visible_to_clients": false,
+  "created_at": "2024-05-16T14:00:00.000Z",
+  "updated_at": "2024-05-16T15:30:00.000Z",
+  "title": "2.5",
+  "inherits_status": true,
+  "type": "Timesheet::Entry",
+  "url": "https://3.basecampapi.com/195539477/buckets/2085958499/timesheet/entries/9007199254741099.json",
+  "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/timesheet/entries/9007199254741099",
+  "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1JlY29yZGluZy85MDA3MTk5MjU0NzQxMDk5P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--aabbccdd.json",
+  "parent": {
+    "id": 1069479345,
+    "title": "Design homepage mockups",
+    "type": "Todo",
+    "url": "https://3.basecampapi.com/195539477/buckets/2085958499/todos/1069479345.json",
+    "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/todos/1069479345"
+  },
+  "bucket": {
+    "id": 2085958499,
+    "name": "The Leto Laptop",
+    "type": "Project"
+  },
+  "creator": {
+    "id": 1049715914,
+    "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+    "name": "Victor Cooper",
+    "email_address": "victor@honchodesign.com",
+    "personable_type": "User",
+    "title": "Chief Strategist",
+    "admin": true,
+    "owner": true,
+    "time_zone": "America/Chicago",
+    "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar"
+  },
+  "date": "2024-05-16",
+  "description": "Updated description",
+  "hours": "2.5",
+  "person": {
+    "id": 1049715914,
+    "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+    "name": "Victor Cooper",
+    "email_address": "victor@honchodesign.com",
+    "personable_type": "User",
+    "title": "Chief Strategist",
+    "admin": true,
+    "owner": true,
+    "time_zone": "America/Chicago",
+    "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar"
+  }
+}

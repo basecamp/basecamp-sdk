@@ -48,6 +48,14 @@ export interface UpdateCardStepRequest {
   assignees?: number[];
 }
 
+/**
+ * Request parameters for setCompletion.
+ */
+export interface SetCompletionCardStepRequest {
+  /** Set to "on" to complete the step, "" (empty) to uncomplete */
+  completion: string;
+}
+
 
 // =============================================================================
 // Service
@@ -158,17 +166,18 @@ export class CardStepsService extends BaseService {
   }
 
   /**
-   * Mark a step as completed
+   * Set card step completion status (PUT with completion: "on" to complete, "" to uncomplete)
    * @param projectId - The project ID
    * @param stepId - The step ID
+   * @param req - Request parameters
    * @returns The CardStep
    */
-  async complete(projectId: number, stepId: number): Promise<CardStep> {
+  async setCompletion(projectId: number, stepId: number, req: SetCompletionCardStepRequest): Promise<CardStep> {
     const response = await this.request(
       {
         service: "CardSteps",
-        operation: "CompleteCardStep",
-        resourceType: "card_step",
+        operation: "SetCardStepCompletion",
+        resourceType: "card_step_completion",
         isMutation: true,
         projectId,
         resourceId: stepId,
@@ -178,32 +187,7 @@ export class CardStepsService extends BaseService {
           params: {
             path: { projectId, stepId },
           },
-        })
-    );
-    return response;
-  }
-
-  /**
-   * Mark a step as incomplete
-   * @param projectId - The project ID
-   * @param stepId - The step ID
-   * @returns The CardStep
-   */
-  async uncomplete(projectId: number, stepId: number): Promise<CardStep> {
-    const response = await this.request(
-      {
-        service: "CardSteps",
-        operation: "UncompleteCardStep",
-        resourceType: "card_step",
-        isMutation: true,
-        projectId,
-        resourceId: stepId,
-      },
-      () =>
-        this.client.DELETE("/buckets/{projectId}/card_tables/steps/{stepId}/completions.json", {
-          params: {
-            path: { projectId, stepId },
-          },
+          body: req as any,
         })
     );
     return response;
