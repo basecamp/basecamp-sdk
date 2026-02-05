@@ -128,6 +128,7 @@ func runTest(tc TestCase) TestResult {
 	var mu sync.Mutex
 	var requestCount int
 	var requestTimes []time.Time
+	var requestPaths []string
 
 	// Create mock server that serves responses in sequence
 	responseIndex := 0
@@ -135,6 +136,7 @@ func runTest(tc TestCase) TestResult {
 		mu.Lock()
 		requestCount++
 		requestTimes = append(requestTimes, time.Now())
+		requestPaths = append(requestPaths, r.URL.Path)
 		idx := responseIndex
 		responseIndex++
 		mu.Unlock()
@@ -258,6 +260,17 @@ func runTest(tc TestCase) TestResult {
 		}
 		sdkResp, sdkErr = client.UpdateTimesheetEntry(ctx, testAccountID, projectId, entryId, body)
 
+	case "GetProjectTimeline":
+		projectId := getInt64Param(tc.PathParams, "projectId")
+		sdkResp, sdkErr = client.GetProjectTimeline(ctx, testAccountID, projectId)
+
+	case "GetProgressReport":
+		sdkResp, sdkErr = client.GetProgressReport(ctx, testAccountID)
+
+	case "GetPersonProgress":
+		personId := getInt64Param(tc.PathParams, "personId")
+		sdkResp, sdkErr = client.GetPersonProgress(ctx, testAccountID, personId)
+
 	default:
 		return TestResult{
 			Name:    tc.Name,
@@ -325,6 +338,23 @@ func runTest(tc TestCase) TestResult {
 					Name:    tc.Name,
 					Passed:  false,
 					Message: fmt.Sprintf("Expected status code %d, got %d", expected, sdkResp.StatusCode),
+				}
+			}
+
+		case "requestPath":
+			expected := assertion.Expected.(string)
+			if len(requestPaths) == 0 {
+				return TestResult{
+					Name:    tc.Name,
+					Passed:  false,
+					Message: "Expected a request to be made, but no requests were recorded",
+				}
+			}
+			if requestPaths[0] != expected {
+				return TestResult{
+					Name:    tc.Name,
+					Passed:  false,
+					Message: fmt.Sprintf("Expected request path %q, got %q", expected, requestPaths[0]),
 				}
 			}
 		}

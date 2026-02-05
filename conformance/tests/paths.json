@@ -1,0 +1,49 @@
+[
+  {
+    "name": "Project timeline uses /projects/ path",
+    "description": "Verifies that GetProjectTimeline constructs the URL path using /projects/{projectId}/ not /buckets/{projectId}/",
+    "operation": "GetProjectTimeline",
+    "method": "GET",
+    "path": "/projects/{projectId}/timeline.json",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 200, "body": []}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/projects/12345/timeline.json"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "timeline"]
+  },
+  {
+    "name": "Progress report uses /reports/ path",
+    "description": "Verifies that GetProgressReport constructs the URL path using /reports/progress.json",
+    "operation": "GetProgressReport",
+    "method": "GET",
+    "path": "/reports/progress.json",
+    "mockResponses": [
+      {"status": 200, "body": []}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/reports/progress.json"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "reports"]
+  },
+  {
+    "name": "Person progress uses /reports/users/ path",
+    "description": "Verifies that GetPersonProgress constructs the URL path using /reports/users/progress/{personId}",
+    "operation": "GetPersonProgress",
+    "method": "GET",
+    "path": "/reports/users/progress/{personId}",
+    "pathParams": {"personId": 45678},
+    "mockResponses": [
+      {"status": 200, "body": []}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/reports/users/progress/45678"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "reports"]
+  }
+]

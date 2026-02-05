@@ -89,7 +89,8 @@
               "headerPresent",
               "headerValue",
               "errorType",
-              "noError"
+              "noError",
+              "requestPath"
             ]
           },
           "expected": {
