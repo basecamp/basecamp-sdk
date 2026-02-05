@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -14,6 +16,12 @@ import { Errors } from "../../errors.js";
 
 /** Webhook entity from the Basecamp API. */
 export type Webhook = components["schemas"]["Webhook"];
+
+/**
+ * Options for list.
+ */
+export interface ListWebhookOptions extends PaginationOptions {
+}
 
 /**
  * Request parameters for create.
@@ -51,15 +59,16 @@ export class WebhooksService extends BaseService {
 
   /**
    * List all webhooks for a project
-   * @returns Array of Webhook
+   * @param options - Optional query parameters
+   * @returns All Webhook across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.webhooks.list();
    * ```
    */
-  async list(): Promise<Webhook[]> {
-    const response = await this.request(
+  async list(options?: ListWebhookOptions): Promise<ListResult<Webhook>> {
+    return this.requestPaginated(
       {
         service: "Webhooks",
         operation: "ListWebhooks",
@@ -69,8 +78,8 @@ export class WebhooksService extends BaseService {
       () =>
         this.client.GET("/webhooks.json", {
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

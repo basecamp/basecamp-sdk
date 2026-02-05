@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -14,6 +16,12 @@ import { Errors } from "../../errors.js";
 
 /** MessageType entity from the Basecamp API. */
 export type MessageType = components["schemas"]["MessageType"];
+
+/**
+ * Options for list.
+ */
+export interface ListMessageTypeOptions extends PaginationOptions {
+}
 
 /**
  * Request parameters for create.
@@ -47,15 +55,16 @@ export class MessageTypesService extends BaseService {
 
   /**
    * List message types in a project
-   * @returns Array of MessageType
+   * @param options - Optional query parameters
+   * @returns All MessageType across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.messageTypes.list();
    * ```
    */
-  async list(): Promise<MessageType[]> {
-    const response = await this.request(
+  async list(options?: ListMessageTypeOptions): Promise<ListResult<MessageType>> {
+    return this.requestPaginated(
       {
         service: "MessageTypes",
         operation: "ListMessageTypes",
@@ -65,8 +74,8 @@ export class MessageTypesService extends BaseService {
       () =>
         this.client.GET("/categories.json", {
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

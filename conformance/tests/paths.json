@@ -1,16 +1,15 @@
 [
   {
-    "name": "Project timeline uses /projects/ path",
-    "description": "Verifies that GetProjectTimeline constructs the URL path using /projects/{projectId}/ not /buckets/{projectId}/",
+    "name": "Project timeline uses flat /timeline.json path",
+    "description": "Verifies that GetProjectTimeline constructs the flat URL path /timeline.json",
     "operation": "GetProjectTimeline",
     "method": "GET",
-    "path": "/projects/{projectId}/timeline.json",
-    "pathParams": {"projectId": 12345},
+    "path": "/timeline.json",
     "mockResponses": [
       {"status": 200, "body": []}
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/projects/12345/timeline.json"},
+      {"type": "requestPath", "expected": "/999/timeline.json"},
       {"type": "noError"}
     ],
     "tags": ["path", "timeline"]

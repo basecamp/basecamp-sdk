@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -18,6 +20,18 @@ export type Campfire = components["schemas"]["Campfire"];
 export type Chatbot = components["schemas"]["Chatbot"];
 /** CampfireLine entity from the Basecamp API. */
 export type CampfireLine = components["schemas"]["CampfireLine"];
+
+/**
+ * Options for list.
+ */
+export interface ListCampfireOptions extends PaginationOptions {
+}
+
+/**
+ * Options for listChatbots.
+ */
+export interface ListChatbotsCampfireOptions extends PaginationOptions {
+}
 
 /**
  * Request parameters for createChatbot.
@@ -37,6 +51,12 @@ export interface UpdateChatbotCampfireRequest {
   serviceName: string;
   /** Command url */
   commandUrl?: string;
+}
+
+/**
+ * Options for listLines.
+ */
+export interface ListLinesCampfireOptions extends PaginationOptions {
 }
 
 /**
@@ -61,15 +81,16 @@ export class CampfiresService extends BaseService {
 
   /**
    * List all campfires across the account
-   * @returns Array of Campfire
+   * @param options - Optional query parameters
+   * @returns All Campfire across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.campfires.list();
    * ```
    */
-  async list(): Promise<Campfire[]> {
-    const response = await this.request(
+  async list(options?: ListCampfireOptions): Promise<ListResult<Campfire>> {
+    return this.requestPaginated(
       {
         service: "Campfires",
         operation: "ListCampfires",
@@ -79,8 +100,8 @@ export class CampfiresService extends BaseService {
       () =>
         this.client.GET("/chats.json", {
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
@@ -116,15 +137,16 @@ export class CampfiresService extends BaseService {
   /**
    * List all chatbots for a campfire
    * @param campfireId - The campfire ID
-   * @returns Array of Chatbot
+   * @param options - Optional query parameters
+   * @returns All Chatbot across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.campfires.listChatbots(123);
    * ```
    */
-  async listChatbots(campfireId: number): Promise<Chatbot[]> {
-    const response = await this.request(
+  async listChatbots(campfireId: number, options?: ListChatbotsCampfireOptions): Promise<ListResult<Chatbot>> {
+    return this.requestPaginated(
       {
         service: "Campfires",
         operation: "ListChatbots",
@@ -138,8 +160,8 @@ export class CampfiresService extends BaseService {
             path: { campfireId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
@@ -283,15 +305,16 @@ export class CampfiresService extends BaseService {
   /**
    * List all lines (messages) in a campfire
    * @param campfireId - The campfire ID
-   * @returns Array of CampfireLine
+   * @param options - Optional query parameters
+   * @returns All CampfireLine across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.campfires.listLines(123);
    * ```
    */
-  async listLines(campfireId: number): Promise<CampfireLine[]> {
-    const response = await this.request(
+  async listLines(campfireId: number, options?: ListLinesCampfireOptions): Promise<ListResult<CampfireLine>> {
+    return this.requestPaginated(
       {
         service: "Campfires",
         operation: "ListCampfireLines",
@@ -305,8 +328,8 @@ export class CampfiresService extends BaseService {
             path: { campfireId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

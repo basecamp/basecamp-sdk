@@ -311,6 +311,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chats.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List all campfires across the account
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages. X-Total-Count header provides total count.
+         */
+        get: operations["ListCampfires"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chats/{campfireId}": {
         parameters: {
             query?: never;
@@ -406,6 +428,28 @@ export interface paths {
         post?: never;
         /** @description Delete a campfire line */
         delete: operations["DeleteCampfireLine"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/people.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List all account users who can be pinged
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages. X-Total-Count header provides total count.
+         */
+        get: operations["ListPingablePeople"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -696,6 +740,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lineup/markers.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a new lineup marker */
+        post: operations["CreateLineupMarker"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lineup/markers/{markerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Update an existing lineup marker */
+        put: operations["UpdateLineupMarker"];
+        post?: never;
+        /** @description Delete a lineup marker */
+        delete: operations["DeleteLineupMarker"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/message_boards/{boardId}": {
         parameters: {
             query?: never;
@@ -747,6 +826,189 @@ export interface paths {
         get: operations["GetMessage"];
         /** @description Update an existing message */
         put: operations["UpdateMessage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/my/profile.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get the current authenticated user's profile */
+        get: operations["GetMyProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/my/question_reminders.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get pending check-in reminders for the current user
+         *
+         *     Returns questions that are pending a response from the authenticated user.
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages.
+         */
+        get: operations["GetQuestionReminders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/people.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List all people visible to the current user
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages. X-Total-Count header provides total count.
+         */
+        get: operations["ListPeople"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/people/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a person by ID */
+        get: operations["GetPerson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List projects (active by default; optionally archived/trashed)
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages. X-Total-Count header provides total count.
+         */
+        get: operations["ListProjects"];
+        put?: never;
+        /** @description Create a new project */
+        post: operations["CreateProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/recordings.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List recordings of a given type across projects
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages. X-Total-Count header provides total count.
+         */
+        get: operations["ListRecordings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a single project by id */
+        get: operations["GetProject"];
+        /** @description Update an existing project */
+        put: operations["UpdateProject"];
+        post?: never;
+        /** @description Trash a project (returns 204 No Content) */
+        delete: operations["TrashProject"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/people.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List all active people on a project
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages. X-Total-Count header provides total count.
+         */
+        get: operations["ListProjectPeople"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/people/users.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Update project access (grant/revoke/create people) */
+        put: operations["UpdateProjectAccess"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1100,6 +1362,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/recordings/{recordingId}/timesheet.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get timesheet for a specific recording */
+        get: operations["GetRecordingTimesheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/recordings/{recordingId}/timesheet/entries.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a timesheet entry on a recording */
+        post: operations["CreateTimesheetEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/recordings/{toolId}/position.json": {
         parameters: {
             query?: never;
@@ -1114,6 +1410,125 @@ export interface paths {
         post: operations["EnableTool"];
         /** @description Disable a tool (hide it from the project dock) */
         delete: operations["DisableTool"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/progress.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get account-wide activity feed (progress report) */
+        get: operations["GetProgressReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/schedules/upcoming.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get upcoming schedule entries within a date window */
+        get: operations["GetUpcomingSchedule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/timesheet.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get account-wide timesheet report */
+        get: operations["GetTimesheetReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/todos/assigned.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List people who can be assigned todos */
+        get: operations["ListAssignablePeople"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/todos/assigned/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get todos assigned to a specific person */
+        get: operations["GetAssignedTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/todos/overdue.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get overdue todos grouped by lateness */
+        get: operations["GetOverdueTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/users/progress/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a person's activity timeline */
+        get: operations["GetPersonProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1193,6 +1608,168 @@ export interface paths {
         put?: never;
         /** @description Create a new schedule entry */
         post: operations["CreateScheduleEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Search for content across the account */
+        get: operations["Search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/searches/metadata.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get search metadata (available filter options) */
+        get: operations["GetSearchMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/templates.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List all templates visible to the current user
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages. X-Total-Count header provides total count.
+         */
+        get: operations["ListTemplates"];
+        put?: never;
+        /** @description Create a new template */
+        post: operations["CreateTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a single template by id */
+        get: operations["GetTemplate"];
+        /** @description Update an existing template */
+        put: operations["UpdateTemplate"];
+        post?: never;
+        /** @description Delete a template (trash it) */
+        delete: operations["DeleteTemplate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/templates/{templateId}/project_constructions.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a project from a template (asynchronous) */
+        post: operations["CreateProjectFromTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/templates/{templateId}/project_constructions/{constructionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get the status of a project construction */
+        get: operations["GetProjectConstruction"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/timeline.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get project timeline */
+        get: operations["GetProjectTimeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/timesheet.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get timesheet for a specific project */
+        get: operations["GetProjectTimesheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/timesheet/entries/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a single timesheet entry */
+        get: operations["GetTimesheetEntry"];
+        /** @description Update a timesheet entry */
+        put: operations["UpdateTimesheetEntry"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1544,583 +2121,6 @@ export interface paths {
         post?: never;
         /** @description Delete a webhook */
         delete: operations["DeleteWebhook"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/chats.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description List all campfires across the account
-         *
-         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
-         *     to fetch additional pages. X-Total-Count header provides total count.
-         */
-        get: operations["ListCampfires"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/circles/people.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description List all account users who can be pinged
-         *
-         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
-         *     to fetch additional pages. X-Total-Count header provides total count.
-         */
-        get: operations["ListPingablePeople"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/lineup/markers.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Create a new lineup marker */
-        post: operations["CreateLineupMarker"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/lineup/markers/{markerId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** @description Update an existing lineup marker */
-        put: operations["UpdateLineupMarker"];
-        post?: never;
-        /** @description Delete a lineup marker */
-        delete: operations["DeleteLineupMarker"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/my/profile.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get the current authenticated user's profile */
-        get: operations["GetMyProfile"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/my/question_reminders.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description Get pending check-in reminders for the current user
-         *
-         *     Returns questions that are pending a response from the authenticated user.
-         *
-         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
-         *     to fetch additional pages.
-         */
-        get: operations["GetQuestionReminders"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/people.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description List all people visible to the current user
-         *
-         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
-         *     to fetch additional pages. X-Total-Count header provides total count.
-         */
-        get: operations["ListPeople"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/people/{personId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get a person by ID */
-        get: operations["GetPerson"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description List projects (active by default; optionally archived/trashed)
-         *
-         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
-         *     to fetch additional pages. X-Total-Count header provides total count.
-         */
-        get: operations["ListProjects"];
-        put?: never;
-        /** @description Create a new project */
-        post: operations["CreateProject"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects/recordings.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description List recordings of a given type across projects
-         *
-         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
-         *     to fetch additional pages. X-Total-Count header provides total count.
-         */
-        get: operations["ListRecordings"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects/{projectId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get a single project by id */
-        get: operations["GetProject"];
-        /** @description Update an existing project */
-        put: operations["UpdateProject"];
-        post?: never;
-        /** @description Trash a project (returns 204 No Content) */
-        delete: operations["TrashProject"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects/{projectId}/people.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description List all active people on a project
-         *
-         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
-         *     to fetch additional pages. X-Total-Count header provides total count.
-         */
-        get: operations["ListProjectPeople"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects/{projectId}/people/users.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** @description Update project access (grant/revoke/create people) */
-        put: operations["UpdateProjectAccess"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/recordings/{recordingId}/timesheet.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get timesheet for a specific recording */
-        get: operations["GetRecordingTimesheet"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects/{projectId}/recordings/{recordingId}/timesheet/entries.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Create a timesheet entry on a recording */
-        post: operations["CreateTimesheetEntry"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/timeline.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get project timeline */
-        get: operations["GetProjectTimeline"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/timesheet.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get timesheet for a specific project */
-        get: operations["GetProjectTimesheet"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/buckets/{projectId}/timesheet/entries/{entryId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get a single timesheet entry */
-        get: operations["GetTimesheetEntry"];
-        /** @description Update a timesheet entry */
-        put: operations["UpdateTimesheetEntry"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/reports/progress.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get account-wide activity feed (progress report) */
-        get: operations["GetProgressReport"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/reports/schedules/upcoming.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get upcoming schedule entries within a date window */
-        get: operations["GetUpcomingSchedule"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/reports/timesheet.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get account-wide timesheet report */
-        get: operations["GetTimesheetReport"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/reports/todos/assigned.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description List people who can be assigned todos */
-        get: operations["ListAssignablePeople"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/reports/todos/assigned/{personId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get todos assigned to a specific person */
-        get: operations["GetAssignedTodos"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/reports/todos/overdue.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get overdue todos grouped by lateness */
-        get: operations["GetOverdueTodos"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/reports/users/progress/{personId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get a person's activity timeline */
-        get: operations["GetPersonProgress"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/search.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Search for content across the account */
-        get: operations["Search"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/searches/metadata.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get search metadata (available filter options) */
-        get: operations["GetSearchMetadata"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/templates.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description List all templates visible to the current user
-         *
-         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
-         *     to fetch additional pages. X-Total-Count header provides total count.
-         */
-        get: operations["ListTemplates"];
-        put?: never;
-        /** @description Create a new template */
-        post: operations["CreateTemplate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/templates/{templateId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get a single template by id */
-        get: operations["GetTemplate"];
-        /** @description Update an existing template */
-        put: operations["UpdateTemplate"];
-        post?: never;
-        /** @description Delete a template (trash it) */
-        delete: operations["DeleteTemplate"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/templates/{templateId}/project_constructions.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Create a project from a template (asynchronous) */
-        post: operations["CreateProjectFromTemplate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/templates/{templateId}/project_constructions/{constructionId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get the status of a project construction */
-        get: operations["GetProjectConstruction"];
-        put?: never;
-        post?: never;
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -5333,6 +5333,62 @@ export interface operations {
             };
         };
     };
+    ListCampfires: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListCampfires 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListCampfiresResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetCampfire: {
         parameters: {
             query?: never;
@@ -5940,6 +5996,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListPingablePeople: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListPingablePeople 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListPingablePeopleResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -7172,6 +7284,198 @@ export interface operations {
             };
         };
     };
+    CreateLineupMarker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLineupMarkerRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateLineupMarker 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateLineupMarker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                markerId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateLineupMarkerRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateLineupMarker 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DeleteLineupMarker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                markerId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DeleteLineupMarker 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetMessageBoard: {
         parameters: {
             query?: never;
@@ -7475,6 +7779,749 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetMyProfile 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetMyProfileResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetQuestionReminders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetQuestionReminders 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetQuestionRemindersResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListPeople: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListPeople 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListPeopleResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetPerson 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetPersonResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListProjects: {
+        parameters: {
+            query?: {
+                /** @description active|archived|trashed */
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListProjects 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListProjectsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProjectRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateProject 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateProjectResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListRecordings: {
+        parameters: {
+            query: {
+                /** @description Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault */
+                type: string;
+                bucket?: string;
+                /** @description active|archived|trashed */
+                status?: string;
+                /** @description created_at|updated_at */
+                sort?: string;
+                /** @description asc|desc */
+                direction?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListRecordings 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListRecordingsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetProject 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetProjectResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateProject 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateProjectResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    TrashProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description TrashProject 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListProjectPeople: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListProjectPeople 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListProjectPeopleResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateProjectAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectAccessRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateProjectAccess 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateProjectAccessResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -9275,6 +10322,139 @@ export interface operations {
             };
         };
     };
+    GetRecordingTimesheet: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                person_id?: number;
+            };
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetRecordingTimesheet 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetRecordingTimesheetResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateTimesheetEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTimesheetEntryRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateTimesheetEntry 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTimesheetEntryResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     RepositionTool: {
         parameters: {
             query?: never;
@@ -9452,6 +10632,430 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetProgressReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetProgressReport 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetProgressReportResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetUpcomingSchedule: {
+        parameters: {
+            query?: {
+                window_starts_on?: string;
+                window_ends_on?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetUpcomingSchedule 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetUpcomingScheduleResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetTimesheetReport: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                person_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetTimesheetReport 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetTimesheetReportResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListAssignablePeople: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListAssignablePeople 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListAssignablePeopleResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetAssignedTodos: {
+        parameters: {
+            query?: {
+                /** @description Group by "bucket" or "date" */
+                group_by?: string;
+            };
+            header?: never;
+            path: {
+                personId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetAssignedTodos 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetAssignedTodosResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetOverdueTodos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetOverdueTodos 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetOverdueTodosResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetPersonProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetPersonProgress 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetPersonProgressResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -9901,6 +11505,820 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    Search: {
+        parameters: {
+            query: {
+                query: string;
+                /** @description created_at|updated_at */
+                sort?: string;
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Search 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetSearchMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetSearchMetadata 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetSearchMetadataResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListTemplates: {
+        parameters: {
+            query?: {
+                /** @description active|archived|trashed */
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListTemplates 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListTemplatesResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplateRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateTemplate 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTemplateResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetTemplate 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetTemplateResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateTemplateRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateTemplate 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateTemplateResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DeleteTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DeleteTemplate 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateProjectFromTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProjectFromTemplateRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateProjectFromTemplate 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateProjectFromTemplateResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetProjectConstruction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: number;
+                constructionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetProjectConstruction 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetProjectConstructionResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetProjectTimeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetProjectTimeline 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetProjectTimelineResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetProjectTimesheet: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                person_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetProjectTimesheet 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetProjectTimesheetResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetTimesheetEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetTimesheetEntry 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetTimesheetEntryResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateTimesheetEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateTimesheetEntryRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateTimesheetEntry 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateTimesheetEntryResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -11931,2427 +14349,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    ListCampfires: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ListCampfires 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListCampfiresResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    ListPingablePeople: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ListPingablePeople 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListPingablePeopleResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    CreateLineupMarker: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateLineupMarkerRequestContent"];
-            };
-        };
-        responses: {
-            /** @description CreateLineupMarker 201 response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    UpdateLineupMarker: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                markerId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["UpdateLineupMarkerRequestContent"];
-            };
-        };
-        responses: {
-            /** @description UpdateLineupMarker 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    DeleteLineupMarker: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                markerId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description DeleteLineupMarker 204 response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetMyProfile: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetMyProfile 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetMyProfileResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetQuestionReminders: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetQuestionReminders 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetQuestionRemindersResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    ListPeople: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ListPeople 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListPeopleResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetPerson: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                personId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetPerson 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetPersonResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    ListProjects: {
-        parameters: {
-            query?: {
-                /** @description active|archived|trashed */
-                status?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ListProjects 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListProjectsResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    CreateProject: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateProjectRequestContent"];
-            };
-        };
-        responses: {
-            /** @description CreateProject 201 response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreateProjectResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    ListRecordings: {
-        parameters: {
-            query: {
-                /** @description Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault */
-                type: string;
-                bucket?: string;
-                /** @description active|archived|trashed */
-                status?: string;
-                /** @description created_at|updated_at */
-                sort?: string;
-                /** @description asc|desc */
-                direction?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ListRecordings 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListRecordingsResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetProject: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetProject 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetProjectResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    UpdateProject: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateProjectRequestContent"];
-            };
-        };
-        responses: {
-            /** @description UpdateProject 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UpdateProjectResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    TrashProject: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description TrashProject 204 response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    ListProjectPeople: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ListProjectPeople 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListProjectPeopleResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    UpdateProjectAccess: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["UpdateProjectAccessRequestContent"];
-            };
-        };
-        responses: {
-            /** @description UpdateProjectAccess 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UpdateProjectAccessResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetRecordingTimesheet: {
-        parameters: {
-            query?: {
-                from?: string;
-                to?: string;
-                person_id?: number;
-            };
-            header?: never;
-            path: {
-                recordingId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetRecordingTimesheet 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetRecordingTimesheetResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    CreateTimesheetEntry: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                recordingId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateTimesheetEntryRequestContent"];
-            };
-        };
-        responses: {
-            /** @description CreateTimesheetEntry 201 response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreateTimesheetEntryResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetProjectTimeline: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetProjectTimeline 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetProjectTimelineResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetProjectTimesheet: {
-        parameters: {
-            query?: {
-                from?: string;
-                to?: string;
-                person_id?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetProjectTimesheet 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetProjectTimesheetResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetTimesheetEntry: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                entryId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetTimesheetEntry 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetTimesheetEntryResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    UpdateTimesheetEntry: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                entryId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["UpdateTimesheetEntryRequestContent"];
-            };
-        };
-        responses: {
-            /** @description UpdateTimesheetEntry 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UpdateTimesheetEntryResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetProgressReport: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetProgressReport 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetProgressReportResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetUpcomingSchedule: {
-        parameters: {
-            query?: {
-                window_starts_on?: string;
-                window_ends_on?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetUpcomingSchedule 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetUpcomingScheduleResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetTimesheetReport: {
-        parameters: {
-            query?: {
-                from?: string;
-                to?: string;
-                person_id?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetTimesheetReport 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetTimesheetReportResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    ListAssignablePeople: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ListAssignablePeople 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListAssignablePeopleResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetAssignedTodos: {
-        parameters: {
-            query?: {
-                /** @description Group by "bucket" or "date" */
-                group_by?: string;
-            };
-            header?: never;
-            path: {
-                personId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetAssignedTodos 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetAssignedTodosResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetOverdueTodos: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetOverdueTodos 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetOverdueTodosResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetPersonProgress: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                personId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetPersonProgress 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetPersonProgressResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    Search: {
-        parameters: {
-            query: {
-                query: string;
-                /** @description created_at|updated_at */
-                sort?: string;
-                page?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Search 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SearchResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetSearchMetadata: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetSearchMetadata 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetSearchMetadataResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    ListTemplates: {
-        parameters: {
-            query?: {
-                /** @description active|archived|trashed */
-                status?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ListTemplates 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListTemplatesResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    CreateTemplate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateTemplateRequestContent"];
-            };
-        };
-        responses: {
-            /** @description CreateTemplate 201 response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreateTemplateResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetTemplate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                templateId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetTemplate 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetTemplateResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    UpdateTemplate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                templateId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["UpdateTemplateRequestContent"];
-            };
-        };
-        responses: {
-            /** @description UpdateTemplate 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UpdateTemplateResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    DeleteTemplate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                templateId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description DeleteTemplate 204 response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    CreateProjectFromTemplate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                templateId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateProjectFromTemplateRequestContent"];
-            };
-        };
-        responses: {
-            /** @description CreateProjectFromTemplate 201 response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreateProjectFromTemplateResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetProjectConstruction: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                templateId: number;
-                constructionId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetProjectConstruction 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetProjectConstructionResponseContent"];
-                };
             };
             /** @description UnauthorizedError 401 response */
             401: {

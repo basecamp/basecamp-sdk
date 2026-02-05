@@ -383,6 +383,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
 
   "GET:/{accountId}/templates/{templateId}/project_constructions/{constructionId}": "GetProjectConstruction",
 
+  // Other
   "GET:/{accountId}/card_tables/{cardTableId}": "GetCardTable",
 
   "POST:/{accountId}/card_tables/{cardTableId}/columns.json": "CreateCardColumn",
@@ -647,5 +648,11 @@ export const PATH_TO_OPERATION: Record<string, string> = {
 
   // Events
   "GET:/{accountId}/recordings/{recordingId}/events.json": "ListEvents",
+
+  "POST:/{accountId}/recordings/{recordingId}/timesheet/entries.json": "CreateTimesheetEntry",
+
+  "GET:/{accountId}/timesheet/entries/{entryId}": "GetTimesheetEntry",
+
+  "PUT:/{accountId}/timesheet/entries/{entryId}": "UpdateTimesheetEntry",
 
 };

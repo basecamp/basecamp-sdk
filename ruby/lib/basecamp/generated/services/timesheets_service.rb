@@ -7,6 +7,16 @@ module Basecamp
     # @generated from OpenAPI spec
     class TimesheetsService < BaseService
 
+      # Get timesheet for a specific recording
+      # @param recording_id [Integer] recording id ID
+      # @param from [String, nil] from
+      # @param to [String, nil] to
+      # @param person_id [Integer, nil] person id
+      # @return [Hash] response data
+      def for_recording(recording_id:, from: nil, to: nil, person_id: nil)
+        http_get("/recordings/#{recording_id}/timesheet.json", params: compact_params(from: from, to: to, person_id: person_id)).json
+      end
+
       # Create a timesheet entry on a recording
       # @param recording_id [Integer] recording id ID
       # @param date [String] date
@@ -16,34 +26,6 @@ module Basecamp
       # @return [Hash] response data
       def create(recording_id:, date:, hours:, description: nil, person_id: nil)
         http_post("/recordings/#{recording_id}/timesheet/entries.json", body: compact_params(date: date, hours: hours, description: description, person_id: person_id)).json
-      end
-
-      # Get a single timesheet entry
-      # @param entry_id [Integer] entry id ID
-      # @return [Hash] response data
-      def get(entry_id:)
-        http_get("/timesheet/entries/#{entry_id}").json
-      end
-
-      # Update a timesheet entry
-      # @param entry_id [Integer] entry id ID
-      # @param date [String, nil] date
-      # @param hours [String, nil] hours
-      # @param description [String, nil] description
-      # @param person_id [Integer, nil] person id
-      # @return [Hash] response data
-      def update(entry_id:, date: nil, hours: nil, description: nil, person_id: nil)
-        http_put("/timesheet/entries/#{entry_id}", body: compact_params(date: date, hours: hours, description: description, person_id: person_id)).json
-      end
-
-      # Get timesheet for a specific recording
-      # @param recording_id [Integer] recording id ID
-      # @param from [String, nil] from
-      # @param to [String, nil] to
-      # @param person_id [Integer, nil] person id
-      # @return [Hash] response data
-      def for_recording(recording_id:, from: nil, to: nil, person_id: nil)
-        http_get("/recordings/#{recording_id}/timesheet.json", params: compact_params(from: from, to: to, person_id: person_id)).json
       end
 
       # Get account-wide timesheet report
@@ -62,6 +44,24 @@ module Basecamp
       # @return [Hash] response data
       def for_project(from: nil, to: nil, person_id: nil)
         http_get("/timesheet.json", params: compact_params(from: from, to: to, person_id: person_id)).json
+      end
+
+      # Get a single timesheet entry
+      # @param entry_id [Integer] entry id ID
+      # @return [Hash] response data
+      def get(entry_id:)
+        http_get("/timesheet/entries/#{entry_id}").json
+      end
+
+      # Update a timesheet entry
+      # @param entry_id [Integer] entry id ID
+      # @param date [String, nil] date
+      # @param hours [String, nil] hours
+      # @param description [String, nil] description
+      # @param person_id [Integer, nil] person id
+      # @return [Hash] response data
+      def update(entry_id:, date: nil, hours: nil, description: nil, person_id: nil)
+        http_put("/timesheet/entries/#{entry_id}", body: compact_params(date: date, hours: hours, description: description, person_id: person_id)).json
       end
     end
   end

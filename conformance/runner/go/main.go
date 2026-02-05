@@ -256,8 +256,7 @@ func runTest(tc TestCase) TestResult {
 		sdkResp, sdkErr = client.UpdateTimesheetEntry(ctx, testAccountID, entryId, body)
 
 	case "GetProjectTimeline":
-		projectId := getInt64Param(tc.PathParams, "projectId")
-		sdkResp, sdkErr = client.GetProjectTimeline(ctx, testAccountID, projectId)
+		sdkResp, sdkErr = client.GetProjectTimeline(ctx, testAccountID)
 
 	case "GetProgressReport":
 		sdkResp, sdkErr = client.GetProgressReport(ctx, testAccountID)

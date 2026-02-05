@@ -1,5 +1,4 @@
 export { AttachmentsService } from "./attachments.js";
-export { TimesheetsService } from "./timesheets.js";
 export { CardsService } from "./cards.js";
 export { CardStepsService } from "./card-steps.js";
 export { CardColumnsService } from "./card-columns.js";
@@ -23,6 +22,7 @@ export { RecordingsService } from "./recordings.js";
 export { ClientVisibilityService } from "./client-visibility.js";
 export { EventsService } from "./events.js";
 export { SubscriptionsService } from "./subscriptions.js";
+export { TimesheetsService } from "./timesheets.js";
 export { ReportsService } from "./reports.js";
 export { SchedulesService } from "./schedules.js";
 export { SearchService } from "./search.js";

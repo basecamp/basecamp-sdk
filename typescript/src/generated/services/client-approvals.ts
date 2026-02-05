@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 
 // =============================================================================
 // Types
@@ -13,6 +15,13 @@ import type { components } from "../schema.js";
 
 /** ClientApproval entity from the Basecamp API. */
 export type ClientApproval = components["schemas"]["ClientApproval"];
+
+/**
+ * Options for list.
+ */
+export interface ListClientApprovalOptions extends PaginationOptions {
+}
+
 
 // =============================================================================
 // Service
@@ -25,15 +34,16 @@ export class ClientApprovalsService extends BaseService {
 
   /**
    * List all client approvals in a project
-   * @returns Array of ClientApproval
+   * @param options - Optional query parameters
+   * @returns All ClientApproval across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.clientApprovals.list();
    * ```
    */
-  async list(): Promise<ClientApproval[]> {
-    const response = await this.request(
+  async list(options?: ListClientApprovalOptions): Promise<ListResult<ClientApproval>> {
+    return this.requestPaginated(
       {
         service: "ClientApprovals",
         operation: "ListClientApprovals",
@@ -43,8 +53,8 @@ export class ClientApprovalsService extends BaseService {
       () =>
         this.client.GET("/client/approvals.json", {
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
