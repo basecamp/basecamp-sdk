@@ -2895,9 +2895,6 @@ type ClientInterface interface {
 
 	CreateScheduleEntry(ctx context.Context, accountId string, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetProjectTimeline request
-	GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetProjectTimesheet request
 	GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3093,6 +3090,9 @@ type ClientInterface interface {
 	UpdateProjectAccessWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateProjectAccess(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetProjectTimeline request
+	GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProgressReport request
 	GetProgressReport(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4671,16 +4671,6 @@ func (c *Client) CreateScheduleEntry(ctx context.Context, accountId string, proj
 
 }
 
-// GetProjectTimeline is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProjectTimelineRequest(c.Server, accountId, projectId)
-	}, true, "GetProjectTimeline", reqEditors...)
-
-}
-
 // GetProjectTimesheet is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5466,6 +5456,16 @@ func (c *Client) UpdateProjectAccess(ctx context.Context, accountId string, proj
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateProjectAccessRequest(c.Server, accountId, projectId, body)
 	}, true, "UpdateProjectAccess", reqEditors...)
+
+}
+
+// GetProjectTimeline is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetProjectTimelineRequest(c.Server, accountId, projectId)
+	}, true, "GetProjectTimeline", reqEditors...)
 
 }
 
@@ -11039,47 +11039,6 @@ func NewCreateScheduleEntryRequestWithBody(server string, accountId string, proj
 	return req, nil
 }
 
-// NewGetProjectTimelineRequest generates requests for GetProjectTimeline
-func NewGetProjectTimelineRequest(server string, accountId string, projectId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/timeline.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetProjectTimesheetRequest generates requests for GetProjectTimesheet
 func NewGetProjectTimesheetRequest(server string, accountId string, projectId int64, params *GetProjectTimesheetParams) (*http.Request, error) {
 	var err error
@@ -13807,6 +13766,47 @@ func NewUpdateProjectAccessRequestWithBody(server string, accountId string, proj
 	return req, nil
 }
 
+// NewGetProjectTimelineRequest generates requests for GetProjectTimeline
+func NewGetProjectTimelineRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/timeline.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetProgressReportRequest generates requests for GetProgressReport
 func NewGetProgressReportRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -14722,7 +14722,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateScheduleSettings":             {Idempotent: true, HasSensitiveParams: false},
 	"ListScheduleEntries":                {Idempotent: true, HasSensitiveParams: false},
 	"CreateScheduleEntry":                {Idempotent: false, HasSensitiveParams: false},
-	"GetProjectTimeline":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetProjectTimesheet":                {Idempotent: true, HasSensitiveParams: false},
 	"GetTimesheetEntry":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTimesheetEntry":               {Idempotent: true, HasSensitiveParams: false},
@@ -14775,6 +14774,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateProject":                      {Idempotent: true, HasSensitiveParams: false},
 	"ListProjectPeople":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProjectAccess":                {Idempotent: true, HasSensitiveParams: false},
+	"GetProjectTimeline":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetProgressReport":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetUpcomingSchedule":                {Idempotent: true, HasSensitiveParams: false},
 	"GetTimesheetReport":                 {Idempotent: true, HasSensitiveParams: false},
@@ -16099,9 +16099,6 @@ type ClientWithResponsesInterface interface {
 
 	CreateScheduleEntryWithResponse(ctx context.Context, accountId string, projectId int64, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScheduleEntryResponse, error)
 
-	// GetProjectTimelineWithResponse request
-	GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
-
 	// GetProjectTimesheetWithResponse request
 	GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
 
@@ -16297,6 +16294,9 @@ type ClientWithResponsesInterface interface {
 	UpdateProjectAccessWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
 
 	UpdateProjectAccessWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
+
+	// GetProjectTimelineWithResponse request
+	GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
 
 	// GetProgressReportWithResponse request
 	GetProgressReportWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetProgressReportResponse, error)
@@ -18982,33 +18982,6 @@ func (r CreateScheduleEntryResponse) StatusCode() int {
 	return 0
 }
 
-type GetProjectTimelineResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *GetProjectTimelineResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r GetProjectTimelineResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetProjectTimelineResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetProjectTimesheetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20369,6 +20342,33 @@ func (r UpdateProjectAccessResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateProjectAccessResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetProjectTimelineResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetProjectTimelineResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProjectTimelineResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProjectTimelineResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -21983,15 +21983,6 @@ func (c *ClientWithResponses) CreateScheduleEntryWithResponse(ctx context.Contex
 	return ParseCreateScheduleEntryResponse(rsp)
 }
 
-// GetProjectTimelineWithResponse request returning *GetProjectTimelineResponse
-func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error) {
-	rsp, err := c.GetProjectTimeline(ctx, accountId, projectId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetProjectTimelineResponse(rsp)
-}
-
 // GetProjectTimesheetWithResponse request returning *GetProjectTimesheetResponse
 func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error) {
 	rsp, err := c.GetProjectTimesheet(ctx, accountId, projectId, params, reqEditors...)
@@ -22618,6 +22609,15 @@ func (c *ClientWithResponses) UpdateProjectAccessWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseUpdateProjectAccessResponse(rsp)
+}
+
+// GetProjectTimelineWithResponse request returning *GetProjectTimelineResponse
+func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error) {
+	rsp, err := c.GetProjectTimeline(ctx, accountId, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProjectTimelineResponse(rsp)
 }
 
 // GetProgressReportWithResponse request returning *GetProgressReportResponse
@@ -28391,67 +28391,6 @@ func ParseCreateScheduleEntryResponse(rsp *http.Response) (*CreateScheduleEntryR
 	return response, nil
 }
 
-// ParseGetProjectTimelineResponse parses an HTTP response from a GetProjectTimelineWithResponse call
-func ParseGetProjectTimelineResponse(rsp *http.Response) (*GetProjectTimelineResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetProjectTimelineResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetProjectTimelineResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGetProjectTimesheetResponse parses an HTTP response from a GetProjectTimesheetWithResponse call
 func ParseGetProjectTimesheetResponse(rsp *http.Response) (*GetProjectTimesheetResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -31338,6 +31277,67 @@ func ParseUpdateProjectAccessResponse(rsp *http.Response) (*UpdateProjectAccessR
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetProjectTimelineResponse parses an HTTP response from a GetProjectTimelineWithResponse call
+func ParseGetProjectTimelineResponse(rsp *http.Response) (*GetProjectTimelineResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProjectTimelineResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetProjectTimelineResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent

@@ -11,7 +11,7 @@ module Basecamp
       # @param project_id [Integer] project id ID
       # @return [Enumerator<Hash>] paginated results
       def get_project_timeline(project_id:)
-        paginate(bucket_path(project_id, "/timeline.json"))
+        paginate("/projects/#{project_id}/timeline.json")
       end
     end
   end

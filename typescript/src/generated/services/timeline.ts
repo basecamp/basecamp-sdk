@@ -36,7 +36,7 @@ export class TimelineService extends BaseService {
         projectId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/timeline.json", {
+        this.client.GET("/projects/{projectId}/timeline.json", {
           params: {
             path: { projectId },
           },

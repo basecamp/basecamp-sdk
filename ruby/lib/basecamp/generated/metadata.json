@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-02-05T07:44:31Z",
+  "generated": "2026-02-05T09:17:01Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -1288,22 +1288,6 @@
         ]
       }
     },
-    "GetProjectTimeline": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "pagination": {
-        "style": "link",
-        "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
-      }
-    },
     "GetProjectTimesheet": {
       "retry": {
         "maxAttempts": 3,
@@ -1999,6 +1983,22 @@
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "GetProjectTimeline": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "GetProgressReport": {

@@ -66,7 +66,6 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "DELETE:/{accountId}/buckets/{projectId}/dock/tools/{toolId}": "DeleteTool",
   "GET:/{accountId}/buckets/{projectId}/dock/tools/{toolId}": "GetTool",
   "PUT:/{accountId}/buckets/{projectId}/dock/tools/{toolId}": "UpdateTool",
-  "GET:/{accountId}/buckets/{projectId}/timeline.json": "GetProjectTimeline",
   "GET:/{accountId}/buckets/{projectId}/timesheet.json": "GetProjectTimesheet",
   "GET:/{accountId}/buckets/{projectId}/timesheet/entries/{entryId}": "GetTimesheetEntry",
   "PUT:/{accountId}/buckets/{projectId}/timesheet/entries/{entryId}": "UpdateTimesheetEntry",
@@ -216,6 +215,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/{accountId}/projects/{projectId}": "UpdateProject",
   "GET:/{accountId}/projects/{projectId}/people.json": "ListProjectPeople",
   "PUT:/{accountId}/projects/{projectId}/people/users.json": "UpdateProjectAccess",
+  "GET:/{accountId}/projects/{projectId}/timeline.json": "GetProjectTimeline",
   "GET:/{accountId}/projects/recordings.json": "ListRecordings",
 
   // Search
