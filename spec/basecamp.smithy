@@ -6659,7 +6659,7 @@ structure GetProgressReportOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/timeline.json")
+@http(method: "GET", uri: "/{accountId}/projects/{projectId}/timeline.json")
 operation GetProjectTimeline {
   input: GetProjectTimelineInput
   output: GetProjectTimelineOutput
