@@ -695,6 +695,17 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 			return nil, fmt.Errorf("failed to read response: %w", err)
 		}
 
+		// HTTP 204 No Content has no body by definition. Normalize to JSON null
+		// so callers can always unmarshal 204 responses without error.
+		// UnmarshalData on a 204 will succeed: pointers become nil, structs
+		// become zero-value, slices become nil. Callers that need to distinguish
+		// 204 from a body response should check Response.StatusCode.
+		// Note: we do NOT normalize empty bodies for 200/201 — that's a server
+		// bug and callers should see the unmarshal error.
+		if resp.StatusCode == http.StatusNoContent {
+			respBody = json.RawMessage("null")
+		}
+
 		// Cache GET responses with ETag
 		if method == "GET" && cacheKey != "" {
 			if etag := resp.Header.Get("ETag"); etag != "" {
