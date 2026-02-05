@@ -7,7 +7,7 @@ module Basecamp
     # @generated from OpenAPI spec
     class SchedulesService < BaseService
 
-      # Get a single schedule entry by id
+      # Get a single schedule entry by id.
       # @param project_id [Integer] project id ID
       # @param entry_id [Integer] entry id ID
       # @return [Hash] response data

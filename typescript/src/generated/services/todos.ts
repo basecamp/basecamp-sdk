@@ -70,6 +70,8 @@ export interface UpdateTodoRequest {
 export interface RepositionTodoRequest {
   /** position */
   position: number;
+  /** Optional todolist ID to move the todo to a different parent */
+  parentId?: number;
 }
 
 
@@ -310,7 +312,10 @@ export class TodosService extends BaseService {
           params: {
             path: { projectId, todoId },
           },
-          body: req as any,
+          body: {
+            position: req.position,
+            parent_id: req.parentId,
+          },
         })
     );
   }

@@ -1021,7 +1021,8 @@ func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.CompleteCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID)
+	body := generated.SetCardStepCompletionJSONRequestBody{Completion: "on"}
+	resp, err := s.client.parent.gen.SetCardStepCompletionWithResponse(ctx, s.client.accountID, bucketID, stepID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1055,7 +1056,8 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int6
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.UncompleteCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID)
+	body := generated.SetCardStepCompletionJSONRequestBody{Completion: ""}
+	resp, err := s.client.parent.gen.SetCardStepCompletionWithResponse(ctx, s.client.accountID, bucketID, stepID, body)
 	if err != nil {
 		return nil, err
 	}

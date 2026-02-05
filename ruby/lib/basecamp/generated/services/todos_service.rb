@@ -87,9 +87,10 @@ module Basecamp
       # @param project_id [Integer] project id ID
       # @param todo_id [Integer] todo id ID
       # @param position [Integer] position
+      # @param parent_id [Integer, nil] Optional todolist ID to move the todo to a different parent
       # @return [void]
-      def reposition(project_id:, todo_id:, position:)
-        http_put(bucket_path(project_id, "/todos/#{todo_id}/position.json"), body: compact_params(position: position))
+      def reposition(project_id:, todo_id:, position:, parent_id: nil)
+        http_put(bucket_path(project_id, "/todos/#{todo_id}/position.json"), body: compact_params(position: position, parent_id: parent_id))
         nil
       end
     end

@@ -32,23 +32,18 @@ describe("LineupService", () => {
           const body = (await request.json()) as {
             title: string;
             starts_on: string;
-            ends_on: string;
-            color?: string;
+            date: string;
           };
-          expect(body.title).toBe("Product Launch");
-          expect(body.starts_on).toBe("2024-03-01");
-          expect(body.ends_on).toBe("2024-03-15");
-          expect(body.color).toBe("green");
+          expect(body.name).toBe("Product Launch");
+          expect(body.date).toBe("2024-03-01");
           return new HttpResponse(null, { status: 204 });
         })
       );
 
       await expect(
         client.lineup.create({
-          title: "Product Launch",
-          startsOn: "2024-03-01",
-          endsOn: "2024-03-15",
-          color: "green",
+          name: "Product Launch",
+          date: "2024-03-01",
         })
       ).resolves.toBeUndefined();
     });
@@ -62,19 +57,17 @@ describe("LineupService", () => {
 
       server.use(
         http.put(`${BASE_URL}/lineup/markers/${markerId}`, async ({ request }) => {
-          const body = (await request.json()) as { title?: string; ends_on?: string; color?: string };
-          expect(body.title).toBe("Updated Launch");
-          expect(body.ends_on).toBe("2024-03-20");
-          expect(body.color).toBe("blue");
+          const body = (await request.json()) as { name?: string; date?: string };
+          expect(body.name).toBe("Updated Launch");
+          expect(body.date).toBe("2024-03-20");
           return new HttpResponse(null, { status: 204 });
         })
       );
 
       await expect(
         client.lineup.update(markerId, {
-          title: "Updated Launch",
-          endsOn: "2024-03-20",
-          color: "blue",
+          name: "Updated Launch",
+          date: "2024-03-20",
         })
       ).resolves.toBeUndefined();
     });
@@ -84,15 +77,15 @@ describe("LineupService", () => {
 
       server.use(
         http.put(`${BASE_URL}/lineup/markers/${markerId}`, async ({ request }) => {
-          const body = (await request.json()) as { color?: string };
-          expect(body.color).toBe("red");
+          const body = (await request.json()) as { name?: string };
+          expect(body.name).toBe("Just a name update");
           return new HttpResponse(null, { status: 204 });
         })
       );
 
       await expect(
         client.lineup.update(markerId, {
-          color: "red",
+          name: "Just a name update",
         })
       ).resolves.toBeUndefined();
     });

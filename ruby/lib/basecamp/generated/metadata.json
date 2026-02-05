@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-01-26T23:06:10.548Z",
+  "generated": "2026-02-05T07:44:31Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -27,7 +27,7 @@
     },
     "UpdateCard": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -85,7 +85,7 @@
     },
     "UpdateCardColumn": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -99,7 +99,7 @@
     },
     "SetCardColumnColor": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -124,7 +124,7 @@
     },
     "DisableCardColumnOnHold": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -163,9 +163,37 @@
         ]
       }
     },
+    "SubscribeToCardColumn": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "UnsubscribeFromCardColumn": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
     "UpdateCardStep": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -177,23 +205,9 @@
         "natural": true
       }
     },
-    "CompleteCardStep": {
+    "SetCardStepCompletion": {
       "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
-    "UncompleteCardStep": {
-      "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -355,7 +369,7 @@
     },
     "UpdateChatbot": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -369,7 +383,7 @@
     },
     "DeleteChatbot": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -563,7 +577,7 @@
     },
     "UpdateTool": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -577,46 +591,7 @@
     },
     "DeleteTool": {
       "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
-    "EnableTool": {
-      "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
-    "RepositionTool": {
-      "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
-    "DisableTool": {
-      "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -805,7 +780,7 @@
     },
     "UpdateAnswer": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -868,7 +843,7 @@
     },
     "UpdateQuestion": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -905,6 +880,78 @@
           429,
           503
         ]
+      }
+    },
+    "ListQuestionAnswerers": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      }
+    },
+    "GetAnswersByPerson": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      }
+    },
+    "UpdateQuestionNotificationSettings": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "PauseQuestion": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "ResumeQuestion": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "PinMessage": {
@@ -945,7 +992,7 @@
     },
     "SetClientVisibility": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1002,7 +1049,7 @@
     },
     "UnarchiveRecording": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1016,7 +1063,7 @@
     },
     "ArchiveRecording": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1030,7 +1077,7 @@
     },
     "TrashRecording": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1066,7 +1113,7 @@
     },
     "UpdateSubscription": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1080,7 +1127,7 @@
     },
     "Unsubscribe": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1101,6 +1148,56 @@
           429,
           503
         ]
+      }
+    },
+    "CreateTimesheetEntry": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "EnableTool": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "RepositionTool": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "DisableTool": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "GetScheduleEntry": {
@@ -1191,6 +1288,22 @@
         ]
       }
     },
+    "GetProjectTimeline": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
     "GetProjectTimesheet": {
       "retry": {
         "maxAttempts": 3,
@@ -1200,6 +1313,31 @@
           429,
           503
         ]
+      }
+    },
+    "GetTimesheetEntry": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateTimesheetEntry": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "RepositionTodolistGroup": {
@@ -1349,6 +1487,20 @@
       }
     },
     "UncompleteTodo": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "RepositionTodo": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,
@@ -1587,7 +1739,7 @@
     },
     "UpdateWebhook": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1601,7 +1753,7 @@
     },
     "DeleteWebhook": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1658,7 +1810,7 @@
     },
     "UpdateLineupMarker": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1672,7 +1824,7 @@
     },
     "DeleteLineupMarker": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1693,6 +1845,21 @@
           429,
           503
         ]
+      }
+    },
+    "GetQuestionReminders": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
       }
     },
     "ListPeople": {
@@ -1822,7 +1989,7 @@
     },
     "UpdateProjectAccess": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1834,7 +2001,78 @@
         "natural": true
       }
     },
+    "GetProgressReport": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "GetUpcomingSchedule": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
     "GetTimesheetReport": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "ListAssignablePeople": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetAssignedTodos": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetOverdueTodos": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetPersonProgress": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,
@@ -1854,6 +2092,11 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "GetSearchMetadata": {
@@ -1907,7 +2150,7 @@
     },
     "UpdateTemplate": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1921,7 +2164,7 @@
     },
     "DeleteTemplate": {
       "retry": {
-        "maxAttempts": 2,
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [

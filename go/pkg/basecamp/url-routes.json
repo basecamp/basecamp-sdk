@@ -235,8 +235,7 @@
       "pattern": "/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions",
       "resource": "Card Tables",
       "operations": {
-        "DELETE": "UncompleteCardStep",
-        "PUT": "CompleteCardStep"
+        "PUT": "SetCardStepCompletion"
       },
       "params": {
         "accountId": {
@@ -620,7 +619,7 @@
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/dock/tools/{sourceToolId}/clone",
+      "pattern": "/{accountId}/buckets/{projectId}/dock/tools",
       "resource": "Automation",
       "operations": {
         "POST": "CloneTool"
@@ -632,10 +631,6 @@
         },
         "projectId": {
           "role": "bucket",
-          "type": "int64"
-        },
-        "sourceToolId": {
-          "role": "parent",
           "type": "int64"
         }
       }
@@ -659,29 +654,6 @@
         },
         "toolId": {
           "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/dock/tools/{toolId}/position",
-      "resource": "Automation",
-      "operations": {
-        "DELETE": "DisableTool",
-        "POST": "EnableTool",
-        "PUT": "RepositionTool"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "toolId": {
-          "role": "parent",
           "type": "int64"
         }
       }
@@ -1297,6 +1269,50 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/timesheet/entries",
+      "resource": "Schedule",
+      "operations": {
+        "POST": "CreateTimesheetEntry"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{projectId}/recordings/{toolId}/position",
+      "resource": "Automation",
+      "operations": {
+        "DELETE": "DisableTool",
+        "POST": "EnableTool",
+        "PUT": "RepositionTool"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        },
+        "toolId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/buckets/{projectId}/schedule_entries/{entryId}",
       "resource": "Schedule",
       "operations": {
@@ -1414,6 +1430,28 @@
         "accountId": {
           "role": "account",
           "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{projectId}/timesheet/entries/{entryId}",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "GetTimesheetEntry",
+        "PUT": "UpdateTimesheetEntry"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "entryId": {
+          "role": "recording",
+          "type": "int64"
         },
         "projectId": {
           "role": "bucket",

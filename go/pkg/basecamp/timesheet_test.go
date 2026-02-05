@@ -179,6 +179,256 @@ func TestTimesheetEntry_UnmarshalRecordingReport(t *testing.T) {
 	}
 }
 
+func TestTimesheetEntry_UnmarshalGet(t *testing.T) {
+	data := loadTimesheetFixture(t, "get.json")
+
+	var entry TimesheetEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("failed to unmarshal get.json: %v", err)
+	}
+
+	if entry.ID != 9007199254741099 {
+		t.Errorf("expected ID 9007199254741099, got %d", entry.ID)
+	}
+	if entry.Date != "2024-05-16" {
+		t.Errorf("expected date '2024-05-16', got %q", entry.Date)
+	}
+	if entry.Hours != "1:30" {
+		t.Errorf("expected hours '1:30', got %q", entry.Hours)
+	}
+	if entry.Description != "Client meeting prep" {
+		t.Errorf("expected description 'Client meeting prep', got %q", entry.Description)
+	}
+	if entry.Creator == nil {
+		t.Fatal("expected Creator to be non-nil")
+	}
+	if entry.Creator.Name != "Victor Cooper" {
+		t.Errorf("expected Creator.Name 'Victor Cooper', got %q", entry.Creator.Name)
+	}
+	if entry.Parent == nil {
+		t.Fatal("expected Parent to be non-nil")
+	}
+	if entry.Parent.Type != "Todo" {
+		t.Errorf("expected Parent.Type 'Todo', got %q", entry.Parent.Type)
+	}
+	if entry.Bucket == nil {
+		t.Fatal("expected Bucket to be non-nil")
+	}
+	if entry.Bucket.Name != "The Leto Laptop" {
+		t.Errorf("expected Bucket.Name 'The Leto Laptop', got %q", entry.Bucket.Name)
+	}
+	if entry.Person == nil {
+		t.Fatal("expected Person to be non-nil")
+	}
+	if entry.Person.ID != 1049715914 {
+		t.Errorf("expected Person.ID 1049715914, got %d", entry.Person.ID)
+	}
+	if entry.Person.Name != "Victor Cooper" {
+		t.Errorf("expected Person.Name 'Victor Cooper', got %q", entry.Person.Name)
+	}
+}
+
+func TestCreateTimesheetEntryRequest_Marshal(t *testing.T) {
+	req := CreateTimesheetEntryRequest{
+		Date:        "2024-05-16",
+		Hours:       "1:30",
+		Description: "Client meeting prep",
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateTimesheetEntryRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["date"] != "2024-05-16" {
+		t.Errorf("expected date '2024-05-16', got %v", data["date"])
+	}
+	if data["hours"] != "1:30" {
+		t.Errorf("expected hours '1:30', got %v", data["hours"])
+	}
+	if data["description"] != "Client meeting prep" {
+		t.Errorf("expected description 'Client meeting prep', got %v", data["description"])
+	}
+}
+
+func TestCreateTimesheetEntryRequest_MarshalMinimal(t *testing.T) {
+	req := CreateTimesheetEntryRequest{
+		Date:  "2024-05-16",
+		Hours: "2.0",
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateTimesheetEntryRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["date"] != "2024-05-16" {
+		t.Errorf("expected date '2024-05-16', got %v", data["date"])
+	}
+	if data["hours"] != "2.0" {
+		t.Errorf("expected hours '2.0', got %v", data["hours"])
+	}
+	if _, ok := data["description"]; ok {
+		t.Error("expected description to be omitted")
+	}
+	if _, ok := data["person_id"]; ok {
+		t.Error("expected person_id to be omitted")
+	}
+}
+
+func TestCreateTimesheetEntryRequest_FromFixture(t *testing.T) {
+	data := loadTimesheetFixture(t, "create-request.json")
+
+	var req CreateTimesheetEntryRequest
+	if err := json.Unmarshal(data, &req); err != nil {
+		t.Fatalf("failed to unmarshal create-request.json: %v", err)
+	}
+
+	if req.Date != "2024-05-16" {
+		t.Errorf("expected date '2024-05-16', got %q", req.Date)
+	}
+	if req.Hours != "1:30" {
+		t.Errorf("expected hours '1:30', got %q", req.Hours)
+	}
+	if req.Description != "Client meeting prep" {
+		t.Errorf("expected description 'Client meeting prep', got %q", req.Description)
+	}
+}
+
+func TestTimesheetEntry_UnmarshalCreateResponse(t *testing.T) {
+	data := loadTimesheetFixture(t, "create-response.json")
+
+	var entry TimesheetEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("failed to unmarshal create-response.json: %v", err)
+	}
+
+	if entry.ID != 9007199254741099 {
+		t.Errorf("expected ID 9007199254741099, got %d", entry.ID)
+	}
+	if entry.Date != "2024-05-16" {
+		t.Errorf("expected date '2024-05-16', got %q", entry.Date)
+	}
+	if entry.Hours != "1:30" {
+		t.Errorf("expected hours '1:30', got %q", entry.Hours)
+	}
+	if entry.Description != "Client meeting prep" {
+		t.Errorf("expected description 'Client meeting prep', got %q", entry.Description)
+	}
+	if entry.Creator == nil {
+		t.Fatal("expected Creator to be non-nil")
+	}
+	if entry.Creator.ID != 1049715914 {
+		t.Errorf("expected Creator.ID 1049715914, got %d", entry.Creator.ID)
+	}
+	if entry.Parent == nil {
+		t.Fatal("expected Parent to be non-nil")
+	}
+	if entry.Parent.ID != 1069479345 {
+		t.Errorf("expected Parent.ID 1069479345, got %d", entry.Parent.ID)
+	}
+	if entry.Bucket == nil {
+		t.Fatal("expected Bucket to be non-nil")
+	}
+	if entry.Bucket.ID != 2085958499 {
+		t.Errorf("expected Bucket.ID 2085958499, got %d", entry.Bucket.ID)
+	}
+	if entry.CreatedAt.IsZero() {
+		t.Error("expected CreatedAt to be non-zero")
+	}
+	if entry.Person == nil {
+		t.Fatal("expected Person to be non-nil")
+	}
+	if entry.Person.ID != 1049715914 {
+		t.Errorf("expected Person.ID 1049715914, got %d", entry.Person.ID)
+	}
+}
+
+func TestUpdateTimesheetEntryRequest_Marshal(t *testing.T) {
+	req := UpdateTimesheetEntryRequest{
+		Hours:       "2.5",
+		Description: "Updated description",
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal UpdateTimesheetEntryRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["hours"] != "2.5" {
+		t.Errorf("expected hours '2.5', got %v", data["hours"])
+	}
+	if data["description"] != "Updated description" {
+		t.Errorf("expected description 'Updated description', got %v", data["description"])
+	}
+	// date and person_id should be omitted
+	if _, ok := data["date"]; ok {
+		t.Error("expected date to be omitted")
+	}
+	if _, ok := data["person_id"]; ok {
+		t.Error("expected person_id to be omitted")
+	}
+}
+
+func TestUpdateTimesheetEntryRequest_FromFixture(t *testing.T) {
+	data := loadTimesheetFixture(t, "update-request.json")
+
+	var req UpdateTimesheetEntryRequest
+	if err := json.Unmarshal(data, &req); err != nil {
+		t.Fatalf("failed to unmarshal update-request.json: %v", err)
+	}
+
+	if req.Hours != "2.5" {
+		t.Errorf("expected hours '2.5', got %q", req.Hours)
+	}
+	if req.Description != "Updated description" {
+		t.Errorf("expected description 'Updated description', got %q", req.Description)
+	}
+}
+
+func TestTimesheetEntry_UnmarshalUpdateResponse(t *testing.T) {
+	data := loadTimesheetFixture(t, "update-response.json")
+
+	var entry TimesheetEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("failed to unmarshal update-response.json: %v", err)
+	}
+
+	if entry.ID != 9007199254741099 {
+		t.Errorf("expected ID 9007199254741099, got %d", entry.ID)
+	}
+	if entry.Hours != "2.5" {
+		t.Errorf("expected hours '2.5', got %q", entry.Hours)
+	}
+	if entry.Description != "Updated description" {
+		t.Errorf("expected description 'Updated description', got %q", entry.Description)
+	}
+	if entry.UpdatedAt.IsZero() {
+		t.Error("expected UpdatedAt to be non-zero")
+	}
+	if entry.Person == nil {
+		t.Fatal("expected Person to be non-nil")
+	}
+	if entry.Person.ID != 1049715914 {
+		t.Errorf("expected Person.ID 1049715914, got %d", entry.Person.ID)
+	}
+}
+
 func TestTimesheetReportOptions_BuildTimesheetParams(t *testing.T) {
 	service := &TimesheetService{}
 

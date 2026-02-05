@@ -55,8 +55,8 @@ class ServiceGenerator
         CreateCardColumn MoveCardColumn
       ],
       'CardSteps' => %w[
-        CreateCardStep UpdateCardStep CompleteCardStep
-        UncompleteCardStep RepositionCardStep
+        CreateCardStep UpdateCardStep SetCardStepCompletion
+        RepositionCardStep
       ]
     },
     'Files' => {
@@ -103,7 +103,7 @@ class ServiceGenerator
         CreateScheduleEntry GetScheduleEntry UpdateScheduleEntry
         GetScheduleEntryOccurrence
       ],
-      'Timesheets' => %w[GetRecordingTimesheet GetProjectTimesheet GetTimesheetReport]
+      'Timesheets' => %w[GetRecordingTimesheet GetProjectTimesheet GetTimesheetReport GetTimesheetEntry CreateTimesheetEntry UpdateTimesheetEntry]
     },
     'ClientFeatures' => {
       'ClientApprovals' => %w[ListClientApprovals GetClientApproval],
@@ -141,8 +141,7 @@ class ServiceGenerator
     'RepositionCardStep' => 'reposition',
     'CreateCardStep' => 'create',
     'UpdateCardStep' => 'update',
-    'CompleteCardStep' => 'complete',
-    'UncompleteCardStep' => 'uncomplete',
+    'SetCardStepCompletion' => 'set_completion',
     'GetQuestionnaire' => 'get_questionnaire',
     'GetQuestion' => 'get_question',
     'GetAnswer' => 'get_answer',
@@ -165,6 +164,9 @@ class ServiceGenerator
     'GetRecordingTimesheet' => 'for_recording',
     'GetProjectTimesheet' => 'for_project',
     'GetTimesheetReport' => 'report',
+    'GetTimesheetEntry' => 'get',
+    'CreateTimesheetEntry' => 'create',
+    'UpdateTimesheetEntry' => 'update',
     'GetProgressReport' => 'progress',
     'GetUpcomingSchedule' => 'upcoming',
     'GetAssignedTodos' => 'assigned',

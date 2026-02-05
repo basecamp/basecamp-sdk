@@ -83,7 +83,7 @@ export interface CreateEntryScheduleRequest {
 export class SchedulesService extends BaseService {
 
   /**
-   * Get a single schedule entry by id
+   * Get a single schedule entry by id.
    * @param projectId - The project ID
    * @param entryId - The entry ID
    * @returns The ScheduleEntry
