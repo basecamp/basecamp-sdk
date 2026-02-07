@@ -923,7 +923,7 @@ function generateRequestInterfaces(service: ServiceDefinition): string[] {
   for (const op of service.operations) {
     // Generate request interfaces for create/update operations
     if (op.bodySchemaRef && op.bodyProperties.length > 0) {
-      const interfaceName = `${capitalize(op.methodName)}${capitalize(service.name.replace(/s$/, ""))}Request`;
+      const interfaceName = `${capitalize(op.methodName)}${capitalize(singularize(service.name))}Request`;
       if (generated.has(interfaceName)) continue;
       generated.add(interfaceName);
 
@@ -950,7 +950,7 @@ function generateRequestInterfaces(service: ServiceDefinition): string[] {
     const optionalQueryParams = op.queryParams.filter((q) => !q.required);
     const needsOptionsInterface = optionalQueryParams.length > 0 || (op.hasPagination && op.returnsArray);
     if (needsOptionsInterface) {
-      const interfaceName = `${capitalize(op.methodName)}${capitalize(service.name.replace(/s$/, ""))}Options`;
+      const interfaceName = `${capitalize(op.methodName)}${capitalize(singularize(service.name))}Options`;
       if (generated.has(interfaceName)) continue;
       generated.add(interfaceName);
 
@@ -996,7 +996,7 @@ function mapPropertyType(type: string): string {
 
 function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   const lines: string[] = [];
-  const resourceName = serviceName.replace(/s$/, "");
+  const resourceName = singularize(serviceName);
 
   // Build param string and types
   const { paramString, hasOptions, hasRequest, requestInterfaceName, optionsInterfaceName } = buildMethodSignature(op, resourceName);
@@ -1382,6 +1382,17 @@ function camelCase(str: string): string {
 
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Naive singularization for service names → interface suffixes.
+ * Handles -ies → -y, -ses → -s, and plain -s removal.
+ */
+function singularize(str: string): string {
+  if (str.endsWith("ies")) return str.slice(0, -3) + "y";
+  if (str.endsWith("ses")) return str.slice(0, -2);
+  if (str.endsWith("s")) return str.slice(0, -1);
+  return str;
 }
 
 function toHumanReadable(str: string): string {

@@ -19,7 +19,7 @@ export type ClientReply = components["schemas"]["ClientReply"];
 /**
  * Options for list.
  */
-export interface ListClientReplieOptions extends PaginationOptions {
+export interface ListClientReplyOptions extends PaginationOptions {
 }
 
 
@@ -44,7 +44,7 @@ export class ClientRepliesService extends BaseService {
    * const result = await client.clientReplies.list(123, 123);
    * ```
    */
-  async list(projectId: number, recordingId: number, options?: ListClientReplieOptions): Promise<ListResult<ClientReply>> {
+  async list(projectId: number, recordingId: number, options?: ListClientReplyOptions): Promise<ListResult<ClientReply>> {
     return this.requestPaginated(
       {
         service: "ClientReplies",

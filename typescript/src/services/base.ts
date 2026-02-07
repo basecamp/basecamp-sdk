@@ -190,6 +190,7 @@ export abstract class BaseService {
         // (either more items on this page than maxItems, or a Link header for more pages)
         const hasMore = firstPageItems.length > maxItems
           || parseNextLink(response.headers.get("Link")) !== null;
+        result.durationMs = Math.round(performance.now() - start);
         return new ListResult(firstPageItems.slice(0, maxItems), { totalCount, truncated: hasMore });
       }
 
@@ -199,6 +200,9 @@ export abstract class BaseService {
         firstPageItems,
         maxItems,
       );
+
+      // Update duration to reflect total time across all pages
+      result.durationMs = Math.round(performance.now() - start);
 
       return new ListResult(allItems, { totalCount, truncated });
     } catch (err) {
