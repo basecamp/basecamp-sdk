@@ -42,6 +42,10 @@ export {
 // Pagination helpers
 export { fetchAllPages, paginateAll } from "./client.js";
 
+// Pagination types and utilities
+export { ListResult, parseTotalCount, type ListMeta, type PaginationOptions } from "./pagination.js";
+export { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
+
 // Errors
 export {
   BasecampError,
