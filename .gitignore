@@ -7,8 +7,9 @@ spec/build/
 # Conformance test runner binary
 conformance/runner/go/conformance-runner
 
-# Claude Code session files
-.claude/
+# Claude Code session files (except skills, which are committed)
+.claude/*
+!.claude/skills/
 
 # Ruby SDK build artifacts
 ruby/.yardoc/
