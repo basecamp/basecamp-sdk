@@ -75,7 +75,7 @@ describe("EventsService", () => {
 
       const result = await service.list(123, 5001);
 
-      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
     });
 
     it("should include creator information", async () => {

@@ -95,7 +95,7 @@ describe("SchedulesService", () => {
 
       const result = await service.listEntries(123, 4001);
 
-      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
     });
   });
 
