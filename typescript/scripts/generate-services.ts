@@ -97,6 +97,7 @@ interface ParsedOperation {
   returnsVoid: boolean;
   isMutation: boolean;
   resourceType: string;
+  hasPagination: boolean;
 }
 
 interface PathParam {
@@ -690,6 +691,7 @@ function parseOperation(
   const returnsVoid = isVoidResponse(operation.responses);
   const isMutation = httpMethod !== "GET";
   const resourceType = extractResourceType(operationId);
+  const hasPagination = !!operation["x-basecamp-pagination"];
 
   return {
     operationId,
@@ -708,6 +710,7 @@ function parseOperation(
     returnsVoid,
     isMutation,
     resourceType,
+    hasPagination,
   };
 }
 
@@ -802,6 +805,13 @@ function generateService(service: ServiceDefinition): string {
   lines.push(``);
   lines.push(`import { BaseService } from "../../services/base.js";`);
   lines.push(`import type { components } from "../schema.js";`);
+
+  // Import ListResult and PaginationOptions if any operation uses pagination
+  const needsPagination = service.operations.some((op) => op.hasPagination && op.returnsArray);
+  if (needsPagination) {
+    lines.push(`import { ListResult } from "../../pagination.js";`);
+    lines.push(`import type { PaginationOptions } from "../../pagination.js";`);
+  }
 
   // Import Errors if any operation has validation
   const needsValidation = service.operations.some((op) =>
@@ -936,24 +946,34 @@ function generateRequestInterfaces(service: ServiceDefinition): string[] {
       lines.push(``);
     }
 
-    // Generate options interfaces for query params
+    // Generate options interfaces for query params (or pagination-only ops)
     const optionalQueryParams = op.queryParams.filter((q) => !q.required);
-    if (optionalQueryParams.length > 0) {
+    const needsOptionsInterface = optionalQueryParams.length > 0 || (op.hasPagination && op.returnsArray);
+    if (needsOptionsInterface) {
       const interfaceName = `${capitalize(op.methodName)}${capitalize(service.name.replace(/s$/, ""))}Options`;
       if (generated.has(interfaceName)) continue;
       generated.add(interfaceName);
 
+      // Extend PaginationOptions for paginated operations
+      const extendsClause = (op.hasPagination && op.returnsArray) ? " extends PaginationOptions" : "";
+
       lines.push(`/**`);
       lines.push(` * Options for ${op.methodName}.`);
       lines.push(` */`);
-      lines.push(`export interface ${interfaceName} {`);
+      lines.push(`export interface ${interfaceName}${extendsClause} {`);
 
       for (const param of optionalQueryParams) {
         const isPipeEnum = parsePipeEnum(param.description) !== null;
         // Use human-readable name when description is a pipe enum (type already shows the values)
         const desc = isPipeEnum ? `Filter by ${toHumanReadable(param.name)}` : (param.description || PROPERTY_HINTS[param.name] || capitalize(toHumanReadable(param.name)));
-        lines.push(`  /** ${desc} */`);
-        lines.push(`  ${toCamelCase(param.name)}?: ${param.type};`);
+        // Special-case: bucket param is a CSV array of project IDs
+        if (param.name === "bucket" && param.type === "string") {
+          lines.push(`  /** Project IDs to filter by */`);
+          lines.push(`  ${toCamelCase(param.name)}?: number[];`);
+        } else {
+          lines.push(`  /** ${desc} */`);
+          lines.push(`  ${toCamelCase(param.name)}?: ${param.type};`);
+        }
       }
 
       lines.push(`}`);
@@ -1015,6 +1035,9 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   // @returns
   if (op.returnsVoid) {
     lines.push(`   * @returns void`);
+  } else if (op.returnsArray && op.hasPagination) {
+    const entityType = getEntityTypeName(op.responseSchemaRef || "");
+    lines.push(`   * @returns All ${entityType || "results"} across all pages, with .meta.totalCount`);
   } else if (op.returnsArray) {
     const entityType = getEntityTypeName(op.responseSchemaRef || "");
     lines.push(`   * @returns Array of ${entityType || "results"}`);
@@ -1101,9 +1124,12 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
 
   }
 
-  // Method body
+  // Method body — use requestPaginated for paginated array responses
+  const isPaginated = op.hasPagination && op.returnsArray;
   if (op.returnsVoid) {
     lines.push(`    await this.request(`);
+  } else if (isPaginated) {
+    lines.push(`    return this.requestPaginated(`);
   } else {
     lines.push(`    const response = await this.request(`);
   }
@@ -1146,6 +1172,10 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
         const camelName = toCamelCase(q.name);
         const key = q.name.includes("_") ? `"${q.name}"` : q.name;
         const value = q.required ? camelName : `options?.${camelName}`;
+        // Special-case: bucket param is number[] → join as CSV string
+        if (q.name === "bucket" && !q.required) {
+          return `${key}: options?.${camelName}?.join(",")`;
+        }
         return `${key}: ${value}`;
       });
       lines.push(`            query: { ${queryParts.join(", ")} },`);
@@ -1170,9 +1200,13 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   }
 
   lines.push(`        })`);
+  if (isPaginated) {
+    // Pass pagination options as third arg to requestPaginated
+    lines.push(`      , options`);
+  }
   lines.push(`    );`);
 
-  if (!op.returnsVoid) {
+  if (!op.returnsVoid && !isPaginated) {
     if (op.returnsArray) {
       lines.push(`    return response ?? [];`);
     } else {
@@ -1223,7 +1257,7 @@ function buildMethodSignature(op: ParsedOperation, resourceName: string): {
     params.push(`${toCamelCase(q.name)}: ${q.type}`);
   }
 
-  if (optionalQueryParams.length > 0) {
+  if (optionalQueryParams.length > 0 || (op.hasPagination && op.returnsArray)) {
     params.push(`options?: ${optionsInterfaceName}`);
     hasOptions = true;
   }
@@ -1244,6 +1278,9 @@ function buildReturnType(op: ParsedOperation, serviceName: string): string {
   if (op.responseSchemaRef) {
     const entityName = getEntityTypeName(op.responseSchemaRef);
     if (entityName) {
+      if (op.returnsArray && op.hasPagination) {
+        return `ListResult<${entityName}>`;
+      }
       return op.returnsArray ? `${entityName}[]` : entityName;
     }
     // Fallback to schema ref
