@@ -54,12 +54,15 @@ export class ListResult<T> extends Array<T> {
   }
 
   constructor(items: T[], meta: ListMeta) {
-    // Use super(0) + push to avoid both:
+    // Use super(0) + length + indexed assignment to avoid:
     // 1. The single-number-argument trap (super(5) creates 5 empty slots)
-    // 2. The ...spread limit for large arrays (stack overflow on 100k+ items)
+    // 2. The ...spread limit (push(...items) throws RangeError on ~300k+ items)
     super(0);
     if (items.length > 0) {
-      this.push(...items);
+      this.length = items.length;
+      for (let i = 0; i < items.length; i++) {
+        this[i] = items[i]!;
+      }
     }
     this.meta = meta;
   }

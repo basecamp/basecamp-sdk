@@ -7,7 +7,7 @@ import { server } from "../setup.js";
 import { BaseService } from "../../src/services/base.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
-import { ListResult } from "../../src/pagination.js";
+import { ListResult, type PaginationOptions } from "../../src/pagination.js";
 import type { BasecampHooks, OperationInfo } from "../../src/hooks.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -27,10 +27,10 @@ class TestService extends BaseService {
     );
   }
 
-  async testPaginatedGet<T>(path: string, info: OperationInfo): Promise<ListResult<T>> {
+  async testPaginatedGet<T>(path: string, info: OperationInfo, opts?: PaginationOptions): Promise<ListResult<T>> {
     return this.requestPaginated(info, () =>
       (this.client as any).GET(path)
-    );
+    , opts);
   }
 }
 
@@ -275,6 +275,7 @@ describe("BaseService", () => {
       expect(result[0]).toEqual({ id: 1 });
       expect(result[1]).toEqual({ id: 2 });
       expect(result.meta.totalCount).toBe(2);
+      expect(result.meta.truncated).toBe(false);
     });
 
     it("should follow Link headers and accumulate across pages", async () => {
@@ -320,6 +321,7 @@ describe("BaseService", () => {
 
       expect(result.length).toBe(4);
       expect(result.meta.totalCount).toBe(4);
+      expect(result.meta.truncated).toBe(false);
       expect(result[2]).toEqual({ id: 3 });
       expect(pageRequests).toBe(2);
     });
@@ -369,6 +371,82 @@ describe("BaseService", () => {
       expect(result).toBeInstanceOf(ListResult);
       expect(result.length).toBe(0);
       expect(result.meta.totalCount).toBe(0);
+      expect(result.meta.truncated).toBe(false);
+    });
+
+    it("should set truncated=true when maxItems caps results mid-pagination", async () => {
+      server.use(
+        http.get(`${BASE_URL}/test-list`, ({ request }) => {
+          const url = new URL(request.url);
+          const page = url.searchParams.get("page");
+
+          if (page === "2") {
+            return HttpResponse.json([{ id: 3 }, { id: 4 }]);
+          }
+
+          return HttpResponse.json([{ id: 1 }, { id: 2 }], {
+            headers: {
+              "X-Total-Count": "4",
+              Link: `<${BASE_URL}/test-list?page=2>; rel="next"`,
+            },
+          });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+      const paginatedService = new TestService(client.raw, undefined, async (url: string) => {
+        return fetch(url, { headers: { Accept: "application/json" } });
+      });
+
+      // maxItems=3: first page has 2, second page has 2, cap at 3
+      const result = await paginatedService.testPaginatedGet<{ id: number }>(
+        "/test-list", listInfo, { maxItems: 3 }
+      );
+
+      expect(result.length).toBe(3);
+      expect(result.meta.truncated).toBe(true);
+    });
+
+    it("should set truncated=false when maxItems matches exact result count on first page", async () => {
+      server.use(
+        http.get(`${BASE_URL}/test-list`, () => {
+          // No Link header — this is the only page
+          return HttpResponse.json([{ id: 1 }, { id: 2 }], {
+            headers: { "X-Total-Count": "2" },
+          });
+        })
+      );
+
+      // maxItems=2, and there are exactly 2 items with no next page
+      const result = await service.testPaginatedGet<{ id: number }>(
+        "/test-list", listInfo, { maxItems: 2 }
+      );
+
+      expect(result.length).toBe(2);
+      expect(result.meta.truncated).toBe(false);
+    });
+
+    it("should set truncated=true when maxItems < first page and more pages exist", async () => {
+      server.use(
+        http.get(`${BASE_URL}/test-list`, () => {
+          return HttpResponse.json([{ id: 1 }, { id: 2 }, { id: 3 }], {
+            headers: {
+              "X-Total-Count": "10",
+              Link: `<${BASE_URL}/test-list?page=2>; rel="next"`,
+            },
+          });
+        })
+      );
+
+      const result = await service.testPaginatedGet<{ id: number }>(
+        "/test-list", listInfo, { maxItems: 2 }
+      );
+
+      expect(result.length).toBe(2);
+      expect(result.meta.truncated).toBe(true);
     });
   });
 

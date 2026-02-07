@@ -186,7 +186,11 @@ export abstract class BaseService {
 
       // If maxItems is set and first page satisfies it, return early
       if (maxItems && maxItems > 0 && firstPageItems.length >= maxItems) {
-        return new ListResult(firstPageItems.slice(0, maxItems), { totalCount, truncated: true });
+        // Only mark truncated if there are actually more items beyond maxItems
+        // (either more items on this page than maxItems, or a Link header for more pages)
+        const hasMore = firstPageItems.length > maxItems
+          || parseNextLink(response.headers.get("Link")) !== null;
+        return new ListResult(firstPageItems.slice(0, maxItems), { totalCount, truncated: hasMore });
       }
 
       // Follow pagination
