@@ -10,8 +10,8 @@ ergonomics.
 - `api-provenance.json` — upstream revision tracking (bc3-api + bc3 SHAs)
 
 ## Grounding
-- API reference: `~/Work/basecamp/bc3-api/sections/`
-- App code: `~/Work/basecamp/bc3/`
+- API reference: `basecamp/bc3-api` → `sections/`
+- App code: `basecamp/bc3` → `app/controllers/`
 
 ## Conventions
 - Keep shapes minimal and accurate; prefer additive updates over churn.

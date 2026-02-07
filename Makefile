@@ -85,7 +85,7 @@ url-routes-check:
 # API Provenance targets
 #------------------------------------------------------------------------------
 
-# Copy provenance into Go package for go:embed
+# Copy api-provenance.json into Go package for go:embed
 provenance-sync:
 	@cp spec/api-provenance.json go/pkg/basecamp/api-provenance.json
 
@@ -95,31 +95,27 @@ provenance-check:
 		(echo "ERROR: go/pkg/basecamp/api-provenance.json is out of date. Run 'make provenance-sync'" && exit 1)
 	@echo "api-provenance.json is up to date"
 
-# Show upstream changes since last spec sync.
-# Requires local checkouts; override paths via env vars if needed:
-#   BC3_API_DIR=~/src/bc3-api BC3_DIR=~/src/bc3 make sync-status
-BC3_API_DIR ?= ~/Work/basecamp/bc3-api
-BC3_DIR     ?= ~/Work/basecamp/bc3
+# Show upstream changes since last spec sync (queries GitHub via gh CLI).
+BC3_API_REPO ?= basecamp/bc3-api
+BC3_REPO     ?= basecamp/bc3
 
 sync-status:
 	@REV=$$(jq -r '.bc3_api.revision // empty' spec/api-provenance.json); \
 	if [ -z "$$REV" ]; then \
 		echo "==> bc3-api: no baseline revision set"; \
-	elif [ ! -d "$(BC3_API_DIR)/.git" ]; then \
-		echo "==> bc3-api: repo not found at $(BC3_API_DIR) (set BC3_API_DIR)"; \
 	else \
 		echo "==> bc3-api changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
-		cd "$(BC3_API_DIR)" && git log --oneline $$REV..HEAD -- sections/; \
+		gh api "repos/$(BC3_API_REPO)/compare/$$REV...HEAD" \
+			--jq '[.files[].filename | select(startswith("sections/"))] as $$paths | if ($$paths | length) == 0 then "  (no changes in sections/)" else .commits[] | (.sha[:7] + " " + (.commit.message | split("\n")[0])) end'; \
 	fi
 	@echo ""
 	@REV=$$(jq -r '.bc3.revision // empty' spec/api-provenance.json); \
 	if [ -z "$$REV" ]; then \
 		echo "==> bc3: no baseline revision set"; \
-	elif [ ! -d "$(BC3_DIR)/.git" ]; then \
-		echo "==> bc3: repo not found at $(BC3_DIR) (set BC3_DIR)"; \
 	else \
 		echo "==> bc3 API changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
-		cd "$(BC3_DIR)" && git log --oneline $$REV..HEAD -- app/controllers/ | head -20; \
+		gh api "repos/$(BC3_REPO)/compare/$$REV...HEAD" \
+			--jq '[.files[].filename | select(startswith("app/controllers/"))] as $$paths | if ($$paths | length) == 0 then "  (no changes in app/controllers/)" else .commits[] | (.sha[:7] + " " + (.commit.message | split("\n")[0])) end'; \
 	fi
 
 #------------------------------------------------------------------------------
@@ -311,7 +307,7 @@ help:
 	@echo "  rb-clean             Remove Ruby build artifacts"
 	@echo ""
 	@echo "Provenance:"
-	@echo "  provenance-sync  Extract bc3 provenance into Go package for go:embed"
+	@echo "  provenance-sync  Copy provenance into Go package for go:embed"
 	@echo "  provenance-check Verify Go embedded provenance is up to date"
 	@echo "  sync-status      Show upstream changes since last spec sync"
 	@echo ""

@@ -20,23 +20,36 @@ You are synchronizing the Basecamp SDK's Smithy spec against upstream API change
 
 - **mode**: `{{ arguments.mode | default: "check" }}`
 
+## Upstream repos
+
+- **bc3-api** (API reference docs): `basecamp/bc3-api` — watch `sections/`
+- **bc3** (Rails app): `basecamp/bc3` — watch `app/controllers/`
+
 ## Phase 1: Load State
 
 1. Read `spec/api-provenance.json` to get the last-synced revisions for `bc3_api` and `bc3`.
-2. Read `spec/README.md` to confirm upstream repo paths:
-   - bc3-api: `~/Work/basecamp/bc3-api`
-   - bc3: `~/Work/basecamp/bc3`
 
 ## Phase 2: Check Upstream
 
 For **bc3-api** (API reference docs):
 ```bash
-cd ~/Work/basecamp/bc3-api && git log --oneline <bc3_api.revision>..HEAD -- sections/
+gh api repos/basecamp/bc3-api/compare/<bc3_api.revision>...HEAD \
+  --jq '.commits[] | (.sha[:7] + " " + (.commit.message | split("\n")[0]))'
 ```
 
-For **bc3** (Rails app):
+For changed files in `sections/`:
 ```bash
-cd ~/Work/basecamp/bc3 && git log --oneline <bc3.revision>..HEAD -- app/controllers/ | head -30
+gh api repos/basecamp/bc3-api/compare/<bc3_api.revision>...HEAD \
+  --jq '[.files[] | select(.filename | startswith("sections/")) | .filename]'
+```
+
+For **bc3** (Rails app — controller changes only):
+```bash
+gh api repos/basecamp/bc3/compare/<bc3.revision>...HEAD \
+  --jq '[.files[] | select(.filename | startswith("app/controllers/"))] as $paths |
+    if ($paths | length) == 0 then "  (no controller changes)"
+    else .commits[] | (.sha[:7] + " " + (.commit.message | split("\n")[0]))
+    end'
 ```
 
 Summarize the changes by API domain (todos, messages, people, etc.). If there are no changes, report "up to date" and stop.
@@ -45,9 +58,12 @@ If mode is `check`, stop here after reporting what changed.
 
 ## Phase 3: Sync Spec (mode=sync only)
 
-For each changed section in bc3-api:
+For each changed section file in bc3-api:
 
-1. Read the upstream doc: `~/Work/basecamp/bc3-api/sections/<file>.md`
+1. Fetch the upstream doc:
+   ```bash
+   gh api repos/basecamp/bc3-api/contents/sections/<file>.md --jq '.content' | base64 -d
+   ```
 2. Read the corresponding Smithy operations in `spec/basecamp.smithy` and `spec/overlays/`
 3. Identify gaps: missing operations, changed fields, new parameters
 4. Propose specific Smithy changes and apply after confirmation
@@ -74,8 +90,8 @@ Fix any issues that arise during generation or checks.
 
 Get the current HEAD of each upstream repo:
 ```bash
-cd ~/Work/basecamp/bc3-api && git rev-parse HEAD
-cd ~/Work/basecamp/bc3 && git rev-parse HEAD
+gh api repos/basecamp/bc3-api/commits/HEAD --jq '.sha'
+gh api repos/basecamp/bc3/commits/HEAD --jq '.sha'
 ```
 
 Write the new revisions and today's date to `spec/api-provenance.json`:
