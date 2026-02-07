@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -18,7 +20,7 @@ export type Template = components["schemas"]["Template"];
 /**
  * Options for list.
  */
-export interface ListTemplateOptions {
+export interface ListTemplateOptions extends PaginationOptions {
   /** Filter by status */
   status?: "active" | "archived" | "trashed";
 }
@@ -66,7 +68,7 @@ export class TemplatesService extends BaseService {
   /**
    * List all templates visible to the current user
    * @param options - Optional query parameters
-   * @returns Array of Template
+   * @returns All Template across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -76,8 +78,8 @@ export class TemplatesService extends BaseService {
    * const filtered = await client.templates.list({ status: "active" });
    * ```
    */
-  async list(options?: ListTemplateOptions): Promise<Template[]> {
-    const response = await this.request(
+  async list(options?: ListTemplateOptions): Promise<ListResult<Template>> {
+    return this.requestPaginated(
       {
         service: "Templates",
         operation: "ListTemplates",
@@ -90,8 +92,8 @@ export class TemplatesService extends BaseService {
             query: { status: options?.status },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

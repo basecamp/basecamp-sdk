@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -27,6 +29,12 @@ export type Person = components["schemas"]["Person"];
 export interface UpdateAnswerCheckinRequest {
   /** Text content */
   content: string;
+}
+
+/**
+ * Options for listQuestions.
+ */
+export interface ListQuestionsCheckinOptions extends PaginationOptions {
 }
 
 /**
@@ -52,6 +60,12 @@ export interface UpdateQuestionCheckinRequest {
 }
 
 /**
+ * Options for listAnswers.
+ */
+export interface ListAnswersCheckinOptions extends PaginationOptions {
+}
+
+/**
  * Request parameters for createAnswer.
  */
 export interface CreateAnswerCheckinRequest {
@@ -62,6 +76,18 @@ export interface CreateAnswerCheckinRequest {
 }
 
 /**
+ * Options for answerers.
+ */
+export interface AnswerersCheckinOptions extends PaginationOptions {
+}
+
+/**
+ * Options for byPerson.
+ */
+export interface ByPersonCheckinOptions extends PaginationOptions {
+}
+
+/**
  * Request parameters for updateNotificationSettings.
  */
 export interface UpdateNotificationSettingsCheckinRequest {
@@ -69,6 +95,12 @@ export interface UpdateNotificationSettingsCheckinRequest {
   notifyOnAnswer?: boolean;
   /** Include unanswered in digest */
   digestIncludeUnanswered?: boolean;
+}
+
+/**
+ * Options for reminders.
+ */
+export interface RemindersCheckinOptions extends PaginationOptions {
 }
 
 
@@ -187,15 +219,16 @@ export class CheckinsService extends BaseService {
    * List all questions in a questionnaire
    * @param projectId - The project ID
    * @param questionnaireId - The questionnaire ID
-   * @returns Array of Question
+   * @param options - Optional query parameters
+   * @returns All Question across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.checkins.listQuestions(123, 123);
    * ```
    */
-  async listQuestions(projectId: number, questionnaireId: number): Promise<Question[]> {
-    const response = await this.request(
+  async listQuestions(projectId: number, questionnaireId: number, options?: ListQuestionsCheckinOptions): Promise<ListResult<Question>> {
+    return this.requestPaginated(
       {
         service: "Checkins",
         operation: "ListQuestions",
@@ -210,8 +243,8 @@ export class CheckinsService extends BaseService {
             path: { projectId, questionnaireId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
@@ -331,15 +364,16 @@ export class CheckinsService extends BaseService {
    * List all answers for a question
    * @param projectId - The project ID
    * @param questionId - The question ID
-   * @returns Array of Answer
+   * @param options - Optional query parameters
+   * @returns All Answer across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.checkins.listAnswers(123, 123);
    * ```
    */
-  async listAnswers(projectId: number, questionId: number): Promise<Answer[]> {
-    const response = await this.request(
+  async listAnswers(projectId: number, questionId: number, options?: ListAnswersCheckinOptions): Promise<ListResult<Answer>> {
+    return this.requestPaginated(
       {
         service: "Checkins",
         operation: "ListAnswers",
@@ -354,8 +388,8 @@ export class CheckinsService extends BaseService {
             path: { projectId, questionId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
@@ -405,15 +439,16 @@ export class CheckinsService extends BaseService {
    * List all people who have answered a question (answerers)
    * @param projectId - The project ID
    * @param questionId - The question ID
-   * @returns Array of Person
+   * @param options - Optional query parameters
+   * @returns All Person across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.checkins.answerers(123, 123);
    * ```
    */
-  async answerers(projectId: number, questionId: number): Promise<Person[]> {
-    const response = await this.request(
+  async answerers(projectId: number, questionId: number, options?: AnswerersCheckinOptions): Promise<ListResult<Person>> {
+    return this.requestPaginated(
       {
         service: "Checkins",
         operation: "ListQuestionAnswerers",
@@ -428,8 +463,8 @@ export class CheckinsService extends BaseService {
             path: { projectId, questionId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
@@ -437,15 +472,16 @@ export class CheckinsService extends BaseService {
    * @param projectId - The project ID
    * @param questionId - The question ID
    * @param personId - The person ID
-   * @returns Array of Answer
+   * @param options - Optional query parameters
+   * @returns All Answer across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.checkins.byPerson(123, 123, 123);
    * ```
    */
-  async byPerson(projectId: number, questionId: number, personId: number): Promise<Answer[]> {
-    const response = await this.request(
+  async byPerson(projectId: number, questionId: number, personId: number, options?: ByPersonCheckinOptions): Promise<ListResult<Answer>> {
+    return this.requestPaginated(
       {
         service: "Checkins",
         operation: "GetAnswersByPerson",
@@ -460,8 +496,8 @@ export class CheckinsService extends BaseService {
             path: { projectId, questionId, personId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
@@ -567,15 +603,16 @@ export class CheckinsService extends BaseService {
 
   /**
    * Get pending check-in reminders for the current user
-   * @returns Array of results
+   * @param options - Optional query parameters
+   * @returns All results across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.checkins.reminders();
    * ```
    */
-  async reminders(): Promise<components["schemas"]["GetQuestionRemindersResponseContent"]> {
-    const response = await this.request(
+  async reminders(options?: RemindersCheckinOptions): Promise<components["schemas"]["GetQuestionRemindersResponseContent"]> {
+    return this.requestPaginated(
       {
         service: "Checkins",
         operation: "GetQuestionReminders",
@@ -585,7 +622,7 @@ export class CheckinsService extends BaseService {
       () =>
         this.client.GET("/my/question_reminders.json", {
         })
+      , options
     );
-    return response ?? [];
   }
 }

@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 
 // =============================================================================
 // Types
@@ -13,6 +15,13 @@ import type { components } from "../schema.js";
 
 /** Event entity from the Basecamp API. */
 export type Event = components["schemas"]["Event"];
+
+/**
+ * Options for list.
+ */
+export interface ListEventOptions extends PaginationOptions {
+}
+
 
 // =============================================================================
 // Service
@@ -27,15 +36,16 @@ export class EventsService extends BaseService {
    * List all events for a recording
    * @param projectId - The project ID
    * @param recordingId - The recording ID
-   * @returns Array of Event
+   * @param options - Optional query parameters
+   * @returns All Event across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.events.list(123, 123);
    * ```
    */
-  async list(projectId: number, recordingId: number): Promise<Event[]> {
-    const response = await this.request(
+  async list(projectId: number, recordingId: number, options?: ListEventOptions): Promise<ListResult<Event>> {
+    return this.requestPaginated(
       {
         service: "Events",
         operation: "ListEvents",
@@ -50,7 +60,7 @@ export class EventsService extends BaseService {
             path: { projectId, recordingId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 }

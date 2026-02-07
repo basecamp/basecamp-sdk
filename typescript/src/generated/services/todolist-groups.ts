@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -21,6 +23,12 @@ export type TodolistGroup = components["schemas"]["TodolistGroup"];
 export interface RepositionTodolistGroupRequest {
   /** Position for ordering (1-based) */
   position: number;
+}
+
+/**
+ * Options for list.
+ */
+export interface ListTodolistGroupOptions extends PaginationOptions {
 }
 
 /**
@@ -80,15 +88,16 @@ export class TodolistGroupsService extends BaseService {
    * List groups in a todolist
    * @param projectId - The project ID
    * @param todolistId - The todolist ID
-   * @returns Array of TodolistGroup
+   * @param options - Optional query parameters
+   * @returns All TodolistGroup across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.todolistGroups.list(123, 123);
    * ```
    */
-  async list(projectId: number, todolistId: number): Promise<TodolistGroup[]> {
-    const response = await this.request(
+  async list(projectId: number, todolistId: number, options?: ListTodolistGroupOptions): Promise<ListResult<TodolistGroup>> {
+    return this.requestPaginated(
       {
         service: "TodolistGroups",
         operation: "ListTodolistGroups",
@@ -103,8 +112,8 @@ export class TodolistGroupsService extends BaseService {
             path: { projectId, todolistId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

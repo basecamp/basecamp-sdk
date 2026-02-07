@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -21,6 +23,12 @@ export type Comment = components["schemas"]["Comment"];
 export interface UpdateCommentRequest {
   /** Text content */
   content: string;
+}
+
+/**
+ * Options for list.
+ */
+export interface ListCommentOptions extends PaginationOptions {
 }
 
 /**
@@ -116,15 +124,16 @@ export class CommentsService extends BaseService {
    * List comments on a recording
    * @param projectId - The project ID
    * @param recordingId - The recording ID
-   * @returns Array of Comment
+   * @param options - Optional query parameters
+   * @returns All Comment across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.comments.list(123, 123);
    * ```
    */
-  async list(projectId: number, recordingId: number): Promise<Comment[]> {
-    const response = await this.request(
+  async list(projectId: number, recordingId: number, options?: ListCommentOptions): Promise<ListResult<Comment>> {
+    return this.requestPaginated(
       {
         service: "Comments",
         operation: "ListComments",
@@ -139,8 +148,8 @@ export class CommentsService extends BaseService {
             path: { projectId, recordingId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

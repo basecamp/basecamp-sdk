@@ -6,11 +6,19 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 
 // =============================================================================
 // Types
 // =============================================================================
 
+
+/**
+ * Options for progress.
+ */
+export interface ProgressReportOptions extends PaginationOptions {
+}
 
 /**
  * Options for upcoming.
@@ -42,15 +50,16 @@ export class ReportsService extends BaseService {
 
   /**
    * Get account-wide activity feed (progress report)
-   * @returns Array of results
+   * @param options - Optional query parameters
+   * @returns All results across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.reports.progress();
    * ```
    */
-  async progress(): Promise<components["schemas"]["GetProgressReportResponseContent"]> {
-    const response = await this.request(
+  async progress(options?: ProgressReportOptions): Promise<components["schemas"]["GetProgressReportResponseContent"]> {
+    return this.requestPaginated(
       {
         service: "Reports",
         operation: "GetProgressReport",
@@ -60,8 +69,8 @@ export class ReportsService extends BaseService {
       () =>
         this.client.GET("/reports/progress.json", {
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

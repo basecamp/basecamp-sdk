@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -20,11 +22,23 @@ export type ForwardReply = components["schemas"]["ForwardReply"];
 export type Inbox = components["schemas"]["Inbox"];
 
 /**
+ * Options for listReplies.
+ */
+export interface ListRepliesForwardOptions extends PaginationOptions {
+}
+
+/**
  * Request parameters for createReply.
  */
 export interface CreateReplyForwardRequest {
   /** Text content */
   content: string;
+}
+
+/**
+ * Options for list.
+ */
+export interface ListForwardOptions extends PaginationOptions {
 }
 
 
@@ -73,15 +87,16 @@ export class ForwardsService extends BaseService {
    * List all replies to a forward
    * @param projectId - The project ID
    * @param forwardId - The forward ID
-   * @returns Array of ForwardReply
+   * @param options - Optional query parameters
+   * @returns All ForwardReply across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.forwards.listReplies(123, 123);
    * ```
    */
-  async listReplies(projectId: number, forwardId: number): Promise<ForwardReply[]> {
-    const response = await this.request(
+  async listReplies(projectId: number, forwardId: number, options?: ListRepliesForwardOptions): Promise<ListResult<ForwardReply>> {
+    return this.requestPaginated(
       {
         service: "Forwards",
         operation: "ListForwardReplies",
@@ -96,8 +111,8 @@ export class ForwardsService extends BaseService {
             path: { projectId, forwardId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
@@ -208,15 +223,16 @@ export class ForwardsService extends BaseService {
    * List all forwards in an inbox
    * @param projectId - The project ID
    * @param inboxId - The inbox ID
-   * @returns Array of Forward
+   * @param options - Optional query parameters
+   * @returns All Forward across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.forwards.list(123, 123);
    * ```
    */
-  async list(projectId: number, inboxId: number): Promise<Forward[]> {
-    const response = await this.request(
+  async list(projectId: number, inboxId: number, options?: ListForwardOptions): Promise<ListResult<Forward>> {
+    return this.requestPaginated(
       {
         service: "Forwards",
         operation: "ListForwards",
@@ -231,7 +247,7 @@ export class ForwardsService extends BaseService {
             path: { projectId, inboxId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 }

@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -35,6 +37,12 @@ export interface UpdateCardRequest {
 export interface MoveCardRequest {
   /** Column id */
   columnId: number;
+}
+
+/**
+ * Options for list.
+ */
+export interface ListCardOptions extends PaginationOptions {
 }
 
 /**
@@ -174,15 +182,16 @@ export class CardsService extends BaseService {
    * List cards in a column
    * @param projectId - The project ID
    * @param columnId - The column ID
-   * @returns Array of Card
+   * @param options - Optional query parameters
+   * @returns All Card across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.cards.list(123, 123);
    * ```
    */
-  async list(projectId: number, columnId: number): Promise<Card[]> {
-    const response = await this.request(
+  async list(projectId: number, columnId: number, options?: ListCardOptions): Promise<ListResult<Card>> {
+    return this.requestPaginated(
       {
         service: "Cards",
         operation: "ListCards",
@@ -197,8 +206,8 @@ export class CardsService extends BaseService {
             path: { projectId, columnId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

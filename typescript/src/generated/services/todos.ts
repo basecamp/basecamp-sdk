@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -18,7 +20,7 @@ export type Todo = components["schemas"]["Todo"];
 /**
  * Options for list.
  */
-export interface ListTodoOptions {
+export interface ListTodoOptions extends PaginationOptions {
   /** Filter by status */
   status?: "active" | "archived" | "trashed";
   /** Completed */
@@ -90,7 +92,7 @@ export class TodosService extends BaseService {
    * @param projectId - The project ID
    * @param todolistId - The todolist ID
    * @param options - Optional query parameters
-   * @returns Array of Todo
+   * @returns All Todo across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -100,8 +102,8 @@ export class TodosService extends BaseService {
    * const filtered = await client.todos.list(123, 123, { status: "active" });
    * ```
    */
-  async list(projectId: number, todolistId: number, options?: ListTodoOptions): Promise<Todo[]> {
-    const response = await this.request(
+  async list(projectId: number, todolistId: number, options?: ListTodoOptions): Promise<ListResult<Todo>> {
+    return this.requestPaginated(
       {
         service: "Todos",
         operation: "ListTodos",
@@ -117,8 +119,8 @@ export class TodosService extends BaseService {
             query: { status: options?.status, completed: options?.completed },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

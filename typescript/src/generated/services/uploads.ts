@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -23,6 +25,18 @@ export interface UpdateUploadRequest {
   description?: string;
   /** Base name */
   baseName?: string;
+}
+
+/**
+ * Options for listVersions.
+ */
+export interface ListVersionsUploadOptions extends PaginationOptions {
+}
+
+/**
+ * Options for list.
+ */
+export interface ListUploadOptions extends PaginationOptions {
 }
 
 /**
@@ -120,15 +134,16 @@ export class UploadsService extends BaseService {
    * List versions of an upload
    * @param projectId - The project ID
    * @param uploadId - The upload ID
-   * @returns Array of Upload
+   * @param options - Optional query parameters
+   * @returns All Upload across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.uploads.listVersions(123, 123);
    * ```
    */
-  async listVersions(projectId: number, uploadId: number): Promise<Upload[]> {
-    const response = await this.request(
+  async listVersions(projectId: number, uploadId: number, options?: ListVersionsUploadOptions): Promise<ListResult<Upload>> {
+    return this.requestPaginated(
       {
         service: "Uploads",
         operation: "ListUploadVersions",
@@ -143,23 +158,24 @@ export class UploadsService extends BaseService {
             path: { projectId, uploadId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
    * List uploads in a vault
    * @param projectId - The project ID
    * @param vaultId - The vault ID
-   * @returns Array of Upload
+   * @param options - Optional query parameters
+   * @returns All Upload across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.uploads.list(123, 123);
    * ```
    */
-  async list(projectId: number, vaultId: number): Promise<Upload[]> {
-    const response = await this.request(
+  async list(projectId: number, vaultId: number, options?: ListUploadOptions): Promise<ListResult<Upload>> {
+    return this.requestPaginated(
       {
         service: "Uploads",
         operation: "ListUploads",
@@ -174,8 +190,8 @@ export class UploadsService extends BaseService {
             path: { projectId, vaultId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

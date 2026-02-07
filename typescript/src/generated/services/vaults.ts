@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -21,6 +23,12 @@ export type Vault = components["schemas"]["Vault"];
 export interface UpdateVaultRequest {
   /** Title */
   title?: string;
+}
+
+/**
+ * Options for list.
+ */
+export interface ListVaultOptions extends PaginationOptions {
 }
 
 /**
@@ -113,15 +121,16 @@ export class VaultsService extends BaseService {
    * List vaults (subfolders) in a vault
    * @param projectId - The project ID
    * @param vaultId - The vault ID
-   * @returns Array of Vault
+   * @param options - Optional query parameters
+   * @returns All Vault across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.vaults.list(123, 123);
    * ```
    */
-  async list(projectId: number, vaultId: number): Promise<Vault[]> {
-    const response = await this.request(
+  async list(projectId: number, vaultId: number, options?: ListVaultOptions): Promise<ListResult<Vault>> {
+    return this.requestPaginated(
       {
         service: "Vaults",
         operation: "ListVaults",
@@ -136,8 +145,8 @@ export class VaultsService extends BaseService {
             path: { projectId, vaultId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
