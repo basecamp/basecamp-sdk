@@ -1,6 +1,6 @@
 module github.com/basecamp/basecamp-sdk/conformance/runner/go
 
-go 1.25.0
+go 1.25.7
 
 require github.com/basecamp/basecamp-sdk/go v0.0.0
 
