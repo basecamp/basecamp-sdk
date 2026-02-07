@@ -31,28 +31,27 @@ You are synchronizing the Basecamp SDK's Smithy spec against upstream API change
 
 ## Phase 2: Check Upstream
 
-For **bc3-api** (API reference docs):
+List files changed in the watched paths since the last sync.
+
+For **bc3-api** (API reference docs — `sections/` only):
 ```bash
 gh api repos/basecamp/bc3-api/compare/<bc3_api.revision>...HEAD \
-  --jq '.commits[] | (.sha[:7] + " " + (.commit.message | split("\n")[0]))'
-```
-
-For changed files in `sections/`:
-```bash
-gh api repos/basecamp/bc3-api/compare/<bc3_api.revision>...HEAD \
-  --jq '[.files[] | select(.filename | startswith("sections/")) | .filename]'
-```
-
-For **bc3** (Rails app — controller changes only):
-```bash
-gh api repos/basecamp/bc3/compare/<bc3.revision>...HEAD \
-  --jq '[.files[] | select(.filename | startswith("app/controllers/"))] as $paths |
-    if ($paths | length) == 0 then "  (no controller changes)"
-    else .commits[] | (.sha[:7] + " " + (.commit.message | split("\n")[0]))
+  --jq '[.files[] | select(.filename | startswith("sections/"))] |
+    if length == 0 then "  (no changes in sections/)"
+    else .[] | .status[:1] + " " + .filename
     end'
 ```
 
-Summarize the changes by API domain (todos, messages, people, etc.). If there are no changes, report "up to date" and stop.
+For **bc3** (Rails app — `app/controllers/` only):
+```bash
+gh api repos/basecamp/bc3/compare/<bc3.revision>...HEAD \
+  --jq '[.files[] | select(.filename | startswith("app/controllers/"))] |
+    if length == 0 then "  (no changes in app/controllers/)"
+    else .[] | .status[:1] + " " + .filename
+    end'
+```
+
+Summarize the changed files by API domain (todos, messages, people, etc.). If there are no changes in either repo, report "up to date" and stop.
 
 If mode is `check`, stop here after reporting what changed.
 

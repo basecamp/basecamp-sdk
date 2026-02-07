@@ -100,13 +100,15 @@ BC3_API_REPO ?= basecamp/bc3-api
 BC3_REPO     ?= basecamp/bc3
 
 sync-status:
+	@command -v gh > /dev/null 2>&1 || { echo "ERROR: gh CLI not found. Install: https://cli.github.com"; exit 1; }
+	@gh auth status > /dev/null 2>&1 || { echo "ERROR: gh not authenticated. Run: gh auth login"; exit 1; }
 	@REV=$$(jq -r '.bc3_api.revision // empty' spec/api-provenance.json); \
 	if [ -z "$$REV" ]; then \
 		echo "==> bc3-api: no baseline revision set"; \
 	else \
 		echo "==> bc3-api changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
 		gh api "repos/$(BC3_API_REPO)/compare/$$REV...HEAD" \
-			--jq '[.files[].filename | select(startswith("sections/"))] as $$paths | if ($$paths | length) == 0 then "  (no changes in sections/)" else .commits[] | (.sha[:7] + " " + (.commit.message | split("\n")[0])) end'; \
+			--jq '[.files[] | select(.filename | startswith("sections/"))] | if length == 0 then "  (no changes in sections/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
 	fi
 	@echo ""
 	@REV=$$(jq -r '.bc3.revision // empty' spec/api-provenance.json); \
@@ -115,7 +117,7 @@ sync-status:
 	else \
 		echo "==> bc3 API changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
 		gh api "repos/$(BC3_REPO)/compare/$$REV...HEAD" \
-			--jq '[.files[].filename | select(startswith("app/controllers/"))] as $$paths | if ($$paths | length) == 0 then "  (no changes in app/controllers/)" else .commits[] | (.sha[:7] + " " + (.commit.message | split("\n")[0])) end'; \
+			--jq '[.files[] | select(.filename | startswith("app/controllers/"))] | if length == 0 then "  (no changes in app/controllers/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
 	fi
 
 #------------------------------------------------------------------------------
