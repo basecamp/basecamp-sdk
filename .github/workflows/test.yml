@@ -53,6 +53,15 @@ jobs:
           fi
           echo "openapi.json is up to date"
 
+  provenance:
+    name: Provenance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Verify embedded provenance is up to date
+        run: diff -q spec/api-provenance.json go/pkg/basecamp/api-provenance.json
+
   test-go:
     name: Go Tests
     runs-on: ubuntu-latest

@@ -95,22 +95,31 @@ provenance-check:
 		(echo "ERROR: go/pkg/basecamp/api-provenance.json is out of date. Run 'make provenance-sync'" && exit 1)
 	@echo "api-provenance.json is up to date"
 
-# Show upstream changes since last spec sync
+# Show upstream changes since last spec sync.
+# Requires local checkouts; override paths via env vars if needed:
+#   BC3_API_DIR=~/src/bc3-api BC3_DIR=~/src/bc3 make sync-status
+BC3_API_DIR ?= ~/Work/basecamp/bc3-api
+BC3_DIR     ?= ~/Work/basecamp/bc3
+
 sync-status:
 	@REV=$$(jq -r '.bc3_api.revision // empty' spec/api-provenance.json); \
 	if [ -z "$$REV" ]; then \
 		echo "==> bc3-api: no baseline revision set"; \
+	elif [ ! -d "$(BC3_API_DIR)/.git" ]; then \
+		echo "==> bc3-api: repo not found at $(BC3_API_DIR) (set BC3_API_DIR)"; \
 	else \
 		echo "==> bc3-api changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
-		cd ~/Work/basecamp/bc3-api && git log --oneline $$REV..HEAD -- sections/; \
+		cd "$(BC3_API_DIR)" && git log --oneline $$REV..HEAD -- sections/; \
 	fi
 	@echo ""
 	@REV=$$(jq -r '.bc3.revision // empty' spec/api-provenance.json); \
 	if [ -z "$$REV" ]; then \
 		echo "==> bc3: no baseline revision set"; \
+	elif [ ! -d "$(BC3_DIR)/.git" ]; then \
+		echo "==> bc3: repo not found at $(BC3_DIR) (set BC3_DIR)"; \
 	else \
 		echo "==> bc3 API changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
-		cd ~/Work/basecamp/bc3 && git log --oneline $$REV..HEAD -- app/controllers/ | head -20; \
+		cd "$(BC3_DIR)" && git log --oneline $$REV..HEAD -- app/controllers/ | head -20; \
 	fi
 
 #------------------------------------------------------------------------------
