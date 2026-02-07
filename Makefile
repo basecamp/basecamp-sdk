@@ -85,25 +85,33 @@ url-routes-check:
 # API Provenance targets
 #------------------------------------------------------------------------------
 
-# Extract bc3 provenance into Go package for go:embed
+# Copy provenance into Go package for go:embed
 provenance-sync:
-	@jq '{bc3: .bc3}' spec/api-provenance.json > go/pkg/basecamp/api-provenance.json
+	@cp spec/api-provenance.json go/pkg/basecamp/api-provenance.json
 
 # Check that the Go embedded provenance matches the canonical spec file
 provenance-check:
-	@jq '{bc3: .bc3}' spec/api-provenance.json | diff -q - go/pkg/basecamp/api-provenance.json > /dev/null 2>&1 || \
+	@diff -q spec/api-provenance.json go/pkg/basecamp/api-provenance.json > /dev/null 2>&1 || \
 		(echo "ERROR: go/pkg/basecamp/api-provenance.json is out of date. Run 'make provenance-sync'" && exit 1)
 	@echo "api-provenance.json is up to date"
 
 # Show upstream changes since last spec sync
 sync-status:
-	@REV=$$(jq -r '.bc3_api.revision' spec/api-provenance.json) && \
-		echo "==> bc3-api changes since last sync ($$(echo $$REV | cut -c1-7)):" && \
-		cd ~/Work/basecamp/bc3-api && git log --oneline $$REV..HEAD -- sections/
+	@REV=$$(jq -r '.bc3_api.revision // empty' spec/api-provenance.json); \
+	if [ -z "$$REV" ]; then \
+		echo "==> bc3-api: no baseline revision set"; \
+	else \
+		echo "==> bc3-api changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
+		cd ~/Work/basecamp/bc3-api && git log --oneline $$REV..HEAD -- sections/; \
+	fi
 	@echo ""
-	@REV=$$(jq -r '.bc3.revision' spec/api-provenance.json) && \
-		echo "==> bc3 API changes since last sync ($$(echo $$REV | cut -c1-7)):" && \
-		cd ~/Work/basecamp/bc3 && git log --oneline $$REV..HEAD -- app/controllers/ | head -20
+	@REV=$$(jq -r '.bc3.revision // empty' spec/api-provenance.json); \
+	if [ -z "$$REV" ]; then \
+		echo "==> bc3: no baseline revision set"; \
+	else \
+		echo "==> bc3 API changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
+		cd ~/Work/basecamp/bc3 && git log --oneline $$REV..HEAD -- app/controllers/ | head -20; \
+	fi
 
 #------------------------------------------------------------------------------
 # Go SDK targets (delegates to go/Makefile)

@@ -60,7 +60,7 @@ After spec changes are applied:
 
 ```bash
 make smithy-build
-make go-generate    # if go/ targets exist
+make -C go generate
 make url-routes
 make ts-generate && make ts-generate-services
 make rb-generate && make rb-generate-services
