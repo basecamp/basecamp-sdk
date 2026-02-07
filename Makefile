@@ -2,7 +2,7 @@
 #
 # Orchestrates both Smithy spec and Go SDK
 
-.PHONY: all check clean help
+.PHONY: all check clean help provenance-sync provenance-check sync-status
 
 # Default: run all checks
 all: check
@@ -80,6 +80,45 @@ url-routes-check:
 		(rm -f go/pkg/basecamp/url-routes.json.tmp && echo "ERROR: url-routes.json is out of date. Run 'make url-routes'" && exit 1)
 	@rm -f go/pkg/basecamp/url-routes.json.tmp
 	@echo "url-routes.json is up to date"
+
+#------------------------------------------------------------------------------
+# API Provenance targets
+#------------------------------------------------------------------------------
+
+# Copy api-provenance.json into Go package for go:embed
+provenance-sync:
+	@cp spec/api-provenance.json go/pkg/basecamp/api-provenance.json
+
+# Check that the Go embedded provenance matches the canonical spec file
+provenance-check:
+	@diff -q spec/api-provenance.json go/pkg/basecamp/api-provenance.json > /dev/null 2>&1 || \
+		(echo "ERROR: go/pkg/basecamp/api-provenance.json is out of date. Run 'make provenance-sync'" && exit 1)
+	@echo "api-provenance.json is up to date"
+
+# Show upstream changes since last spec sync (queries GitHub via gh CLI).
+BC3_API_REPO ?= basecamp/bc3-api
+BC3_REPO     ?= basecamp/bc3
+
+sync-status:
+	@command -v gh > /dev/null 2>&1 || { echo "ERROR: gh CLI not found. Install: https://cli.github.com"; exit 1; }
+	@gh auth status > /dev/null 2>&1 || { echo "ERROR: gh not authenticated. Run: gh auth login"; exit 1; }
+	@REV=$$(jq -r '.bc3_api.revision // empty' spec/api-provenance.json); \
+	if [ -z "$$REV" ]; then \
+		echo "==> bc3-api: no baseline revision set"; \
+	else \
+		echo "==> bc3-api changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
+		gh api "repos/$(BC3_API_REPO)/compare/$$REV...HEAD" \
+			--jq '[.files[] | select(.filename | startswith("sections/"))] | if length == 0 then "  (no changes in sections/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
+	fi
+	@echo ""
+	@REV=$$(jq -r '.bc3.revision // empty' spec/api-provenance.json); \
+	if [ -z "$$REV" ]; then \
+		echo "==> bc3: no baseline revision set"; \
+	else \
+		echo "==> bc3 API changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
+		gh api "repos/$(BC3_REPO)/compare/$$REV...HEAD" \
+			--jq '[.files[] | select(.filename | startswith("app/controllers/"))] | if length == 0 then "  (no changes in app/controllers/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
+	fi
 
 #------------------------------------------------------------------------------
 # Go SDK targets (delegates to go/Makefile)
@@ -213,8 +252,8 @@ conformance: conformance-go
 # Combined targets
 #------------------------------------------------------------------------------
 
-# Run all checks (Smithy + Go + TypeScript + Ruby + Behavior Model + Conformance)
-check: smithy-check behavior-model-check go-check ts-check rb-check conformance
+# Run all checks (Smithy + Go + TypeScript + Ruby + Behavior Model + Conformance + Provenance)
+check: smithy-check behavior-model-check provenance-check go-check ts-check rb-check conformance
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -269,7 +308,12 @@ help:
 	@echo "  rb-doc               Generate YARD documentation"
 	@echo "  rb-clean             Remove Ruby build artifacts"
 	@echo ""
+	@echo "Provenance:"
+	@echo "  provenance-sync  Copy provenance into Go package for go:embed"
+	@echo "  provenance-check Verify Go embedded provenance is up to date"
+	@echo "  sync-status      Show upstream changes since last spec sync"
+	@echo ""
 	@echo "Combined:"
-	@echo "  check            Run all checks (Smithy + Go + TypeScript + Ruby + Conformance)"
+	@echo "  check            Run all checks (Smithy + Go + TypeScript + Ruby + Conformance + Provenance)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"
