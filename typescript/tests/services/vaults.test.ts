@@ -96,7 +96,7 @@ describe("VaultsService", () => {
 
       const result = await service.list(123, 1001);
 
-      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
     });
   });
 

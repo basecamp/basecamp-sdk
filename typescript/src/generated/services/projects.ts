@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -18,7 +20,7 @@ export type Project = components["schemas"]["Project"];
 /**
  * Options for list.
  */
-export interface ListProjectOptions {
+export interface ListProjectOptions extends PaginationOptions {
   /** Filter by status */
   status?: "active" | "archived" | "trashed";
 }
@@ -60,7 +62,7 @@ export class ProjectsService extends BaseService {
   /**
    * List projects (active by default; optionally archived/trashed)
    * @param options - Optional query parameters
-   * @returns Array of Project
+   * @returns All Project across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -70,8 +72,8 @@ export class ProjectsService extends BaseService {
    * const filtered = await client.projects.list({ status: "active" });
    * ```
    */
-  async list(options?: ListProjectOptions): Promise<Project[]> {
-    const response = await this.request(
+  async list(options?: ListProjectOptions): Promise<ListResult<Project>> {
+    return this.requestPaginated(
       {
         service: "Projects",
         operation: "ListProjects",
@@ -84,8 +86,8 @@ export class ProjectsService extends BaseService {
             query: { status: options?.status },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

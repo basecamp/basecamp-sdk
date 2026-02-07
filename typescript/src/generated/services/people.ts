@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 
 // =============================================================================
 // Types
@@ -13,6 +15,24 @@ import type { components } from "../schema.js";
 
 /** Person entity from the Basecamp API. */
 export type Person = components["schemas"]["Person"];
+
+/**
+ * Options for listPingable.
+ */
+export interface ListPingablePeopleOptions extends PaginationOptions {
+}
+
+/**
+ * Options for list.
+ */
+export interface ListPeopleOptions extends PaginationOptions {
+}
+
+/**
+ * Options for listForProject.
+ */
+export interface ListForProjectPeopleOptions extends PaginationOptions {
+}
 
 /**
  * Request parameters for updateProjectAccess.
@@ -38,15 +58,16 @@ export class PeopleService extends BaseService {
 
   /**
    * List all account users who can be pinged
-   * @returns Array of Person
+   * @param options - Optional query parameters
+   * @returns All Person across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.people.listPingable();
    * ```
    */
-  async listPingable(): Promise<Person[]> {
-    const response = await this.request(
+  async listPingable(options?: ListPingablePeopleOptions): Promise<ListResult<Person>> {
+    return this.requestPaginated(
       {
         service: "People",
         operation: "ListPingablePeople",
@@ -56,8 +77,8 @@ export class PeopleService extends BaseService {
       () =>
         this.client.GET("/circles/people.json", {
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
@@ -86,15 +107,16 @@ export class PeopleService extends BaseService {
 
   /**
    * List all people visible to the current user
-   * @returns Array of Person
+   * @param options - Optional query parameters
+   * @returns All Person across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.people.list();
    * ```
    */
-  async list(): Promise<Person[]> {
-    const response = await this.request(
+  async list(options?: ListPeopleOptions): Promise<ListResult<Person>> {
+    return this.requestPaginated(
       {
         service: "People",
         operation: "ListPeople",
@@ -104,8 +126,8 @@ export class PeopleService extends BaseService {
       () =>
         this.client.GET("/people.json", {
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
@@ -141,15 +163,16 @@ export class PeopleService extends BaseService {
   /**
    * List all active people on a project
    * @param projectId - The project ID
-   * @returns Array of Person
+   * @param options - Optional query parameters
+   * @returns All Person across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.people.listForProject(123);
    * ```
    */
-  async listForProject(projectId: number): Promise<Person[]> {
-    const response = await this.request(
+  async listForProject(projectId: number, options?: ListForProjectPeopleOptions): Promise<ListResult<Person>> {
+    return this.requestPaginated(
       {
         service: "People",
         operation: "ListProjectPeople",
@@ -163,8 +186,8 @@ export class PeopleService extends BaseService {
             path: { projectId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

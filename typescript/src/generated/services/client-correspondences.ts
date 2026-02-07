@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 
 // =============================================================================
 // Types
@@ -13,6 +15,13 @@ import type { components } from "../schema.js";
 
 /** ClientCorrespondence entity from the Basecamp API. */
 export type ClientCorrespondence = components["schemas"]["ClientCorrespondence"];
+
+/**
+ * Options for list.
+ */
+export interface ListClientCorrespondenceOptions extends PaginationOptions {
+}
+
 
 // =============================================================================
 // Service
@@ -26,15 +35,16 @@ export class ClientCorrespondencesService extends BaseService {
   /**
    * List all client correspondences in a project
    * @param projectId - The project ID
-   * @returns Array of ClientCorrespondence
+   * @param options - Optional query parameters
+   * @returns All ClientCorrespondence across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.clientCorrespondences.list(123);
    * ```
    */
-  async list(projectId: number): Promise<ClientCorrespondence[]> {
-    const response = await this.request(
+  async list(projectId: number, options?: ListClientCorrespondenceOptions): Promise<ListResult<ClientCorrespondence>> {
+    return this.requestPaginated(
       {
         service: "ClientCorrespondences",
         operation: "ListClientCorrespondences",
@@ -48,8 +58,8 @@ export class ClientCorrespondencesService extends BaseService {
             path: { projectId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -48,7 +50,7 @@ export interface UpdateSettingsScheduleRequest {
 /**
  * Options for listEntries.
  */
-export interface ListEntriesScheduleOptions {
+export interface ListEntriesScheduleOptions extends PaginationOptions {
   /** Filter by status */
   status?: "active" | "archived" | "trashed";
 }
@@ -263,7 +265,7 @@ export class SchedulesService extends BaseService {
    * @param projectId - The project ID
    * @param scheduleId - The schedule ID
    * @param options - Optional query parameters
-   * @returns Array of ScheduleEntry
+   * @returns All ScheduleEntry across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -273,8 +275,8 @@ export class SchedulesService extends BaseService {
    * const filtered = await client.schedules.listEntries(123, 123, { status: "active" });
    * ```
    */
-  async listEntries(projectId: number, scheduleId: number, options?: ListEntriesScheduleOptions): Promise<ScheduleEntry[]> {
-    const response = await this.request(
+  async listEntries(projectId: number, scheduleId: number, options?: ListEntriesScheduleOptions): Promise<ListResult<ScheduleEntry>> {
+    return this.requestPaginated(
       {
         service: "Schedules",
         operation: "ListScheduleEntries",
@@ -290,8 +292,8 @@ export class SchedulesService extends BaseService {
             query: { status: options?.status },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

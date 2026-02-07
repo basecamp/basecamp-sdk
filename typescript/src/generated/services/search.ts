@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 
 // =============================================================================
 // Types
@@ -15,7 +17,7 @@ import type { components } from "../schema.js";
 /**
  * Options for search.
  */
-export interface SearchSearchOptions {
+export interface SearchSearchOptions extends PaginationOptions {
   /** Filter by sort */
   sort?: "created_at" | "updated_at";
   /** Page */
@@ -36,7 +38,7 @@ export class SearchService extends BaseService {
    * Search for content across the account
    * @param query - query
    * @param options - Optional query parameters
-   * @returns Array of results
+   * @returns All results across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -44,7 +46,7 @@ export class SearchService extends BaseService {
    * ```
    */
   async search(query: string, options?: SearchSearchOptions): Promise<components["schemas"]["SearchResponseContent"]> {
-    const response = await this.request(
+    return this.requestPaginated(
       {
         service: "Search",
         operation: "Search",
@@ -57,8 +59,8 @@ export class SearchService extends BaseService {
             query: { query: query, sort: options?.sort, page: options?.page },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

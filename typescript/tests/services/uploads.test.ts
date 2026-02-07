@@ -97,7 +97,7 @@ describe("UploadsService", () => {
 
       const result = await service.list(123, 1001);
 
-      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
     });
   });
 
@@ -221,7 +221,7 @@ describe("UploadsService", () => {
 
       const result = await service.listVersions(123, 7001);
 
-      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
     });
   });
 

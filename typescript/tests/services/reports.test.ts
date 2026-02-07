@@ -71,7 +71,7 @@ describe("TimesheetsService", () => {
         from: "2024-01-01",
         to: "2024-01-31",
       });
-      expect(entries).toEqual([]);
+      expect(entries).toHaveLength(0);
     });
 
     it("should support person filtering", async () => {
@@ -84,7 +84,7 @@ describe("TimesheetsService", () => {
       );
 
       const entries = await client.timesheets.report({ personId: 12345 });
-      expect(entries).toEqual([]);
+      expect(entries).toHaveLength(0);
     });
   });
 
@@ -127,7 +127,7 @@ describe("TimesheetsService", () => {
         from: "2024-02-01",
         personId: 999,
       });
-      expect(entries).toEqual([]);
+      expect(entries).toHaveLength(0);
     });
   });
 

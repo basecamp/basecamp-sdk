@@ -6,10 +6,19 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 
 // =============================================================================
 // Types
 // =============================================================================
+
+
+/**
+ * Options for projectTimeline.
+ */
+export interface ProjectTimelineTimelineOptions extends PaginationOptions {
+}
 
 
 // =============================================================================
@@ -24,15 +33,16 @@ export class TimelineService extends BaseService {
   /**
    * Get project timeline
    * @param projectId - The project ID
-   * @returns Array of results
+   * @param options - Optional query parameters
+   * @returns All results across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.timeline.projectTimeline(123);
    * ```
    */
-  async projectTimeline(projectId: number): Promise<components["schemas"]["GetProjectTimelineResponseContent"]> {
-    const response = await this.request(
+  async projectTimeline(projectId: number, options?: ProjectTimelineTimelineOptions): Promise<components["schemas"]["GetProjectTimelineResponseContent"]> {
+    return this.requestPaginated(
       {
         service: "Timeline",
         operation: "GetProjectTimeline",
@@ -46,7 +56,7 @@ export class TimelineService extends BaseService {
             path: { projectId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 }

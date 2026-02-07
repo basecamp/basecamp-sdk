@@ -50,7 +50,7 @@ describe("TemplatesService", () => {
       );
 
       const templates = await client.templates.list();
-      expect(templates).toEqual([]);
+      expect(templates).toHaveLength(0);
     });
   });
 

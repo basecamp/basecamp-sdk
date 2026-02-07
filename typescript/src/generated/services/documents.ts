@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -23,6 +25,12 @@ export interface UpdateDocumentRequest {
   title?: string;
   /** Text content */
   content?: string;
+}
+
+/**
+ * Options for list.
+ */
+export interface ListDocumentOptions extends PaginationOptions {
 }
 
 /**
@@ -120,15 +128,16 @@ export class DocumentsService extends BaseService {
    * List documents in a vault
    * @param projectId - The project ID
    * @param vaultId - The vault ID
-   * @returns Array of Document
+   * @param options - Optional query parameters
+   * @returns All Document across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.documents.list(123, 123);
    * ```
    */
-  async list(projectId: number, vaultId: number): Promise<Document[]> {
-    const response = await this.request(
+  async list(projectId: number, vaultId: number, options?: ListDocumentOptions): Promise<ListResult<Document>> {
+    return this.requestPaginated(
       {
         service: "Documents",
         operation: "ListDocuments",
@@ -143,8 +152,8 @@ export class DocumentsService extends BaseService {
             path: { projectId, vaultId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 
 // =============================================================================
 // Types
@@ -13,6 +15,13 @@ import type { components } from "../schema.js";
 
 /** ClientReply entity from the Basecamp API. */
 export type ClientReply = components["schemas"]["ClientReply"];
+
+/**
+ * Options for list.
+ */
+export interface ListClientReplyOptions extends PaginationOptions {
+}
+
 
 // =============================================================================
 // Service
@@ -27,15 +36,16 @@ export class ClientRepliesService extends BaseService {
    * List all client replies for a recording (correspondence or approval)
    * @param projectId - The project ID
    * @param recordingId - The recording ID
-   * @returns Array of ClientReply
+   * @param options - Optional query parameters
+   * @returns All ClientReply across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.clientReplies.list(123, 123);
    * ```
    */
-  async list(projectId: number, recordingId: number): Promise<ClientReply[]> {
-    const response = await this.request(
+  async list(projectId: number, recordingId: number, options?: ListClientReplyOptions): Promise<ListResult<ClientReply>> {
+    return this.requestPaginated(
       {
         service: "ClientReplies",
         operation: "ListClientReplies",
@@ -50,8 +60,8 @@ export class ClientRepliesService extends BaseService {
             path: { projectId, recordingId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

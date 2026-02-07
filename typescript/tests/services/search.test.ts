@@ -83,7 +83,7 @@ describe("SearchService", () => {
       );
 
       const results = await client.search.search("nonexistent");
-      expect(results).toEqual([]);
+      expect(results).toHaveLength(0);
     });
   });
 

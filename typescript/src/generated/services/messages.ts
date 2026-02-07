@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -14,6 +16,12 @@ import { Errors } from "../../errors.js";
 
 /** Message entity from the Basecamp API. */
 export type Message = components["schemas"]["Message"];
+
+/**
+ * Options for list.
+ */
+export interface ListMessageOptions extends PaginationOptions {
+}
 
 /**
  * Request parameters for create.
@@ -57,15 +65,16 @@ export class MessagesService extends BaseService {
    * List messages on a message board
    * @param projectId - The project ID
    * @param boardId - The board ID
-   * @returns Array of Message
+   * @param options - Optional query parameters
+   * @returns All Message across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.messages.list(123, 123);
    * ```
    */
-  async list(projectId: number, boardId: number): Promise<Message[]> {
-    const response = await this.request(
+  async list(projectId: number, boardId: number, options?: ListMessageOptions): Promise<ListResult<Message>> {
+    return this.requestPaginated(
       {
         service: "Messages",
         operation: "ListMessages",
@@ -80,8 +89,8 @@ export class MessagesService extends BaseService {
             path: { projectId, boardId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

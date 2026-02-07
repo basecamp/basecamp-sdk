@@ -65,7 +65,7 @@ describe("TodolistGroupsService", () => {
       );
 
       const groups = await client.todolistGroups.list(projectId, todolistId);
-      expect(groups).toEqual([]);
+      expect(groups).toHaveLength(0);
     });
   });
 

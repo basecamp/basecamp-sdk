@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
@@ -28,7 +30,7 @@ export interface UpdateTodolistRequest {
 /**
  * Options for list.
  */
-export interface ListTodolistOptions {
+export interface ListTodolistOptions extends PaginationOptions {
   /** Filter by status */
   status?: "active" | "archived" | "trashed";
 }
@@ -125,7 +127,7 @@ export class TodolistsService extends BaseService {
    * @param projectId - The project ID
    * @param todosetId - The todoset ID
    * @param options - Optional query parameters
-   * @returns Array of Todolist
+   * @returns All Todolist across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -135,8 +137,8 @@ export class TodolistsService extends BaseService {
    * const filtered = await client.todolists.list(123, 123, { status: "active" });
    * ```
    */
-  async list(projectId: number, todosetId: number, options?: ListTodolistOptions): Promise<Todolist[]> {
-    const response = await this.request(
+  async list(projectId: number, todosetId: number, options?: ListTodolistOptions): Promise<ListResult<Todolist>> {
+    return this.requestPaginated(
       {
         service: "Todolists",
         operation: "ListTodolists",
@@ -152,8 +154,8 @@ export class TodolistsService extends BaseService {
             query: { status: options?.status },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

@@ -6,6 +6,8 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 
 // =============================================================================
 // Types
@@ -17,9 +19,9 @@ export type Recording = components["schemas"]["Recording"];
 /**
  * Options for list.
  */
-export interface ListRecordingOptions {
-  /** Bucket */
-  bucket?: string;
+export interface ListRecordingOptions extends PaginationOptions {
+  /** Project IDs to filter by */
+  bucket?: number[];
   /** Filter by status */
   status?: "active" | "archived" | "trashed";
   /** Filter by sort */
@@ -167,18 +169,18 @@ export class RecordingsService extends BaseService {
    * List recordings of a given type across projects
    * @param type - Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
    * @param options - Optional query parameters
-   * @returns Array of Recording
+   * @returns All Recording across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.recordings.list("type");
    *
    * // With options
-   * const filtered = await client.recordings.list({ bucket: "example" });
+   * const filtered = await client.recordings.list("type", { bucket: [123] });
    * ```
    */
-  async list(type: "Comment" | "Document" | "Kanban::Card" | "Kanban::Step" | "Message" | "Question::Answer" | "Schedule::Entry" | "Todo" | "Todolist" | "Upload" | "Vault", options?: ListRecordingOptions): Promise<Recording[]> {
-    const response = await this.request(
+  async list(type: "Comment" | "Document" | "Kanban::Card" | "Kanban::Step" | "Message" | "Question::Answer" | "Schedule::Entry" | "Todo" | "Todolist" | "Upload" | "Vault", options?: ListRecordingOptions): Promise<ListResult<Recording>> {
+    return this.requestPaginated(
       {
         service: "Recordings",
         operation: "ListRecordings",
@@ -188,10 +190,10 @@ export class RecordingsService extends BaseService {
       () =>
         this.client.GET("/projects/recordings.json", {
           params: {
-            query: { type: type, bucket: options?.bucket, status: options?.status, sort: options?.sort, direction: options?.direction },
+            query: { type: type, bucket: options?.bucket?.join(","), status: options?.status, sort: options?.sort, direction: options?.direction },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 }
