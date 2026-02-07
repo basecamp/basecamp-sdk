@@ -13,6 +13,7 @@ import { PATH_TO_OPERATION } from "./generated/path-mapping.js";
 import type { BasecampHooks, RequestInfo, RequestResult } from "./hooks.js";
 import { BasecampError } from "./errors.js";
 import { isLocalhost } from "./security.js";
+import { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
 
 // Use createRequire for JSON import (Node 18+ compatible)
 const require = createRequire(import.meta.url);
@@ -266,6 +267,19 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     enumerable: false,
   });
 
+  // Create fetchPage closure for pagination — uses same auth & User-Agent as main client
+  const fetchPage = async (url: string): Promise<Response> => {
+    const token =
+      typeof accessToken === "function" ? await accessToken() : accessToken;
+    return fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "User-Agent": userAgent,
+        Accept: "application/json",
+      },
+    });
+  };
+
   // Add lazy-initialized service accessors
   // Services are created on first access and cached
   // Uses nullish coalescing assignment for atomic check-and-set in single-threaded JS
@@ -283,44 +297,44 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     });
   };
 
-  defineService("projects", () => new ProjectsService(client, hooks));
-  defineService("todos", () => new TodosService(client, hooks));
-  defineService("todolists", () => new TodolistsService(client, hooks));
-  defineService("todosets", () => new TodosetsService(client, hooks));
-  defineService("people", () => new PeopleService(client, hooks));
+  defineService("projects", () => new ProjectsService(client, hooks, fetchPage));
+  defineService("todos", () => new TodosService(client, hooks, fetchPage));
+  defineService("todolists", () => new TodolistsService(client, hooks, fetchPage));
+  defineService("todosets", () => new TodosetsService(client, hooks, fetchPage));
+  defineService("people", () => new PeopleService(client, hooks, fetchPage));
   defineService("authorization", () => new AuthorizationService(client, hooks, accessToken, userAgent));
-  defineService("messages", () => new MessagesService(client, hooks));
-  defineService("comments", () => new CommentsService(client, hooks));
-  defineService("campfires", () => new CampfiresService(client, hooks));
-  defineService("cardTables", () => new CardTablesService(client, hooks));
-  defineService("cards", () => new CardsService(client, hooks));
-  defineService("cardColumns", () => new CardColumnsService(client, hooks));
-  defineService("cardSteps", () => new CardStepsService(client, hooks));
-  defineService("messageBoards", () => new MessageBoardsService(client, hooks));
-  defineService("messageTypes", () => new MessageTypesService(client, hooks));
-  defineService("forwards", () => new ForwardsService(client, hooks));
-  defineService("checkins", () => new CheckinsService(client, hooks));
-  defineService("clientApprovals", () => new ClientApprovalsService(client, hooks));
-  defineService("clientCorrespondences", () => new ClientCorrespondencesService(client, hooks));
-  defineService("clientReplies", () => new ClientRepliesService(client, hooks));
-  defineService("webhooks", () => new WebhooksService(client, hooks));
-  defineService("subscriptions", () => new SubscriptionsService(client, hooks));
-  defineService("attachments", () => new AttachmentsService(client, hooks));
-  defineService("vaults", () => new VaultsService(client, hooks));
-  defineService("documents", () => new DocumentsService(client, hooks));
-  defineService("uploads", () => new UploadsService(client, hooks));
-  defineService("schedules", () => new SchedulesService(client, hooks));
-  defineService("events", () => new EventsService(client, hooks));
-  defineService("recordings", () => new RecordingsService(client, hooks));
-  defineService("search", () => new SearchService(client, hooks));
-  defineService("reports", () => new ReportsService(client, hooks));
-  defineService("templates", () => new TemplatesService(client, hooks));
-  defineService("lineup", () => new LineupService(client, hooks));
-  defineService("todolistGroups", () => new TodolistGroupsService(client, hooks));
-  defineService("tools", () => new ToolsService(client, hooks));
-  defineService("timesheets", () => new TimesheetsService(client, hooks));
-  defineService("timeline", () => new TimelineService(client, hooks));
-  defineService("clientVisibility", () => new ClientVisibilityService(client, hooks));
+  defineService("messages", () => new MessagesService(client, hooks, fetchPage));
+  defineService("comments", () => new CommentsService(client, hooks, fetchPage));
+  defineService("campfires", () => new CampfiresService(client, hooks, fetchPage));
+  defineService("cardTables", () => new CardTablesService(client, hooks, fetchPage));
+  defineService("cards", () => new CardsService(client, hooks, fetchPage));
+  defineService("cardColumns", () => new CardColumnsService(client, hooks, fetchPage));
+  defineService("cardSteps", () => new CardStepsService(client, hooks, fetchPage));
+  defineService("messageBoards", () => new MessageBoardsService(client, hooks, fetchPage));
+  defineService("messageTypes", () => new MessageTypesService(client, hooks, fetchPage));
+  defineService("forwards", () => new ForwardsService(client, hooks, fetchPage));
+  defineService("checkins", () => new CheckinsService(client, hooks, fetchPage));
+  defineService("clientApprovals", () => new ClientApprovalsService(client, hooks, fetchPage));
+  defineService("clientCorrespondences", () => new ClientCorrespondencesService(client, hooks, fetchPage));
+  defineService("clientReplies", () => new ClientRepliesService(client, hooks, fetchPage));
+  defineService("webhooks", () => new WebhooksService(client, hooks, fetchPage));
+  defineService("subscriptions", () => new SubscriptionsService(client, hooks, fetchPage));
+  defineService("attachments", () => new AttachmentsService(client, hooks, fetchPage));
+  defineService("vaults", () => new VaultsService(client, hooks, fetchPage));
+  defineService("documents", () => new DocumentsService(client, hooks, fetchPage));
+  defineService("uploads", () => new UploadsService(client, hooks, fetchPage));
+  defineService("schedules", () => new SchedulesService(client, hooks, fetchPage));
+  defineService("events", () => new EventsService(client, hooks, fetchPage));
+  defineService("recordings", () => new RecordingsService(client, hooks, fetchPage));
+  defineService("search", () => new SearchService(client, hooks, fetchPage));
+  defineService("reports", () => new ReportsService(client, hooks, fetchPage));
+  defineService("templates", () => new TemplatesService(client, hooks, fetchPage));
+  defineService("lineup", () => new LineupService(client, hooks, fetchPage));
+  defineService("todolistGroups", () => new TodolistGroupsService(client, hooks, fetchPage));
+  defineService("tools", () => new ToolsService(client, hooks, fetchPage));
+  defineService("timesheets", () => new TimesheetsService(client, hooks, fetchPage));
+  defineService("timeline", () => new TimelineService(client, hooks, fetchPage));
+  defineService("clientVisibility", () => new ClientVisibilityService(client, hooks, fetchPage));
 
   return enhancedClient;
 }
@@ -959,43 +973,5 @@ export async function* paginateAll<T>(
   }
 }
 
-function parseNextLink(linkHeader: string | null): string | null {
-  if (!linkHeader) return null;
-
-  for (const part of linkHeader.split(",")) {
-    const trimmed = part.trim();
-    if (trimmed.includes('rel="next"')) {
-      const match = trimmed.match(/<([^>]+)>/);
-      return match?.[1] ?? null;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Resolves a possibly-relative URL against a base URL.
- * If target is already absolute, it is returned unchanged.
- */
-function resolveURL(base: string, target: string): string {
-  try {
-    return new URL(target, base).href;
-  } catch {
-    return target;
-  }
-}
-
-/**
- * Checks whether two absolute URLs share the same origin (scheme + host + port).
- * Handles default port normalization (e.g. https://example.com:443 === https://example.com).
- * Relative URLs should be resolved with resolveURL before calling this function.
- */
-function isSameOrigin(a: string, b: string): boolean {
-  try {
-    const urlA = new URL(a);
-    const urlB = new URL(b);
-    return urlA.origin === urlB.origin;
-  } catch {
-    return false;
-  }
-}
+// Re-export pagination utilities (defined in pagination-utils.ts to avoid circular deps)
+export { parseNextLink, resolveURL, isSameOrigin };
