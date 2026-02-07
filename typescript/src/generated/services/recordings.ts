@@ -176,7 +176,7 @@ export class RecordingsService extends BaseService {
    * const result = await client.recordings.list("type");
    *
    * // With options
-   * const filtered = await client.recordings.list({ bucket: "example" });
+   * const filtered = await client.recordings.list("type", { bucket: [123] });
    * ```
    */
   async list(type: "Comment" | "Document" | "Kanban::Card" | "Kanban::Step" | "Message" | "Question::Answer" | "Schedule::Entry" | "Todo" | "Todolist" | "Upload" | "Vault", options?: ListRecordingOptions): Promise<ListResult<Recording>> {

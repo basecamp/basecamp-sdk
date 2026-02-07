@@ -60,7 +60,17 @@ export abstract class BaseService {
   /** Optional hooks for observability */
   protected readonly hooks?: BasecampHooks;
 
-  /** Authenticated fetch for pagination follow-up requests */
+  /**
+   * Authenticated fetch for pagination follow-up requests.
+   *
+   * Note: Subsequent pages use this raw fetch rather than the openapi-fetch
+   * middleware stack (retry, cache, hooks). This is intentional — Link header
+   * URLs are absolute and don't map to openapi-fetch path patterns. The
+   * createBasecampClient() factory provides an authenticated fetchPage closure
+   * with Bearer token and User-Agent. When services are instantiated directly
+   * (without the factory), the fallback is unauthenticated — page 1 will
+   * succeed via the authenticated raw client, but page 2+ may 401.
+   */
   protected readonly fetchPage: (url: string) => Promise<Response>;
 
   constructor(
@@ -176,17 +186,17 @@ export abstract class BaseService {
 
       // If maxItems is set and first page satisfies it, return early
       if (maxItems && maxItems > 0 && firstPageItems.length >= maxItems) {
-        return new ListResult(firstPageItems.slice(0, maxItems), { totalCount });
+        return new ListResult(firstPageItems.slice(0, maxItems), { totalCount, truncated: true });
       }
 
       // Follow pagination
-      const allItems = await this.followPagination(
+      const { items: allItems, truncated } = await this.followPagination(
         response,
         firstPageItems,
         maxItems,
       );
 
-      return new ListResult(allItems, { totalCount });
+      return new ListResult(allItems, { totalCount, truncated });
     } catch (err) {
       result.durationMs = Math.round(performance.now() - start);
 
@@ -208,12 +218,13 @@ export abstract class BaseService {
 
   /**
    * Follows Link header pagination, accumulating items across pages.
+   * Returns items and whether results were truncated (by maxItems or page cap).
    */
   private async followPagination<T>(
     initialResponse: Response,
     firstPageItems: T[],
     maxItems: number | undefined,
-  ): Promise<T[]> {
+  ): Promise<{ items: T[]; truncated: boolean }> {
     const allItems = [...firstPageItems];
     let response = initialResponse;
     const initialUrl = initialResponse.url;
@@ -238,16 +249,19 @@ export abstract class BaseService {
         throw await errorFromResponse(response, response.headers.get("X-Request-Id") ?? undefined);
       }
 
-      const pageItems: T[] = await response.json();
+      const pageItems: T[] = (await response.json()) as T[];
       allItems.push(...pageItems);
 
       // Check maxItems cap
       if (maxItems && maxItems > 0 && allItems.length >= maxItems) {
-        return allItems.slice(0, maxItems);
+        return { items: allItems.slice(0, maxItems), truncated: true };
       }
     }
 
-    return allItems;
+    // If we exited the loop because page >= MAX_PAGES and there's still a next link,
+    // the results are truncated by the safety cap
+    const hasMore = parseNextLink(response.headers.get("Link")) !== null;
+    return { items: allItems, truncated: hasMore };
   }
 
   /**

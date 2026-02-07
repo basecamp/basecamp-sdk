@@ -1075,12 +1075,19 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
     const optionalQueryParams = op.queryParams.filter((q) => !q.required);
     if (optionalQueryParams.length > 0) {
       const firstParam = optionalQueryParams[0];
-      const exampleValue = generateExampleValue(firstParam.name, firstParam.type);
+      // Use correct example value for special-cased bucket param
+      const exampleValue = (firstParam.name === "bucket" && firstParam.type === "string")
+        ? "[123]"
+        : generateExampleValue(firstParam.name, firstParam.type);
       const optionField = toCamelCase(firstParam.name);
       const pathArgs = op.pathParams.map((p) => p.type === "number" ? "123" : '"example"');
+      const requiredQueryArgs = op.queryParams.filter((q) => q.required).map((q) =>
+        q.type === "number" ? "123" : `"${q.name}"`
+      );
+      const allPrecedingArgs = [...pathArgs, ...requiredQueryArgs];
       lines.push(`   *`);
       lines.push(`   * // With options`);
-      lines.push(`   * const filtered = await ${clientCall}(${[...pathArgs, `{ ${optionField}: ${exampleValue} }`].join(", ")});`);
+      lines.push(`   * const filtered = await ${clientCall}(${[...allPrecedingArgs, `{ ${optionField}: ${exampleValue} }`].join(", ")});`);
     }
   }
   lines.push(`   * \`\`\``);

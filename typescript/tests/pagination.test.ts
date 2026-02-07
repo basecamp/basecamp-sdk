@@ -7,7 +7,7 @@ import { ListResult, parseTotalCount } from "../src/pagination.js";
 describe("ListResult", () => {
   it("should behave as an array (length, indexing, forEach, map, spread)", () => {
     const items = [{ id: 1 }, { id: 2 }, { id: 3 }];
-    const result = new ListResult(items, { totalCount: 100 });
+    const result = new ListResult(items, { totalCount: 100, truncated: false });
 
     // Length
     expect(result.length).toBe(3);
@@ -31,19 +31,44 @@ describe("ListResult", () => {
   });
 
   it("should report Array.isArray as true", () => {
-    const result = new ListResult([], { totalCount: 0 });
+    const result = new ListResult([], { totalCount: 0, truncated: false });
     expect(Array.isArray(result)).toBe(true);
   });
 
   it("should expose meta.totalCount", () => {
-    const result = new ListResult([1, 2, 3], { totalCount: 150 });
+    const result = new ListResult([1, 2, 3], { totalCount: 150, truncated: false });
     expect(result.meta.totalCount).toBe(150);
   });
 
   it("should work with empty arrays", () => {
-    const result = new ListResult([], { totalCount: 0 });
+    const result = new ListResult([], { totalCount: 0, truncated: false });
     expect(result.length).toBe(0);
     expect(result.meta.totalCount).toBe(0);
+  });
+
+  it("should return plain Arrays from map/filter/slice (Symbol.species)", () => {
+    const result = new ListResult([1, 2, 3], { totalCount: 3, truncated: false });
+
+    const mapped = result.map((x) => x * 2);
+    expect(mapped).toEqual([2, 4, 6]);
+    expect(mapped).toBeInstanceOf(Array);
+    expect(mapped).not.toBeInstanceOf(ListResult);
+
+    const filtered = result.filter((x) => x > 1);
+    expect(filtered).toEqual([2, 3]);
+    expect(filtered).not.toBeInstanceOf(ListResult);
+
+    const sliced = result.slice(0, 2);
+    expect(sliced).toEqual([1, 2]);
+    expect(sliced).not.toBeInstanceOf(ListResult);
+  });
+
+  it("should expose meta.truncated", () => {
+    const truncated = new ListResult([1], { totalCount: 100, truncated: true });
+    expect(truncated.meta.truncated).toBe(true);
+
+    const full = new ListResult([1], { totalCount: 1, truncated: false });
+    expect(full.meta.truncated).toBe(false);
   });
 });
 

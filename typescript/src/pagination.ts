@@ -11,6 +11,8 @@
 export interface ListMeta {
   /** Total number of items across all pages (from X-Total-Count header). */
   readonly totalCount: number;
+  /** True when results were truncated (by maxItems or page safety cap). */
+  readonly truncated: boolean;
 }
 
 /**
@@ -40,6 +42,16 @@ export interface PaginationOptions {
  */
 export class ListResult<T> extends Array<T> {
   readonly meta: ListMeta;
+
+  /**
+   * Array species methods (map, filter, slice, etc.) should return plain
+   * Arrays, not ListResult instances. Without this override, those methods
+   * would call `new ListResult(length)` which fails because our constructor
+   * expects (items[], meta).
+   */
+  static get [Symbol.species](): ArrayConstructor {
+    return Array;
+  }
 
   constructor(items: T[], meta: ListMeta) {
     // Use super(0) + push to avoid both:
