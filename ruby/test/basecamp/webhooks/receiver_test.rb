@@ -87,6 +87,31 @@ class Basecamp::Webhooks::ReceiverTest < Minitest::Test
     assert_equal 1, count
   end
 
+  def test_dedup_only_after_success
+    receiver = Basecamp::Webhooks::Receiver.new
+    calls = 0
+    receiver.on("todo_created") do |_e|
+      calls += 1
+      raise "transient failure" if calls == 1
+    end
+
+    body = fixture_body("event-todo-created.json")
+
+    # First attempt fails
+    assert_raises(RuntimeError) do
+      receiver.handle_request(raw_body: body, headers: empty_headers)
+    end
+    assert_equal 1, calls
+
+    # Retry of same event should run handlers again (not suppressed by dedup)
+    receiver.handle_request(raw_body: body, headers: empty_headers)
+    assert_equal 2, calls
+
+    # Third delivery is now a true duplicate (second succeeded)
+    receiver.handle_request(raw_body: body, headers: empty_headers)
+    assert_equal 2, calls
+  end
+
   def test_dedup_disabled
     receiver = Basecamp::Webhooks::Receiver.new(dedup_window_size: 0)
     count = 0

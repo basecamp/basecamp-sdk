@@ -115,8 +115,8 @@ func (r *WebhookReceiver) HandleRequest(body []byte, getHeader func(string) stri
 		return nil, fmt.Errorf("failed to parse webhook event: %w", err)
 	}
 
-	// Dedup check.
-	if r.isDuplicate(event.ID) {
+	// Dedup check — only check, don't record yet (record after successful handling).
+	if r.isSeen(event.ID) {
 		return &event, nil
 	}
 
@@ -144,6 +144,9 @@ func (r *WebhookReceiver) HandleRequest(body []byte, getHeader func(string) stri
 		return &event, err
 	}
 
+	// Record in dedup window only after successful handling.
+	r.markSeen(event.ID)
+
 	return &event, nil
 }
 
@@ -154,9 +157,14 @@ func (r *WebhookReceiver) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(io.LimitReader(req.Body, r.config.MaxBodyBytes))
+	// Read up to MaxBodyBytes+1 to detect oversized requests.
+	body, err := io.ReadAll(io.LimitReader(req.Body, r.config.MaxBodyBytes+1))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if int64(len(body)) > r.config.MaxBodyBytes {
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -173,7 +181,7 @@ func (r *WebhookReceiver) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (r *WebhookReceiver) isDuplicate(eventID int64) bool {
+func (r *WebhookReceiver) isSeen(eventID int64) bool {
 	if r.config.DedupWindowSize <= 0 || eventID == 0 {
 		return false
 	}
@@ -181,8 +189,20 @@ func (r *WebhookReceiver) isDuplicate(eventID int64) bool {
 	r.dedupMu.Lock()
 	defer r.dedupMu.Unlock()
 
+	_, exists := r.dedupSet[eventID]
+	return exists
+}
+
+func (r *WebhookReceiver) markSeen(eventID int64) {
+	if r.config.DedupWindowSize <= 0 || eventID == 0 {
+		return
+	}
+
+	r.dedupMu.Lock()
+	defer r.dedupMu.Unlock()
+
 	if _, exists := r.dedupSet[eventID]; exists {
-		return true
+		return
 	}
 
 	// Evict oldest if at capacity.
@@ -194,7 +214,6 @@ func (r *WebhookReceiver) isDuplicate(eventID int64) bool {
 
 	r.dedupSet[eventID] = struct{}{}
 	r.dedupOrder = append(r.dedupOrder, eventID)
-	return false
 }
 
 func (r *WebhookReceiver) dispatchHandlers(event *WebhookEvent) error {

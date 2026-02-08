@@ -27,7 +27,7 @@ module Basecamp
       end
 
       # Register a handler for a specific event kind pattern.
-      # Supports glob patterns: "todo.*" matches "todo_created", etc.
+      # Supports glob patterns: "todo_*" matches "todo_created", etc.
       def on(pattern, &handler)
         @handlers[pattern] ||= []
         @handlers[pattern] << handler
@@ -63,8 +63,8 @@ module Basecamp
         hash = JSON.parse(raw_body)
         event = Event.new(hash)
 
-        # Dedup check
-        return event if duplicate?(event.id)
+        # Dedup check — only check, don't record yet (record after successful handling)
+        return event if seen?(event.id)
 
         # Build middleware chain
         run_handlers = -> { dispatch_handlers(event) }
@@ -73,6 +73,10 @@ module Basecamp
         end
 
         chain.call
+
+        # Record in dedup window only after successful handling
+        mark_seen(event.id)
+
         event
       end
 
@@ -87,11 +91,19 @@ module Basecamp
         end
       end
 
-      def duplicate?(event_id)
+      def seen?(event_id)
         return false if @dedup_window_size <= 0 || event_id.nil?
 
         @mutex.synchronize do
-          return true if @dedup_set.key?(event_id)
+          @dedup_set.key?(event_id)
+        end
+      end
+
+      def mark_seen(event_id)
+        return if @dedup_window_size <= 0 || event_id.nil?
+
+        @mutex.synchronize do
+          return if @dedup_set.key?(event_id)
 
           if @dedup_order.size >= @dedup_window_size
             oldest = @dedup_order.shift
@@ -100,7 +112,6 @@ module Basecamp
 
           @dedup_set[event_id] = true
           @dedup_order << event_id
-          false
         end
       end
 

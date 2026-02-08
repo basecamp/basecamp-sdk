@@ -239,6 +239,51 @@ func TestWebhookReceiver_Dedup(t *testing.T) {
 	}
 }
 
+func TestWebhookReceiver_DedupOnlyAfterSuccess(t *testing.T) {
+	receiver := NewWebhookReceiver(WebhookReceiverConfig{
+		DedupWindowSize: 100,
+	})
+
+	callCount := 0
+	handlerErr := errors.New("transient failure")
+	receiver.OnAny(func(event *WebhookEvent) error {
+		callCount++
+		if callCount == 1 {
+			return handlerErr
+		}
+		return nil
+	})
+
+	data := loadWebhooksFixture(t, "event-todo-created.json")
+
+	// First attempt fails
+	_, err := receiver.HandleRequest(data, noHeaders)
+	if !errors.Is(err, handlerErr) {
+		t.Fatalf("expected handler error, got %v", err)
+	}
+	if callCount != 1 {
+		t.Fatalf("expected 1 call, got %d", callCount)
+	}
+
+	// Retry of same event should run handlers again (not suppressed by dedup)
+	_, err = receiver.HandleRequest(data, noHeaders)
+	if err != nil {
+		t.Fatalf("expected no error on retry, got %v", err)
+	}
+	if callCount != 2 {
+		t.Errorf("expected 2 calls (retry succeeded), got %d", callCount)
+	}
+
+	// Third delivery is now a true duplicate (second succeeded)
+	_, err = receiver.HandleRequest(data, noHeaders)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if callCount != 2 {
+		t.Errorf("expected 2 calls (third was dedup'd), got %d", callCount)
+	}
+}
+
 func TestWebhookReceiver_DedupWindowEviction(t *testing.T) {
 	receiver := NewWebhookReceiver(WebhookReceiverConfig{
 		DedupWindowSize: 2, // Tiny window
@@ -493,6 +538,28 @@ func TestWebhookReceiver_ServeHTTP_InternalServerError(t *testing.T) {
 
 	if rr.Code != http.StatusInternalServerError {
 		t.Errorf("expected 500, got %d", rr.Code)
+	}
+}
+
+func TestWebhookReceiver_ServeHTTP_OversizedBody(t *testing.T) {
+	receiver := NewWebhookReceiver(WebhookReceiverConfig{
+		MaxBodyBytes:    50,
+		DedupWindowSize: -1,
+	})
+
+	receiver.OnAny(func(event *WebhookEvent) error { return nil })
+
+	// Body that is valid JSON in the first 50 bytes but exceeds the limit
+	body := `{"id":1,"kind":"a","created_at":"2022-01-01T00:00:00Z","recording":{"id":1},"creator":{"id":1}}`
+
+	req := httptest.NewRequest(http.MethodPost, "/webhooks", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	receiver.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("expected 413, got %d", rr.Code)
 	}
 }
 

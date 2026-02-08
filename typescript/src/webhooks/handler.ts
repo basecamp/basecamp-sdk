@@ -42,8 +42,8 @@ export class WebhookReceiver {
   private readonly handlers = new Map<string, WebhookEventHandler[]>();
   private readonly anyHandlers: WebhookEventHandler[] = [];
   private readonly middlewareChain: WebhookMiddleware[] = [];
-  private readonly dedupSet = new Set<number>();
-  private readonly dedupOrder: number[] = [];
+  private readonly dedupSet = new Set<string>();
+  private readonly dedupOrder: string[] = [];
 
   constructor(options?: WebhookReceiverOptions) {
     this.secret = options?.secret;
@@ -53,7 +53,7 @@ export class WebhookReceiver {
 
   /**
    * Register a handler for a specific event kind pattern.
-   * Supports exact match ("todo_created") and glob patterns ("todo.*", "*.created").
+   * Supports exact match ("todo_created") and glob patterns ("todo_*", "*_created").
    */
   on(pattern: string, handler: WebhookEventHandler): this {
     const existing = this.handlers.get(pattern);
@@ -95,12 +95,13 @@ export class WebhookReceiver {
       }
     }
 
-    // Parse event
+    // Parse event — extract ID as string from raw JSON to avoid int64 precision loss
     const bodyStr = typeof rawBody === "string" ? rawBody : rawBody.toString("utf8");
+    const eventIdStr = extractIdString(bodyStr);
     const event: WebhookEvent = JSON.parse(bodyStr);
 
-    // Dedup check
-    if (this.isDuplicate(event.id)) {
+    // Dedup check — only check, don't record yet (record after successful handling)
+    if (this.isSeen(eventIdStr)) {
       return event;
     }
 
@@ -117,6 +118,10 @@ export class WebhookReceiver {
     }
 
     await chain();
+
+    // Record in dedup window only after successful handling
+    this.markSeen(eventIdStr);
+
     return event;
   }
 
@@ -129,9 +134,14 @@ export class WebhookReceiver {
     return val;
   }
 
-  private isDuplicate(eventId: number | undefined): boolean {
-    if (this.dedupWindowSize <= 0 || !eventId) return false;
-    if (this.dedupSet.has(eventId)) return true;
+  private isSeen(eventIdStr: string | undefined): boolean {
+    if (this.dedupWindowSize <= 0 || !eventIdStr) return false;
+    return this.dedupSet.has(eventIdStr);
+  }
+
+  private markSeen(eventIdStr: string | undefined): void {
+    if (this.dedupWindowSize <= 0 || !eventIdStr) return;
+    if (this.dedupSet.has(eventIdStr)) return;
 
     // Evict oldest if at capacity
     if (this.dedupOrder.length >= this.dedupWindowSize) {
@@ -139,9 +149,8 @@ export class WebhookReceiver {
       this.dedupSet.delete(oldest);
     }
 
-    this.dedupSet.add(eventId);
-    this.dedupOrder.push(eventId);
-    return false;
+    this.dedupSet.add(eventIdStr);
+    this.dedupOrder.push(eventIdStr);
   }
 
   private async dispatchHandlers(event: WebhookEvent): Promise<void> {
@@ -159,6 +168,13 @@ export class WebhookReceiver {
       await handler(event);
     }
   }
+}
+
+/** Extract the top-level "id" field as a raw string from JSON, avoiding Number precision loss on int64. */
+const ID_REGEX = /"id"\s*:\s*(\d+)/;
+function extractIdString(json: string): string | undefined {
+  const m = ID_REGEX.exec(json);
+  return m?.[1];
 }
 
 /**

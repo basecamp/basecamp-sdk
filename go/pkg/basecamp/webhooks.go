@@ -386,21 +386,13 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 		event.Recording.Bucket.ID = *rec.Bucket.Id
 	}
 	if rec.Creator.Id != nil {
-		c := &WebhookEventPerson{
-			Name:         rec.Creator.Name,
-			EmailAddress: rec.Creator.EmailAddress,
-		}
-		c.ID = *rec.Creator.Id
-		event.Recording.Creator = c
+		p := webhookPersonFromGenerated(rec.Creator)
+		event.Recording.Creator = &p
 	}
 
 	// Map top-level creator
 	if ge.Creator.Id != nil {
-		event.Creator = WebhookEventPerson{
-			Name:         ge.Creator.Name,
-			EmailAddress: ge.Creator.EmailAddress,
-		}
-		event.Creator.ID = *ge.Creator.Id
+		event.Creator = webhookPersonFromGenerated(ge.Creator)
 	}
 
 	// Map copy if present
@@ -420,4 +412,48 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 	}
 
 	return event
+}
+
+// webhookPersonFromGenerated maps a generated Person to WebhookEventPerson with all fields.
+func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
+	p := WebhookEventPerson{
+		AttachableSGID:      gp.AttachableSgid,
+		Name:                gp.Name,
+		EmailAddress:        gp.EmailAddress,
+		PersonableType:      gp.PersonableType,
+		Title:               gp.Title,
+		Admin:               gp.Admin,
+		Owner:               gp.Owner,
+		Client:              gp.Client,
+		Employee:            gp.Employee,
+		TimeZone:            gp.TimeZone,
+		AvatarURL:           gp.AvatarUrl,
+		CanManageProjects:   gp.CanManageProjects,
+		CanManagePeople:     gp.CanManagePeople,
+		CanPing:             gp.CanPing,
+		CanAccessTimesheet:  gp.CanAccessTimesheet,
+		CanAccessHillCharts: gp.CanAccessHillCharts,
+	}
+	if gp.Id != nil {
+		p.ID = *gp.Id
+	}
+	if gp.Bio != "" {
+		p.Bio = &gp.Bio
+	}
+	if gp.Location != "" {
+		p.Location = &gp.Location
+	}
+	if !gp.CreatedAt.IsZero() {
+		p.CreatedAt = gp.CreatedAt.Format(time.RFC3339Nano)
+	}
+	if !gp.UpdatedAt.IsZero() {
+		p.UpdatedAt = gp.UpdatedAt.Format(time.RFC3339Nano)
+	}
+	if gp.Company.Id != nil {
+		p.Company = &WebhookEventCompany{
+			Name: gp.Company.Name,
+		}
+		p.Company.ID = *gp.Company.Id
+	}
+	return p
 }

@@ -126,6 +126,45 @@ describe("WebhookReceiver", () => {
       expect(event.kind).toBe("todo_created");
     });
 
+    it("retries succeed after handler error (dedup only on success)", async () => {
+      const receiver = new WebhookReceiver();
+      let calls = 0;
+      receiver.on("todo_created", () => {
+        calls++;
+        if (calls === 1) throw new Error("transient failure");
+      });
+
+      // First attempt fails
+      await expect(receiver.handleRequest(todoCreatedBody, emptyHeaders)).rejects.toThrow("transient failure");
+      expect(calls).toBe(1);
+
+      // Retry of same event should run handlers again (not suppressed by dedup)
+      await receiver.handleRequest(todoCreatedBody, emptyHeaders);
+      expect(calls).toBe(2);
+
+      // Third delivery is now a true duplicate (second succeeded)
+      await receiver.handleRequest(todoCreatedBody, emptyHeaders);
+      expect(calls).toBe(2);
+    });
+
+    it("deduplicates int64 IDs without precision loss", async () => {
+      const receiver = new WebhookReceiver();
+      let calls = 0;
+      receiver.onAny(() => { calls++; });
+
+      // Two events with IDs that differ only in the last digits —
+      // as JS numbers they collide (both become 9007199254741000),
+      // but as strings they're distinct.
+      const event1 = '{"id":9007199254741000,"kind":"a","created_at":"2022-01-01T00:00:00Z","recording":{"id":1},"creator":{"id":1}}';
+      const event2 = '{"id":9007199254741001,"kind":"b","created_at":"2022-01-01T00:00:00Z","recording":{"id":2},"creator":{"id":1}}';
+
+      await receiver.handleRequest(event1, emptyHeaders);
+      await receiver.handleRequest(event2, emptyHeaders);
+
+      // Both should fire — they are distinct events
+      expect(calls).toBe(2);
+    });
+
     it("allows duplicates when dedup is disabled", async () => {
       const receiver = new WebhookReceiver({ dedupWindowSize: 0 });
       let count = 0;
