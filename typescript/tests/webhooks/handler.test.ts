@@ -147,6 +147,19 @@ describe("WebhookReceiver", () => {
       expect(calls).toBe(2);
     });
 
+    it("deduplicates exact same raw string ID", async () => {
+      const receiver = new WebhookReceiver();
+      let calls = 0;
+      receiver.onAny(() => { calls++; });
+
+      const event = '{"id":9007199254741000,"kind":"a","created_at":"2022-01-01T00:00:00Z","recording":{"id":1},"creator":{"id":1}}';
+
+      await receiver.handleRequest(event, emptyHeaders);
+      await receiver.handleRequest(event, emptyHeaders);
+
+      expect(calls).toBe(1);
+    });
+
     it("deduplicates int64 IDs without precision loss", async () => {
       const receiver = new WebhookReceiver();
       let calls = 0;

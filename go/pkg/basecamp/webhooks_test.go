@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
+
+	generated "github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 func webhooksFixturesDir() string {
@@ -209,6 +212,89 @@ func TestWebhook_UnmarshalGetWithRecentDeliveries(t *testing.T) {
 	}
 	if delivery.Response.Headers["Content-Type"] != "text/html" {
 		t.Errorf("expected response Content-Type 'text/html', got %q", delivery.Response.Headers["Content-Type"])
+	}
+}
+
+func TestWebhookPersonFromGenerated_AllFields(t *testing.T) {
+	companyID := int64(1033447817)
+	personID := int64(1049715914)
+	createdAt, _ := time.Parse(time.RFC3339, "2022-11-22T08:23:21Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2022-11-22T08:23:21Z")
+
+	gp := generated.Person{
+		Id:                  &personID,
+		AttachableSgid:      "BAh7CEkiCGdpZAY6BkVU--abc123",
+		Name:                "Annie Bryan",
+		EmailAddress:        "annie@honcho.com",
+		PersonableType:      "User",
+		Title:               "Central Markets Manager",
+		Bio:                 "Experienced manager",
+		Location:            "Chicago",
+		CreatedAt:           createdAt,
+		UpdatedAt:           updatedAt,
+		Admin:               false,
+		Owner:               false,
+		Client:              false,
+		Employee:            false,
+		TimeZone:            "America/Chicago",
+		AvatarUrl:           "https://example.com/avatar.png",
+		Company:             generated.PersonCompany{Id: &companyID, Name: "Honcho Design"},
+		CanManageProjects:   true,
+		CanManagePeople:     false,
+		CanPing:             true,
+		CanAccessTimesheet:  false,
+		CanAccessHillCharts: true,
+	}
+
+	p := webhookPersonFromGenerated(gp)
+
+	if p.ID != 1049715914 {
+		t.Errorf("expected ID 1049715914, got %d", p.ID)
+	}
+	if p.Name != "Annie Bryan" {
+		t.Errorf("expected name 'Annie Bryan', got %q", p.Name)
+	}
+	if p.EmailAddress != "annie@honcho.com" {
+		t.Errorf("expected email 'annie@honcho.com', got %q", p.EmailAddress)
+	}
+	if p.Title != "Central Markets Manager" {
+		t.Errorf("expected title 'Central Markets Manager', got %q", p.Title)
+	}
+	if !p.CanPing {
+		t.Error("expected can_ping to be true")
+	}
+	if p.CanAccessTimesheet {
+		t.Error("expected can_access_timesheet to be false")
+	}
+	if !p.CanAccessHillCharts {
+		t.Error("expected can_access_hill_charts to be true")
+	}
+	if !p.CanManageProjects {
+		t.Error("expected can_manage_projects to be true")
+	}
+	if p.AvatarURL != "https://example.com/avatar.png" {
+		t.Errorf("expected avatar_url, got %q", p.AvatarURL)
+	}
+	if p.TimeZone != "America/Chicago" {
+		t.Errorf("expected time_zone 'America/Chicago', got %q", p.TimeZone)
+	}
+	if p.Company == nil {
+		t.Fatal("expected non-nil company")
+	}
+	if p.Company.Name != "Honcho Design" {
+		t.Errorf("expected company name 'Honcho Design', got %q", p.Company.Name)
+	}
+	if p.Company.ID != 1033447817 {
+		t.Errorf("expected company ID 1033447817, got %d", p.Company.ID)
+	}
+	if p.Bio == nil || *p.Bio != "Experienced manager" {
+		t.Errorf("expected bio 'Experienced manager', got %v", p.Bio)
+	}
+	if p.Location == nil || *p.Location != "Chicago" {
+		t.Errorf("expected location 'Chicago', got %v", p.Location)
+	}
+	if p.PersonableType != "User" {
+		t.Errorf("expected personable_type 'User', got %q", p.PersonableType)
 	}
 }
 
