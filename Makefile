@@ -253,7 +253,7 @@ conformance: conformance-go
 #------------------------------------------------------------------------------
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Behavior Model + Conformance + Provenance)
-check: smithy-check behavior-model-check provenance-check go-check ts-check rb-check conformance
+check: smithy-check behavior-model-check provenance-check go-check-drift go-check ts-check rb-check conformance
 	@echo "==> All checks passed"
 
 # Clean all build artifacts

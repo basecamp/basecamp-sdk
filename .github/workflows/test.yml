@@ -79,6 +79,9 @@ jobs:
       - name: Build
         run: go build ./...
 
+      - name: Check service layer drift
+        run: ../scripts/check-service-drift.sh
+
       - name: Test
         run: go test -v ./...
 
