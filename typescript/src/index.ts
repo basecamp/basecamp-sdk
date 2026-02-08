@@ -350,10 +350,10 @@ export {
 // Boosts service - generated
 export {
   BoostsService,
-  type ListRecordingBoostsBoostOptions,
-  type CreateRecordingBoostBoostRequest,
-  type ListEventBoostsBoostOptions,
-  type CreateEventBoostBoostRequest,
+  type ListForRecordingBoostOptions,
+  type CreateForRecordingBoostRequest,
+  type ListForEventBoostOptions,
+  type CreateForEventBoostRequest,
 } from "./generated/services/boosts.js";
 
 // OpenTelemetry hooks

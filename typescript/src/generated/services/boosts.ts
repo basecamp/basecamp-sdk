@@ -16,29 +16,29 @@ import { Errors } from "../../errors.js";
 
 
 /**
- * Options for listRecordingBoosts.
+ * Options for listForRecording.
  */
-export interface ListRecordingBoostsBoostOptions extends PaginationOptions {
+export interface ListForRecordingBoostOptions extends PaginationOptions {
 }
 
 /**
- * Request parameters for createRecordingBoost.
+ * Request parameters for createForRecording.
  */
-export interface CreateRecordingBoostBoostRequest {
+export interface CreateForRecordingBoostRequest {
   /** Text content */
   content: string;
 }
 
 /**
- * Options for listEventBoosts.
+ * Options for listForEvent.
  */
-export interface ListEventBoostsBoostOptions extends PaginationOptions {
+export interface ListForEventBoostOptions extends PaginationOptions {
 }
 
 /**
- * Request parameters for createEventBoost.
+ * Request parameters for createForEvent.
  */
-export interface CreateEventBoostBoostRequest {
+export interface CreateForEventBoostRequest {
   /** Text content */
   content: string;
 }
@@ -58,13 +58,14 @@ export class BoostsService extends BaseService {
    * @param projectId - The project ID
    * @param boostId - The boost ID
    * @returns The boost
+   * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.boosts.boost(123, 123);
+   * const result = await client.boosts.get(123, 123);
    * ```
    */
-  async boost(projectId: number, boostId: number): Promise<components["schemas"]["GetBoostResponseContent"]> {
+  async get(projectId: number, boostId: number): Promise<components["schemas"]["GetBoostResponseContent"]> {
     const response = await this.request(
       {
         service: "Boosts",
@@ -93,10 +94,10 @@ export class BoostsService extends BaseService {
    *
    * @example
    * ```ts
-   * await client.boosts.deleteBoost(123, 123);
+   * await client.boosts.delete(123, 123);
    * ```
    */
-  async deleteBoost(projectId: number, boostId: number): Promise<void> {
+  async delete(projectId: number, boostId: number): Promise<void> {
     await this.request(
       {
         service: "Boosts",
@@ -124,10 +125,10 @@ export class BoostsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.boosts.listRecordingBoosts(123, 123);
+   * const result = await client.boosts.listForRecording(123, 123);
    * ```
    */
-  async listRecordingBoosts(projectId: number, recordingId: number, options?: ListRecordingBoostsBoostOptions): Promise<components["schemas"]["ListRecordingBoostsResponseContent"]> {
+  async listForRecording(projectId: number, recordingId: number, options?: ListForRecordingBoostOptions): Promise<components["schemas"]["ListRecordingBoostsResponseContent"]> {
     return this.requestPaginated(
       {
         service: "Boosts",
@@ -157,10 +158,10 @@ export class BoostsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.boosts.createRecordingBoost(123, 123, { content: "Hello world" });
+   * const result = await client.boosts.createForRecording(123, 123, { content: "Hello world" });
    * ```
    */
-  async createRecordingBoost(projectId: number, recordingId: number, req: CreateRecordingBoostBoostRequest): Promise<components["schemas"]["CreateRecordingBoostResponseContent"]> {
+  async createForRecording(projectId: number, recordingId: number, req: CreateForRecordingBoostRequest): Promise<components["schemas"]["CreateRecordingBoostResponseContent"]> {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }
@@ -196,10 +197,10 @@ export class BoostsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.boosts.listEventBoosts(123, 123, 123);
+   * const result = await client.boosts.listForEvent(123, 123, 123);
    * ```
    */
-  async listEventBoosts(projectId: number, recordingId: number, eventId: number, options?: ListEventBoostsBoostOptions): Promise<components["schemas"]["ListEventBoostsResponseContent"]> {
+  async listForEvent(projectId: number, recordingId: number, eventId: number, options?: ListForEventBoostOptions): Promise<components["schemas"]["ListEventBoostsResponseContent"]> {
     return this.requestPaginated(
       {
         service: "Boosts",
@@ -230,10 +231,10 @@ export class BoostsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.boosts.createEventBoost(123, 123, 123, { content: "Hello world" });
+   * const result = await client.boosts.createForEvent(123, 123, 123, { content: "Hello world" });
    * ```
    */
-  async createEventBoost(projectId: number, recordingId: number, eventId: number, req: CreateEventBoostBoostRequest): Promise<components["schemas"]["CreateEventBoostResponseContent"]> {
+  async createForEvent(projectId: number, recordingId: number, eventId: number, req: CreateForEventBoostRequest): Promise<components["schemas"]["CreateEventBoostResponseContent"]> {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }

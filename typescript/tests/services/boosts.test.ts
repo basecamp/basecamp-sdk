@@ -40,7 +40,7 @@ describe("BoostsService", () => {
         })
       );
 
-      const boost = await client.boosts.boost(projectId, boostId);
+      const boost = await client.boosts.get(projectId, boostId);
       expect(boost.id).toBe(boostId);
       expect(boost.content).toBe("🎉");
       expect(boost.booster.name).toBe("Jane Doe");
@@ -53,7 +53,7 @@ describe("BoostsService", () => {
         })
       );
 
-      await expect(client.boosts.boost(100, 999)).rejects.toThrow(BasecampError);
+      await expect(client.boosts.get(100, 999)).rejects.toThrow(BasecampError);
     });
   });
 
@@ -65,11 +65,11 @@ describe("BoostsService", () => {
         })
       );
 
-      await expect(client.boosts.deleteBoost(100, 42)).resolves.toBeUndefined();
+      await expect(client.boosts.delete(100, 42)).resolves.toBeUndefined();
     });
   });
 
-  describe("listRecordingBoosts", () => {
+  describe("listForRecording", () => {
     it("should list boosts on a recording", async () => {
       const projectId = 100;
       const recordingId = 200;
@@ -80,14 +80,14 @@ describe("BoostsService", () => {
         })
       );
 
-      const boosts = await client.boosts.listRecordingBoosts(projectId, recordingId);
+      const boosts = await client.boosts.listForRecording(projectId, recordingId);
       expect(boosts).toHaveLength(2);
       expect(boosts[0]!.id).toBe(1);
       expect(boosts[1]!.id).toBe(2);
     });
   });
 
-  describe("createRecordingBoost", () => {
+  describe("createForRecording", () => {
     it("should create a boost on a recording", async () => {
       const projectId = 100;
       const recordingId = 200;
@@ -100,14 +100,14 @@ describe("BoostsService", () => {
         })
       );
 
-      const boost = await client.boosts.createRecordingBoost(projectId, recordingId, {
+      const boost = await client.boosts.createForRecording(projectId, recordingId, {
         content: "🔥",
       });
       expect(boost.id).toBe(99);
     });
   });
 
-  describe("listEventBoosts", () => {
+  describe("listForEvent", () => {
     it("should list boosts on an event", async () => {
       const projectId = 100;
       const recordingId = 200;
@@ -122,13 +122,13 @@ describe("BoostsService", () => {
         )
       );
 
-      const boosts = await client.boosts.listEventBoosts(projectId, recordingId, eventId);
+      const boosts = await client.boosts.listForEvent(projectId, recordingId, eventId);
       expect(boosts).toHaveLength(1);
       expect(boosts[0]!.id).toBe(5);
     });
   });
 
-  describe("createEventBoost", () => {
+  describe("createForEvent", () => {
     it("should create a boost on an event", async () => {
       const projectId = 100;
       const recordingId = 200;
@@ -145,7 +145,7 @@ describe("BoostsService", () => {
         )
       );
 
-      const boost = await client.boosts.createEventBoost(projectId, recordingId, eventId, {
+      const boost = await client.boosts.createForEvent(projectId, recordingId, eventId, {
         content: "👍",
       });
       expect(boost.id).toBe(77);
