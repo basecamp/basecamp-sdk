@@ -252,6 +252,52 @@ func TestRouterMatch(t *testing.T) {
 			wantRes:     "456",
 			wantPath:    "people",
 		},
+		// API URLs with .json suffix
+		{
+			name:        "API URL with .json suffix (boosts list)",
+			input:       "https://3.basecampapi.com/123/recordings/200/boosts.json",
+			wantSource:  MatchedAPI,
+			wantOp:      "ListRecordingBoosts",
+			wantAccount: "123",
+			wantRes:     "200",
+			wantPath:    "boosts",
+		},
+		{
+			name:        "API URL with .json suffix and bucket (flattened)",
+			input:       "https://3.basecampapi.com/123/buckets/456/recordings/200/boosts.json",
+			wantSource:  MatchedAPI,
+			wantOp:      "ListRecordingBoosts",
+			wantAccount: "123",
+			wantProject: "456",
+			wantRes:     "200",
+			wantPath:    "boosts",
+		},
+		{
+			name:        "API URL with .json suffix (campfire lines)",
+			input:       "https://3.basecampapi.com/123/buckets/456/chats/200/lines.json",
+			wantSource:  MatchedAPI,
+			wantOp:      "ListCampfireLines",
+			wantAccount: "123",
+			wantProject: "456",
+			wantPath:    "lines",
+		},
+		{
+			name:        "API URL without .json still works",
+			input:       "https://3.basecampapi.com/123/boosts/500",
+			wantSource:  MatchedAPI,
+			wantOp:      "GetBoost",
+			wantAccount: "123",
+			wantRes:     "500",
+		},
+		{
+			name:        "API URL project sub-resource .json",
+			input:       "https://3.basecampapi.com/123/projects/456/timeline.json",
+			wantSource:  MatchedAPI,
+			wantOp:      "GetProjectTimeline",
+			wantAccount: "123",
+			wantProject: "456",
+			wantPath:    "timeline",
+		},
 	}
 
 	for _, tt := range tests {
@@ -304,6 +350,15 @@ func TestMatchAPI(t *testing.T) {
 	}
 	if m.Operation != "GetTodo" {
 		t.Errorf("Operation = %q, want GetTodo", m.Operation)
+	}
+
+	// API URL with .json suffix should match
+	m = r.MatchAPI("https://3.basecampapi.com/123/recordings/200/boosts.json")
+	if m == nil {
+		t.Fatal("MatchAPI should match .json API URL")
+	}
+	if m.Operation != "ListRecordingBoosts" {
+		t.Errorf("Operation = %q, want ListRecordingBoosts", m.Operation)
 	}
 
 	// Web-only URL should NOT match

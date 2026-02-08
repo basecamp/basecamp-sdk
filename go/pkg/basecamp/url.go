@@ -287,6 +287,7 @@ func flattenPath(path string) (string, string) {
 // matchAPIRoute tries to match the path against the spec-derived route table.
 // Web URLs may contain /buckets/{projectId} segments that don't exist in the
 // flat route table, so we try matching the raw path first, then a flattened version.
+// Note: .json suffixes are already stripped by extractPath during preprocessing.
 func (r *Router) matchAPIRoute(path, fragment string) *Match {
 	m := r.tryMatchRoute(path, fragment)
 	if m != nil {
@@ -433,14 +434,23 @@ func matchStructural(path, fragment string) *Match {
 //   - /123/buckets/456/card_tables/789/columns → "columns"
 //   - /123/buckets/456/card_tables/cards/789 → "cards"
 //   - /123/projects/456 → "project"
+//   - /123/projects/456/timeline → "timeline"
 //   - /123/people/456 → "people" (account-level route)
 func derivePathType(path string) string {
-	// Special case for project URLs
-	if strings.Contains(path, "/projects/") {
-		return "project"
+	// /projects/{id} URLs: "project" only when the project itself is the
+	// terminal resource. If there's a sub-resource (e.g. /projects/456/timeline),
+	// fall through to extract it.
+	if idx := strings.Index(path, "/projects/"); idx != -1 {
+		rest := path[idx+len("/projects/"):]
+		// Skip the project ID
+		if slashIdx := strings.Index(rest, "/"); slashIdx == -1 {
+			return "project" // Terminal: /projects/{id}
+		}
+		// Has sub-resource after /projects/{id}/... — fall through
 	}
 
 	// Find the resource path: for bucket URLs, skip /buckets/{id}/
+	// For project URLs, skip /projects/{id}/
 	// For account-level URLs, skip /{accountId}/
 	var resourcePath string
 	if _, after, ok := strings.Cut(path, "/buckets/"); ok {
@@ -450,6 +460,14 @@ func derivePathType(path string) string {
 			resourcePath = after
 		} else {
 			return "" // Just /buckets/{id}, no resource path
+		}
+	} else if idx := strings.Index(path, "/projects/"); idx != -1 {
+		rest := path[idx+len("/projects/"):]
+		// Skip the project ID
+		if slashIdx := strings.Index(rest, "/"); slashIdx != -1 {
+			resourcePath = rest[slashIdx+1:]
+		} else {
+			return "project"
 		}
 	} else if len(path) > 1 && path[0] == '/' {
 		// Account-level path: /{accountId}/resource/...
@@ -525,7 +543,13 @@ func extractPath(urlPart string) string {
 		path = path[:idx]
 	}
 
-	return strings.TrimRight(path, "/")
+	path = strings.TrimRight(path, "/")
+
+	// Strip .json suffix — the route table normalizes these away during
+	// generation (generate-url-routes:61), so we do the same for incoming URLs.
+	path = strings.TrimSuffix(path, ".json")
+
+	return path
 }
 
 func parseFragment(m *Match, fragment string) {
