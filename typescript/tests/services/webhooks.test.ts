@@ -101,6 +101,30 @@ describe("WebhooksService", () => {
       expect(webhook.types).toContain("Comment");
     });
 
+    it("should parse recent_deliveries with nested event", async () => {
+      const fixture = await import("../../../spec/fixtures/webhooks/get.json");
+      const mockWebhook = fixture.default ?? fixture;
+
+      server.use(
+        http.get(`${BASE_URL}/buckets/1/webhooks/1`, () => {
+          return HttpResponse.json(mockWebhook);
+        })
+      );
+
+      const webhook = await client.webhooks.get(1, 1);
+
+      expect(webhook.recent_deliveries).toBeDefined();
+      expect(webhook.recent_deliveries).toHaveLength(1);
+
+      const delivery = webhook.recent_deliveries![0];
+      expect(delivery.id).toBe(1230);
+      expect(delivery.request?.body?.kind).toBe("todo_created");
+      expect(delivery.request?.body?.recording?.type).toBe("Todo");
+      expect(delivery.request?.body?.recording?.content).toBe("<div>Ship the feature by Friday</div>");
+      expect(delivery.request?.body?.creator?.can_ping).toBe(true);
+      expect(delivery.response?.code).toBe(200);
+    });
+
     it("should throw not_found for non-existent webhook", async () => {
       server.use(
         http.get(`${BASE_URL}/buckets/1/webhooks/999`, () => {
