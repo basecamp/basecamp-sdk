@@ -154,6 +154,64 @@ func TestUpdateWebhookRequest_Marshal(t *testing.T) {
 	}
 }
 
+func TestWebhook_UnmarshalGetWithRecentDeliveries(t *testing.T) {
+	data := loadWebhooksFixture(t, "get.json")
+
+	var webhook Webhook
+	if err := json.Unmarshal(data, &webhook); err != nil {
+		t.Fatalf("failed to unmarshal get.json: %v", err)
+	}
+
+	if len(webhook.RecentDeliveries) != 1 {
+		t.Fatalf("expected 1 recent delivery, got %d", len(webhook.RecentDeliveries))
+	}
+
+	delivery := webhook.RecentDeliveries[0]
+	if delivery.ID != 1230 {
+		t.Errorf("expected delivery ID 1230, got %d", delivery.ID)
+	}
+	if delivery.CreatedAt.IsZero() {
+		t.Error("expected non-zero delivery CreatedAt")
+	}
+
+	// Request
+	if delivery.Request.Headers["Content-Type"] != "application/json" {
+		t.Errorf("expected request Content-Type 'application/json', got %q", delivery.Request.Headers["Content-Type"])
+	}
+	if delivery.Request.Headers["User-Agent"] != "Basecamp3 Webhook" {
+		t.Errorf("expected request User-Agent 'Basecamp3 Webhook', got %q", delivery.Request.Headers["User-Agent"])
+	}
+
+	// Request body is a WebhookEvent
+	body := delivery.Request.Body
+	if body.ID != 9007199254741001 {
+		t.Errorf("expected body event ID 9007199254741001, got %d", body.ID)
+	}
+	if body.Kind != "todo_created" {
+		t.Errorf("expected body event kind 'todo_created', got %q", body.Kind)
+	}
+	if body.Recording.Type != "Todo" {
+		t.Errorf("expected body recording type 'Todo', got %q", body.Recording.Type)
+	}
+	if body.Recording.Title != "Ship the feature" {
+		t.Errorf("expected body recording title 'Ship the feature', got %q", body.Recording.Title)
+	}
+	if body.Creator.Name != "Annie Bryan" {
+		t.Errorf("expected body creator name 'Annie Bryan', got %q", body.Creator.Name)
+	}
+
+	// Response
+	if delivery.Response.Code != 200 {
+		t.Errorf("expected response code 200, got %d", delivery.Response.Code)
+	}
+	if delivery.Response.Message != "OK" {
+		t.Errorf("expected response message 'OK', got %q", delivery.Response.Message)
+	}
+	if delivery.Response.Headers["Content-Type"] != "text/html" {
+		t.Errorf("expected response Content-Type 'text/html', got %q", delivery.Response.Headers["Content-Type"])
+	}
+}
+
 func TestWebhook_TimestampParsing(t *testing.T) {
 	data := loadWebhooksFixture(t, "get.json")
 

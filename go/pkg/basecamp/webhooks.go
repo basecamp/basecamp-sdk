@@ -10,14 +10,36 @@ import (
 
 // Webhook represents a Basecamp webhook subscription.
 type Webhook struct {
-	ID         int64     `json:"id"`
-	Active     bool      `json:"active"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
-	PayloadURL string    `json:"payload_url"`
-	Types      []string  `json:"types"`
-	AppURL     string    `json:"app_url,omitempty"`
-	URL        string    `json:"url,omitempty"`
+	ID               int64             `json:"id"`
+	Active           bool              `json:"active"`
+	CreatedAt        time.Time         `json:"created_at"`
+	UpdatedAt        time.Time         `json:"updated_at"`
+	PayloadURL       string            `json:"payload_url"`
+	Types            []string          `json:"types"`
+	AppURL           string            `json:"app_url,omitempty"`
+	URL              string            `json:"url,omitempty"`
+	RecentDeliveries []WebhookDelivery `json:"recent_deliveries,omitempty"`
+}
+
+// WebhookDelivery represents a recent delivery attempt for a webhook.
+type WebhookDelivery struct {
+	ID        int64                   `json:"id"`
+	CreatedAt time.Time               `json:"created_at"`
+	Request   WebhookDeliveryRequest  `json:"request"`
+	Response  WebhookDeliveryResponse `json:"response"`
+}
+
+// WebhookDeliveryRequest contains the outbound request details.
+type WebhookDeliveryRequest struct {
+	Headers map[string]string `json:"headers"`
+	Body    WebhookEvent      `json:"body"`
+}
+
+// WebhookDeliveryResponse contains the response from the webhook endpoint.
+type WebhookDeliveryResponse struct {
+	Headers map[string]string `json:"headers"`
+	Code    int               `json:"code"`
+	Message string            `json:"message"`
 }
 
 // CreateWebhookRequest specifies the parameters for creating a webhook.
@@ -280,5 +302,122 @@ func webhookFromGenerated(gw generated.Webhook) Webhook {
 		w.ID = *gw.Id
 	}
 
+	if len(gw.RecentDeliveries) > 0 {
+		w.RecentDeliveries = make([]WebhookDelivery, len(gw.RecentDeliveries))
+		for i, gd := range gw.RecentDeliveries {
+			d := WebhookDelivery{
+				CreatedAt: gd.CreatedAt,
+				Request: WebhookDeliveryRequest{
+					Headers: map[string]string(gd.Request.Headers),
+					Body:    webhookEventFromGenerated(gd.Request.Body),
+				},
+				Response: WebhookDeliveryResponse{
+					Headers: map[string]string(gd.Response.Headers),
+					Code:    int(gd.Response.Code),
+					Message: gd.Response.Message,
+				},
+			}
+			if gd.Id != nil {
+				d.ID = *gd.Id
+			}
+			w.RecentDeliveries[i] = d
+		}
+	}
+
 	return w
+}
+
+// webhookEventFromGenerated converts a generated WebhookEvent to our clean type.
+func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
+	event := WebhookEvent{
+		Kind:      ge.Kind,
+		CreatedAt: ge.CreatedAt.Format(time.RFC3339Nano),
+	}
+
+	if ge.Id != nil {
+		event.ID = *ge.Id
+	}
+
+	if ge.Details != nil {
+		if m, ok := ge.Details.(map[string]interface{}); ok {
+			event.Details = m
+		}
+	}
+
+	// Map recording
+	rec := &ge.Recording
+	event.Recording = WebhookEventRecording{
+		Status:           rec.Status,
+		VisibleToClients: rec.VisibleToClients,
+		Title:            rec.Title,
+		InheritsStatus:   rec.InheritsStatus,
+		Type:             rec.Type,
+		URL:              rec.Url,
+		AppURL:           rec.AppUrl,
+		BookmarkURL:      rec.BookmarkUrl,
+		Content:          rec.Content,
+		CommentsCount:    int(rec.CommentsCount),
+		CommentsURL:      rec.CommentsUrl,
+		SubscriptionURL:  rec.SubscriptionUrl,
+	}
+	if rec.Id != nil {
+		event.Recording.ID = *rec.Id
+	}
+	if !rec.CreatedAt.IsZero() {
+		event.Recording.CreatedAt = rec.CreatedAt.Format(time.RFC3339Nano)
+	}
+	if !rec.UpdatedAt.IsZero() {
+		event.Recording.UpdatedAt = rec.UpdatedAt.Format(time.RFC3339Nano)
+	}
+	if rec.Parent.Id != nil {
+		event.Recording.Parent = &WebhookEventParent{
+			Title:  rec.Parent.Title,
+			Type:   rec.Parent.Type,
+			URL:    rec.Parent.Url,
+			AppURL: rec.Parent.AppUrl,
+		}
+		event.Recording.Parent.ID = *rec.Parent.Id
+	}
+	if rec.Bucket.Id != nil {
+		event.Recording.Bucket = &WebhookEventBucket{
+			Name: rec.Bucket.Name,
+			Type: rec.Bucket.Type,
+		}
+		event.Recording.Bucket.ID = *rec.Bucket.Id
+	}
+	if rec.Creator.Id != nil {
+		c := &WebhookEventPerson{
+			Name:         rec.Creator.Name,
+			EmailAddress: rec.Creator.EmailAddress,
+		}
+		c.ID = *rec.Creator.Id
+		event.Recording.Creator = c
+	}
+
+	// Map top-level creator
+	if ge.Creator.Id != nil {
+		event.Creator = WebhookEventPerson{
+			Name:         ge.Creator.Name,
+			EmailAddress: ge.Creator.EmailAddress,
+		}
+		event.Creator.ID = *ge.Creator.Id
+	}
+
+	// Map copy if present
+	if ge.Copy.Url != "" || (ge.Copy.Id != nil && *ge.Copy.Id != 0) {
+		c := &WebhookCopy{
+			URL:    ge.Copy.Url,
+			AppURL: ge.Copy.AppUrl,
+			Bucket: WebhookCopyBucket{},
+		}
+		if ge.Copy.Id != nil {
+			c.ID = *ge.Copy.Id
+		}
+		if ge.Copy.Bucket.Id != nil {
+			c.Bucket.ID = *ge.Copy.Bucket.Id
+		}
+		event.Copy = c
+	}
+
+	return event
 }
