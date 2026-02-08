@@ -1,0 +1,148 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class Basecamp::Webhooks::ReceiverTest < Minitest::Test
+  def fixtures_dir
+    File.expand_path("../../../../spec/fixtures/webhooks", __dir__)
+  end
+
+  def fixture_body(name)
+    File.read(File.join(fixtures_dir, name))
+  end
+
+  def empty_headers
+    {}
+  end
+
+  def test_routes_to_exact_handler
+    receiver = Basecamp::Webhooks::Receiver.new
+    events = []
+    receiver.on("todo_created") { |e| events << e }
+
+    receiver.handle_request(raw_body: fixture_body("event-todo-created.json"), headers: empty_headers)
+
+    assert_equal 1, events.size
+    assert_equal "todo_created", events.first.kind
+  end
+
+  def test_routes_to_glob_handler
+    receiver = Basecamp::Webhooks::Receiver.new
+    events = []
+    receiver.on("todo_*") { |e| events << e }
+
+    receiver.handle_request(raw_body: fixture_body("event-todo-created.json"), headers: empty_headers)
+
+    assert_equal 1, events.size
+  end
+
+  def test_suffix_glob_pattern
+    receiver = Basecamp::Webhooks::Receiver.new
+    events = []
+    receiver.on("*_created") { |e| events << e }
+
+    receiver.handle_request(raw_body: fixture_body("event-todo-created.json"), headers: empty_headers)
+    assert_equal 1, events.size
+  end
+
+  def test_on_any_receives_all_events
+    receiver = Basecamp::Webhooks::Receiver.new
+    events = []
+    receiver.on_any { |e| events << e }
+
+    receiver.handle_request(raw_body: fixture_body("event-todo-created.json"), headers: empty_headers)
+    receiver.handle_request(raw_body: fixture_body("event-message-copied.json"), headers: empty_headers)
+
+    assert_equal 2, events.size
+  end
+
+  def test_unknown_event_kind_does_not_error
+    receiver = Basecamp::Webhooks::Receiver.new
+    receiver.on("todo_created") { |_e| }
+
+    # Should not raise for unknown event kind
+    event = receiver.handle_request(raw_body: fixture_body("event-unknown-future.json"), headers: empty_headers)
+    assert_equal "new_thing_activated", event.kind
+  end
+
+  def test_unknown_event_routes_to_catch_all
+    receiver = Basecamp::Webhooks::Receiver.new
+    events = []
+    receiver.on("todo_created") { |_e| }
+    receiver.on_any { |e| events << e }
+
+    receiver.handle_request(raw_body: fixture_body("event-unknown-future.json"), headers: empty_headers)
+    assert_equal 1, events.size
+  end
+
+  def test_dedup_prevents_double_handling
+    receiver = Basecamp::Webhooks::Receiver.new
+    count = 0
+    receiver.on("todo_created") { |_e| count += 1 }
+
+    body = fixture_body("event-todo-created.json")
+    receiver.handle_request(raw_body: body, headers: empty_headers)
+    receiver.handle_request(raw_body: body, headers: empty_headers)
+
+    assert_equal 1, count
+  end
+
+  def test_dedup_disabled
+    receiver = Basecamp::Webhooks::Receiver.new(dedup_window_size: 0)
+    count = 0
+    receiver.on("todo_created") { |_e| count += 1 }
+
+    body = fixture_body("event-todo-created.json")
+    receiver.handle_request(raw_body: body, headers: empty_headers)
+    receiver.handle_request(raw_body: body, headers: empty_headers)
+
+    assert_equal 2, count
+  end
+
+  def test_middleware_runs_in_order
+    receiver = Basecamp::Webhooks::Receiver.new
+    order = []
+
+    receiver.use { |_event, next_fn| order << 1; next_fn.call }
+    receiver.use { |_event, next_fn| order << 2; next_fn.call }
+    receiver.on_any { |_e| order << 3 }
+
+    receiver.handle_request(raw_body: fixture_body("event-todo-created.json"), headers: empty_headers)
+
+    assert_equal [ 1, 2, 3 ], order
+  end
+
+  def test_verification_with_valid_signature
+    secret = "test-secret"
+    body = fixture_body("event-todo-created.json")
+    signature = Basecamp::Webhooks::Verify.compute_signature(payload: body, secret: secret)
+
+    receiver = Basecamp::Webhooks::Receiver.new(secret: secret)
+    events = []
+    receiver.on_any { |e| events << e }
+
+    headers = { "X-Basecamp-Signature" => signature }
+    receiver.handle_request(raw_body: body, headers: headers)
+
+    assert_equal 1, events.size
+  end
+
+  def test_verification_rejects_bad_signature
+    receiver = Basecamp::Webhooks::Receiver.new(secret: "test-secret")
+
+    headers = { "X-Basecamp-Signature" => "bad-sig" }
+    assert_raises(Basecamp::Webhooks::VerificationError) do
+      receiver.handle_request(raw_body: fixture_body("event-todo-created.json"), headers: headers)
+    end
+  end
+
+  def test_multiple_handlers_per_kind
+    receiver = Basecamp::Webhooks::Receiver.new
+    results = []
+    receiver.on("todo_created") { |_e| results << "a" }
+    receiver.on("todo_created") { |_e| results << "b" }
+
+    receiver.handle_request(raw_body: fixture_body("event-todo-created.json"), headers: empty_headers)
+    assert_equal [ "a", "b" ], results
+  end
+end
