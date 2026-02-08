@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -442,47 +445,98 @@ func TestCreateLine_InvalidContentType(t *testing.T) {
 	}
 }
 
-func TestCreateLine_ValidContentTypes(t *testing.T) {
-	svc := newTestCampfiresService()
+// --- httptest-based service contract tests for CreateLine ---
 
-	// These should pass validation. With a nil gen client the call panics
-	// after validation, which proves content_type was accepted.
-	for _, ct := range []string{LineContentTypeHTML, LineContentTypePlain} {
-		ct := ct
-		t.Run(ct, func(t *testing.T) {
-			defer func() {
-				if r := recover(); r != nil {
-					// Expected: nil gen client panics after passing validation
-				}
-			}()
-			_, err := svc.CreateLine(context.Background(), 1, 2, "hello",
-				&CreateLineOptions{ContentType: ct})
-			if err != nil {
-				var apiErr *Error
-				if errors.As(err, &apiErr) && apiErr.Code == CodeUsage {
-					t.Errorf("content_type %q should pass validation, got usage error: %v", ct, err)
-				}
-			}
-		})
+// testCampfiresServer creates an httptest.Server and a CampfiresService wired to it.
+func testCampfiresServer(t *testing.T, handler http.HandlerFunc) (*CampfiresService, *httptest.Server) {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Campfires(), server
+}
+
+func TestCreateLine_NoOptions_Service(t *testing.T) {
+	var receivedBody map[string]interface{}
+	fixture := loadCampfiresFixture(t, "line_get.json")
+	svc, _ := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/buckets/100/chats/200/lines.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	line, err := svc.CreateLine(context.Background(), 100, 200, "Hello team!")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if line.ID != 1069479350 {
+		t.Errorf("expected line ID 1069479350, got %d", line.ID)
+	}
+	if receivedBody["content"] != "Hello team!" {
+		t.Errorf("expected request content 'Hello team!', got %v", receivedBody["content"])
+	}
+	// content_type should not be present when no options given
+	if _, exists := receivedBody["content_type"]; exists {
+		t.Errorf("content_type should be absent with no options, got %v", receivedBody["content_type"])
 	}
 }
 
-func TestCreateLine_NoOptions(t *testing.T) {
-	svc := newTestCampfiresService()
+func TestCreateLine_HTMLOption_Service(t *testing.T) {
+	var receivedBody map[string]interface{}
+	fixture := loadCampfiresFixture(t, "line_get.json")
+	svc, _ := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &receivedBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
 
-	// No opts (backward-compatible 4-arg call) — should pass validation.
-	// With a nil gen client the call panics after validation.
-	defer func() {
-		if r := recover(); r != nil {
-			// Expected: nil gen client panics after passing validation
-		}
-	}()
-	_, err := svc.CreateLine(context.Background(), 1, 2, "hello")
+	_, err := svc.CreateLine(context.Background(), 100, 200, "<b>Hello</b>",
+		&CreateLineOptions{ContentType: LineContentTypeHTML})
 	if err != nil {
-		var apiErr *Error
-		if errors.As(err, &apiErr) && apiErr.Code == CodeUsage {
-			t.Errorf("no-opts call should pass validation, got usage error: %v", err)
-		}
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedBody["content"] != "<b>Hello</b>" {
+		t.Errorf("expected content '<b>Hello</b>', got %v", receivedBody["content"])
+	}
+	if receivedBody["content_type"] != "text/html" {
+		t.Errorf("expected content_type 'text/html', got %v", receivedBody["content_type"])
+	}
+}
+
+func TestCreateLine_PlainOption_Service(t *testing.T) {
+	var receivedBody map[string]interface{}
+	fixture := loadCampfiresFixture(t, "line_get.json")
+	svc, _ := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &receivedBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	_, err := svc.CreateLine(context.Background(), 100, 200, "plain text",
+		&CreateLineOptions{ContentType: LineContentTypePlain})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedBody["content_type"] != "text/plain" {
+		t.Errorf("expected content_type 'text/plain', got %v", receivedBody["content_type"])
 	}
 }
 
