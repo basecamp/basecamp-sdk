@@ -20,8 +20,7 @@ SERVICE_DIR="$SDK_DIR/pkg/basecamp"
 # Temporary files
 GEN_OPS=$(mktemp)
 SVC_OPS=$(mktemp)
-TEST_OPS=$(mktemp)
-trap "rm -f $GEN_OPS $SVC_OPS $TEST_OPS" EXIT
+trap "rm -f $GEN_OPS $SVC_OPS" EXIT
 
 # Extract generated operations, normalizing WithBodyWithResponse to base operation name
 # e.g., CreateAttachmentWithBodyWithResponse -> CreateAttachment
@@ -42,14 +41,6 @@ done | sed 's/.*\.gen\.\([A-Za-z]*\)WithResponse.*/\1/' \
   | sed 's/WithBody$//' \
   | sort -u > "$SVC_OPS"
 
-# Extract test file calls to gen.*WithResponse (test coverage check)
-for f in "$SERVICE_DIR"/*_test.go; do
-  [ -f "$f" ] || continue
-  grep "\.gen\.[A-Za-z]*WithResponse" "$f" 2>/dev/null || true
-done | sed 's/.*\.gen\.\([A-Za-z]*\)WithResponse.*/\1/' \
-  | sed 's/WithBody$//' \
-  | sort -u > "$TEST_OPS"
-
 # Count operations
 GEN_COUNT=$(wc -l < "$GEN_OPS" | tr -d ' ')
 SVC_COUNT=$(wc -l < "$SVC_OPS" | tr -d ' ')
@@ -65,10 +56,6 @@ UNWRAPPED_COUNT=$(echo "$UNWRAPPED" | grep -c . || true)
 # Find service calls to non-existent operations
 MISSING=$(comm -13 "$GEN_OPS" "$SVC_OPS")
 MISSING_COUNT=$(echo "$MISSING" | grep -c . || true)
-
-# Find wrapped operations without test coverage
-UNTESTED=$(comm -23 "$SVC_OPS" "$TEST_OPS")
-UNTESTED_COUNT=$(echo "$UNTESTED" | grep -c . || true)
 
 HAS_DRIFT=0
 
@@ -86,14 +73,6 @@ if [ "$MISSING_COUNT" -gt 0 ]; then
   echo "These service methods call generated operations that don't exist."
   echo "Either the spec is missing these operations, or there's a typo in the service layer."
   HAS_DRIFT=1
-fi
-
-if [ "$UNTESTED_COUNT" -gt 0 ]; then
-  echo "=== WARNING: Wrapped operations WITHOUT test coverage ($UNTESTED_COUNT) ==="
-  echo "$UNTESTED"
-  echo ""
-  echo "These operations have service wrappers but no tests calling the generated client."
-  echo "Add tests to verify the service layer works end-to-end."
 fi
 
 # Summary

@@ -17,12 +17,6 @@ type Boost struct {
 	Recording *Parent   `json:"recording,omitempty"`
 }
 
-// CreateBoostRequest specifies the parameters for creating a boost.
-type CreateBoostRequest struct {
-	// Content is the emoji content for the boost (required).
-	Content string `json:"content"`
-}
-
 // BoostListResult contains the results from listing boosts.
 type BoostListResult struct {
 	// Boosts is the list of boosts returned.
