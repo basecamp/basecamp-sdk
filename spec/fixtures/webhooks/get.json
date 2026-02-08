@@ -6,5 +6,113 @@
   "payload_url": "https://example.com/webhooks/basecamp",
   "types": ["Todo", "Todolist"],
   "url": "https://3.basecampapi.com/999999999/buckets/2085958500/webhooks/9007199254741433.json",
-  "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/webhooks/9007199254741433"
+  "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/webhooks/9007199254741433",
+  "recent_deliveries": [
+    {
+      "id": 1230,
+      "created_at": "2022-11-22T16:00:00.000Z",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "User-Agent": "Basecamp3 Webhook"
+        },
+        "body": {
+          "id": 9007199254741001,
+          "kind": "todo_created",
+          "details": {},
+          "created_at": "2022-11-22T16:00:00.000Z",
+          "recording": {
+            "id": 9007199254741200,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-11-22T15:59:00.000Z",
+            "updated_at": "2022-11-22T15:59:00.000Z",
+            "title": "Ship the feature",
+            "inherits_status": true,
+            "type": "Todo",
+            "url": "https://3.basecampapi.com/999999999/buckets/2085958500/todos/9007199254741200.json",
+            "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/todos/9007199254741200",
+            "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7CEkiCGdpZAY6BkVU.json",
+            "content": "<div>Ship the feature by Friday</div>",
+            "comments_count": 0,
+            "comments_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/9007199254741200/comments.json",
+            "subscription_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/9007199254741200/subscription.json",
+            "parent": {
+              "id": 9007199254741100,
+              "title": "Launch Checklist",
+              "type": "Todolist",
+              "url": "https://3.basecampapi.com/999999999/buckets/2085958500/todolists/9007199254741100.json",
+              "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/todolists/9007199254741100"
+            },
+            "bucket": {
+              "id": 2085958500,
+              "name": "The Leto Experiment",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVU--abc123",
+              "name": "Annie Bryan",
+              "email_address": "annie@honcho.com",
+              "personable_type": "User",
+              "title": "Central Markets Manager",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": false,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar.png",
+              "company": {
+                "id": 1033447817,
+                "name": "Honcho Design"
+              },
+              "can_manage_projects": true,
+              "can_manage_people": false,
+              "can_ping": true,
+              "can_access_timesheet": false,
+              "can_access_hill_charts": true
+            }
+          },
+          "creator": {
+            "id": 1049715914,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVU--abc123",
+            "name": "Annie Bryan",
+            "email_address": "annie@honcho.com",
+            "personable_type": "User",
+            "title": "Central Markets Manager",
+            "bio": null,
+            "location": null,
+            "created_at": "2022-11-22T08:23:21.732Z",
+            "updated_at": "2022-11-22T08:23:21.732Z",
+            "admin": false,
+            "owner": false,
+            "client": false,
+            "employee": false,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar.png",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": false,
+            "can_ping": true,
+            "can_access_timesheet": false,
+            "can_access_hill_charts": true
+          }
+        }
+      },
+      "response": {
+        "headers": {
+          "Content-Type": "text/html"
+        },
+        "code": 200,
+        "message": "OK"
+      }
+    }
+  ]
 }

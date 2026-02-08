@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-02-08T06:22:25Z
+# Generated: 2026-02-08T08:09:22Z
 
 require "json"
 require "time"
@@ -1307,7 +1307,7 @@ module Basecamp
     # Person
     class Person
       include TypeHelpers
-      attr_accessor :id, :attachable_sgid, :name, :email_address, :personable_type, :title, :bio, :location, :created_at, :updated_at, :admin, :owner, :client, :employee, :time_zone, :avatar_url, :company, :can_manage_projects, :can_manage_people
+      attr_accessor :id, :attachable_sgid, :name, :email_address, :personable_type, :title, :bio, :location, :created_at, :updated_at, :admin, :owner, :client, :employee, :time_zone, :avatar_url, :company, :can_manage_projects, :can_manage_people, :can_ping, :can_access_timesheet, :can_access_hill_charts
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -1329,6 +1329,9 @@ module Basecamp
         @company = parse_type(data["company"], "PersonCompany")
         @can_manage_projects = parse_boolean(data["can_manage_projects"])
         @can_manage_people = parse_boolean(data["can_manage_people"])
+        @can_ping = parse_boolean(data["can_ping"])
+        @can_access_timesheet = parse_boolean(data["can_access_timesheet"])
+        @can_access_hill_charts = parse_boolean(data["can_access_hill_charts"])
       end
 
       def to_h
@@ -1352,6 +1355,9 @@ module Basecamp
           "company" => @company,
           "can_manage_projects" => @can_manage_projects,
           "can_manage_people" => @can_manage_people,
+          "can_ping" => @can_ping,
+          "can_access_timesheet" => @can_access_timesheet,
+          "can_access_hill_charts" => @can_access_hill_charts,
         }.compact
       end
 
@@ -1751,7 +1757,7 @@ module Basecamp
     # Recording
     class Recording
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :parent, :bucket, :creator
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :content, :comments_count, :comments_url, :subscription_url, :parent, :bucket, :creator
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -1765,6 +1771,10 @@ module Basecamp
         @url = data["url"]
         @app_url = data["app_url"]
         @bookmark_url = data["bookmark_url"]
+        @content = data["content"]
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @subscription_url = data["subscription_url"]
         @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "RecordingBucket")
         @creator = parse_type(data["creator"], "Person")
@@ -1783,6 +1793,10 @@ module Basecamp
           "url" => @url,
           "app_url" => @app_url,
           "bookmark_url" => @bookmark_url,
+          "content" => @content,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "subscription_url" => @subscription_url,
           "parent" => @parent,
           "bucket" => @bucket,
           "creator" => @creator,
@@ -2741,7 +2755,7 @@ module Basecamp
     # Webhook
     class Webhook
       include TypeHelpers
-      attr_accessor :id, :active, :created_at, :updated_at, :payload_url, :types, :url, :app_url
+      attr_accessor :id, :active, :created_at, :updated_at, :payload_url, :types, :url, :app_url, :recent_deliveries
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -2752,6 +2766,7 @@ module Basecamp
         @types = data["types"]
         @url = data["url"]
         @app_url = data["app_url"]
+        @recent_deliveries = parse_array(data["recent_deliveries"], "WebhookDelivery")
       end
 
       def to_h
@@ -2764,6 +2779,157 @@ module Basecamp
           "types" => @types,
           "url" => @url,
           "app_url" => @app_url,
+          "recent_deliveries" => @recent_deliveries,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookCopy
+    class WebhookCopy
+      include TypeHelpers
+      attr_accessor :id, :url, :app_url, :bucket
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @url = data["url"]
+        @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "WebhookCopyBucket")
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "url" => @url,
+          "app_url" => @app_url,
+          "bucket" => @bucket,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookCopyBucket
+    class WebhookCopyBucket
+      include TypeHelpers
+      attr_accessor :id
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+      end
+
+      def to_h
+        {
+          "id" => @id,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookDelivery
+    class WebhookDelivery
+      include TypeHelpers
+      attr_accessor :id, :created_at, :request, :response
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @created_at = parse_datetime(data["created_at"])
+        @request = parse_type(data["request"], "WebhookDeliveryRequest")
+        @response = parse_type(data["response"], "WebhookDeliveryResponse")
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "created_at" => @created_at,
+          "request" => @request,
+          "response" => @response,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookDeliveryRequest
+    class WebhookDeliveryRequest
+      include TypeHelpers
+      attr_accessor :headers, :body
+
+      def initialize(data = {})
+        @headers = parse_type(data["headers"], "WebhookHeadersMap")
+        @body = parse_type(data["body"], "WebhookEvent")
+      end
+
+      def to_h
+        {
+          "headers" => @headers,
+          "body" => @body,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookDeliveryResponse
+    class WebhookDeliveryResponse
+      include TypeHelpers
+      attr_accessor :headers, :code, :message
+
+      def initialize(data = {})
+        @headers = parse_type(data["headers"], "WebhookHeadersMap")
+        @code = parse_integer(data["code"])
+        @message = data["message"]
+      end
+
+      def to_h
+        {
+          "headers" => @headers,
+          "code" => @code,
+          "message" => @message,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookEvent
+    class WebhookEvent
+      include TypeHelpers
+      attr_accessor :id, :kind, :details, :created_at, :recording, :creator, :copy
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @kind = data["kind"]
+        @details = data["details"]
+        @created_at = parse_datetime(data["created_at"])
+        @recording = parse_type(data["recording"], "Recording")
+        @creator = parse_type(data["creator"], "Person")
+        @copy = parse_type(data["copy"], "WebhookCopy")
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "kind" => @kind,
+          "details" => @details,
+          "created_at" => @created_at,
+          "recording" => @recording,
+          "creator" => @creator,
+          "copy" => @copy,
         }.compact
       end
 

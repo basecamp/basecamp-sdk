@@ -242,6 +242,27 @@ export {
   type UpdateWebhookRequest,
 } from "./generated/services/webhooks.js";
 
+// Webhook Receiving Infrastructure (hand-written, uses generated types)
+export {
+  WebhookReceiver,
+  WebhookVerificationError,
+  type WebhookEventHandler,
+  type WebhookMiddleware,
+  type WebhookReceiverOptions,
+  type HeaderAccessor,
+} from "./webhooks/handler.js";
+export { verifyWebhookSignature, signWebhookPayload } from "./webhooks/verify.js";
+export {
+  parseEventKind,
+  WebhookEventKind,
+  type WebhookEvent,
+  type WebhookDelivery,
+  type WebhookDeliveryRequest,
+  type WebhookDeliveryResponse,
+  type WebhookCopy,
+} from "./webhooks/events.js";
+export { createNodeHandler, type NodeHandlerOptions } from "./webhooks/adapters/node-http.js";
+
 export {
   SubscriptionsService,
   type Subscription,

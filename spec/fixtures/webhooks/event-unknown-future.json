@@ -1,0 +1,95 @@
+{
+  "id": 9007199254741099,
+  "kind": "new_thing_activated",
+  "details": {
+    "future_field": "something_new",
+    "nested": {
+      "deeply": true
+    }
+  },
+  "created_at": "2025-06-15T12:00:00.000Z",
+  "recording": {
+    "id": 9007199254741400,
+    "status": "active",
+    "visible_to_clients": false,
+    "created_at": "2025-06-15T11:59:00.000Z",
+    "updated_at": "2025-06-15T11:59:00.000Z",
+    "title": "A Future Thing",
+    "inherits_status": true,
+    "type": "NewRecordingType",
+    "url": "https://3.basecampapi.com/999999999/buckets/2085958500/new_things/9007199254741400.json",
+    "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/new_things/9007199254741400",
+    "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7CEkiCGdpZAY6BkVW.json",
+    "content": "<div>Content from a future recording type</div>",
+    "comments_count": 5,
+    "comments_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/9007199254741400/comments.json",
+    "subscription_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/9007199254741400/subscription.json",
+    "extra_future_field": "this field does not exist yet",
+    "parent": {
+      "id": 9007199254741100,
+      "title": "Some Container",
+      "type": "FutureContainer",
+      "url": "https://3.basecampapi.com/999999999/buckets/2085958500/future_containers/9007199254741100.json",
+      "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/future_containers/9007199254741100"
+    },
+    "bucket": {
+      "id": 2085958500,
+      "name": "The Leto Experiment",
+      "type": "Project"
+    },
+    "creator": {
+      "id": 1049715914,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVU--abc123",
+      "name": "Annie Bryan",
+      "email_address": "annie@honcho.com",
+      "personable_type": "User",
+      "title": "Central Markets Manager",
+      "bio": null,
+      "location": null,
+      "created_at": "2022-11-22T08:23:21.732Z",
+      "updated_at": "2022-11-22T08:23:21.732Z",
+      "admin": false,
+      "owner": false,
+      "client": false,
+      "employee": false,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar.png",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      },
+      "can_manage_projects": true,
+      "can_manage_people": false,
+      "can_ping": true,
+      "can_access_timesheet": false,
+      "can_access_hill_charts": true
+    }
+  },
+  "creator": {
+    "id": 1049715914,
+    "attachable_sgid": "BAh7CEkiCGdpZAY6BkVU--abc123",
+    "name": "Annie Bryan",
+    "email_address": "annie@honcho.com",
+    "personable_type": "User",
+    "title": "Central Markets Manager",
+    "bio": null,
+    "location": null,
+    "created_at": "2022-11-22T08:23:21.732Z",
+    "updated_at": "2022-11-22T08:23:21.732Z",
+    "admin": false,
+    "owner": false,
+    "client": false,
+    "employee": false,
+    "time_zone": "America/Chicago",
+    "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar.png",
+    "company": {
+      "id": 1033447817,
+      "name": "Honcho Design"
+    },
+    "can_manage_projects": true,
+    "can_manage_people": false,
+    "can_ping": true,
+    "can_access_timesheet": false,
+    "can_access_hill_charts": true
+  }
+}
