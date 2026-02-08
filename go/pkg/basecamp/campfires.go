@@ -43,10 +43,26 @@ type CampfireLine struct {
 	Creator          *Person   `json:"creator,omitempty"`
 }
 
+// Line content type constants for campfire messages.
+const (
+	// LineContentTypePlain sends the line as plain text (the default when omitted).
+	LineContentTypePlain = "text/plain"
+	// LineContentTypeHTML sends the line as rich HTML content.
+	LineContentTypeHTML = "text/html"
+)
+
 // CreateCampfireLineRequest specifies the parameters for creating a campfire line.
 type CreateCampfireLineRequest struct {
-	// Content is the plain text message body (required).
+	// Content is the message body (required).
 	Content string `json:"content"`
+	// ContentType is "text/plain" or "text/html". If empty, the API defaults to plain text.
+	ContentType string `json:"content_type,omitempty"`
+}
+
+// CreateLineOptions specifies optional parameters for creating a campfire line.
+type CreateLineOptions struct {
+	// ContentType is "text/plain" or "text/html". If empty, the API defaults to plain text.
+	ContentType string
 }
 
 // Chatbot represents a Basecamp chatbot integration.
@@ -255,8 +271,9 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 
 // CreateLine creates a new line (message) in a campfire.
 // bucketID is the project ID, campfireID is the campfire ID.
+// opts is optional; pass a CreateLineOptions to set content_type (text/html or text/plain).
 // Returns the created line.
-func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID int64, content string) (result *CampfireLine, err error) {
+func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID int64, content string, opts ...*CreateLineOptions) (result *CampfireLine, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "CreateLine",
 		ResourceType: "campfire_line", IsMutation: true,
@@ -271,6 +288,11 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	if len(opts) > 1 {
+		err = ErrUsage("CreateLine accepts at most one CreateLineOptions argument")
+		return nil, err
+	}
+
 	if content == "" {
 		err = ErrUsage("campfire line content is required")
 		return nil, err
@@ -278,6 +300,15 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 
 	body := generated.CreateCampfireLineJSONRequestBody{
 		Content: content,
+	}
+	if len(opts) > 0 && opts[0] != nil && opts[0].ContentType != "" {
+		switch opts[0].ContentType {
+		case LineContentTypePlain, LineContentTypeHTML:
+			body.ContentType = opts[0].ContentType
+		default:
+			err = ErrUsage("content_type must be \"text/plain\" or \"text/html\"")
+			return nil, err
+		}
 	}
 
 	resp, err := s.client.parent.gen.CreateCampfireLineWithResponse(ctx, s.client.accountID, bucketID, campfireID, body)

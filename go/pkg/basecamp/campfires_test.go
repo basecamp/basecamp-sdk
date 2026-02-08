@@ -1,7 +1,12 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -328,6 +333,11 @@ func TestCreateCampfireLineRequest_Marshal(t *testing.T) {
 		t.Errorf("unexpected content: %v", data["content"])
 	}
 
+	// content_type should be omitted when empty
+	if _, exists := data["content_type"]; exists {
+		t.Errorf("content_type should be omitted when empty, got: %v", data["content_type"])
+	}
+
 	// Round-trip test
 	var roundtrip CreateCampfireLineRequest
 	if err := json.Unmarshal(out, &roundtrip); err != nil {
@@ -336,6 +346,211 @@ func TestCreateCampfireLineRequest_Marshal(t *testing.T) {
 
 	if roundtrip.Content != req.Content {
 		t.Errorf("expected content %q, got %q", req.Content, roundtrip.Content)
+	}
+}
+
+func TestCreateCampfireLineRequest_MarshalWithContentType(t *testing.T) {
+	req := CreateCampfireLineRequest{
+		Content:     "<strong>Hello</strong>",
+		ContentType: LineContentTypeHTML,
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateCampfireLineRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["content"] != "<strong>Hello</strong>" {
+		t.Errorf("unexpected content: %v", data["content"])
+	}
+	if data["content_type"] != "text/html" {
+		t.Errorf("unexpected content_type: %v", data["content_type"])
+	}
+
+	// Round-trip test
+	var roundtrip CreateCampfireLineRequest
+	if err := json.Unmarshal(out, &roundtrip); err != nil {
+		t.Fatalf("failed to unmarshal round-trip: %v", err)
+	}
+	if roundtrip.ContentType != "text/html" {
+		t.Errorf("expected content_type %q, got %q", "text/html", roundtrip.ContentType)
+	}
+}
+
+func TestCreateCampfireLineRequest_MarshalWithPlainContentType(t *testing.T) {
+	req := CreateCampfireLineRequest{
+		Content:     "Hello team!",
+		ContentType: LineContentTypePlain,
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateCampfireLineRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["content_type"] != "text/plain" {
+		t.Errorf("unexpected content_type: %v", data["content_type"])
+	}
+}
+
+func TestLineContentTypeConstants(t *testing.T) {
+	if LineContentTypePlain != "text/plain" {
+		t.Errorf("expected LineContentTypePlain to be 'text/plain', got %q", LineContentTypePlain)
+	}
+	if LineContentTypeHTML != "text/html" {
+		t.Errorf("expected LineContentTypeHTML to be 'text/html', got %q", LineContentTypeHTML)
+	}
+}
+
+// newTestCampfiresService creates a CampfiresService with minimal wiring for
+// testing validation logic that runs before the generated client call.
+func newTestCampfiresService() *CampfiresService {
+	c := &Client{hooks: NoopHooks{}}
+	ac := &AccountClient{parent: c, accountID: "99999"}
+	return NewCampfiresService(ac)
+}
+
+func TestCreateLine_EmptyContent(t *testing.T) {
+	svc := newTestCampfiresService()
+	_, err := svc.CreateLine(context.Background(), 1, 2, "")
+	if err == nil {
+		t.Fatal("expected error for empty content")
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
+func TestCreateLine_MultipleOptions(t *testing.T) {
+	svc := newTestCampfiresService()
+	_, err := svc.CreateLine(context.Background(), 1, 2, "hello",
+		&CreateLineOptions{ContentType: LineContentTypeHTML},
+		&CreateLineOptions{ContentType: LineContentTypePlain})
+	if err == nil {
+		t.Fatal("expected error for multiple options")
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
+func TestCreateLine_InvalidContentType(t *testing.T) {
+	svc := newTestCampfiresService()
+	_, err := svc.CreateLine(context.Background(), 1, 2, "hello",
+		&CreateLineOptions{ContentType: "application/pdf"})
+	if err == nil {
+		t.Fatal("expected error for invalid content_type")
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
+// --- httptest-based service contract tests for CreateLine ---
+
+// testCampfiresServer creates an httptest.Server and a CampfiresService wired to it.
+func testCampfiresServer(t *testing.T, handler http.HandlerFunc) *CampfiresService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Campfires()
+}
+
+func TestCreateLine_NoOptions_Service(t *testing.T) {
+	var receivedBody map[string]interface{}
+	fixture := loadCampfiresFixture(t, "line_get.json")
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/buckets/100/chats/200/lines.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	line, err := svc.CreateLine(context.Background(), 100, 200, "Hello team!")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if line.ID != 1069479350 {
+		t.Errorf("expected line ID 1069479350, got %d", line.ID)
+	}
+	if receivedBody["content"] != "Hello team!" {
+		t.Errorf("expected request content 'Hello team!', got %v", receivedBody["content"])
+	}
+	// content_type should not be present when no options given
+	if _, exists := receivedBody["content_type"]; exists {
+		t.Errorf("content_type should be absent with no options, got %v", receivedBody["content_type"])
+	}
+}
+
+func TestCreateLine_HTMLOption_Service(t *testing.T) {
+	var receivedBody map[string]interface{}
+	fixture := loadCampfiresFixture(t, "line_get.json")
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &receivedBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	_, err := svc.CreateLine(context.Background(), 100, 200, "<b>Hello</b>",
+		&CreateLineOptions{ContentType: LineContentTypeHTML})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedBody["content"] != "<b>Hello</b>" {
+		t.Errorf("expected content '<b>Hello</b>', got %v", receivedBody["content"])
+	}
+	if receivedBody["content_type"] != "text/html" {
+		t.Errorf("expected content_type 'text/html', got %v", receivedBody["content_type"])
+	}
+}
+
+func TestCreateLine_PlainOption_Service(t *testing.T) {
+	var receivedBody map[string]interface{}
+	fixture := loadCampfiresFixture(t, "line_get.json")
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &receivedBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	_, err := svc.CreateLine(context.Background(), 100, 200, "plain text",
+		&CreateLineOptions{ContentType: LineContentTypePlain})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedBody["content_type"] != "text/plain" {
+		t.Errorf("expected content_type 'text/plain', got %v", receivedBody["content_type"])
 	}
 }
 

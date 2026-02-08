@@ -81,6 +81,7 @@ type AccountClient struct {
 	tools                 *ToolsService
 	lineup                *LineupService
 	subscriptions         *SubscriptionsService
+	boosts                *BoostsService
 	campfires             *CampfiresService
 	timesheet             *TimesheetService
 	schedules             *SchedulesService
@@ -1057,6 +1058,16 @@ func (ac *AccountClient) Subscriptions() *SubscriptionsService {
 		ac.subscriptions = NewSubscriptionsService(ac)
 	}
 	return ac.subscriptions
+}
+
+// Boosts returns the BoostsService for boost (emoji reaction) operations.
+func (ac *AccountClient) Boosts() *BoostsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.boosts == nil {
+		ac.boosts = NewBoostsService(ac)
+	}
+	return ac.boosts
 }
 
 // Campfires returns the CampfiresService for campfire chat operations.
