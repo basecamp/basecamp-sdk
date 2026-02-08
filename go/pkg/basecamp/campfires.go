@@ -271,9 +271,9 @@ func (s *CampfiresService) GetLine(ctx context.Context, bucketID, campfireID, li
 
 // CreateLine creates a new line (message) in a campfire.
 // bucketID is the project ID, campfireID is the campfire ID.
-// opts may be nil for plain text content; use CreateLineOptions to set content_type.
+// opts is optional; pass a CreateLineOptions to set content_type (text/html or text/plain).
 // Returns the created line.
-func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID int64, content string, opts *CreateLineOptions) (result *CampfireLine, err error) {
+func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID int64, content string, opts ...*CreateLineOptions) (result *CampfireLine, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "CreateLine",
 		ResourceType: "campfire_line", IsMutation: true,
@@ -296,10 +296,10 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 	body := generated.CreateCampfireLineJSONRequestBody{
 		Content: content,
 	}
-	if opts != nil && opts.ContentType != "" {
-		switch opts.ContentType {
+	if len(opts) > 0 && opts[0] != nil && opts[0].ContentType != "" {
+		switch opts[0].ContentType {
 		case LineContentTypePlain, LineContentTypeHTML:
-			body.ContentType = opts.ContentType
+			body.ContentType = opts[0].ContentType
 		default:
 			err = ErrUsage("content_type must be \"text/plain\" or \"text/html\"")
 			return nil, err

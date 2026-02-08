@@ -368,7 +368,7 @@ func ExampleCampfiresService_CreateLine() {
 	campfireID := int64(789012)
 
 	// Post a message to a campfire (chat)
-	line, err := client.ForAccount("12345").Campfires().CreateLine(ctx, projectID, campfireID, "Hello team!", nil)
+	line, err := client.ForAccount("12345").Campfires().CreateLine(ctx, projectID, campfireID, "Hello team!")
 	if err != nil {
 		log.Fatal(err)
 	}

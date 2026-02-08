@@ -1,7 +1,9 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -138,6 +140,74 @@ func TestBoost_UnmarshalGet(t *testing.T) {
 	}
 	if boost.Recording.AppURL != "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345/lines/1069479350" {
 		t.Errorf("unexpected Recording.AppURL: %q", boost.Recording.AppURL)
+	}
+}
+
+// newTestBoostsService creates a BoostsService with minimal wiring for
+// testing validation logic that runs before the generated client call.
+func newTestBoostsService() *BoostsService {
+	c := &Client{hooks: NoopHooks{}}
+	ac := &AccountClient{parent: c, accountID: "99999"}
+	return NewBoostsService(ac)
+}
+
+func TestCreateRecordingBoost_EmptyContent(t *testing.T) {
+	svc := newTestBoostsService()
+	_, err := svc.CreateRecording(context.Background(), 1, 2, "")
+	if err == nil {
+		t.Fatal("expected error for empty content")
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
+func TestCreateEventBoost_EmptyContent(t *testing.T) {
+	svc := newTestBoostsService()
+	_, err := svc.CreateEvent(context.Background(), 1, 2, 3, "")
+	if err == nil {
+		t.Fatal("expected error for empty content")
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
+func TestCreateRecordingBoost_ValidContent(t *testing.T) {
+	svc := newTestBoostsService()
+	// Should pass validation. With a nil gen client the call panics
+	// after validation, which proves content was accepted.
+	defer func() {
+		if r := recover(); r != nil {
+			// Expected: nil gen client panics after passing validation
+		}
+	}()
+	_, err := svc.CreateRecording(context.Background(), 1, 2, "🎉")
+	if err != nil {
+		var apiErr *Error
+		if errors.As(err, &apiErr) && apiErr.Code == CodeUsage {
+			t.Errorf("valid content should pass validation, got usage error: %v", err)
+		}
+	}
+}
+
+func TestCreateEventBoost_ValidContent(t *testing.T) {
+	svc := newTestBoostsService()
+	// Should pass validation. With a nil gen client the call panics
+	// after validation, which proves content was accepted.
+	defer func() {
+		if r := recover(); r != nil {
+			// Expected: nil gen client panics after passing validation
+		}
+	}()
+	_, err := svc.CreateEvent(context.Background(), 1, 2, 3, "👍")
+	if err != nil {
+		var apiErr *Error
+		if errors.As(err, &apiErr) && apiErr.Code == CodeUsage {
+			t.Errorf("valid content should pass validation, got usage error: %v", err)
+		}
 	}
 }
 

@@ -1,7 +1,9 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -404,6 +406,83 @@ func TestLineContentTypeConstants(t *testing.T) {
 	}
 	if LineContentTypeHTML != "text/html" {
 		t.Errorf("expected LineContentTypeHTML to be 'text/html', got %q", LineContentTypeHTML)
+	}
+}
+
+// newTestCampfiresService creates a CampfiresService with minimal wiring for
+// testing validation logic that runs before the generated client call.
+func newTestCampfiresService() *CampfiresService {
+	c := &Client{hooks: NoopHooks{}}
+	ac := &AccountClient{parent: c, accountID: "99999"}
+	return NewCampfiresService(ac)
+}
+
+func TestCreateLine_EmptyContent(t *testing.T) {
+	svc := newTestCampfiresService()
+	_, err := svc.CreateLine(context.Background(), 1, 2, "")
+	if err == nil {
+		t.Fatal("expected error for empty content")
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
+func TestCreateLine_InvalidContentType(t *testing.T) {
+	svc := newTestCampfiresService()
+	_, err := svc.CreateLine(context.Background(), 1, 2, "hello",
+		&CreateLineOptions{ContentType: "application/pdf"})
+	if err == nil {
+		t.Fatal("expected error for invalid content_type")
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
+func TestCreateLine_ValidContentTypes(t *testing.T) {
+	svc := newTestCampfiresService()
+
+	// These should pass validation. With a nil gen client the call panics
+	// after validation, which proves content_type was accepted.
+	for _, ct := range []string{LineContentTypeHTML, LineContentTypePlain} {
+		ct := ct
+		t.Run(ct, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					// Expected: nil gen client panics after passing validation
+				}
+			}()
+			_, err := svc.CreateLine(context.Background(), 1, 2, "hello",
+				&CreateLineOptions{ContentType: ct})
+			if err != nil {
+				var apiErr *Error
+				if errors.As(err, &apiErr) && apiErr.Code == CodeUsage {
+					t.Errorf("content_type %q should pass validation, got usage error: %v", ct, err)
+				}
+			}
+		})
+	}
+}
+
+func TestCreateLine_NoOptions(t *testing.T) {
+	svc := newTestCampfiresService()
+
+	// No opts (backward-compatible 4-arg call) — should pass validation.
+	// With a nil gen client the call panics after validation.
+	defer func() {
+		if r := recover(); r != nil {
+			// Expected: nil gen client panics after passing validation
+		}
+	}()
+	_, err := svc.CreateLine(context.Background(), 1, 2, "hello")
+	if err != nil {
+		var apiErr *Error
+		if errors.As(err, &apiErr) && apiErr.Code == CodeUsage {
+			t.Errorf("no-opts call should pass validation, got usage error: %v", err)
+		}
 	}
 }
 
