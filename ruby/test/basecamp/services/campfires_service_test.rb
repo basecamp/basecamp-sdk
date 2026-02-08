@@ -92,6 +92,20 @@ class CampfiresServiceTest < Minitest::Test
     assert_equal "New message", line["content"]
   end
 
+  def test_create_line_with_content_type
+    new_line = sample_line(id: 998, content: "<strong>Rich text</strong>")
+    stub_post("/12345/buckets/100/chats/200/lines.json", response_body: new_line)
+
+    line = @account.campfires.create_line(
+      project_id: 100,
+      campfire_id: 200,
+      content: "<strong>Rich text</strong>",
+      content_type: "text/html"
+    )
+
+    assert_equal 998, line["id"]
+  end
+
   def test_delete_line
     # Generated service: /lines/{id} without .json
     stub_delete("/12345/buckets/100/chats/200/lines/300")

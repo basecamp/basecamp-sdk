@@ -1122,6 +1122,8 @@ structure Todo {
   assignees: PersonList
   completion_subscribers: PersonList
   completion_url: String
+  boosts_count: Integer
+  boosts_url: String
 }
 
 structure TodoParent {
@@ -1253,6 +1255,8 @@ structure Todolist {
   todos_url: String
   groups_url: String
   app_todos_url: String
+  boosts_count: Integer
+  boosts_url: String
 }
 
 // ===== Todolist Group Shapes =====
@@ -2533,7 +2537,7 @@ structure GetTimesheetReportOutput {
 /// Get timesheet for a specific project
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/timesheet.json")
+@http(method: "GET", uri: "/{accountId}/projects/{projectId}/timesheet.json")
 operation GetProjectTimesheet {
   input: GetProjectTimesheetInput
   output: GetProjectTimesheetOutput
@@ -2567,7 +2571,7 @@ structure GetProjectTimesheetOutput {
 /// Get timesheet for a specific recording
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/timesheet.json")
+@http(method: "GET", uri: "/{accountId}/projects/{projectId}/recordings/{recordingId}/timesheet.json")
 operation GetRecordingTimesheet {
   input: GetRecordingTimesheetInput
   output: GetRecordingTimesheetOutput
@@ -2605,7 +2609,7 @@ structure GetRecordingTimesheetOutput {
 /// Get a single timesheet entry
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/timesheet/entries/{entryId}")
+@http(method: "GET", uri: "/{accountId}/projects/{projectId}/timesheet/entries/{entryId}")
 operation GetTimesheetEntry {
   input: GetTimesheetEntryInput
   output: GetTimesheetEntryOutput
@@ -2671,7 +2675,7 @@ structure CreateTimesheetEntryOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/timesheet/entries/{entryId}")
+@http(method: "PUT", uri: "/{accountId}/projects/{projectId}/timesheet/entries/{entryId}")
 operation UpdateTimesheetEntry {
   input: UpdateTimesheetEntryInput
   output: UpdateTimesheetEntryOutput
@@ -2732,6 +2736,8 @@ structure Comment {
   bucket: TodoBucket
   creator: Person
   content: CommentContent
+  boosts_count: Integer
+  boosts_url: String
 }
 
 structure RecordingParent {
@@ -2777,6 +2783,8 @@ structure Message {
   subject: MessageSubject
   content: MessageContent
   category: MessageType
+  boosts_count: Integer
+  boosts_url: String
 }
 
 structure MessageBoard {
@@ -2874,6 +2882,8 @@ structure Document {
   bucket: TodoBucket
   creator: Person
   content: DocumentContent
+  boosts_count: Integer
+  boosts_url: String
 }
 
 // ===== Upload Shapes (Batch 2) =====
@@ -2914,6 +2924,8 @@ structure Upload {
   height: Integer
   download_url: String
   filename: String
+  boosts_count: Integer
+  boosts_url: String
 }
 
 // ===== Schedule Shapes (Batch 3) =====
@@ -2974,6 +2986,8 @@ structure ScheduleEntry {
   starts_at: ISO8601Timestamp
   ends_at: ISO8601Timestamp
   participants: PersonList
+  boosts_count: Integer
+  boosts_url: String
 }
 
 // ===== Timesheet Shapes (Batch 3) =====
@@ -3157,6 +3171,8 @@ structure CreateCampfireLineInput {
 
   @required
   content: String
+
+  content_type: String
 }
 
 structure CreateCampfireLineOutput {
@@ -3608,6 +3624,8 @@ structure CampfireLine {
   parent: RecordingParent
   bucket: TodoBucket
   creator: Person
+  boosts_count: Integer
+  boosts_url: String
 }
 
 list ChatbotList {
@@ -3697,6 +3715,8 @@ structure ForwardReply {
   bucket: TodoBucket
   creator: Person
   content: String
+  boosts_count: Integer
+  boosts_url: String
 }
 
 // =============================================================================
@@ -4398,6 +4418,8 @@ structure Card {
   assignees: PersonList
   completion_subscribers: PersonList
   steps: CardStepList
+  boosts_count: Integer
+  boosts_url: String
 }
 
 list CardStepList {
@@ -5457,6 +5479,8 @@ structure Event {
   details: EventDetails
   created_at: ISO8601Timestamp
   creator: Person
+  boosts_count: Integer
+  boosts_url: String
 }
 
 structure EventDetails {
@@ -6106,6 +6130,8 @@ structure QuestionAnswer {
   parent: RecordingParent
   bucket: RecordingBucket
   creator: Person
+  boosts_count: Integer
+  boosts_url: String
 }
 
 // =============================================================================
@@ -6960,4 +6986,5 @@ structure LineupMarker {
   parent: RecordingParent
   bucket: RecordingBucket
 }
+
 

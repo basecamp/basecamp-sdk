@@ -1248,27 +1248,6 @@
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/timesheet",
-      "resource": "Schedule",
-      "operations": {
-        "GET": "GetRecordingTimesheet"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
       "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/timesheet/entries",
       "resource": "Schedule",
       "operations": {
@@ -1399,45 +1378,6 @@
         },
         "scheduleId": {
           "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/timesheet",
-      "resource": "Schedule",
-      "operations": {
-        "GET": "GetProjectTimesheet"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/timesheet/entries/{entryId}",
-      "resource": "Schedule",
-      "operations": {
-        "GET": "GetTimesheetEntry",
-        "PUT": "UpdateTimesheetEntry"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "entryId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
           "type": "int64"
         }
       }
@@ -2004,6 +1944,27 @@
       }
     },
     {
+      "pattern": "/{accountId}/projects/{projectId}/recordings/{recordingId}/timesheet",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "GetRecordingTimesheet"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/projects/{projectId}/timeline",
       "resource": null,
       "operations": {
@@ -2013,6 +1974,45 @@
         "accountId": {
           "role": "account",
           "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/projects/{projectId}/timesheet",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "GetProjectTimesheet"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/projects/{projectId}/timesheet/entries/{entryId}",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "GetTimesheetEntry",
+        "PUT": "UpdateTimesheetEntry"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "entryId": {
+          "role": "recording",
+          "type": "int64"
         },
         "projectId": {
           "role": "bucket",

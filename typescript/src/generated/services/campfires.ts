@@ -59,6 +59,8 @@ export interface ListLinesCampfireOptions extends PaginationOptions {
 export interface CreateLineCampfireRequest {
   /** Text content */
   content: string;
+  /** Content type */
+  contentType?: string;
 }
 
 /**
@@ -352,6 +354,7 @@ export class CampfiresService extends BaseService {
           },
           body: {
             content: req.content,
+            content_type: req.contentType,
           },
         })
     );

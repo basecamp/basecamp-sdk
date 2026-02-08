@@ -1100,23 +1100,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/recordings/{recordingId}/timesheet.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get timesheet for a specific recording */
-        get: operations["GetRecordingTimesheet"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/buckets/{projectId}/recordings/{recordingId}/timesheet/entries.json": {
         parameters: {
             query?: never;
@@ -1227,41 +1210,6 @@ export interface paths {
         put?: never;
         /** @description Create a new schedule entry */
         post: operations["CreateScheduleEntry"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/buckets/{projectId}/timesheet.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get timesheet for a specific project */
-        get: operations["GetProjectTimesheet"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/buckets/{projectId}/timesheet/entries/{entryId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get a single timesheet entry */
-        get: operations["GetTimesheetEntry"];
-        /** @description Update a timesheet entry */
-        put: operations["UpdateTimesheetEntry"];
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1880,6 +1828,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/recordings/{recordingId}/timesheet.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get timesheet for a specific recording */
+        get: operations["GetRecordingTimesheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/timeline.json": {
         parameters: {
             query?: never;
@@ -1890,6 +1855,41 @@ export interface paths {
         /** @description Get project timeline */
         get: operations["GetProjectTimeline"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/timesheet.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get timesheet for a specific project */
+        get: operations["GetProjectTimesheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/timesheet/entries/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a single timesheet entry */
+        get: operations["GetTimesheetEntry"];
+        /** @description Update a timesheet entry */
+        put: operations["UpdateTimesheetEntry"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2185,6 +2185,9 @@ export interface components {
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         Card: {
             /** Format: int64 */
@@ -2218,6 +2221,9 @@ export interface components {
             assignees?: components["schemas"]["Person"][];
             completion_subscribers?: components["schemas"]["Person"][];
             steps?: components["schemas"]["CardStep"][];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         CardColumn: {
             /** Format: int64 */
@@ -2422,6 +2428,9 @@ export interface components {
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
             content?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         CreateAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         CreateAttachmentInputPayload: string;
@@ -2430,6 +2439,7 @@ export interface components {
         };
         CreateCampfireLineRequestContent: {
             content: string;
+            content_type?: string;
         };
         CreateCampfireLineResponseContent: components["schemas"]["CampfireLine"];
         CreateCardColumnRequestContent: {
@@ -2606,6 +2616,9 @@ export interface components {
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
             content?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         EnableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         Event: {
@@ -2617,6 +2630,9 @@ export interface components {
             details?: components["schemas"]["EventDetails"];
             created_at?: string;
             creator?: components["schemas"]["Person"];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         EventDetails: {
             added_person_ids?: number[];
@@ -2668,6 +2684,9 @@ export interface components {
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
             content?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         GetAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         GetAnswersByPersonResponseContent: components["schemas"]["QuestionAnswer"][];
@@ -2815,6 +2834,9 @@ export interface components {
             subject?: string;
             content?: string;
             category?: components["schemas"]["MessageType"];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         MessageBoard: {
             /** Format: int64 */
@@ -2975,6 +2997,9 @@ export interface components {
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["RecordingBucket"];
             creator?: components["schemas"]["Person"];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         QuestionAnswerPayload: {
             content: string;
@@ -3144,6 +3169,9 @@ export interface components {
             starts_at?: string;
             ends_at?: string;
             participants?: components["schemas"]["Person"][];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         SearchMetadata: {
             projects?: components["schemas"]["SearchProject"][];
@@ -3276,6 +3304,9 @@ export interface components {
             assignees?: components["schemas"]["Person"][];
             completion_subscribers?: components["schemas"]["Person"][];
             completion_url?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         TodoBucket: {
             /** Format: int64 */
@@ -3321,6 +3352,9 @@ export interface components {
             todos_url?: string;
             groups_url?: string;
             app_todos_url?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         TodolistGroup: {
             /** Format: int64 */
@@ -3586,6 +3620,9 @@ export interface components {
             height?: number;
             download_url?: string;
             filename?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         ValidationErrorResponseContent: {
             error: string;
@@ -9311,69 +9348,6 @@ export interface operations {
             };
         };
     };
-    GetRecordingTimesheet: {
-        parameters: {
-            query?: {
-                from?: string;
-                to?: string;
-                person_id?: number;
-            };
-            header?: never;
-            path: {
-                projectId: number;
-                recordingId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetRecordingTimesheet 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetRecordingTimesheetResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
     CreateTimesheetEntry: {
         parameters: {
             query?: never;
@@ -10082,199 +10056,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetProjectTimesheet: {
-        parameters: {
-            query?: {
-                from?: string;
-                to?: string;
-                person_id?: number;
-            };
-            header?: never;
-            path: {
-                projectId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetProjectTimesheet 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetProjectTimesheetResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetTimesheetEntry: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                entryId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetTimesheetEntry 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetTimesheetEntryResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    UpdateTimesheetEntry: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-                entryId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["UpdateTimesheetEntryRequestContent"];
-            };
-        };
-        responses: {
-            /** @description UpdateTimesheetEntry 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UpdateTimesheetEntryResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description NotFoundError 404 response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -13425,6 +13206,69 @@ export interface operations {
             };
         };
     };
+    GetRecordingTimesheet: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                person_id?: number;
+            };
+            header?: never;
+            path: {
+                projectId: number;
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetRecordingTimesheet 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetRecordingTimesheetResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetProjectTimeline: {
         parameters: {
             query?: never;
@@ -13479,6 +13323,199 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetProjectTimesheet: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                person_id?: number;
+            };
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetProjectTimesheet 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetProjectTimesheetResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetTimesheetEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                entryId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetTimesheetEntry 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetTimesheetEntryResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateTimesheetEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+                entryId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateTimesheetEntryRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateTimesheetEntry 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateTimesheetEntryResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
