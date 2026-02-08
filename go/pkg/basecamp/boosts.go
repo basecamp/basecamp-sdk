@@ -36,15 +36,14 @@ func NewBoostsService(client *AccountClient) *BoostsService {
 }
 
 // ListRecording returns all boosts on a recording.
-// bucketID is the project ID, recordingID is the recording ID.
 //
 // The returned BoostListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *BoostsService) ListRecording(ctx context.Context, bucketID, recordingID int64) (result *BoostListResult, err error) {
+func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64) (result *BoostListResult, err error) {
 	op := OperationInfo{
 		Service: "Boosts", Operation: "ListRecording",
 		ResourceType: "boost", IsMutation: false,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -55,7 +54,7 @@ func (s *BoostsService) ListRecording(ctx context.Context, bucketID, recordingID
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListRecordingBoostsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ListRecordingBoostsWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -77,15 +76,14 @@ func (s *BoostsService) ListRecording(ctx context.Context, bucketID, recordingID
 }
 
 // ListEvent returns all boosts on a specific event within a recording.
-// bucketID is the project ID, recordingID is the recording ID, eventID is the event ID.
 //
 // The returned BoostListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *BoostsService) ListEvent(ctx context.Context, bucketID, recordingID, eventID int64) (result *BoostListResult, err error) {
+func (s *BoostsService) ListEvent(ctx context.Context, recordingID, eventID int64) (result *BoostListResult, err error) {
 	op := OperationInfo{
 		Service: "Boosts", Operation: "ListEvent",
 		ResourceType: "boost", IsMutation: false,
-		BucketID: bucketID, ResourceID: eventID,
+		ResourceID: eventID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -96,7 +94,7 @@ func (s *BoostsService) ListEvent(ctx context.Context, bucketID, recordingID, ev
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListEventBoostsWithResponse(ctx, s.client.accountID, bucketID, recordingID, eventID)
+	resp, err := s.client.parent.gen.ListEventBoostsWithResponse(ctx, s.client.accountID, recordingID, eventID)
 	if err != nil {
 		return nil, err
 	}
@@ -118,12 +116,11 @@ func (s *BoostsService) ListEvent(ctx context.Context, bucketID, recordingID, ev
 }
 
 // Get returns a boost by ID.
-// bucketID is the project ID, boostID is the boost ID.
-func (s *BoostsService) Get(ctx context.Context, bucketID, boostID int64) (result *Boost, err error) {
+func (s *BoostsService) Get(ctx context.Context, boostID int64) (result *Boost, err error) {
 	op := OperationInfo{
 		Service: "Boosts", Operation: "Get",
 		ResourceType: "boost", IsMutation: false,
-		BucketID: bucketID, ResourceID: boostID,
+		ResourceID: boostID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -134,7 +131,7 @@ func (s *BoostsService) Get(ctx context.Context, bucketID, boostID int64) (resul
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetBoostWithResponse(ctx, s.client.accountID, bucketID, boostID)
+	resp, err := s.client.parent.gen.GetBoostWithResponse(ctx, s.client.accountID, boostID)
 	if err != nil {
 		return nil, err
 	}
@@ -151,14 +148,13 @@ func (s *BoostsService) Get(ctx context.Context, bucketID, boostID int64) (resul
 }
 
 // CreateRecording creates a boost on a recording.
-// bucketID is the project ID, recordingID is the recording ID.
 // content is the emoji content for the boost.
 // Returns the created boost.
-func (s *BoostsService) CreateRecording(ctx context.Context, bucketID, recordingID int64, content string) (result *Boost, err error) {
+func (s *BoostsService) CreateRecording(ctx context.Context, recordingID int64, content string) (result *Boost, err error) {
 	op := OperationInfo{
 		Service: "Boosts", Operation: "CreateRecording",
 		ResourceType: "boost", IsMutation: true,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -178,7 +174,7 @@ func (s *BoostsService) CreateRecording(ctx context.Context, bucketID, recording
 		Content: content,
 	}
 
-	resp, err := s.client.parent.gen.CreateRecordingBoostWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
+	resp, err := s.client.parent.gen.CreateRecordingBoostWithResponse(ctx, s.client.accountID, recordingID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -195,14 +191,13 @@ func (s *BoostsService) CreateRecording(ctx context.Context, bucketID, recording
 }
 
 // CreateEvent creates a boost on a specific event within a recording.
-// bucketID is the project ID, recordingID is the recording ID, eventID is the event ID.
 // content is the emoji content for the boost.
 // Returns the created boost.
-func (s *BoostsService) CreateEvent(ctx context.Context, bucketID, recordingID, eventID int64, content string) (result *Boost, err error) {
+func (s *BoostsService) CreateEvent(ctx context.Context, recordingID, eventID int64, content string) (result *Boost, err error) {
 	op := OperationInfo{
 		Service: "Boosts", Operation: "CreateEvent",
 		ResourceType: "boost", IsMutation: true,
-		BucketID: bucketID, ResourceID: eventID,
+		ResourceID: eventID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -222,7 +217,7 @@ func (s *BoostsService) CreateEvent(ctx context.Context, bucketID, recordingID, 
 		Content: content,
 	}
 
-	resp, err := s.client.parent.gen.CreateEventBoostWithResponse(ctx, s.client.accountID, bucketID, recordingID, eventID, body)
+	resp, err := s.client.parent.gen.CreateEventBoostWithResponse(ctx, s.client.accountID, recordingID, eventID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -239,12 +234,11 @@ func (s *BoostsService) CreateEvent(ctx context.Context, bucketID, recordingID, 
 }
 
 // Delete deletes a boost.
-// bucketID is the project ID, boostID is the boost ID.
-func (s *BoostsService) Delete(ctx context.Context, bucketID, boostID int64) (err error) {
+func (s *BoostsService) Delete(ctx context.Context, boostID int64) (err error) {
 	op := OperationInfo{
 		Service: "Boosts", Operation: "Delete",
 		ResourceType: "boost", IsMutation: true,
-		BucketID: bucketID, ResourceID: boostID,
+		ResourceID: boostID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -255,7 +249,7 @@ func (s *BoostsService) Delete(ctx context.Context, bucketID, boostID int64) (er
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DeleteBoostWithResponse(ctx, s.client.accountID, bucketID, boostID)
+	resp, err := s.client.parent.gen.DeleteBoostWithResponse(ctx, s.client.accountID, boostID)
 	if err != nil {
 		return err
 	}

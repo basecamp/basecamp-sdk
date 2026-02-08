@@ -156,7 +156,7 @@ func newTestBoostsService() *BoostsService {
 
 func TestCreateRecordingBoost_EmptyContent(t *testing.T) {
 	svc := newTestBoostsService()
-	_, err := svc.CreateRecording(context.Background(), 1, 2, "")
+	_, err := svc.CreateRecording(context.Background(), 2, "")
 	if err == nil {
 		t.Fatal("expected error for empty content")
 	}
@@ -168,7 +168,7 @@ func TestCreateRecordingBoost_EmptyContent(t *testing.T) {
 
 func TestCreateEventBoost_EmptyContent(t *testing.T) {
 	svc := newTestBoostsService()
-	_, err := svc.CreateEvent(context.Background(), 1, 2, 3, "")
+	_, err := svc.CreateEvent(context.Background(), 2, 3, "")
 	if err == nil {
 		t.Fatal("expected error for empty content")
 	}
@@ -201,7 +201,7 @@ func TestBoostsService_ListRecording(t *testing.T) {
 		if r.Method != "GET" {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
-		if r.URL.Path != "/99999/buckets/100/recordings/200/boosts.json" {
+		if r.URL.Path != "/99999/recordings/200/boosts.json" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("X-Total-Count", "42")
@@ -210,7 +210,7 @@ func TestBoostsService_ListRecording(t *testing.T) {
 		w.Write(fixture)
 	})
 
-	result, err := svc.ListRecording(context.Background(), 100, 200)
+	result, err := svc.ListRecording(context.Background(), 200)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -238,7 +238,7 @@ func TestBoostsService_ListRecording_Empty(t *testing.T) {
 		w.Write([]byte("[]"))
 	})
 
-	result, err := svc.ListRecording(context.Background(), 100, 200)
+	result, err := svc.ListRecording(context.Background(), 200)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestBoostsService_Get(t *testing.T) {
 		if r.Method != "GET" {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
-		if r.URL.Path != "/99999/buckets/100/boosts/500" {
+		if r.URL.Path != "/99999/boosts/500" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -264,7 +264,7 @@ func TestBoostsService_Get(t *testing.T) {
 		w.Write(fixture)
 	})
 
-	boost, err := svc.Get(context.Background(), 100, 500)
+	boost, err := svc.Get(context.Background(), 500)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -287,7 +287,7 @@ func TestBoostsService_Get_NotFound(t *testing.T) {
 		w.WriteHeader(404)
 	})
 
-	_, err := svc.Get(context.Background(), 100, 999)
+	_, err := svc.Get(context.Background(), 999)
 	if err == nil {
 		t.Fatal("expected error for 404")
 	}
@@ -303,7 +303,7 @@ func TestBoostsService_CreateRecording(t *testing.T) {
 		if r.Method != "POST" {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
-		if r.URL.Path != "/99999/buckets/100/recordings/200/boosts.json" {
+		if r.URL.Path != "/99999/recordings/200/boosts.json" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		body, _ := io.ReadAll(r.Body)
@@ -314,7 +314,7 @@ func TestBoostsService_CreateRecording(t *testing.T) {
 		w.Write(loadBoostsFixture(t, "get.json"))
 	})
 
-	boost, err := svc.CreateRecording(context.Background(), 100, 200, "🎉")
+	boost, err := svc.CreateRecording(context.Background(), 200, "🎉")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -332,7 +332,7 @@ func TestBoostsService_ListEvent(t *testing.T) {
 		if r.Method != "GET" {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
-		if r.URL.Path != "/99999/buckets/100/recordings/200/events/300/boosts.json" {
+		if r.URL.Path != "/99999/recordings/200/events/300/boosts.json" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("X-Total-Count", "7")
@@ -341,7 +341,7 @@ func TestBoostsService_ListEvent(t *testing.T) {
 		w.Write(fixture)
 	})
 
-	result, err := svc.ListEvent(context.Background(), 100, 200, 300)
+	result, err := svc.ListEvent(context.Background(), 200, 300)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -359,7 +359,7 @@ func TestBoostsService_CreateEvent(t *testing.T) {
 		if r.Method != "POST" {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
-		if r.URL.Path != "/99999/buckets/100/recordings/200/events/300/boosts.json" {
+		if r.URL.Path != "/99999/recordings/200/events/300/boosts.json" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		body, _ := io.ReadAll(r.Body)
@@ -370,7 +370,7 @@ func TestBoostsService_CreateEvent(t *testing.T) {
 		w.Write(loadBoostsFixture(t, "get.json"))
 	})
 
-	boost, err := svc.CreateEvent(context.Background(), 100, 200, 300, "👍")
+	boost, err := svc.CreateEvent(context.Background(), 200, 300, "👍")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -387,13 +387,13 @@ func TestBoostsService_Delete(t *testing.T) {
 		if r.Method != "DELETE" {
 			t.Errorf("expected DELETE, got %s", r.Method)
 		}
-		if r.URL.Path != "/99999/buckets/100/boosts/500" {
+		if r.URL.Path != "/99999/boosts/500" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.WriteHeader(204)
 	})
 
-	err := svc.Delete(context.Background(), 100, 500)
+	err := svc.Delete(context.Background(), 500)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -404,7 +404,7 @@ func TestBoostsService_Delete_NotFound(t *testing.T) {
 		w.WriteHeader(404)
 	})
 
-	err := svc.Delete(context.Background(), 100, 999)
+	err := svc.Delete(context.Background(), 999)
 	if err == nil {
 		t.Fatal("expected error for 404")
 	}

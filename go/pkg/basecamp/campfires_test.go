@@ -422,7 +422,7 @@ func newTestCampfiresService() *CampfiresService {
 
 func TestCreateLine_EmptyContent(t *testing.T) {
 	svc := newTestCampfiresService()
-	_, err := svc.CreateLine(context.Background(), 1, 2, "")
+	_, err := svc.CreateLine(context.Background(), 2, "")
 	if err == nil {
 		t.Fatal("expected error for empty content")
 	}
@@ -434,7 +434,7 @@ func TestCreateLine_EmptyContent(t *testing.T) {
 
 func TestCreateLine_MultipleOptions(t *testing.T) {
 	svc := newTestCampfiresService()
-	_, err := svc.CreateLine(context.Background(), 1, 2, "hello",
+	_, err := svc.CreateLine(context.Background(), 2, "hello",
 		&CreateLineOptions{ContentType: LineContentTypeHTML},
 		&CreateLineOptions{ContentType: LineContentTypePlain})
 	if err == nil {
@@ -448,7 +448,7 @@ func TestCreateLine_MultipleOptions(t *testing.T) {
 
 func TestCreateLine_InvalidContentType(t *testing.T) {
 	svc := newTestCampfiresService()
-	_, err := svc.CreateLine(context.Background(), 1, 2, "hello",
+	_, err := svc.CreateLine(context.Background(), 2, "hello",
 		&CreateLineOptions{ContentType: "application/pdf"})
 	if err == nil {
 		t.Fatal("expected error for invalid content_type")
@@ -482,7 +482,7 @@ func TestCreateLine_NoOptions_Service(t *testing.T) {
 		if r.Method != "POST" {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
-		if r.URL.Path != "/99999/buckets/100/chats/200/lines.json" {
+		if r.URL.Path != "/99999/chats/200/lines.json" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		body, _ := io.ReadAll(r.Body)
@@ -493,7 +493,7 @@ func TestCreateLine_NoOptions_Service(t *testing.T) {
 		w.Write(fixture)
 	})
 
-	line, err := svc.CreateLine(context.Background(), 100, 200, "Hello team!")
+	line, err := svc.CreateLine(context.Background(), 200, "Hello team!")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -520,7 +520,7 @@ func TestCreateLine_HTMLOption_Service(t *testing.T) {
 		w.Write(fixture)
 	})
 
-	_, err := svc.CreateLine(context.Background(), 100, 200, "<b>Hello</b>",
+	_, err := svc.CreateLine(context.Background(), 200, "<b>Hello</b>",
 		&CreateLineOptions{ContentType: LineContentTypeHTML})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -544,7 +544,7 @@ func TestCreateLine_PlainOption_Service(t *testing.T) {
 		w.Write(fixture)
 	})
 
-	_, err := svc.CreateLine(context.Background(), 100, 200, "plain text",
+	_, err := svc.CreateLine(context.Background(), 200, "plain text",
 		&CreateLineOptions{ContentType: LineContentTypePlain})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
