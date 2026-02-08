@@ -288,6 +288,11 @@ func (s *CampfiresService) CreateLine(ctx context.Context, bucketID, campfireID 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	if len(opts) > 1 {
+		err = ErrUsage("CreateLine accepts at most one CreateLineOptions argument")
+		return nil, err
+	}
+
 	if content == "" {
 		err = ErrUsage("campfire line content is required")
 		return nil, err

@@ -178,47 +178,11 @@ func TestCreateEventBoost_EmptyContent(t *testing.T) {
 	}
 }
 
-func TestCreateRecordingBoost_ValidContent(t *testing.T) {
-	svc := newTestBoostsService()
-	// Should pass validation. With a nil gen client the call panics
-	// after validation, which proves content was accepted.
-	defer func() {
-		if r := recover(); r != nil {
-			// Expected: nil gen client panics after passing validation
-		}
-	}()
-	_, err := svc.CreateRecording(context.Background(), 1, 2, "🎉")
-	if err != nil {
-		var apiErr *Error
-		if errors.As(err, &apiErr) && apiErr.Code == CodeUsage {
-			t.Errorf("valid content should pass validation, got usage error: %v", err)
-		}
-	}
-}
-
-func TestCreateEventBoost_ValidContent(t *testing.T) {
-	svc := newTestBoostsService()
-	// Should pass validation. With a nil gen client the call panics
-	// after validation, which proves content was accepted.
-	defer func() {
-		if r := recover(); r != nil {
-			// Expected: nil gen client panics after passing validation
-		}
-	}()
-	_, err := svc.CreateEvent(context.Background(), 1, 2, 3, "👍")
-	if err != nil {
-		var apiErr *Error
-		if errors.As(err, &apiErr) && apiErr.Code == CodeUsage {
-			t.Errorf("valid content should pass validation, got usage error: %v", err)
-		}
-	}
-}
-
 // --- httptest-based service contract tests ---
 
 // testBoostsServer creates an httptest.Server and a BoostsService wired to it.
 // The handler receives all requests; caller is responsible for routing.
-func testBoostsServer(t *testing.T, handler http.HandlerFunc) (*BoostsService, *httptest.Server) {
+func testBoostsServer(t *testing.T, handler http.HandlerFunc) *BoostsService {
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -228,12 +192,12 @@ func testBoostsServer(t *testing.T, handler http.HandlerFunc) (*BoostsService, *
 	token := &StaticTokenProvider{Token: "test-token"}
 	client := NewClient(cfg, token)
 	account := client.ForAccount("99999")
-	return account.Boosts(), server
+	return account.Boosts()
 }
 
 func TestBoostsService_ListRecording(t *testing.T) {
 	fixture := loadBoostsFixture(t, "list.json")
-	svc, _ := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
@@ -268,7 +232,7 @@ func TestBoostsService_ListRecording(t *testing.T) {
 }
 
 func TestBoostsService_ListRecording_Empty(t *testing.T) {
-	svc, _ := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write([]byte("[]"))
@@ -288,7 +252,7 @@ func TestBoostsService_ListRecording_Empty(t *testing.T) {
 
 func TestBoostsService_Get(t *testing.T) {
 	fixture := loadBoostsFixture(t, "get.json")
-	svc, _ := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
@@ -319,7 +283,7 @@ func TestBoostsService_Get(t *testing.T) {
 }
 
 func TestBoostsService_Get_NotFound(t *testing.T) {
-	svc, _ := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 	})
 
@@ -335,7 +299,7 @@ func TestBoostsService_Get_NotFound(t *testing.T) {
 
 func TestBoostsService_CreateRecording(t *testing.T) {
 	var receivedBody map[string]string
-	svc, _ := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
@@ -362,8 +326,64 @@ func TestBoostsService_CreateRecording(t *testing.T) {
 	}
 }
 
+func TestBoostsService_ListEvent(t *testing.T) {
+	fixture := loadBoostsFixture(t, "list.json")
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/buckets/100/recordings/200/events/300/boosts.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("X-Total-Count", "7")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.ListEvent(context.Background(), 100, 200, 300)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Boosts) != 2 {
+		t.Errorf("expected 2 boosts, got %d", len(result.Boosts))
+	}
+	if result.Meta.TotalCount != 7 {
+		t.Errorf("expected TotalCount 7, got %d", result.Meta.TotalCount)
+	}
+}
+
+func TestBoostsService_CreateEvent(t *testing.T) {
+	var receivedBody map[string]string
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/buckets/100/recordings/200/events/300/boosts.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(loadBoostsFixture(t, "get.json"))
+	})
+
+	boost, err := svc.CreateEvent(context.Background(), 100, 200, 300, "👍")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if boost.ID != 1069479500 {
+		t.Errorf("expected ID 1069479500, got %d", boost.ID)
+	}
+	if receivedBody["content"] != "👍" {
+		t.Errorf("expected request body content '👍', got %q", receivedBody["content"])
+	}
+}
+
 func TestBoostsService_Delete(t *testing.T) {
-	svc, _ := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "DELETE" {
 			t.Errorf("expected DELETE, got %s", r.Method)
 		}
@@ -380,7 +400,7 @@ func TestBoostsService_Delete(t *testing.T) {
 }
 
 func TestBoostsService_Delete_NotFound(t *testing.T) {
-	svc, _ := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 	})
 
@@ -393,4 +413,3 @@ func TestBoostsService_Delete_NotFound(t *testing.T) {
 		t.Errorf("expected not_found error, got: %v", err)
 	}
 }
-

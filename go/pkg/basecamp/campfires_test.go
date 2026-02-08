@@ -432,6 +432,20 @@ func TestCreateLine_EmptyContent(t *testing.T) {
 	}
 }
 
+func TestCreateLine_MultipleOptions(t *testing.T) {
+	svc := newTestCampfiresService()
+	_, err := svc.CreateLine(context.Background(), 1, 2, "hello",
+		&CreateLineOptions{ContentType: LineContentTypeHTML},
+		&CreateLineOptions{ContentType: LineContentTypePlain})
+	if err == nil {
+		t.Fatal("expected error for multiple options")
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
 func TestCreateLine_InvalidContentType(t *testing.T) {
 	svc := newTestCampfiresService()
 	_, err := svc.CreateLine(context.Background(), 1, 2, "hello",
@@ -448,7 +462,7 @@ func TestCreateLine_InvalidContentType(t *testing.T) {
 // --- httptest-based service contract tests for CreateLine ---
 
 // testCampfiresServer creates an httptest.Server and a CampfiresService wired to it.
-func testCampfiresServer(t *testing.T, handler http.HandlerFunc) (*CampfiresService, *httptest.Server) {
+func testCampfiresServer(t *testing.T, handler http.HandlerFunc) *CampfiresService {
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -458,13 +472,13 @@ func testCampfiresServer(t *testing.T, handler http.HandlerFunc) (*CampfiresServ
 	token := &StaticTokenProvider{Token: "test-token"}
 	client := NewClient(cfg, token)
 	account := client.ForAccount("99999")
-	return account.Campfires(), server
+	return account.Campfires()
 }
 
 func TestCreateLine_NoOptions_Service(t *testing.T) {
 	var receivedBody map[string]interface{}
 	fixture := loadCampfiresFixture(t, "line_get.json")
-	svc, _ := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
@@ -498,7 +512,7 @@ func TestCreateLine_NoOptions_Service(t *testing.T) {
 func TestCreateLine_HTMLOption_Service(t *testing.T) {
 	var receivedBody map[string]interface{}
 	fixture := loadCampfiresFixture(t, "line_get.json")
-	svc, _ := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		json.Unmarshal(body, &receivedBody)
 		w.Header().Set("Content-Type", "application/json")
@@ -522,7 +536,7 @@ func TestCreateLine_HTMLOption_Service(t *testing.T) {
 func TestCreateLine_PlainOption_Service(t *testing.T) {
 	var receivedBody map[string]interface{}
 	fixture := loadCampfiresFixture(t, "line_get.json")
-	svc, _ := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		json.Unmarshal(body, &receivedBody)
 		w.Header().Set("Content-Type", "application/json")
