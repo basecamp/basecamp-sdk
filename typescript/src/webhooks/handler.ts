@@ -42,8 +42,9 @@ export class WebhookReceiver {
   private readonly handlers = new Map<string, WebhookEventHandler[]>();
   private readonly anyHandlers: WebhookEventHandler[] = [];
   private readonly middlewareChain: WebhookMiddleware[] = [];
-  private readonly dedupSet = new Set<string>();
+  private readonly dedupSeen = new Set<string>();
   private readonly dedupOrder: string[] = [];
+  private readonly dedupPending = new Set<string>();
 
   constructor(options?: WebhookReceiverOptions) {
     this.secret = options?.secret;
@@ -100,27 +101,33 @@ export class WebhookReceiver {
     const eventIdStr = extractIdString(bodyStr);
     const event: WebhookEvent = JSON.parse(bodyStr);
 
-    // Dedup check — only check, don't record yet (record after successful handling)
-    if (this.isSeen(eventIdStr)) {
+    // Atomic dedup: check seen + pending, claim before handlers, commit on success, release on error
+    if (!this.claim(eventIdStr)) {
       return event;
     }
 
-    // Build middleware chain → handlers
-    const runHandlers = async () => {
-      await this.dispatchHandlers(event);
-    };
+    try {
+      // Build middleware chain → handlers
+      const runHandlers = async () => {
+        await this.dispatchHandlers(event);
+      };
 
-    let chain = runHandlers;
-    for (let i = this.middlewareChain.length - 1; i >= 0; i--) {
-      const mw = this.middlewareChain[i]!;
-      const next = chain;
-      chain = () => mw(event, next);
+      let chain = runHandlers;
+      for (let i = this.middlewareChain.length - 1; i >= 0; i--) {
+        const mw = this.middlewareChain[i]!;
+        const next = chain;
+        chain = () => mw(event, next);
+      }
+
+      await chain();
+
+      // Promote from pending to seen on success
+      this.commitSeen(eventIdStr);
+    } catch (err) {
+      // Release claim so retries can re-attempt
+      this.releaseClaim(eventIdStr);
+      throw err;
     }
-
-    await chain();
-
-    // Record in dedup window only after successful handling
-    this.markSeen(eventIdStr);
 
     return event;
   }
@@ -134,23 +141,32 @@ export class WebhookReceiver {
     return val;
   }
 
-  private isSeen(eventIdStr: string | undefined): boolean {
-    if (this.dedupWindowSize <= 0 || !eventIdStr) return false;
-    return this.dedupSet.has(eventIdStr);
+  /** Returns true if the event was claimed (caller should process it). Returns false if already seen or in-flight. */
+  private claim(eventIdStr: string | undefined): boolean {
+    if (this.dedupWindowSize <= 0 || !eventIdStr) return true;
+    if (this.dedupSeen.has(eventIdStr) || this.dedupPending.has(eventIdStr)) return false;
+    this.dedupPending.add(eventIdStr);
+    return true;
   }
 
-  private markSeen(eventIdStr: string | undefined): void {
+  /** Promote from pending to seen after successful handling. */
+  private commitSeen(eventIdStr: string | undefined): void {
     if (this.dedupWindowSize <= 0 || !eventIdStr) return;
-    if (this.dedupSet.has(eventIdStr)) return;
+    this.dedupPending.delete(eventIdStr);
 
     // Evict oldest if at capacity
     if (this.dedupOrder.length >= this.dedupWindowSize) {
       const oldest = this.dedupOrder.shift()!;
-      this.dedupSet.delete(oldest);
+      this.dedupSeen.delete(oldest);
     }
 
-    this.dedupSet.add(eventIdStr);
+    this.dedupSeen.add(eventIdStr);
     this.dedupOrder.push(eventIdStr);
+  }
+
+  /** Release claim on handler error so retries can re-attempt. */
+  private releaseClaim(eventIdStr: string | undefined): void {
+    if (eventIdStr) this.dedupPending.delete(eventIdStr);
   }
 
   private async dispatchHandlers(event: WebhookEvent): Promise<void> {
@@ -170,11 +186,34 @@ export class WebhookReceiver {
   }
 }
 
-/** Extract the top-level "id" field as a raw string from JSON, avoiding Number precision loss on int64. */
-const ID_REGEX = /"id"\s*:\s*(\d+)/;
+/** Extract the top-level "id" field as a raw string from JSON, avoiding Number precision loss on int64.
+ *  Only matches "id" at brace depth 1 (top-level object), ignoring nested "id" fields. */
 function extractIdString(json: string): string | undefined {
-  const m = ID_REGEX.exec(json);
-  return m?.[1];
+  let depth = 0;
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+    if (ch === "{") { depth++; continue; }
+    if (ch === "}") { depth--; continue; }
+    if (ch === '"' && depth === 1) {
+      // Check if this is "id" at top level
+      if (json[i + 1] === "i" && json[i + 2] === "d" && json[i + 3] === '"') {
+        // Skip past "id" and any whitespace/colon
+        let j = i + 4;
+        while (j < json.length && (json[j] === " " || json[j] === "\t" || json[j] === "\n" || json[j] === "\r" || json[j] === ":")) j++;
+        // Extract digits
+        const start = j;
+        while (j < json.length && json[j]! >= "0" && json[j]! <= "9") j++;
+        if (j > start) return json.slice(start, j);
+      }
+      // Skip past this string value (to avoid matching "id" inside string values)
+      i++;
+      while (i < json.length && json[i] !== '"') {
+        if (json[i] === "\\") i++; // skip escaped char
+        i++;
+      }
+    }
+  }
+  return undefined;
 }
 
 /**

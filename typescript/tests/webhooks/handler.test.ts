@@ -178,6 +178,62 @@ describe("WebhookReceiver", () => {
       expect(calls).toBe(2);
     });
 
+    it("uses top-level id, not nested recording.id, for dedup", async () => {
+      const receiver = new WebhookReceiver();
+      let calls = 0;
+      receiver.onAny(() => { calls++; });
+
+      // Two events with different top-level IDs but the same nested recording.id
+      const event1 = '{"id":100,"kind":"a","created_at":"2022-01-01T00:00:00Z","recording":{"id":999},"creator":{"id":1}}';
+      const event2 = '{"id":200,"kind":"b","created_at":"2022-01-01T00:00:00Z","recording":{"id":999},"creator":{"id":1}}';
+
+      await receiver.handleRequest(event1, emptyHeaders);
+      await receiver.handleRequest(event2, emptyHeaders);
+
+      // Both should fire — they have different top-level IDs
+      expect(calls).toBe(2);
+    });
+
+    it("does not use nested id when it appears before top-level id", async () => {
+      const receiver = new WebhookReceiver();
+      let calls = 0;
+      receiver.onAny(() => { calls++; });
+
+      // Contrived: nested object appears first in the JSON, but top-level id is what matters
+      // In valid JSON, this would be: {"recording":{"id":999},"id":100,...}
+      // The scanner must track brace depth and only match at depth 1
+      const event1 = '{"recording":{"id":999},"id":100,"kind":"a","created_at":"2022-01-01T00:00:00Z","creator":{"id":1}}';
+      const event2 = '{"recording":{"id":999},"id":200,"kind":"b","created_at":"2022-01-01T00:00:00Z","creator":{"id":1}}';
+
+      await receiver.handleRequest(event1, emptyHeaders);
+      await receiver.handleRequest(event2, emptyHeaders);
+
+      expect(calls).toBe(2);
+    });
+
+    it("concurrent claims prevent duplicate handler execution", async () => {
+      const receiver = new WebhookReceiver();
+      let calls = 0;
+      receiver.onAny(async () => {
+        calls++;
+        // Simulate slow handler
+        await new Promise(resolve => setTimeout(resolve, 10));
+      });
+
+      const body = '{"id":42,"kind":"a","created_at":"2022-01-01T00:00:00Z","recording":{"id":1},"creator":{"id":1}}';
+
+      // Fire two concurrent requests for the same event
+      const [r1, r2] = await Promise.allSettled([
+        receiver.handleRequest(body, emptyHeaders),
+        receiver.handleRequest(body, emptyHeaders),
+      ]);
+
+      // One should process, one should be dedup'd — total calls should be 1
+      expect(calls).toBe(1);
+      expect(r1.status).toBe("fulfilled");
+      expect(r2.status).toBe("fulfilled");
+    });
+
     it("allows duplicates when dedup is disabled", async () => {
       const receiver = new WebhookReceiver({ dedupWindowSize: 0 });
       let count = 0;

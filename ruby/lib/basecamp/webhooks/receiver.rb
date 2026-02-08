@@ -21,7 +21,8 @@ module Basecamp
         @handlers = {}
         @any_handlers = []
         @middleware = []
-        @dedup_set = {}
+        @dedup_seen = {}
+        @dedup_pending = {}
         @dedup_order = []
         @mutex = Mutex.new
       end
@@ -63,19 +64,25 @@ module Basecamp
         hash = JSON.parse(raw_body)
         event = Event.new(hash)
 
-        # Dedup check — only check, don't record yet (record after successful handling)
-        return event if seen?(event.id)
+        # Atomic dedup: claim before handlers, commit on success, release on error
+        return event unless claim(event.id)
 
-        # Build middleware chain
-        run_handlers = -> { dispatch_handlers(event) }
-        chain = @middleware.reverse.reduce(run_handlers) do |next_fn, mw|
-          -> { mw.call(event, next_fn) }
+        begin
+          # Build middleware chain
+          run_handlers = -> { dispatch_handlers(event) }
+          chain = @middleware.reverse.reduce(run_handlers) do |next_fn, mw|
+            -> { mw.call(event, next_fn) }
+          end
+
+          chain.call
+
+          # Promote from pending to seen on success
+          commit_seen(event.id)
+        rescue => e
+          # Release claim so retries can re-attempt
+          release_claim(event.id)
+          raise e
         end
-
-        chain.call
-
-        # Record in dedup window only after successful handling
-        mark_seen(event.id)
 
         event
       end
@@ -91,27 +98,41 @@ module Basecamp
         end
       end
 
-      def seen?(event_id)
-        return false if @dedup_window_size <= 0 || event_id.nil?
+      # Returns true if the event was claimed (caller should process it).
+      # Returns false if already seen or in-flight.
+      def claim(event_id)
+        return true if @dedup_window_size <= 0 || event_id.nil?
 
         @mutex.synchronize do
-          @dedup_set.key?(event_id)
+          return false if @dedup_seen.key?(event_id) || @dedup_pending.key?(event_id)
+          @dedup_pending[event_id] = true
+          true
         end
       end
 
-      def mark_seen(event_id)
+      # Promote from pending to seen after successful handling.
+      def commit_seen(event_id)
         return if @dedup_window_size <= 0 || event_id.nil?
 
         @mutex.synchronize do
-          return if @dedup_set.key?(event_id)
+          @dedup_pending.delete(event_id)
 
           if @dedup_order.size >= @dedup_window_size
             oldest = @dedup_order.shift
-            @dedup_set.delete(oldest)
+            @dedup_seen.delete(oldest)
           end
 
-          @dedup_set[event_id] = true
+          @dedup_seen[event_id] = true
           @dedup_order << event_id
+        end
+      end
+
+      # Release claim so retries can re-attempt.
+      def release_claim(event_id)
+        return if event_id.nil?
+
+        @mutex.synchronize do
+          @dedup_pending.delete(event_id)
         end
       end
 

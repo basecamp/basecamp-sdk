@@ -46,9 +46,10 @@ type WebhookReceiver struct {
 	mu          sync.RWMutex
 
 	// dedup
-	dedupSet   map[int64]struct{}
-	dedupOrder []int64
-	dedupMu    sync.Mutex
+	dedupSeen    map[int64]struct{}
+	dedupPending map[int64]struct{}
+	dedupOrder   []int64
+	dedupMu      sync.Mutex
 }
 
 // NewWebhookReceiver creates a new WebhookReceiver with the given config.
@@ -68,7 +69,8 @@ func NewWebhookReceiver(config WebhookReceiverConfig) *WebhookReceiver {
 		handlers: make(map[string][]WebhookEventHandler),
 	}
 	if config.DedupWindowSize > 0 {
-		r.dedupSet = make(map[int64]struct{})
+		r.dedupSeen = make(map[int64]struct{})
+		r.dedupPending = make(map[int64]struct{})
 		r.dedupOrder = make([]int64, 0, config.DedupWindowSize)
 	}
 	return r
@@ -115,8 +117,8 @@ func (r *WebhookReceiver) HandleRequest(body []byte, getHeader func(string) stri
 		return nil, fmt.Errorf("failed to parse webhook event: %w", err)
 	}
 
-	// Dedup check — only check, don't record yet (record after successful handling).
-	if r.isSeen(event.ID) {
+	// Atomic dedup: claim before handlers, commit on success, release on error.
+	if !r.claim(event.ID) {
 		return &event, nil
 	}
 
@@ -141,11 +143,11 @@ func (r *WebhookReceiver) HandleRequest(body []byte, getHeader func(string) stri
 	}
 
 	if err := chain(); err != nil {
+		r.releaseClaim(event.ID)
 		return &event, err
 	}
 
-	// Record in dedup window only after successful handling.
-	r.markSeen(event.ID)
+	r.commitSeen(event.ID)
 
 	return &event, nil
 }
@@ -181,19 +183,28 @@ func (r *WebhookReceiver) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (r *WebhookReceiver) isSeen(eventID int64) bool {
+// claim returns true if the event was claimed (caller should process it).
+// Returns false if already seen or in-flight (another goroutine is processing it).
+func (r *WebhookReceiver) claim(eventID int64) bool {
 	if r.config.DedupWindowSize <= 0 || eventID == 0 {
+		return true
+	}
+
+	r.dedupMu.Lock()
+	defer r.dedupMu.Unlock()
+
+	if _, exists := r.dedupSeen[eventID]; exists {
 		return false
 	}
-
-	r.dedupMu.Lock()
-	defer r.dedupMu.Unlock()
-
-	_, exists := r.dedupSet[eventID]
-	return exists
+	if _, exists := r.dedupPending[eventID]; exists {
+		return false
+	}
+	r.dedupPending[eventID] = struct{}{}
+	return true
 }
 
-func (r *WebhookReceiver) markSeen(eventID int64) {
+// commitSeen promotes an event from pending to seen after successful handling.
+func (r *WebhookReceiver) commitSeen(eventID int64) {
 	if r.config.DedupWindowSize <= 0 || eventID == 0 {
 		return
 	}
@@ -201,19 +212,29 @@ func (r *WebhookReceiver) markSeen(eventID int64) {
 	r.dedupMu.Lock()
 	defer r.dedupMu.Unlock()
 
-	if _, exists := r.dedupSet[eventID]; exists {
-		return
-	}
+	delete(r.dedupPending, eventID)
 
 	// Evict oldest if at capacity.
 	if len(r.dedupOrder) >= r.config.DedupWindowSize {
 		oldest := r.dedupOrder[0]
 		r.dedupOrder = r.dedupOrder[1:]
-		delete(r.dedupSet, oldest)
+		delete(r.dedupSeen, oldest)
 	}
 
-	r.dedupSet[eventID] = struct{}{}
+	r.dedupSeen[eventID] = struct{}{}
 	r.dedupOrder = append(r.dedupOrder, eventID)
+}
+
+// releaseClaim releases a pending claim so retries can re-attempt.
+func (r *WebhookReceiver) releaseClaim(eventID int64) {
+	if r.config.DedupWindowSize <= 0 || eventID == 0 {
+		return
+	}
+
+	r.dedupMu.Lock()
+	defer r.dedupMu.Unlock()
+
+	delete(r.dedupPending, eventID)
 }
 
 func (r *WebhookReceiver) dispatchHandlers(event *WebhookEvent) error {

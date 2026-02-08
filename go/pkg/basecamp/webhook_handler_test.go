@@ -6,7 +6,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestWebhookReceiver_ExactKindRouting(t *testing.T) {
@@ -281,6 +284,38 @@ func TestWebhookReceiver_DedupOnlyAfterSuccess(t *testing.T) {
 	}
 	if callCount != 2 {
 		t.Errorf("expected 2 calls (third was dedup'd), got %d", callCount)
+	}
+}
+
+func TestWebhookReceiver_ConcurrentDedupClaim(t *testing.T) {
+	receiver := NewWebhookReceiver(WebhookReceiverConfig{
+		DedupWindowSize: 100,
+	})
+
+	var callCount int64
+	receiver.OnAny(func(event *WebhookEvent) error {
+		atomic.AddInt64(&callCount, 1)
+		// Simulate slow handler
+		time.Sleep(10 * time.Millisecond)
+		return nil
+	})
+
+	data := []byte(`{"id":42,"kind":"a","details":{},"created_at":"2022-01-01T00:00:00Z","recording":{"id":1},"creator":{"id":1}}`)
+
+	// Fire two concurrent requests for the same event
+	var wg sync.WaitGroup
+	wg.Add(2)
+	for range 2 {
+		go func() {
+			defer wg.Done()
+			_, _ = receiver.HandleRequest(data, noHeaders)
+		}()
+	}
+	wg.Wait()
+
+	// Only one should have run the handler
+	if c := atomic.LoadInt64(&callCount); c != 1 {
+		t.Errorf("expected 1 handler call, got %d", c)
 	}
 }
 

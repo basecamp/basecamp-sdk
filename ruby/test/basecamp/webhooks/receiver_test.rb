@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "concurrent/atomic/atomic_fixnum"
 
 class Basecamp::Webhooks::ReceiverTest < Minitest::Test
   def fixtures_dir
@@ -110,6 +111,24 @@ class Basecamp::Webhooks::ReceiverTest < Minitest::Test
     # Third delivery is now a true duplicate (second succeeded)
     receiver.handle_request(raw_body: body, headers: empty_headers)
     assert_equal 2, calls
+  end
+
+  def test_concurrent_dedup_claim
+    receiver = Basecamp::Webhooks::Receiver.new
+    call_count = Concurrent::AtomicFixnum.new(0)
+    receiver.on_any do |_e|
+      call_count.increment
+      sleep 0.01 # simulate slow handler
+    end
+
+    body = '{"id":42,"kind":"a","created_at":"2022-01-01T00:00:00Z","recording":{"id":1},"creator":{"id":1}}'
+
+    threads = 2.times.map do
+      Thread.new { receiver.handle_request(raw_body: body, headers: empty_headers) }
+    end
+    threads.each(&:join)
+
+    assert_equal 1, call_count.value
   end
 
   def test_dedup_disabled
