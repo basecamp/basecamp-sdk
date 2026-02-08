@@ -2987,6 +2987,9 @@ export interface components {
             company?: components["schemas"]["PersonCompany"];
             can_manage_projects?: boolean;
             can_manage_people?: boolean;
+            can_ping?: boolean;
+            can_access_timesheet?: boolean;
+            can_access_hill_charts?: boolean;
         };
         PersonCompany: {
             /** Format: int64 */
@@ -3143,6 +3146,11 @@ export interface components {
             url?: string;
             app_url?: string;
             bookmark_url?: string;
+            content?: string;
+            /** Format: int32 */
+            comments_count?: number;
+            comments_url?: string;
+            subscription_url?: string;
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["RecordingBucket"];
             creator?: components["schemas"]["Person"];
@@ -3739,6 +3747,54 @@ export interface components {
             types?: string[];
             url?: string;
             app_url?: string;
+            recent_deliveries?: components["schemas"]["WebhookDelivery"][];
+        };
+        /** @description Reference to a copied/moved recording in copy events. */
+        WebhookCopy: {
+            /** Format: int64 */
+            id?: number;
+            url?: string;
+            app_url?: string;
+            bucket?: components["schemas"]["WebhookCopyBucket"];
+        };
+        WebhookCopyBucket: {
+            /** Format: int64 */
+            id?: number;
+        };
+        WebhookDelivery: {
+            /** Format: int64 */
+            id?: number;
+            created_at?: string;
+            request?: components["schemas"]["WebhookDeliveryRequest"];
+            response?: components["schemas"]["WebhookDeliveryResponse"];
+        };
+        WebhookDeliveryRequest: {
+            headers?: components["schemas"]["WebhookHeadersMap"];
+            body?: components["schemas"]["WebhookEvent"];
+        };
+        WebhookDeliveryResponse: {
+            headers?: components["schemas"]["WebhookHeadersMap"];
+            /** Format: int32 */
+            code?: number;
+            message?: string;
+        };
+        /**
+         * @description The event payload delivered to webhook URLs.
+         *     This is the body of an outbound webhook HTTP request.
+         *     Also appears as the body field in WebhookDelivery.request.
+         */
+        WebhookEvent: {
+            /** Format: int64 */
+            id?: number;
+            kind?: string;
+            details?: unknown;
+            created_at?: string;
+            recording?: components["schemas"]["Recording"];
+            creator?: components["schemas"]["Person"];
+            copy?: components["schemas"]["WebhookCopy"];
+        };
+        WebhookHeadersMap: {
+            [key: string]: string;
         };
         WebhookLimitErrorResponseContent: {
             error: string;

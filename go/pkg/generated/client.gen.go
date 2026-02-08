@@ -1089,25 +1089,28 @@ type PauseQuestionResponseContent struct {
 
 // Person defines model for Person.
 type Person struct {
-	Admin             bool          `json:"admin,omitempty"`
-	AttachableSgid    string        `json:"attachable_sgid,omitempty"`
-	AvatarUrl         string        `json:"avatar_url,omitempty"`
-	Bio               string        `json:"bio,omitempty"`
-	CanManagePeople   bool          `json:"can_manage_people,omitempty"`
-	CanManageProjects bool          `json:"can_manage_projects,omitempty"`
-	Client            bool          `json:"client,omitempty"`
-	Company           PersonCompany `json:"company,omitempty"`
-	CreatedAt         time.Time     `json:"created_at,omitempty"`
-	EmailAddress      string        `json:"email_address,omitempty"`
-	Employee          bool          `json:"employee,omitempty"`
-	Id                *int64        `json:"id,omitempty"`
-	Location          string        `json:"location,omitempty"`
-	Name              string        `json:"name,omitempty"`
-	Owner             bool          `json:"owner,omitempty"`
-	PersonableType    string        `json:"personable_type,omitempty"`
-	TimeZone          string        `json:"time_zone,omitempty"`
-	Title             string        `json:"title,omitempty"`
-	UpdatedAt         time.Time     `json:"updated_at,omitempty"`
+	Admin               bool          `json:"admin,omitempty"`
+	AttachableSgid      string        `json:"attachable_sgid,omitempty"`
+	AvatarUrl           string        `json:"avatar_url,omitempty"`
+	Bio                 string        `json:"bio,omitempty"`
+	CanAccessHillCharts bool          `json:"can_access_hill_charts,omitempty"`
+	CanAccessTimesheet  bool          `json:"can_access_timesheet,omitempty"`
+	CanManagePeople     bool          `json:"can_manage_people,omitempty"`
+	CanManageProjects   bool          `json:"can_manage_projects,omitempty"`
+	CanPing             bool          `json:"can_ping,omitempty"`
+	Client              bool          `json:"client,omitempty"`
+	Company             PersonCompany `json:"company,omitempty"`
+	CreatedAt           time.Time     `json:"created_at,omitempty"`
+	EmailAddress        string        `json:"email_address,omitempty"`
+	Employee            bool          `json:"employee,omitempty"`
+	Id                  *int64        `json:"id,omitempty"`
+	Location            string        `json:"location,omitempty"`
+	Name                string        `json:"name,omitempty"`
+	Owner               bool          `json:"owner,omitempty"`
+	PersonableType      string        `json:"personable_type,omitempty"`
+	TimeZone            string        `json:"time_zone,omitempty"`
+	Title               string        `json:"title,omitempty"`
+	UpdatedAt           time.Time     `json:"updated_at,omitempty"`
 }
 
 // PersonCompany defines model for PersonCompany.
@@ -1266,12 +1269,16 @@ type Recording struct {
 	AppUrl           string          `json:"app_url,omitempty"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
 	Bucket           RecordingBucket `json:"bucket,omitempty"`
+	CommentsCount    int32           `json:"comments_count,omitempty"`
+	CommentsUrl      string          `json:"comments_url,omitempty"`
+	Content          string          `json:"content,omitempty"`
 	CreatedAt        time.Time       `json:"created_at,omitempty"`
 	Creator          Person          `json:"creator,omitempty"`
 	Id               *int64          `json:"id,omitempty"`
 	InheritsStatus   bool            `json:"inherits_status,omitempty"`
 	Parent           RecordingParent `json:"parent,omitempty"`
 	Status           string          `json:"status,omitempty"`
+	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
 	Title            string          `json:"title,omitempty"`
 	Type             string          `json:"type,omitempty"`
 	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
@@ -1983,15 +1990,70 @@ type Vault struct {
 
 // Webhook defines model for Webhook.
 type Webhook struct {
-	Active     bool      `json:"active,omitempty"`
-	AppUrl     string    `json:"app_url,omitempty"`
-	CreatedAt  time.Time `json:"created_at,omitempty"`
-	Id         *int64    `json:"id,omitempty"`
-	PayloadUrl string    `json:"payload_url,omitempty"`
-	Types      []string  `json:"types,omitempty"`
-	UpdatedAt  time.Time `json:"updated_at,omitempty"`
-	Url        string    `json:"url,omitempty"`
+	Active           bool              `json:"active,omitempty"`
+	AppUrl           string            `json:"app_url,omitempty"`
+	CreatedAt        time.Time         `json:"created_at,omitempty"`
+	Id               *int64            `json:"id,omitempty"`
+	PayloadUrl       string            `json:"payload_url,omitempty"`
+	RecentDeliveries []WebhookDelivery `json:"recent_deliveries,omitempty"`
+	Types            []string          `json:"types,omitempty"`
+	UpdatedAt        time.Time         `json:"updated_at,omitempty"`
+	Url              string            `json:"url,omitempty"`
 }
+
+// WebhookCopy Reference to a copied/moved recording in copy events.
+type WebhookCopy struct {
+	AppUrl string            `json:"app_url,omitempty"`
+	Bucket WebhookCopyBucket `json:"bucket,omitempty"`
+	Id     *int64            `json:"id,omitempty"`
+	Url    string            `json:"url,omitempty"`
+}
+
+// WebhookCopyBucket defines model for WebhookCopyBucket.
+type WebhookCopyBucket struct {
+	Id *int64 `json:"id,omitempty"`
+}
+
+// WebhookDelivery defines model for WebhookDelivery.
+type WebhookDelivery struct {
+	CreatedAt time.Time               `json:"created_at,omitempty"`
+	Id        *int64                  `json:"id,omitempty"`
+	Request   WebhookDeliveryRequest  `json:"request,omitempty"`
+	Response  WebhookDeliveryResponse `json:"response,omitempty"`
+}
+
+// WebhookDeliveryRequest defines model for WebhookDeliveryRequest.
+type WebhookDeliveryRequest struct {
+	// Body The event payload delivered to webhook URLs.
+	// This is the body of an outbound webhook HTTP request.
+	// Also appears as the body field in WebhookDelivery.request.
+	Body    WebhookEvent      `json:"body,omitempty"`
+	Headers WebhookHeadersMap `json:"headers,omitempty"`
+}
+
+// WebhookDeliveryResponse defines model for WebhookDeliveryResponse.
+type WebhookDeliveryResponse struct {
+	Code    int32             `json:"code,omitempty"`
+	Headers WebhookHeadersMap `json:"headers,omitempty"`
+	Message string            `json:"message,omitempty"`
+}
+
+// WebhookEvent The event payload delivered to webhook URLs.
+// This is the body of an outbound webhook HTTP request.
+// Also appears as the body field in WebhookDelivery.request.
+type WebhookEvent struct {
+	// Copy Reference to a copied/moved recording in copy events.
+	Copy      WebhookCopy `json:"copy,omitempty"`
+	CreatedAt time.Time   `json:"created_at,omitempty"`
+	Creator   Person      `json:"creator,omitempty"`
+	Details   interface{} `json:"details,omitempty"`
+	Id        *int64      `json:"id,omitempty"`
+	Kind      string      `json:"kind,omitempty"`
+	Recording Recording   `json:"recording,omitempty"`
+}
+
+// WebhookHeadersMap defines model for WebhookHeadersMap.
+type WebhookHeadersMap map[string]string
 
 // WebhookLimitErrorResponseContent defines model for WebhookLimitErrorResponseContent.
 type WebhookLimitErrorResponseContent struct {

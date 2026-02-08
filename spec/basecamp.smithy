@@ -49,6 +49,9 @@ use basecamp.traits#basecampSensitive
 @restJson1
 service Basecamp {
   version: "2026-01-26"
+  rename: {
+    "smithy.api#Document": "JsonDocument"
+  }
   operations: [
     ListProjects,
     GetProject,
@@ -1183,6 +1186,9 @@ structure Person {
   company: PersonCompany
   can_manage_projects: Boolean
   can_manage_people: Boolean
+  can_ping: Boolean
+  can_access_timesheet: Boolean
+  can_access_hill_charts: Boolean
 }
 
 structure PersonCompany {
@@ -5470,6 +5476,59 @@ structure Webhook {
   types: WebhookTypeList
   url: String
   app_url: String
+  recent_deliveries: WebhookDeliveryList
+}
+
+/// The event payload delivered to webhook URLs.
+/// This is the body of an outbound webhook HTTP request.
+/// Also appears as the body field in WebhookDelivery.request.
+structure WebhookEvent {
+  id: Long
+  kind: String
+  details: smithy.api#Document
+  created_at: ISO8601Timestamp
+  recording: Recording
+  creator: Person
+  copy: WebhookCopy
+}
+
+/// Reference to a copied/moved recording in copy events.
+structure WebhookCopy {
+  id: Long
+  url: String
+  app_url: String
+  bucket: WebhookCopyBucket
+}
+
+structure WebhookCopyBucket {
+  id: ProjectId
+}
+
+structure WebhookDelivery {
+  id: Long
+  created_at: ISO8601Timestamp
+  request: WebhookDeliveryRequest
+  response: WebhookDeliveryResponse
+}
+
+structure WebhookDeliveryRequest {
+  headers: WebhookHeadersMap
+  body: WebhookEvent
+}
+
+structure WebhookDeliveryResponse {
+  headers: WebhookHeadersMap
+  code: Integer
+  message: String
+}
+
+map WebhookHeadersMap {
+  key: String
+  value: String
+}
+
+list WebhookDeliveryList {
+  member: WebhookDelivery
 }
 
 // ===== Event Shapes =====
@@ -5527,6 +5586,10 @@ structure Recording {
   url: String
   app_url: String
   bookmark_url: String
+  content: String
+  comments_count: Integer
+  comments_url: String
+  subscription_url: String
   parent: RecordingParent
   bucket: RecordingBucket
   creator: Person

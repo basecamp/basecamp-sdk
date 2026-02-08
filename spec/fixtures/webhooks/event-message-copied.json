@@ -1,0 +1,99 @@
+{
+  "id": 9007199254741002,
+  "kind": "message_copied",
+  "details": {
+    "source_bucket_id": 2085958500
+  },
+  "created_at": "2022-11-23T10:30:00.000Z",
+  "recording": {
+    "id": 9007199254741300,
+    "status": "active",
+    "visible_to_clients": false,
+    "created_at": "2022-11-23T10:29:00.000Z",
+    "updated_at": "2022-11-23T10:29:00.000Z",
+    "title": "Project Update",
+    "inherits_status": true,
+    "type": "Message",
+    "url": "https://3.basecampapi.com/999999999/buckets/2085958501/messages/9007199254741300.json",
+    "app_url": "https://3.basecamp.com/999999999/buckets/2085958501/messages/9007199254741300",
+    "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7CEkiCGdpZAY6BkVV.json",
+    "content": "<div>Here is the latest project update.</div>",
+    "comments_count": 3,
+    "comments_url": "https://3.basecampapi.com/999999999/buckets/2085958501/recordings/9007199254741300/comments.json",
+    "subscription_url": "https://3.basecampapi.com/999999999/buckets/2085958501/recordings/9007199254741300/subscription.json",
+    "parent": {
+      "id": 9007199254741150,
+      "title": "Message Board",
+      "type": "Message::Board",
+      "url": "https://3.basecampapi.com/999999999/buckets/2085958501/message_boards/9007199254741150.json",
+      "app_url": "https://3.basecamp.com/999999999/buckets/2085958501/message_boards/9007199254741150"
+    },
+    "bucket": {
+      "id": 2085958501,
+      "name": "Destination Project",
+      "type": "Project"
+    },
+    "creator": {
+      "id": 1049715915,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVU--def456",
+      "name": "Matt Donahue",
+      "email_address": "matt@honcho.com",
+      "personable_type": "User",
+      "title": "Global Data Orchestrator",
+      "bio": null,
+      "location": null,
+      "created_at": "2022-11-22T08:23:21.732Z",
+      "updated_at": "2022-11-22T08:23:21.732Z",
+      "admin": true,
+      "owner": false,
+      "client": false,
+      "employee": false,
+      "time_zone": "America/New_York",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--avatar.png",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      },
+      "can_manage_projects": true,
+      "can_manage_people": true,
+      "can_ping": true,
+      "can_access_timesheet": true,
+      "can_access_hill_charts": true
+    }
+  },
+  "creator": {
+    "id": 1049715915,
+    "attachable_sgid": "BAh7CEkiCGdpZAY6BkVU--def456",
+    "name": "Matt Donahue",
+    "email_address": "matt@honcho.com",
+    "personable_type": "User",
+    "title": "Global Data Orchestrator",
+    "bio": null,
+    "location": null,
+    "created_at": "2022-11-22T08:23:21.732Z",
+    "updated_at": "2022-11-22T08:23:21.732Z",
+    "admin": true,
+    "owner": false,
+    "client": false,
+    "employee": false,
+    "time_zone": "America/New_York",
+    "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--avatar.png",
+    "company": {
+      "id": 1033447817,
+      "name": "Honcho Design"
+    },
+    "can_manage_projects": true,
+    "can_manage_people": true,
+    "can_ping": true,
+    "can_access_timesheet": true,
+    "can_access_hill_charts": true
+  },
+  "copy": {
+    "id": 9007199254741350,
+    "url": "https://3.basecampapi.com/999999999/buckets/2085958500/messages/9007199254741350.json",
+    "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/messages/9007199254741350",
+    "bucket": {
+      "id": 2085958500
+    }
+  }
+}

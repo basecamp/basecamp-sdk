@@ -21949,6 +21949,15 @@
           },
           "can_manage_people": {
             "type": "boolean"
+          },
+          "can_ping": {
+            "type": "boolean"
+          },
+          "can_access_timesheet": {
+            "type": "boolean"
+          },
+          "can_access_hill_charts": {
+            "type": "boolean"
           }
         }
       },
@@ -22461,6 +22470,19 @@
             "type": "string"
           },
           "bookmark_url": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "comments_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "comments_url": {
+            "type": "string"
+          },
+          "subscription_url": {
             "type": "string"
           },
           "parent": {
@@ -24379,7 +24401,134 @@
           },
           "app_url": {
             "type": "string"
+          },
+          "recent_deliveries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WebhookDelivery"
+            }
           }
+        }
+      },
+      "WebhookCopy": {
+        "type": "object",
+        "description": "Reference to a copied/moved recording in copy events.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "url": {
+            "type": "string"
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/WebhookCopyBucket"
+          }
+        }
+      },
+      "WebhookCopyBucket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          }
+        }
+      },
+      "WebhookDelivery": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "request": {
+            "$ref": "#/components/schemas/WebhookDeliveryRequest"
+          },
+          "response": {
+            "$ref": "#/components/schemas/WebhookDeliveryResponse"
+          }
+        }
+      },
+      "WebhookDeliveryRequest": {
+        "type": "object",
+        "properties": {
+          "headers": {
+            "$ref": "#/components/schemas/WebhookHeadersMap"
+          },
+          "body": {
+            "$ref": "#/components/schemas/WebhookEvent"
+          }
+        }
+      },
+      "WebhookDeliveryResponse": {
+        "type": "object",
+        "properties": {
+          "headers": {
+            "$ref": "#/components/schemas/WebhookHeadersMap"
+          },
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "WebhookEvent": {
+        "type": "object",
+        "description": "The event payload delivered to webhook URLs.\nThis is the body of an outbound webhook HTTP request.\nAlso appears as the body field in WebhookDelivery.request.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "kind": {
+            "type": "string"
+          },
+          "details": {},
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "recording": {
+            "$ref": "#/components/schemas/Recording"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "copy": {
+            "$ref": "#/components/schemas/WebhookCopy"
+          }
+        }
+      },
+      "WebhookHeadersMap": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        },
+        "propertyNames": {
+          "type": "string"
         }
       },
       "WebhookLimitErrorResponseContent": {
