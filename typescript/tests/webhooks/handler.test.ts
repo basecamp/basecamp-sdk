@@ -194,6 +194,22 @@ describe("WebhookReceiver", () => {
       expect(calls).toBe(2);
     });
 
+    it("handles braces inside nested string values without corrupting depth", async () => {
+      const receiver = new WebhookReceiver();
+      let calls = 0;
+      receiver.onAny(() => { calls++; });
+
+      // The nested "content" string contains braces — scanner must not let them affect depth tracking
+      const event1 = '{"recording":{"content":"<div>{test}</div>","id":999},"id":100,"kind":"a","created_at":"2022-01-01T00:00:00Z","creator":{"id":1}}';
+      const event2 = '{"recording":{"content":"<div>{test}</div>","id":999},"id":200,"kind":"b","created_at":"2022-01-01T00:00:00Z","creator":{"id":1}}';
+
+      await receiver.handleRequest(event1, emptyHeaders);
+      await receiver.handleRequest(event2, emptyHeaders);
+
+      // Both should fire — different top-level IDs
+      expect(calls).toBe(2);
+    });
+
     it("does not use nested id when it appears before top-level id", async () => {
       const receiver = new WebhookReceiver();
       let calls = 0;

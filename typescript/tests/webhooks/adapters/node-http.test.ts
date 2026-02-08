@@ -137,6 +137,19 @@ describe("createNodeHandler", () => {
     expect(res._status).toBe(200);
   });
 
+  it("returns 413 on oversized body", async () => {
+    const receiver = new WebhookReceiver();
+    receiver.onAny(() => {});
+    const handler = createNodeHandler(receiver, { maxBodyBytes: 50 });
+
+    const req = mockRequest({ body: todoCreatedBody }); // well over 50 bytes
+    const res = mockResponse();
+    handler(req, res);
+    await waitForResponse(res);
+
+    expect(res._status).toBe(413);
+  });
+
   it("uses custom path", async () => {
     const receiver = new WebhookReceiver();
     receiver.onAny(() => {});

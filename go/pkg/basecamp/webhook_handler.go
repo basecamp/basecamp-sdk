@@ -23,7 +23,7 @@ type WebhookReceiverConfig struct {
 	SignatureHeader string
 	// MaxBodyBytes limits the request body size (default: 1MB).
 	MaxBodyBytes int64
-	// DedupWindowSize is the number of recent event IDs to track for deduplication (default: 1000, 0 to disable).
+	// DedupWindowSize is the number of recent event IDs to track for deduplication (default: 1000, -1 to disable).
 	DedupWindowSize int
 }
 
@@ -117,37 +117,53 @@ func (r *WebhookReceiver) HandleRequest(body []byte, getHeader func(string) stri
 		return nil, fmt.Errorf("failed to parse webhook event: %w", err)
 	}
 
-	// Atomic dedup: claim before handlers, commit on success, release on error.
+	// Atomic dedup: claim before handlers, commit on success, release on error/panic.
 	if !r.claim(event.ID) {
 		return &event, nil
 	}
 
-	// Run middleware and handlers.
-	r.mu.RLock()
-	middleware := make([]WebhookMiddleware, len(r.middleware))
-	copy(middleware, r.middleware)
-	r.mu.RUnlock()
+	// Use defer to guarantee claim lifecycle even on panic.
+	var chainErr error
+	func() {
+		committed := false
+		defer func() {
+			if !committed {
+				r.releaseClaim(event.ID)
+			}
+		}()
 
-	runHandlers := func() error {
-		return r.dispatchHandlers(&event)
-	}
+		// Run middleware and handlers.
+		r.mu.RLock()
+		mws := make([]WebhookMiddleware, len(r.middleware))
+		copy(mws, r.middleware)
+		r.mu.RUnlock()
 
-	// Build middleware chain.
-	chain := runHandlers
-	for i := len(middleware) - 1; i >= 0; i-- {
-		mw := middleware[i]
-		next := chain
-		chain = func() error {
-			return mw(&event, next)
+		runHandlers := func() error {
+			return r.dispatchHandlers(&event)
 		}
-	}
 
-	if err := chain(); err != nil {
-		r.releaseClaim(event.ID)
-		return &event, err
-	}
+		// Build middleware chain.
+		chain := runHandlers
+		for i := len(mws) - 1; i >= 0; i-- {
+			mw := mws[i]
+			next := chain
+			chain = func() error {
+				return mw(&event, next)
+			}
+		}
 
-	r.commitSeen(event.ID)
+		if err := chain(); err != nil {
+			chainErr = err
+			return
+		}
+
+		r.commitSeen(event.ID)
+		committed = true
+	}()
+
+	if chainErr != nil {
+		return &event, chainErr
+	}
 
 	return &event, nil
 }
@@ -238,21 +254,17 @@ func (r *WebhookReceiver) releaseClaim(eventID int64) {
 }
 
 func (r *WebhookReceiver) dispatchHandlers(event *WebhookEvent) error {
+	// Collect matching handlers under the lock, then release before executing.
 	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	// Collect matching handlers.
 	var matched []WebhookEventHandler
-
 	for pattern, handlers := range r.handlers {
 		if matchPattern(pattern, event.Kind) {
 			matched = append(matched, handlers...)
 		}
 	}
-
 	matched = append(matched, r.anyHandlers...)
+	r.mu.RUnlock()
 
-	// Execute all matching handlers.
 	for _, handler := range matched {
 		if err := handler(event); err != nil {
 			return err

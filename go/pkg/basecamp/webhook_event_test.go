@@ -122,7 +122,11 @@ func TestWebhookEvent_UnmarshalMessageCopied(t *testing.T) {
 	if event.Details == nil {
 		t.Fatal("expected non-nil details")
 	}
-	sourceBucketID, ok := event.Details["source_bucket_id"]
+	detailsMap, ok := event.Details.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected details to be a map, got %T", event.Details)
+	}
+	sourceBucketID, ok := detailsMap["source_bucket_id"]
 	if !ok {
 		t.Fatal("expected source_bucket_id in details")
 	}
@@ -181,14 +185,18 @@ func TestWebhookEvent_UnmarshalUnknownFuture(t *testing.T) {
 	if event.Details == nil {
 		t.Fatal("expected non-nil details")
 	}
-	futureField, ok := event.Details["future_field"]
+	detailsMap, ok := event.Details.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected details to be a map, got %T", event.Details)
+	}
+	futureField, ok := detailsMap["future_field"]
 	if !ok {
 		t.Fatal("expected future_field in details")
 	}
 	if futureField != "something_new" {
 		t.Errorf("expected future_field 'something_new', got %v", futureField)
 	}
-	nested, ok := event.Details["nested"]
+	nested, ok := detailsMap["nested"]
 	if !ok {
 		t.Fatal("expected nested in details")
 	}

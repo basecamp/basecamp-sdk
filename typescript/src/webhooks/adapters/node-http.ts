@@ -4,6 +4,8 @@ import { WebhookReceiver, WebhookVerificationError } from "../handler.js";
 export interface NodeHandlerOptions {
   /** URL path to handle (default: "/webhooks/basecamp"). Requests to other paths get 404. */
   path?: string;
+  /** Maximum request body size in bytes (default: 1MB). Requests exceeding this get 413. */
+  maxBodyBytes?: number;
 }
 
 /**
@@ -15,11 +17,11 @@ export function createNodeHandler(
   options?: NodeHandlerOptions,
 ): RequestListener {
   const targetPath = options?.path ?? "/webhooks/basecamp";
+  const maxBodyBytes = options?.maxBodyBytes ?? 1_048_576; // 1MB
 
   return (req: IncomingMessage, res: ServerResponse) => {
-    // Parse URL path (handle both absolute and relative URLs)
-    const url = req.url ?? "/";
-    const pathname = url.split("?")[0];
+    // Parse URL path (handles both origin-form and absolute-form request targets)
+    const { pathname } = new URL(req.url ?? "/", "http://localhost");
 
     if (pathname !== targetPath) {
       res.writeHead(404);
@@ -34,8 +36,19 @@ export function createNodeHandler(
     }
 
     const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    let totalBytes = 0;
+    req.on("data", (chunk: Buffer) => {
+      totalBytes += chunk.length;
+      if (totalBytes <= maxBodyBytes) {
+        chunks.push(chunk);
+      }
+    });
     req.on("end", () => {
+      if (totalBytes > maxBodyBytes) {
+        res.writeHead(413);
+        res.end("Payload Too Large");
+        return;
+      }
       const body = Buffer.concat(chunks);
       const headers = (name: string) => {
         const val = req.headers[name.toLowerCase()];

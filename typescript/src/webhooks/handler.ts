@@ -187,16 +187,27 @@ export class WebhookReceiver {
 }
 
 /** Extract the top-level "id" field as a raw string from JSON, avoiding Number precision loss on int64.
- *  Only matches "id" at brace depth 1 (top-level object), ignoring nested "id" fields. */
+ *  Only matches "id" at brace depth 1 (top-level object), ignoring nested "id" fields.
+ *  Uses a full string-aware state machine so braces inside JSON strings don't corrupt depth tracking. */
 function extractIdString(json: string): string | undefined {
   let depth = 0;
+  let inString = false;
+
   for (let i = 0; i < json.length; i++) {
     const ch = json[i];
-    if (ch === "{") { depth++; continue; }
-    if (ch === "}") { depth--; continue; }
-    if (ch === '"' && depth === 1) {
-      // Check if this is "id" at top level
-      if (json[i + 1] === "i" && json[i + 2] === "d" && json[i + 3] === '"') {
+
+    // String state machine — must be checked before anything else so braces
+    // inside strings never affect depth tracking.
+    if (inString) {
+      if (ch === "\\") { i++; continue; } // skip escaped char
+      if (ch === '"') { inString = false; }
+      continue;
+    }
+
+    // Outside any string
+    if (ch === '"') {
+      // At depth 1, check if this starts the key "id"
+      if (depth === 1 && json[i + 1] === "i" && json[i + 2] === "d" && json[i + 3] === '"') {
         // Skip past "id" and any whitespace/colon
         let j = i + 4;
         while (j < json.length && (json[j] === " " || json[j] === "\t" || json[j] === "\n" || json[j] === "\r" || json[j] === ":")) j++;
@@ -205,13 +216,12 @@ function extractIdString(json: string): string | undefined {
         while (j < json.length && json[j]! >= "0" && json[j]! <= "9") j++;
         if (j > start) return json.slice(start, j);
       }
-      // Skip past this string value (to avoid matching "id" inside string values)
-      i++;
-      while (i < json.length && json[i] !== '"') {
-        if (json[i] === "\\") i++; // skip escaped char
-        i++;
-      }
+      inString = true;
+      continue;
     }
+
+    if (ch === "{") { depth++; continue; }
+    if (ch === "}") { depth--; continue; }
   }
   return undefined;
 }

@@ -2,13 +2,13 @@ package basecamp
 
 // WebhookEvent is the payload delivered by Basecamp webhooks.
 type WebhookEvent struct {
-	ID        int64                  `json:"id"`
-	Kind      string                 `json:"kind"`
-	Details   map[string]interface{} `json:"details"`
-	CreatedAt string                 `json:"created_at"`
-	Recording WebhookEventRecording  `json:"recording"`
-	Creator   WebhookEventPerson     `json:"creator"`
-	Copy      *WebhookCopy           `json:"copy,omitempty"`
+	ID        int64                 `json:"id"`
+	Kind      string                `json:"kind"`
+	Details   any                   `json:"details"`
+	CreatedAt string                `json:"created_at"`
+	Recording WebhookEventRecording `json:"recording"`
+	Creator   WebhookEventPerson    `json:"creator"`
+	Copy      *WebhookCopy          `json:"copy,omitempty"`
 }
 
 // WebhookEventRecording is the recording included in webhook event payloads.

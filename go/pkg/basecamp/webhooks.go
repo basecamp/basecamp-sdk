@@ -330,19 +330,17 @@ func webhookFromGenerated(gw generated.Webhook) Webhook {
 // webhookEventFromGenerated converts a generated WebhookEvent to our clean type.
 func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 	event := WebhookEvent{
-		Kind:      ge.Kind,
-		CreatedAt: ge.CreatedAt.Format(time.RFC3339Nano),
+		Kind: ge.Kind,
+	}
+	if !ge.CreatedAt.IsZero() {
+		event.CreatedAt = ge.CreatedAt.Format(time.RFC3339Nano)
 	}
 
 	if ge.Id != nil {
 		event.ID = *ge.Id
 	}
 
-	if ge.Details != nil {
-		if m, ok := ge.Details.(map[string]interface{}); ok {
-			event.Details = m
-		}
-	}
+	event.Details = ge.Details
 
 	// Map recording
 	rec := &ge.Recording

@@ -319,6 +319,43 @@ func TestWebhookReceiver_ConcurrentDedupClaim(t *testing.T) {
 	}
 }
 
+func TestWebhookReceiver_DedupClaimReleasedOnPanic(t *testing.T) {
+	receiver := NewWebhookReceiver(WebhookReceiverConfig{
+		DedupWindowSize: 100,
+	})
+
+	callCount := 0
+	shouldPanic := true
+	receiver.OnAny(func(event *WebhookEvent) error {
+		callCount++
+		if shouldPanic {
+			panic("handler panic")
+		}
+		return nil
+	})
+
+	data := []byte(`{"id":42,"kind":"a","details":{},"created_at":"2022-01-01T00:00:00Z","recording":{"id":1},"creator":{"id":1}}`)
+
+	// First attempt panics — recover it
+	func() {
+		defer func() { recover() }()
+		_, _ = receiver.HandleRequest(data, noHeaders)
+	}()
+	if callCount != 1 {
+		t.Fatalf("expected 1 call, got %d", callCount)
+	}
+
+	// Retry should succeed — the panic should have released the claim
+	shouldPanic = false
+	_, err := receiver.HandleRequest(data, noHeaders)
+	if err != nil {
+		t.Fatalf("expected no error on retry, got %v", err)
+	}
+	if callCount != 2 {
+		t.Errorf("expected 2 calls (panic released claim, retry succeeded), got %d", callCount)
+	}
+}
+
 func TestWebhookReceiver_DedupWindowEviction(t *testing.T) {
 	receiver := NewWebhookReceiver(WebhookReceiverConfig{
 		DedupWindowSize: 2, // Tiny window
