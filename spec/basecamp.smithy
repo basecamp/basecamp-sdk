@@ -7004,7 +7004,7 @@ long BoostId
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/boosts.json")
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}/boosts.json")
 operation ListRecordingBoosts {
   input: ListRecordingBoostsInput
   output: ListRecordingBoostsOutput
@@ -7015,10 +7015,6 @@ structure ListRecordingBoostsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -7033,7 +7029,7 @@ structure ListRecordingBoostsOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/events/{eventId}/boosts.json")
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}/events/{eventId}/boosts.json")
 operation ListEventBoosts {
   input: ListEventBoostsInput
   output: ListEventBoostsOutput
@@ -7044,10 +7040,6 @@ structure ListEventBoostsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -7065,7 +7057,7 @@ structure ListEventBoostsOutput {
 /// Get a single boost
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/boosts/{boostId}")
+@http(method: "GET", uri: "/{accountId}/boosts/{boostId}")
 operation GetBoost {
   input: GetBoostInput
   output: GetBoostOutput
@@ -7079,10 +7071,6 @@ structure GetBoostInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   boostId: BoostId
 }
 
@@ -7092,7 +7080,7 @@ structure GetBoostOutput {
 
 /// Create a boost on a recording
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/boosts.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/boosts.json", code: 201)
 operation CreateRecordingBoost {
   input: CreateRecordingBoostInput
   output: CreateRecordingBoostOutput
@@ -7103,10 +7091,6 @@ structure CreateRecordingBoostInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -7122,7 +7106,7 @@ structure CreateRecordingBoostOutput {
 
 /// Create a boost on a specific event within a recording
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/events/{eventId}/boosts.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/events/{eventId}/boosts.json", code: 201)
 operation CreateEventBoost {
   input: CreateEventBoostInput
   output: CreateEventBoostOutput
@@ -7133,10 +7117,6 @@ structure CreateEventBoostInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -7158,7 +7138,7 @@ structure CreateEventBoostOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/boosts/{boostId}", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/boosts/{boostId}", code: 204)
 operation DeleteBoost {
   input: DeleteBoostInput
   output: DeleteBoostOutput
@@ -7169,10 +7149,6 @@ structure DeleteBoostInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel

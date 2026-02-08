@@ -21,6 +21,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/boosts/{boostId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a single boost */
+        get: operations["GetBoost"];
+        put?: never;
+        post?: never;
+        /** @description Delete a boost */
+        delete: operations["DeleteBoost"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/card_tables/cards/{cardId}": {
         parameters: {
             query?: never;
@@ -1229,6 +1247,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/recordings/{recordingId}/boosts.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List boosts on a recording */
+        get: operations["ListRecordingBoosts"];
+        put?: never;
+        /** @description Create a boost on a recording */
+        post: operations["CreateRecordingBoost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/recordings/{recordingId}/client_visibility.json": {
         parameters: {
             query?: never;
@@ -1285,6 +1321,24 @@ export interface paths {
         get: operations["ListEvents"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/recordings/{recordingId}/events/{eventId}/boosts.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List boosts on a specific event within a recording */
+        get: operations["ListEventBoosts"];
+        put?: never;
+        /** @description Create a boost on a specific event within a recording */
+        post: operations["CreateEventBoost"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2147,6 +2201,14 @@ export interface components {
             error: string;
             message?: string;
         };
+        Boost: {
+            /** Format: int64 */
+            id?: number;
+            content?: string;
+            created_at?: string;
+            booster?: components["schemas"]["Person"];
+            recording?: components["schemas"]["RecordingParent"];
+        };
         Campfire: {
             /** Format: int64 */
             id?: number;
@@ -2185,6 +2247,9 @@ export interface components {
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         Card: {
             /** Format: int64 */
@@ -2218,6 +2283,9 @@ export interface components {
             assignees?: components["schemas"]["Person"][];
             completion_subscribers?: components["schemas"]["Person"][];
             steps?: components["schemas"]["CardStep"][];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         CardColumn: {
             /** Format: int64 */
@@ -2422,6 +2490,9 @@ export interface components {
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
             content?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         CreateAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         CreateAttachmentInputPayload: string;
@@ -2430,6 +2501,7 @@ export interface components {
         };
         CreateCampfireLineRequestContent: {
             content: string;
+            content_type?: string;
         };
         CreateCampfireLineResponseContent: components["schemas"]["CampfireLine"];
         CreateCardColumnRequestContent: {
@@ -2466,6 +2538,10 @@ export interface components {
             status?: string;
         };
         CreateDocumentResponseContent: components["schemas"]["Document"];
+        CreateEventBoostRequestContent: {
+            content: string;
+        };
+        CreateEventBoostResponseContent: components["schemas"]["Boost"];
         CreateForwardReplyRequestContent: {
             content: string;
         };
@@ -2513,6 +2589,10 @@ export interface components {
             schedule: components["schemas"]["QuestionSchedule"];
         };
         CreateQuestionResponseContent: components["schemas"]["Question"];
+        CreateRecordingBoostRequestContent: {
+            content: string;
+        };
+        CreateRecordingBoostResponseContent: components["schemas"]["Boost"];
         CreateScheduleEntryRequestContent: {
             summary: string;
             starts_at: string;
@@ -2606,6 +2686,9 @@ export interface components {
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
             content?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         EnableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         Event: {
@@ -2617,6 +2700,9 @@ export interface components {
             details?: components["schemas"]["EventDetails"];
             created_at?: string;
             creator?: components["schemas"]["Person"];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         EventDetails: {
             added_person_ids?: number[];
@@ -2668,6 +2754,9 @@ export interface components {
             bucket?: components["schemas"]["TodoBucket"];
             creator?: components["schemas"]["Person"];
             content?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         GetAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         GetAnswersByPersonResponseContent: components["schemas"]["QuestionAnswer"][];
@@ -2676,6 +2765,7 @@ export interface components {
             grouped_by?: string;
             todos?: components["schemas"]["Todo"][];
         };
+        GetBoostResponseContent: components["schemas"]["Boost"];
         GetCampfireLineResponseContent: components["schemas"]["CampfireLine"];
         GetCampfireResponseContent: components["schemas"]["Campfire"];
         GetCardColumnResponseContent: components["schemas"]["CardColumn"];
@@ -2771,6 +2861,7 @@ export interface components {
         ListClientRepliesResponseContent: components["schemas"]["ClientReply"][];
         ListCommentsResponseContent: components["schemas"]["Comment"][];
         ListDocumentsResponseContent: components["schemas"]["Document"][];
+        ListEventBoostsResponseContent: components["schemas"]["Boost"][];
         ListEventsResponseContent: components["schemas"]["Event"][];
         ListForwardRepliesResponseContent: components["schemas"]["ForwardReply"][];
         ListForwardsResponseContent: components["schemas"]["Forward"][];
@@ -2782,6 +2873,7 @@ export interface components {
         ListProjectsResponseContent: components["schemas"]["Project"][];
         ListQuestionAnswerersResponseContent: components["schemas"]["Person"][];
         ListQuestionsResponseContent: components["schemas"]["Question"][];
+        ListRecordingBoostsResponseContent: components["schemas"]["Boost"][];
         ListRecordingsResponseContent: components["schemas"]["Recording"][];
         ListScheduleEntriesResponseContent: components["schemas"]["ScheduleEntry"][];
         ListTemplatesResponseContent: components["schemas"]["Template"][];
@@ -2815,6 +2907,9 @@ export interface components {
             subject?: string;
             content?: string;
             category?: components["schemas"]["MessageType"];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         MessageBoard: {
             /** Format: int64 */
@@ -2978,6 +3073,9 @@ export interface components {
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["RecordingBucket"];
             creator?: components["schemas"]["Person"];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         QuestionAnswerPayload: {
             content: string;
@@ -3152,6 +3250,9 @@ export interface components {
             starts_at?: string;
             ends_at?: string;
             participants?: components["schemas"]["Person"][];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         SearchMetadata: {
             projects?: components["schemas"]["SearchProject"][];
@@ -3284,6 +3385,9 @@ export interface components {
             assignees?: components["schemas"]["Person"][];
             completion_subscribers?: components["schemas"]["Person"][];
             completion_url?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         TodoBucket: {
             /** Format: int64 */
@@ -3329,6 +3433,9 @@ export interface components {
             todos_url?: string;
             groups_url?: string;
             app_todos_url?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         TodolistGroup: {
             /** Format: int64 */
@@ -3594,6 +3701,9 @@ export interface components {
             height?: number;
             download_url?: string;
             filename?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
         };
         ValidationErrorResponseContent: {
             error: string;
@@ -3757,6 +3867,120 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetBoost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boostId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetBoost 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetBoostResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DeleteBoost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boostId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DeleteBoost 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -9617,6 +9841,135 @@ export interface operations {
             };
         };
     };
+    ListRecordingBoosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListRecordingBoosts 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListRecordingBoostsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateRecordingBoost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRecordingBoostRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateRecordingBoost 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateRecordingBoostResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     SetClientVisibility: {
         parameters: {
             query?: never;
@@ -9853,6 +10206,137 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListEventBoosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+                eventId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListEventBoosts 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListEventBoostsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateEventBoost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+                eventId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEventBoostRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateEventBoost 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateEventBoostResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

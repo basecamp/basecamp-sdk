@@ -73,9 +73,10 @@ module Basecamp
       # Create a new line (message) in a campfire
       # @param campfire_id [Integer] campfire id ID
       # @param content [String] content
+      # @param content_type [String, nil] content type
       # @return [Hash] response data
-      def create_line(campfire_id:, content:)
-        http_post("/chats/#{campfire_id}/lines.json", body: compact_params(content: content)).json
+      def create_line(campfire_id:, content:, content_type: nil)
+        http_post("/chats/#{campfire_id}/lines.json", body: compact_params(content: content, content_type: content_type)).json
       end
 
       # Get a campfire line by ID

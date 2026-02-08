@@ -44,6 +44,15 @@ type BadRequestErrorResponseContent struct {
 	Message string `json:"message,omitempty"`
 }
 
+// Boost defines model for Boost.
+type Boost struct {
+	Booster   Person          `json:"booster,omitempty"`
+	Content   string          `json:"content,omitempty"`
+	CreatedAt time.Time       `json:"created_at,omitempty"`
+	Id        *int64          `json:"id,omitempty"`
+	Recording RecordingParent `json:"recording,omitempty"`
+}
+
 // Campfire defines model for Campfire.
 type Campfire struct {
 	AppUrl           string     `json:"app_url,omitempty"`
@@ -69,6 +78,8 @@ type Campfire struct {
 type CampfireLine struct {
 	AppUrl           string          `json:"app_url,omitempty"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	BoostsCount      int32           `json:"boosts_count,omitempty"`
+	BoostsUrl        string          `json:"boosts_url,omitempty"`
 	Bucket           TodoBucket      `json:"bucket,omitempty"`
 	Content          string          `json:"content,omitempty"`
 	CreatedAt        time.Time       `json:"created_at,omitempty"`
@@ -89,6 +100,8 @@ type Card struct {
 	AppUrl                string          `json:"app_url,omitempty"`
 	Assignees             []Person        `json:"assignees,omitempty"`
 	BookmarkUrl           string          `json:"bookmark_url,omitempty"`
+	BoostsCount           int32           `json:"boosts_count,omitempty"`
+	BoostsUrl             string          `json:"boosts_url,omitempty"`
 	Bucket                TodoBucket      `json:"bucket,omitempty"`
 	CommentsCount         int32           `json:"comments_count,omitempty"`
 	CommentsUrl           string          `json:"comments_url,omitempty"`
@@ -310,6 +323,8 @@ type CloneToolResponseContent = Tool
 type Comment struct {
 	AppUrl           string          `json:"app_url,omitempty"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	BoostsCount      int32           `json:"boosts_count,omitempty"`
+	BoostsUrl        string          `json:"boosts_url,omitempty"`
 	Bucket           TodoBucket      `json:"bucket,omitempty"`
 	Content          string          `json:"content,omitempty"`
 	CreatedAt        time.Time       `json:"created_at,omitempty"`
@@ -338,7 +353,8 @@ type CreateAttachmentResponseContent struct {
 
 // CreateCampfireLineRequestContent defines model for CreateCampfireLineRequestContent.
 type CreateCampfireLineRequestContent struct {
-	Content string `json:"content"`
+	Content     string `json:"content"`
+	ContentType string `json:"content_type,omitempty"`
 }
 
 // CreateCampfireLineResponseContent defines model for CreateCampfireLineResponseContent.
@@ -402,6 +418,14 @@ type CreateDocumentRequestContent struct {
 
 // CreateDocumentResponseContent defines model for CreateDocumentResponseContent.
 type CreateDocumentResponseContent = Document
+
+// CreateEventBoostRequestContent defines model for CreateEventBoostRequestContent.
+type CreateEventBoostRequestContent struct {
+	Content string `json:"content"`
+}
+
+// CreateEventBoostResponseContent defines model for CreateEventBoostResponseContent.
+type CreateEventBoostResponseContent = Boost
 
 // CreateForwardReplyRequestContent defines model for CreateForwardReplyRequestContent.
 type CreateForwardReplyRequestContent struct {
@@ -473,6 +497,14 @@ type CreateQuestionRequestContent struct {
 
 // CreateQuestionResponseContent defines model for CreateQuestionResponseContent.
 type CreateQuestionResponseContent = Question
+
+// CreateRecordingBoostRequestContent defines model for CreateRecordingBoostRequestContent.
+type CreateRecordingBoostRequestContent struct {
+	Content string `json:"content"`
+}
+
+// CreateRecordingBoostResponseContent defines model for CreateRecordingBoostResponseContent.
+type CreateRecordingBoostResponseContent = Boost
 
 // CreateScheduleEntryRequestContent defines model for CreateScheduleEntryRequestContent.
 type CreateScheduleEntryRequestContent struct {
@@ -585,6 +617,8 @@ type DockItem struct {
 type Document struct {
 	AppUrl           string          `json:"app_url,omitempty"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	BoostsCount      int32           `json:"boosts_count,omitempty"`
+	BoostsUrl        string          `json:"boosts_url,omitempty"`
 	Bucket           TodoBucket      `json:"bucket,omitempty"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
 	CommentsUrl      string          `json:"comments_url,omitempty"`
@@ -610,6 +644,8 @@ type EnableCardColumnOnHoldResponseContent = CardColumn
 // Event defines model for Event.
 type Event struct {
 	Action      string       `json:"action,omitempty"`
+	BoostsCount int32        `json:"boosts_count,omitempty"`
+	BoostsUrl   string       `json:"boosts_url,omitempty"`
 	CreatedAt   time.Time    `json:"created_at,omitempty"`
 	Creator     Person       `json:"creator,omitempty"`
 	Details     EventDetails `json:"details,omitempty"`
@@ -658,6 +694,8 @@ type Forward struct {
 type ForwardReply struct {
 	AppUrl           string          `json:"app_url,omitempty"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	BoostsCount      int32           `json:"boosts_count,omitempty"`
+	BoostsUrl        string          `json:"boosts_url,omitempty"`
 	Bucket           TodoBucket      `json:"bucket,omitempty"`
 	Content          string          `json:"content,omitempty"`
 	CreatedAt        time.Time       `json:"created_at,omitempty"`
@@ -685,6 +723,9 @@ type GetAssignedTodosResponseContent struct {
 	Person    Person `json:"person,omitempty"`
 	Todos     []Todo `json:"todos,omitempty"`
 }
+
+// GetBoostResponseContent defines model for GetBoostResponseContent.
+type GetBoostResponseContent = Boost
 
 // GetCampfireLineResponseContent defines model for GetCampfireLineResponseContent.
 type GetCampfireLineResponseContent = CampfireLine
@@ -898,6 +939,9 @@ type ListCommentsResponseContent = []Comment
 // ListDocumentsResponseContent defines model for ListDocumentsResponseContent.
 type ListDocumentsResponseContent = []Document
 
+// ListEventBoostsResponseContent defines model for ListEventBoostsResponseContent.
+type ListEventBoostsResponseContent = []Boost
+
 // ListEventsResponseContent defines model for ListEventsResponseContent.
 type ListEventsResponseContent = []Event
 
@@ -930,6 +974,9 @@ type ListQuestionAnswerersResponseContent = []Person
 
 // ListQuestionsResponseContent defines model for ListQuestionsResponseContent.
 type ListQuestionsResponseContent = []Question
+
+// ListRecordingBoostsResponseContent defines model for ListRecordingBoostsResponseContent.
+type ListRecordingBoostsResponseContent = []Boost
 
 // ListRecordingsResponseContent defines model for ListRecordingsResponseContent.
 type ListRecordingsResponseContent = []Recording
@@ -965,6 +1012,8 @@ type ListWebhooksResponseContent = []Webhook
 type Message struct {
 	AppUrl           string          `json:"app_url,omitempty"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	BoostsCount      int32           `json:"boosts_count,omitempty"`
+	BoostsUrl        string          `json:"boosts_url,omitempty"`
 	Bucket           TodoBucket      `json:"bucket,omitempty"`
 	Category         MessageType     `json:"category,omitempty"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
@@ -1135,6 +1184,8 @@ type Question struct {
 type QuestionAnswer struct {
 	AppUrl           string          `json:"app_url,omitempty"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	BoostsCount      int32           `json:"boosts_count,omitempty"`
+	BoostsUrl        string          `json:"boosts_url,omitempty"`
 	Bucket           RecordingBucket `json:"bucket,omitempty"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
 	CommentsUrl      string          `json:"comments_url,omitempty"`
@@ -1312,6 +1363,8 @@ type ScheduleEntry struct {
 	AllDay           bool            `json:"all_day,omitempty"`
 	AppUrl           string          `json:"app_url,omitempty"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	BoostsCount      int32           `json:"boosts_count,omitempty"`
+	BoostsUrl        string          `json:"boosts_url,omitempty"`
 	Bucket           TodoBucket      `json:"bucket,omitempty"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
 	CommentsUrl      string          `json:"comments_url,omitempty"`
@@ -1462,6 +1515,8 @@ type Todo struct {
 	AppUrl                string     `json:"app_url,omitempty"`
 	Assignees             []Person   `json:"assignees,omitempty"`
 	BookmarkUrl           string     `json:"bookmark_url,omitempty"`
+	BoostsCount           int32      `json:"boosts_count,omitempty"`
+	BoostsUrl             string     `json:"boosts_url,omitempty"`
 	Bucket                TodoBucket `json:"bucket,omitempty"`
 	CommentsCount         int32      `json:"comments_count,omitempty"`
 	CommentsUrl           string     `json:"comments_url,omitempty"`
@@ -1510,6 +1565,8 @@ type Todolist struct {
 	AppTodosUrl    string     `json:"app_todos_url,omitempty"`
 	AppUrl         string     `json:"app_url,omitempty"`
 	BookmarkUrl    string     `json:"bookmark_url,omitempty"`
+	BoostsCount    int32      `json:"boosts_count,omitempty"`
+	BoostsUrl      string     `json:"boosts_url,omitempty"`
 	Bucket         TodoBucket `json:"bucket,omitempty"`
 	CommentsCount  int32      `json:"comments_count,omitempty"`
 	CommentsUrl    string     `json:"comments_url,omitempty"`
@@ -1873,6 +1930,8 @@ type UpdateWebhookResponseContent = Webhook
 type Upload struct {
 	AppUrl           string          `json:"app_url,omitempty"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	BoostsCount      int32           `json:"boosts_count,omitempty"`
+	BoostsUrl        string          `json:"boosts_url,omitempty"`
 	Bucket           TodoBucket      `json:"bucket,omitempty"`
 	ByteSize         int64           `json:"byte_size,omitempty"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
@@ -2217,11 +2276,17 @@ type CreateAnswerJSONRequestBody = QuestionAnswerPayload
 // UpdateQuestionNotificationSettingsJSONRequestBody defines body for UpdateQuestionNotificationSettings for application/json ContentType.
 type UpdateQuestionNotificationSettingsJSONRequestBody = UpdateQuestionNotificationSettingsRequestContent
 
+// CreateRecordingBoostJSONRequestBody defines body for CreateRecordingBoost for application/json ContentType.
+type CreateRecordingBoostJSONRequestBody = CreateRecordingBoostRequestContent
+
 // SetClientVisibilityJSONRequestBody defines body for SetClientVisibility for application/json ContentType.
 type SetClientVisibilityJSONRequestBody = SetClientVisibilityRequestContent
 
 // CreateCommentJSONRequestBody defines body for CreateComment for application/json ContentType.
 type CreateCommentJSONRequestBody = CreateCommentRequestContent
+
+// CreateEventBoostJSONRequestBody defines body for CreateEventBoost for application/json ContentType.
+type CreateEventBoostJSONRequestBody = CreateEventBoostRequestContent
 
 // UpdateSubscriptionJSONRequestBody defines body for UpdateSubscription for application/json ContentType.
 type UpdateSubscriptionJSONRequestBody = UpdateSubscriptionRequestContent
@@ -2588,6 +2653,12 @@ type ClientInterface interface {
 	// CreateAttachmentWithBody request with any body
 	CreateAttachmentWithBody(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteBoost request
+	DeleteBoost(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetBoost request
+	GetBoost(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetCard request
 	GetCard(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2933,6 +3004,14 @@ type ClientInterface interface {
 	// GetRecording request
 	GetRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListRecordingBoosts request
+	ListRecordingBoosts(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateRecordingBoostWithBody request with any body
+	CreateRecordingBoostWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateRecordingBoost(ctx context.Context, accountId string, recordingId int64, body CreateRecordingBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SetClientVisibilityWithBody request with any body
 	SetClientVisibilityWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2948,6 +3027,14 @@ type ClientInterface interface {
 
 	// ListEvents request
 	ListEvents(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListEventBoosts request
+	ListEventBoosts(ctx context.Context, accountId string, recordingId int64, eventId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateEventBoostWithBody request with any body
+	CreateEventBoostWithBody(ctx context.Context, accountId string, recordingId int64, eventId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateEventBoost(ctx context.Context, accountId string, recordingId int64, eventId int64, body CreateEventBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnarchiveRecording request
 	UnarchiveRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3224,6 +3311,26 @@ func (c *Client) CreateAttachmentWithBody(ctx context.Context, accountId string,
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// DeleteBoost is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeleteBoost(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeleteBoostRequest(c.Server, accountId, boostId)
+	}, true, "DeleteBoost", reqEditors...)
+
+}
+
+// GetBoost is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetBoost(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetBoostRequest(c.Server, accountId, boostId)
+	}, true, "GetBoost", reqEditors...)
 
 }
 
@@ -4625,6 +4732,46 @@ func (c *Client) GetRecording(ctx context.Context, accountId string, recordingId
 
 }
 
+// ListRecordingBoosts is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListRecordingBoosts(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListRecordingBoostsRequest(c.Server, accountId, recordingId)
+	}, true, "ListRecordingBoosts", reqEditors...)
+
+}
+
+// CreateRecordingBoostWithBody executes the CreateRecordingBoost operation.
+
+func (c *Client) CreateRecordingBoostWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateRecordingBoostRequestWithBody(c.Server, accountId, recordingId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateRecordingBoost(ctx context.Context, accountId string, recordingId int64, body CreateRecordingBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateRecordingBoostRequest(c.Server, accountId, recordingId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
 // SetClientVisibilityWithBody is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) SetClientVisibilityWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4690,6 +4837,46 @@ func (c *Client) ListEvents(ctx context.Context, accountId string, recordingId i
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListEventsRequest(c.Server, accountId, recordingId)
 	}, true, "ListEvents", reqEditors...)
+
+}
+
+// ListEventBoosts is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListEventBoosts(ctx context.Context, accountId string, recordingId int64, eventId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListEventBoostsRequest(c.Server, accountId, recordingId, eventId)
+	}, true, "ListEventBoosts", reqEditors...)
+
+}
+
+// CreateEventBoostWithBody executes the CreateEventBoost operation.
+
+func (c *Client) CreateEventBoostWithBody(ctx context.Context, accountId string, recordingId int64, eventId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateEventBoostRequestWithBody(c.Server, accountId, recordingId, eventId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateEventBoost(ctx context.Context, accountId string, recordingId int64, eventId int64, body CreateEventBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateEventBoostRequest(c.Server, accountId, recordingId, eventId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 
 }
 
@@ -5789,6 +5976,88 @@ func NewCreateAttachmentRequestWithBody(server string, accountId string, params 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteBoostRequest generates requests for DeleteBoost
+func NewDeleteBoostRequest(server string, accountId string, boostId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "boostId", runtime.ParamLocationPath, boostId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/boosts/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetBoostRequest generates requests for GetBoost
+func NewGetBoostRequest(server string, accountId string, boostId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "boostId", runtime.ParamLocationPath, boostId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/boosts/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -10077,6 +10346,101 @@ func NewGetRecordingRequest(server string, accountId string, recordingId int64) 
 	return req, nil
 }
 
+// NewListRecordingBoostsRequest generates requests for ListRecordingBoosts
+func NewListRecordingBoostsRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/boosts.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateRecordingBoostRequest calls the generic CreateRecordingBoost builder with application/json body
+func NewCreateRecordingBoostRequest(server string, accountId string, recordingId int64, body CreateRecordingBoostJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateRecordingBoostRequestWithBody(server, accountId, recordingId, "application/json", bodyReader)
+}
+
+// NewCreateRecordingBoostRequestWithBody generates requests for CreateRecordingBoost with any type of body
+func NewCreateRecordingBoostRequestWithBody(server string, accountId string, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/boosts.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewSetClientVisibilityRequest calls the generic SetClientVisibility builder with application/json body
 func NewSetClientVisibilityRequest(server string, accountId string, recordingId int64, body SetClientVisibilityJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -10263,6 +10627,115 @@ func NewListEventsRequest(server string, accountId string, recordingId int64) (*
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewListEventBoostsRequest generates requests for ListEventBoosts
+func NewListEventBoostsRequest(server string, accountId string, recordingId int64, eventId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "eventId", runtime.ParamLocationPath, eventId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/events/%s/boosts.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateEventBoostRequest calls the generic CreateEventBoost builder with application/json body
+func NewCreateEventBoostRequest(server string, accountId string, recordingId int64, eventId int64, body CreateEventBoostJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateEventBoostRequestWithBody(server, accountId, recordingId, eventId, "application/json", bodyReader)
+}
+
+// NewCreateEventBoostRequestWithBody generates requests for CreateEventBoost with any type of body
+func NewCreateEventBoostRequestWithBody(server string, accountId string, recordingId int64, eventId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "eventId", runtime.ParamLocationPath, eventId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/events/%s/boosts.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -13740,6 +14213,8 @@ type OperationMetadata struct {
 // GET/HEAD operations are always considered idempotent for retry purposes.
 var operationMetadata = map[string]OperationMetadata{
 	"CreateAttachment":                   {Idempotent: false, HasSensitiveParams: false},
+	"DeleteBoost":                        {Idempotent: true, HasSensitiveParams: false},
+	"GetBoost":                           {Idempotent: true, HasSensitiveParams: false},
 	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
 	"UpdateCard":                         {Idempotent: true, HasSensitiveParams: false},
 	"MoveCard":                           {Idempotent: false, HasSensitiveParams: false},
@@ -13833,10 +14308,14 @@ var operationMetadata = map[string]OperationMetadata{
 	"UnpinMessage":                       {Idempotent: true, HasSensitiveParams: false},
 	"PinMessage":                         {Idempotent: false, HasSensitiveParams: false},
 	"GetRecording":                       {Idempotent: true, HasSensitiveParams: false},
+	"ListRecordingBoosts":                {Idempotent: true, HasSensitiveParams: false},
+	"CreateRecordingBoost":               {Idempotent: false, HasSensitiveParams: false},
 	"SetClientVisibility":                {Idempotent: true, HasSensitiveParams: false},
 	"ListComments":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateComment":                      {Idempotent: false, HasSensitiveParams: false},
 	"ListEvents":                         {Idempotent: true, HasSensitiveParams: false},
+	"ListEventBoosts":                    {Idempotent: true, HasSensitiveParams: false},
+	"CreateEventBoost":                   {Idempotent: false, HasSensitiveParams: false},
 	"UnarchiveRecording":                 {Idempotent: true, HasSensitiveParams: false},
 	"ArchiveRecording":                   {Idempotent: true, HasSensitiveParams: false},
 	"TrashRecording":                     {Idempotent: true, HasSensitiveParams: false},
@@ -14847,6 +15326,12 @@ type ClientWithResponsesInterface interface {
 	// CreateAttachmentWithBodyWithResponse request with any body
 	CreateAttachmentWithBodyWithResponse(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAttachmentResponse, error)
 
+	// DeleteBoostWithResponse request
+	DeleteBoostWithResponse(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*DeleteBoostResponse, error)
+
+	// GetBoostWithResponse request
+	GetBoostWithResponse(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*GetBoostResponse, error)
+
 	// GetCardWithResponse request
 	GetCardWithResponse(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error)
 
@@ -15192,6 +15677,14 @@ type ClientWithResponsesInterface interface {
 	// GetRecordingWithResponse request
 	GetRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error)
 
+	// ListRecordingBoostsWithResponse request
+	ListRecordingBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListRecordingBoostsResponse, error)
+
+	// CreateRecordingBoostWithBodyWithResponse request with any body
+	CreateRecordingBoostWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRecordingBoostResponse, error)
+
+	CreateRecordingBoostWithResponse(ctx context.Context, accountId string, recordingId int64, body CreateRecordingBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRecordingBoostResponse, error)
+
 	// SetClientVisibilityWithBodyWithResponse request with any body
 	SetClientVisibilityWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error)
 
@@ -15207,6 +15700,14 @@ type ClientWithResponsesInterface interface {
 
 	// ListEventsWithResponse request
 	ListEventsWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListEventsResponse, error)
+
+	// ListEventBoostsWithResponse request
+	ListEventBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, reqEditors ...RequestEditorFn) (*ListEventBoostsResponse, error)
+
+	// CreateEventBoostWithBodyWithResponse request with any body
+	CreateEventBoostWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEventBoostResponse, error)
+
+	CreateEventBoostWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, body CreateEventBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEventBoostResponse, error)
 
 	// UnarchiveRecordingWithResponse request
 	UnarchiveRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*UnarchiveRecordingResponse, error)
@@ -15491,6 +15992,57 @@ func (r CreateAttachmentResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateAttachmentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteBoostResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteBoostResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteBoostResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetBoostResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetBoostResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBoostResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBoostResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -17939,6 +18491,59 @@ func (r GetRecordingResponse) StatusCode() int {
 	return 0
 }
 
+type ListRecordingBoostsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListRecordingBoostsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRecordingBoostsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRecordingBoostsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateRecordingBoostResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateRecordingBoostResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateRecordingBoostResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateRecordingBoostResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type SetClientVisibilityResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -18039,6 +18644,59 @@ func (r ListEventsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r ListEventsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListEventBoostsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListEventBoostsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListEventBoostsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListEventBoostsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateEventBoostResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateEventBoostResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateEventBoostResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateEventBoostResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -19921,6 +20579,24 @@ func (c *ClientWithResponses) CreateAttachmentWithBodyWithResponse(ctx context.C
 	return ParseCreateAttachmentResponse(rsp)
 }
 
+// DeleteBoostWithResponse request returning *DeleteBoostResponse
+func (c *ClientWithResponses) DeleteBoostWithResponse(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*DeleteBoostResponse, error) {
+	rsp, err := c.DeleteBoost(ctx, accountId, boostId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteBoostResponse(rsp)
+}
+
+// GetBoostWithResponse request returning *GetBoostResponse
+func (c *ClientWithResponses) GetBoostWithResponse(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*GetBoostResponse, error) {
+	rsp, err := c.GetBoost(ctx, accountId, boostId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBoostResponse(rsp)
+}
+
 // GetCardWithResponse request returning *GetCardResponse
 func (c *ClientWithResponses) GetCardWithResponse(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error) {
 	rsp, err := c.GetCard(ctx, accountId, cardId, reqEditors...)
@@ -21022,6 +21698,32 @@ func (c *ClientWithResponses) GetRecordingWithResponse(ctx context.Context, acco
 	return ParseGetRecordingResponse(rsp)
 }
 
+// ListRecordingBoostsWithResponse request returning *ListRecordingBoostsResponse
+func (c *ClientWithResponses) ListRecordingBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListRecordingBoostsResponse, error) {
+	rsp, err := c.ListRecordingBoosts(ctx, accountId, recordingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRecordingBoostsResponse(rsp)
+}
+
+// CreateRecordingBoostWithBodyWithResponse request with arbitrary body returning *CreateRecordingBoostResponse
+func (c *ClientWithResponses) CreateRecordingBoostWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRecordingBoostResponse, error) {
+	rsp, err := c.CreateRecordingBoostWithBody(ctx, accountId, recordingId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRecordingBoostResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateRecordingBoostWithResponse(ctx context.Context, accountId string, recordingId int64, body CreateRecordingBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRecordingBoostResponse, error) {
+	rsp, err := c.CreateRecordingBoost(ctx, accountId, recordingId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRecordingBoostResponse(rsp)
+}
+
 // SetClientVisibilityWithBodyWithResponse request with arbitrary body returning *SetClientVisibilityResponse
 func (c *ClientWithResponses) SetClientVisibilityWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error) {
 	rsp, err := c.SetClientVisibilityWithBody(ctx, accountId, recordingId, contentType, body, reqEditors...)
@@ -21072,6 +21774,32 @@ func (c *ClientWithResponses) ListEventsWithResponse(ctx context.Context, accoun
 		return nil, err
 	}
 	return ParseListEventsResponse(rsp)
+}
+
+// ListEventBoostsWithResponse request returning *ListEventBoostsResponse
+func (c *ClientWithResponses) ListEventBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, reqEditors ...RequestEditorFn) (*ListEventBoostsResponse, error) {
+	rsp, err := c.ListEventBoosts(ctx, accountId, recordingId, eventId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListEventBoostsResponse(rsp)
+}
+
+// CreateEventBoostWithBodyWithResponse request with arbitrary body returning *CreateEventBoostResponse
+func (c *ClientWithResponses) CreateEventBoostWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEventBoostResponse, error) {
+	rsp, err := c.CreateEventBoostWithBody(ctx, accountId, recordingId, eventId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateEventBoostResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateEventBoostWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, body CreateEventBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEventBoostResponse, error) {
+	rsp, err := c.CreateEventBoost(ctx, accountId, recordingId, eventId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateEventBoostResponse(rsp)
 }
 
 // UnarchiveRecordingWithResponse request returning *UnarchiveRecordingResponse
@@ -21953,6 +22681,107 @@ func ParseCreateAttachmentResponse(rsp *http.Response) (*CreateAttachmentRespons
 			return nil, err
 		}
 		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteBoostResponse parses an HTTP response from a DeleteBoostWithResponse call
+func ParseDeleteBoostResponse(rsp *http.Response) (*DeleteBoostResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteBoostResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetBoostResponse parses an HTTP response from a GetBoostWithResponse call
+func ParseGetBoostResponse(rsp *http.Response) (*GetBoostResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBoostResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetBoostResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
@@ -27156,6 +27985,121 @@ func ParseGetRecordingResponse(rsp *http.Response) (*GetRecordingResponse, error
 	return response, nil
 }
 
+// ParseListRecordingBoostsResponse parses an HTTP response from a ListRecordingBoostsWithResponse call
+func ParseListRecordingBoostsResponse(rsp *http.Response) (*ListRecordingBoostsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRecordingBoostsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListRecordingBoostsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateRecordingBoostResponse parses an HTTP response from a CreateRecordingBoostWithResponse call
+func ParseCreateRecordingBoostResponse(rsp *http.Response) (*CreateRecordingBoostResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateRecordingBoostResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateRecordingBoostResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseSetClientVisibilityResponse parses an HTTP response from a SetClientVisibilityWithResponse call
 func ParseSetClientVisibilityResponse(rsp *http.Response) (*SetClientVisibilityResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -27366,6 +28310,121 @@ func ParseListEventsResponse(rsp *http.Response) (*ListEventsResponse, error) {
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListEventBoostsResponse parses an HTTP response from a ListEventBoostsWithResponse call
+func ParseListEventBoostsResponse(rsp *http.Response) (*ListEventBoostsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListEventBoostsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListEventBoostsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateEventBoostResponse parses an HTTP response from a CreateEventBoostWithResponse call
+func ParseCreateEventBoostResponse(rsp *http.Response) (*CreateEventBoostResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateEventBoostResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateEventBoostResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent

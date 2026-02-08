@@ -1,4 +1,5 @@
 export { AttachmentsService } from "./attachments.js";
+export { BoostsService } from "./boosts.js";
 export { CardsService } from "./cards.js";
 export { CardStepsService } from "./card-steps.js";
 export { CardColumnsService } from "./card-columns.js";

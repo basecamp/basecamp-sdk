@@ -94,10 +94,9 @@ class CampfiresServiceTest < Minitest::Test
 
   def test_create_line_with_content_type
     new_line = sample_line(id: 998, content: "<strong>Rich text</strong>")
-    stub_post("/12345/buckets/100/chats/200/lines.json", response_body: new_line)
+    stub_post("/12345/chats/200/lines.json", response_body: new_line)
 
     line = @account.campfires.create_line(
-      project_id: 100,
       campfire_id: 200,
       content: "<strong>Rich text</strong>",
       content_type: "text/html"

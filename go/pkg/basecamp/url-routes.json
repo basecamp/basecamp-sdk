@@ -17,7 +17,7 @@
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/boosts/{boostId}",
+      "pattern": "/{accountId}/boosts/{boostId}",
       "resource": "Boosts",
       "operations": {
         "DELETE": "DeleteBoost",
@@ -31,15 +31,11 @@
         "boostId": {
           "role": "recording",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}",
+      "pattern": "/{accountId}/card_tables/cards/{cardId}",
       "resource": "Card Tables",
       "operations": {
         "GET": "GetCard",
@@ -53,15 +49,11 @@
         "cardId": {
           "role": "recording",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/moves",
+      "pattern": "/{accountId}/card_tables/cards/{cardId}/moves",
       "resource": "Card Tables",
       "operations": {
         "POST": "MoveCard"
@@ -74,15 +66,11 @@
         "cardId": {
           "role": "parent",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/positions",
+      "pattern": "/{accountId}/card_tables/cards/{cardId}/positions",
       "resource": "Card Tables",
       "operations": {
         "POST": "RepositionCardStep"
@@ -95,15 +83,11 @@
         "cardId": {
           "role": "parent",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/steps",
+      "pattern": "/{accountId}/card_tables/cards/{cardId}/steps",
       "resource": "Card Tables",
       "operations": {
         "POST": "CreateCardStep"
@@ -116,15 +100,11 @@
         "cardId": {
           "role": "parent",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}",
+      "pattern": "/{accountId}/card_tables/columns/{columnId}",
       "resource": "Card Tables",
       "operations": {
         "GET": "GetCardColumn",
@@ -138,15 +118,11 @@
         "columnId": {
           "role": "recording",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}/color",
+      "pattern": "/{accountId}/card_tables/columns/{columnId}/color",
       "resource": "Card Tables",
       "operations": {
         "PUT": "SetCardColumnColor"
@@ -159,15 +135,11 @@
         "columnId": {
           "role": "parent",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}/on_hold",
+      "pattern": "/{accountId}/card_tables/columns/{columnId}/on_hold",
       "resource": "Card Tables",
       "operations": {
         "DELETE": "DisableCardColumnOnHold",
@@ -181,15 +153,11 @@
         "columnId": {
           "role": "parent",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/cards",
+      "pattern": "/{accountId}/card_tables/lists/{columnId}/cards",
       "resource": "Card Tables",
       "operations": {
         "GET": "ListCards",
@@ -203,15 +171,11 @@
         "columnId": {
           "role": "parent",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription",
+      "pattern": "/{accountId}/card_tables/lists/{columnId}/subscription",
       "resource": null,
       "operations": {
         "DELETE": "UnsubscribeFromCardColumn",
@@ -225,15 +189,11 @@
         "columnId": {
           "role": "parent",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}",
+      "pattern": "/{accountId}/card_tables/steps/{stepId}",
       "resource": "Card Tables",
       "operations": {
         "PUT": "UpdateCardStep"
@@ -243,10 +203,6 @@
           "role": "account",
           "type": "string"
         },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
         "stepId": {
           "role": "recording",
           "type": "int64"
@@ -254,7 +210,7 @@
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions",
+      "pattern": "/{accountId}/card_tables/steps/{stepId}/completions",
       "resource": "Card Tables",
       "operations": {
         "PUT": "SetCardStepCompletion"
@@ -264,10 +220,6 @@
           "role": "account",
           "type": "string"
         },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
         "stepId": {
           "role": "parent",
           "type": "int64"
@@ -275,7 +227,7 @@
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}",
+      "pattern": "/{accountId}/card_tables/{cardTableId}",
       "resource": "Card Tables",
       "operations": {
         "GET": "GetCardTable"
@@ -288,15 +240,11 @@
         "cardTableId": {
           "role": "recording",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}/columns",
+      "pattern": "/{accountId}/card_tables/{cardTableId}/columns",
       "resource": "Card Tables",
       "operations": {
         "POST": "CreateCardColumn"
@@ -309,15 +257,11 @@
         "cardTableId": {
           "role": "parent",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}/moves",
+      "pattern": "/{accountId}/card_tables/{cardTableId}/moves",
       "resource": "Card Tables",
       "operations": {
         "POST": "MoveCardColumn"
@@ -330,15 +274,11 @@
         "cardTableId": {
           "role": "parent",
           "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/categories",
+      "pattern": "/{accountId}/categories",
       "resource": "Messages",
       "operations": {
         "GET": "ListMessageTypes",
@@ -348,15 +288,11 @@
         "accountId": {
           "role": "account",
           "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
         }
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/categories/{typeId}",
+      "pattern": "/{accountId}/categories/{typeId}",
       "resource": "Messages",
       "operations": {
         "DELETE": "DeleteMessageType",
@@ -368,1432 +304,7 @@
           "role": "account",
           "type": "string"
         },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
         "typeId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/chats/{campfireId}",
-      "resource": "Campfire",
-      "operations": {
-        "GET": "GetCampfire"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "campfireId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations",
-      "resource": "Campfire",
-      "operations": {
-        "GET": "ListChatbots",
-        "POST": "CreateChatbot"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "campfireId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}",
-      "resource": "Campfire",
-      "operations": {
-        "DELETE": "DeleteChatbot",
-        "GET": "GetChatbot",
-        "PUT": "UpdateChatbot"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "campfireId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "chatbotId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines",
-      "resource": "Campfire",
-      "operations": {
-        "GET": "ListCampfireLines",
-        "POST": "CreateCampfireLine"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "campfireId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines/{lineId}",
-      "resource": "Campfire",
-      "operations": {
-        "DELETE": "DeleteCampfireLine",
-        "GET": "GetCampfireLine"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "campfireId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "lineId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/client/approvals",
-      "resource": "ClientFeatures",
-      "operations": {
-        "GET": "ListClientApprovals"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/client/approvals/{approvalId}",
-      "resource": "ClientFeatures",
-      "operations": {
-        "GET": "GetClientApproval"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "approvalId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/client/correspondences",
-      "resource": "ClientFeatures",
-      "operations": {
-        "GET": "ListClientCorrespondences"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/client/correspondences/{correspondenceId}",
-      "resource": "ClientFeatures",
-      "operations": {
-        "GET": "GetClientCorrespondence"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "correspondenceId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/client/recordings/{recordingId}/replies",
-      "resource": "ClientFeatures",
-      "operations": {
-        "GET": "ListClientReplies"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}",
-      "resource": "ClientFeatures",
-      "operations": {
-        "GET": "GetClientReply"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "replyId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/comments/{commentId}",
-      "resource": "Messages",
-      "operations": {
-        "GET": "GetComment",
-        "PUT": "UpdateComment"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "commentId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/dock/tools",
-      "resource": "Automation",
-      "operations": {
-        "POST": "CloneTool"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/dock/tools/{toolId}",
-      "resource": "Automation",
-      "operations": {
-        "DELETE": "DeleteTool",
-        "GET": "GetTool",
-        "PUT": "UpdateTool"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "toolId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/documents/{documentId}",
-      "resource": "Files",
-      "operations": {
-        "GET": "GetDocument",
-        "PUT": "UpdateDocument"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "documentId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}",
-      "resource": "Forwards",
-      "operations": {
-        "GET": "GetForward"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "forwardId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}/replies",
-      "resource": "Forwards",
-      "operations": {
-        "GET": "ListForwardReplies",
-        "POST": "CreateForwardReply"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "forwardId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}",
-      "resource": "Forwards",
-      "operations": {
-        "GET": "GetForwardReply"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "forwardId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "replyId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/inboxes/{inboxId}",
-      "resource": "Forwards",
-      "operations": {
-        "GET": "GetInbox"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "inboxId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/inboxes/{inboxId}/forwards",
-      "resource": "Forwards",
-      "operations": {
-        "GET": "ListForwards"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "inboxId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/message_boards/{boardId}",
-      "resource": "Messages",
-      "operations": {
-        "GET": "GetMessageBoard"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "boardId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/message_boards/{boardId}/messages",
-      "resource": "Messages",
-      "operations": {
-        "GET": "ListMessages",
-        "POST": "CreateMessage"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "boardId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/messages/{messageId}",
-      "resource": "Messages",
-      "operations": {
-        "GET": "GetMessage",
-        "PUT": "UpdateMessage"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "messageId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/question_answers/{answerId}",
-      "resource": "Automation",
-      "operations": {
-        "GET": "GetAnswer",
-        "PUT": "UpdateAnswer"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "answerId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/questionnaires/{questionnaireId}",
-      "resource": "Automation",
-      "operations": {
-        "GET": "GetQuestionnaire"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "questionnaireId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/questionnaires/{questionnaireId}/questions",
-      "resource": "Automation",
-      "operations": {
-        "GET": "ListQuestions",
-        "POST": "CreateQuestion"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "questionnaireId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/questions/{questionId}",
-      "resource": "Automation",
-      "operations": {
-        "GET": "GetQuestion",
-        "PUT": "UpdateQuestion"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "questionId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/questions/{questionId}/answers",
-      "resource": "Automation",
-      "operations": {
-        "GET": "ListAnswers",
-        "POST": "CreateAnswer"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "questionId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/questions/{questionId}/answers/by",
-      "resource": null,
-      "operations": {
-        "GET": "ListQuestionAnswerers"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "questionId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/questions/{questionId}/answers/by/{personId}",
-      "resource": null,
-      "operations": {
-        "GET": "GetAnswersByPerson"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "personId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "questionId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/questions/{questionId}/notification_settings",
-      "resource": null,
-      "operations": {
-        "PUT": "UpdateQuestionNotificationSettings"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "questionId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/questions/{questionId}/pause",
-      "resource": null,
-      "operations": {
-        "DELETE": "ResumeQuestion",
-        "POST": "PauseQuestion"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "questionId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{messageId}/pin",
-      "resource": "Messages",
-      "operations": {
-        "DELETE": "UnpinMessage",
-        "POST": "PinMessage"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "messageId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}",
-      "resource": "Automation",
-      "operations": {
-        "GET": "GetRecording"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/boosts",
-      "resource": "Boosts",
-      "operations": {
-        "GET": "ListRecordingBoosts",
-        "POST": "CreateRecordingBoost"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/client_visibility",
-      "resource": "ClientFeatures",
-      "operations": {
-        "PUT": "SetClientVisibility"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/comments",
-      "resource": "Messages",
-      "operations": {
-        "GET": "ListComments",
-        "POST": "CreateComment"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/events",
-      "resource": "Automation",
-      "operations": {
-        "GET": "ListEvents"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/events/{eventId}/boosts",
-      "resource": "Boosts",
-      "operations": {
-        "GET": "ListEventBoosts",
-        "POST": "CreateEventBoost"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "eventId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/active",
-      "resource": "Automation",
-      "operations": {
-        "PUT": "UnarchiveRecording"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/archived",
-      "resource": "Automation",
-      "operations": {
-        "PUT": "ArchiveRecording"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/trashed",
-      "resource": "Automation",
-      "operations": {
-        "PUT": "TrashRecording"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/subscription",
-      "resource": "People",
-      "operations": {
-        "DELETE": "Unsubscribe",
-        "GET": "GetSubscription",
-        "POST": "Subscribe",
-        "PUT": "UpdateSubscription"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{toolId}/position",
-      "resource": "Automation",
-      "operations": {
-        "DELETE": "DisableTool",
-        "POST": "EnableTool",
-        "PUT": "RepositionTool"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "toolId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/schedule_entries/{entryId}",
-      "resource": "Schedule",
-      "operations": {
-        "GET": "GetScheduleEntry",
-        "PUT": "UpdateScheduleEntry"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "entryId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}",
-      "resource": "Schedule",
-      "operations": {
-        "GET": "GetScheduleEntryOccurrence"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "date": {
-          "role": "recording",
-          "type": "string"
-        },
-        "entryId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/schedules/{scheduleId}",
-      "resource": "Schedule",
-      "operations": {
-        "GET": "GetSchedule",
-        "PUT": "UpdateScheduleSettings"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "scheduleId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/schedules/{scheduleId}/entries",
-      "resource": "Schedule",
-      "operations": {
-        "GET": "ListScheduleEntries",
-        "POST": "CreateScheduleEntry"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "scheduleId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/todolists/{groupId}/position",
-      "resource": "Todos",
-      "operations": {
-        "PUT": "RepositionTodolistGroup"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "groupId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/todolists/{id}",
-      "resource": "Todos",
-      "operations": {
-        "GET": "GetTodolistOrGroup",
-        "PUT": "UpdateTodolistOrGroup"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "id": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/todolists/{todolistId}/groups",
-      "resource": "Todos",
-      "operations": {
-        "GET": "ListTodolistGroups",
-        "POST": "CreateTodolistGroup"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "todolistId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/todolists/{todolistId}/todos",
-      "resource": "Todos",
-      "operations": {
-        "GET": "ListTodos",
-        "POST": "CreateTodo"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "todolistId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/todos/{todoId}",
-      "resource": "Todos",
-      "operations": {
-        "DELETE": "TrashTodo",
-        "GET": "GetTodo",
-        "PUT": "UpdateTodo"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "todoId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/todos/{todoId}/completion",
-      "resource": "Todos",
-      "operations": {
-        "DELETE": "UncompleteTodo",
-        "POST": "CompleteTodo"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "todoId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/todos/{todoId}/position",
-      "resource": null,
-      "operations": {
-        "PUT": "RepositionTodo"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "todoId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/todosets/{todosetId}",
-      "resource": "Todos",
-      "operations": {
-        "GET": "GetTodoset"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "todosetId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/todosets/{todosetId}/todolists",
-      "resource": "Todos",
-      "operations": {
-        "GET": "ListTodolists",
-        "POST": "CreateTodolist"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "todosetId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/uploads/{uploadId}",
-      "resource": "Files",
-      "operations": {
-        "GET": "GetUpload",
-        "PUT": "UpdateUpload"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "uploadId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/uploads/{uploadId}/versions",
-      "resource": "Files",
-      "operations": {
-        "GET": "ListUploadVersions"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "uploadId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/vaults/{vaultId}",
-      "resource": "Files",
-      "operations": {
-        "GET": "GetVault",
-        "PUT": "UpdateVault"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "vaultId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/vaults/{vaultId}/documents",
-      "resource": "Files",
-      "operations": {
-        "GET": "ListDocuments",
-        "POST": "CreateDocument"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "vaultId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/vaults/{vaultId}/uploads",
-      "resource": "Files",
-      "operations": {
-        "GET": "ListUploads",
-        "POST": "CreateUpload"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "vaultId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/vaults/{vaultId}/vaults",
-      "resource": "Files",
-      "operations": {
-        "GET": "ListVaults",
-        "POST": "CreateVault"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "vaultId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/webhooks",
-      "resource": "Automation",
-      "operations": {
-        "GET": "ListWebhooks",
-        "POST": "CreateWebhook"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/webhooks/{webhookId}",
-      "resource": "Automation",
-      "operations": {
-        "DELETE": "DeleteWebhook",
-        "GET": "GetWebhook",
-        "PUT": "UpdateWebhook"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "webhookId": {
           "role": "recording",
           "type": "int64"
         }
@@ -1813,6 +324,104 @@
       }
     },
     {
+      "pattern": "/{accountId}/chats/{campfireId}",
+      "resource": "Campfire",
+      "operations": {
+        "GET": "GetCampfire"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "campfireId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/chats/{campfireId}/integrations",
+      "resource": "Campfire",
+      "operations": {
+        "GET": "ListChatbots",
+        "POST": "CreateChatbot"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "campfireId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/chats/{campfireId}/integrations/{chatbotId}",
+      "resource": "Campfire",
+      "operations": {
+        "DELETE": "DeleteChatbot",
+        "GET": "GetChatbot",
+        "PUT": "UpdateChatbot"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "campfireId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "chatbotId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/chats/{campfireId}/lines",
+      "resource": "Campfire",
+      "operations": {
+        "GET": "ListCampfireLines",
+        "POST": "CreateCampfireLine"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "campfireId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/chats/{campfireId}/lines/{lineId}",
+      "resource": "Campfire",
+      "operations": {
+        "DELETE": "DeleteCampfireLine",
+        "GET": "GetCampfireLine"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "campfireId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "lineId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/circles/people",
       "resource": "People",
       "operations": {
@@ -1822,6 +431,262 @@
         "accountId": {
           "role": "account",
           "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/client/approvals",
+      "resource": "ClientFeatures",
+      "operations": {
+        "GET": "ListClientApprovals"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/client/approvals/{approvalId}",
+      "resource": "ClientFeatures",
+      "operations": {
+        "GET": "GetClientApproval"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "approvalId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/client/correspondences",
+      "resource": "ClientFeatures",
+      "operations": {
+        "GET": "ListClientCorrespondences"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/client/correspondences/{correspondenceId}",
+      "resource": "ClientFeatures",
+      "operations": {
+        "GET": "GetClientCorrespondence"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "correspondenceId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/client/recordings/{recordingId}/replies",
+      "resource": "ClientFeatures",
+      "operations": {
+        "GET": "ListClientReplies"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/client/recordings/{recordingId}/replies/{replyId}",
+      "resource": "ClientFeatures",
+      "operations": {
+        "GET": "GetClientReply"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "replyId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/comments/{commentId}",
+      "resource": "Messages",
+      "operations": {
+        "GET": "GetComment",
+        "PUT": "UpdateComment"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "commentId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/dock/tools",
+      "resource": "Automation",
+      "operations": {
+        "POST": "CloneTool"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/dock/tools/{toolId}",
+      "resource": "Automation",
+      "operations": {
+        "DELETE": "DeleteTool",
+        "GET": "GetTool",
+        "PUT": "UpdateTool"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "toolId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/documents/{documentId}",
+      "resource": "Files",
+      "operations": {
+        "GET": "GetDocument",
+        "PUT": "UpdateDocument"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "documentId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/inbox_forwards/{forwardId}",
+      "resource": "Forwards",
+      "operations": {
+        "GET": "GetForward"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "forwardId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/inbox_forwards/{forwardId}/replies",
+      "resource": "Forwards",
+      "operations": {
+        "GET": "ListForwardReplies",
+        "POST": "CreateForwardReply"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "forwardId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/inbox_forwards/{forwardId}/replies/{replyId}",
+      "resource": "Forwards",
+      "operations": {
+        "GET": "GetForwardReply"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "forwardId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "replyId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/inboxes/{inboxId}",
+      "resource": "Forwards",
+      "operations": {
+        "GET": "GetInbox"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "inboxId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/inboxes/{inboxId}/forwards",
+      "resource": "Forwards",
+      "operations": {
+        "GET": "ListForwards"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "inboxId": {
+          "role": "parent",
+          "type": "int64"
         }
       }
     },
@@ -1851,6 +716,59 @@
           "type": "string"
         },
         "markerId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/message_boards/{boardId}",
+      "resource": "Messages",
+      "operations": {
+        "GET": "GetMessageBoard"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "boardId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/message_boards/{boardId}/messages",
+      "resource": "Messages",
+      "operations": {
+        "GET": "ListMessages",
+        "POST": "CreateMessage"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "boardId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/messages/{messageId}",
+      "resource": "Messages",
+      "operations": {
+        "GET": "GetMessage",
+        "PUT": "UpdateMessage"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "messageId": {
           "role": "recording",
           "type": "int64"
         }
@@ -1993,7 +911,367 @@
       }
     },
     {
-      "pattern": "/{accountId}/projects/{projectId}/recordings/{recordingId}/timesheet",
+      "pattern": "/{accountId}/question_answers/{answerId}",
+      "resource": "Automation",
+      "operations": {
+        "GET": "GetAnswer",
+        "PUT": "UpdateAnswer"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "answerId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/questionnaires/{questionnaireId}",
+      "resource": "Automation",
+      "operations": {
+        "GET": "GetQuestionnaire"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "questionnaireId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/questionnaires/{questionnaireId}/questions",
+      "resource": "Automation",
+      "operations": {
+        "GET": "ListQuestions",
+        "POST": "CreateQuestion"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "questionnaireId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/questions/{questionId}",
+      "resource": "Automation",
+      "operations": {
+        "GET": "GetQuestion",
+        "PUT": "UpdateQuestion"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "questionId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/questions/{questionId}/answers",
+      "resource": "Automation",
+      "operations": {
+        "GET": "ListAnswers",
+        "POST": "CreateAnswer"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "questionId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/questions/{questionId}/answers/by",
+      "resource": null,
+      "operations": {
+        "GET": "ListQuestionAnswerers"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "questionId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/questions/{questionId}/answers/by/{personId}",
+      "resource": null,
+      "operations": {
+        "GET": "GetAnswersByPerson"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "personId": {
+          "role": "recording",
+          "type": "int64"
+        },
+        "questionId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/questions/{questionId}/notification_settings",
+      "resource": null,
+      "operations": {
+        "PUT": "UpdateQuestionNotificationSettings"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "questionId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/questions/{questionId}/pause",
+      "resource": null,
+      "operations": {
+        "DELETE": "ResumeQuestion",
+        "POST": "PauseQuestion"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "questionId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{messageId}/pin",
+      "resource": "Messages",
+      "operations": {
+        "DELETE": "UnpinMessage",
+        "POST": "PinMessage"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "messageId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}",
+      "resource": "Automation",
+      "operations": {
+        "GET": "GetRecording"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/boosts",
+      "resource": "Boosts",
+      "operations": {
+        "GET": "ListRecordingBoosts",
+        "POST": "CreateRecordingBoost"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/client_visibility",
+      "resource": "ClientFeatures",
+      "operations": {
+        "PUT": "SetClientVisibility"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/comments",
+      "resource": "Messages",
+      "operations": {
+        "GET": "ListComments",
+        "POST": "CreateComment"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/events",
+      "resource": "Automation",
+      "operations": {
+        "GET": "ListEvents"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/events/{eventId}/boosts",
+      "resource": "Boosts",
+      "operations": {
+        "GET": "ListEventBoosts",
+        "POST": "CreateEventBoost"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "eventId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/status/active",
+      "resource": "Automation",
+      "operations": {
+        "PUT": "UnarchiveRecording"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/status/archived",
+      "resource": "Automation",
+      "operations": {
+        "PUT": "ArchiveRecording"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/status/trashed",
+      "resource": "Automation",
+      "operations": {
+        "PUT": "TrashRecording"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/subscription",
+      "resource": "People",
+      "operations": {
+        "DELETE": "Unsubscribe",
+        "GET": "GetSubscription",
+        "POST": "Subscribe",
+        "PUT": "UpdateSubscription"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/timesheet",
       "resource": "Schedule",
       "operations": {
         "GET": "GetRecordingTimesheet"
@@ -2003,10 +1281,6 @@
           "role": "account",
           "type": "string"
         },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
         "recordingId": {
           "role": "parent",
           "type": "int64"
@@ -2014,7 +1288,7 @@
       }
     },
     {
-      "pattern": "/{accountId}/projects/{projectId}/recordings/{recordingId}/timesheet/entries",
+      "pattern": "/{accountId}/recordings/{recordingId}/timesheet/entries",
       "resource": "Schedule",
       "operations": {
         "POST": "CreateTimesheetEntry"
@@ -2024,10 +1298,6 @@
           "role": "account",
           "type": "string"
         },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
         "recordingId": {
           "role": "parent",
           "type": "int64"
@@ -2035,57 +1305,20 @@
       }
     },
     {
-      "pattern": "/{accountId}/projects/{projectId}/timeline",
-      "resource": null,
+      "pattern": "/{accountId}/recordings/{toolId}/position",
+      "resource": "Automation",
       "operations": {
-        "GET": "GetProjectTimeline"
+        "DELETE": "DisableTool",
+        "POST": "EnableTool",
+        "PUT": "RepositionTool"
       },
       "params": {
         "accountId": {
           "role": "account",
           "type": "string"
         },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/projects/{projectId}/timesheet",
-      "resource": "Schedule",
-      "operations": {
-        "GET": "GetProjectTimesheet"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/projects/{projectId}/timesheet/entries/{entryId}",
-      "resource": "Schedule",
-      "operations": {
-        "GET": "GetTimesheetEntry",
-        "PUT": "UpdateTimesheetEntry"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "entryId": {
-          "role": "recording",
-          "type": "int64"
-        },
-        "projectId": {
-          "role": "bucket",
+        "toolId": {
+          "role": "parent",
           "type": "int64"
         }
       }
@@ -2190,6 +1423,81 @@
       }
     },
     {
+      "pattern": "/{accountId}/schedule_entries/{entryId}",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "GetScheduleEntry",
+        "PUT": "UpdateScheduleEntry"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "entryId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/schedule_entries/{entryId}/occurrences/{date}",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "GetScheduleEntryOccurrence"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "date": {
+          "role": "recording",
+          "type": "string"
+        },
+        "entryId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/schedules/{scheduleId}",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "GetSchedule",
+        "PUT": "UpdateScheduleSettings"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "scheduleId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/schedules/{scheduleId}/entries",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "ListScheduleEntries",
+        "POST": "CreateScheduleEntry"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "scheduleId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/search",
       "resource": "Automation",
       "operations": {
@@ -2282,6 +1590,350 @@
         },
         "templateId": {
           "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/timeline",
+      "resource": null,
+      "operations": {
+        "GET": "GetProjectTimeline"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/timesheet",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "GetProjectTimesheet"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/timesheet/entries/{entryId}",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "GetTimesheetEntry",
+        "PUT": "UpdateTimesheetEntry"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "entryId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todolists/{groupId}/position",
+      "resource": "Todos",
+      "operations": {
+        "PUT": "RepositionTodolistGroup"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "groupId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todolists/{id}",
+      "resource": "Todos",
+      "operations": {
+        "GET": "GetTodolistOrGroup",
+        "PUT": "UpdateTodolistOrGroup"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "id": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todolists/{todolistId}/groups",
+      "resource": "Todos",
+      "operations": {
+        "GET": "ListTodolistGroups",
+        "POST": "CreateTodolistGroup"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "todolistId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todolists/{todolistId}/todos",
+      "resource": "Todos",
+      "operations": {
+        "GET": "ListTodos",
+        "POST": "CreateTodo"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "todolistId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todos/{todoId}",
+      "resource": "Todos",
+      "operations": {
+        "DELETE": "TrashTodo",
+        "GET": "GetTodo",
+        "PUT": "UpdateTodo"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "todoId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todos/{todoId}/completion",
+      "resource": "Todos",
+      "operations": {
+        "DELETE": "UncompleteTodo",
+        "POST": "CompleteTodo"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "todoId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todos/{todoId}/position",
+      "resource": null,
+      "operations": {
+        "PUT": "RepositionTodo"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "todoId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todosets/{todosetId}",
+      "resource": "Todos",
+      "operations": {
+        "GET": "GetTodoset"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "todosetId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todosets/{todosetId}/todolists",
+      "resource": "Todos",
+      "operations": {
+        "GET": "ListTodolists",
+        "POST": "CreateTodolist"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "todosetId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/uploads/{uploadId}",
+      "resource": "Files",
+      "operations": {
+        "GET": "GetUpload",
+        "PUT": "UpdateUpload"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "uploadId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/uploads/{uploadId}/versions",
+      "resource": "Files",
+      "operations": {
+        "GET": "ListUploadVersions"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "uploadId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/vaults/{vaultId}",
+      "resource": "Files",
+      "operations": {
+        "GET": "GetVault",
+        "PUT": "UpdateVault"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "vaultId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/vaults/{vaultId}/documents",
+      "resource": "Files",
+      "operations": {
+        "GET": "ListDocuments",
+        "POST": "CreateDocument"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "vaultId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/vaults/{vaultId}/uploads",
+      "resource": "Files",
+      "operations": {
+        "GET": "ListUploads",
+        "POST": "CreateUpload"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "vaultId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/vaults/{vaultId}/vaults",
+      "resource": "Files",
+      "operations": {
+        "GET": "ListVaults",
+        "POST": "CreateVault"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "vaultId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/webhooks",
+      "resource": "Automation",
+      "operations": {
+        "GET": "ListWebhooks",
+        "POST": "CreateWebhook"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/webhooks/{webhookId}",
+      "resource": "Automation",
+      "operations": {
+        "DELETE": "DeleteWebhook",
+        "GET": "GetWebhook",
+        "PUT": "UpdateWebhook"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "webhookId": {
+          "role": "recording",
           "type": "int64"
         }
       }

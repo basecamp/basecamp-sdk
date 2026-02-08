@@ -268,8 +268,46 @@ func preprocessURL(rawURL string) (path, fragment string, ok bool) {
 	return path, fragment, true
 }
 
+// reBucketSegment matches /buckets/{digits} or /projects/{digits} segments
+// in web URLs that don't exist in the flat API route table.
+var reBucketSegment = regexp.MustCompile(`^(/\d+)/(?:buckets|projects)/(\d+)(/.*)?$`)
+
+// flattenPath strips the /buckets/{projectId} or /projects/{projectId} segment
+// from a web URL path so it can match against the flat API route table.
+// Returns the normalized path and the extracted projectId (if any).
+func flattenPath(path string) (string, string) {
+	m := reBucketSegment.FindStringSubmatch(path)
+	if m == nil {
+		return path, ""
+	}
+	rest := m[3] // may be empty
+	return m[1] + rest, m[2]
+}
+
 // matchAPIRoute tries to match the path against the spec-derived route table.
+// Web URLs may contain /buckets/{projectId} segments that don't exist in the
+// flat route table, so we try matching the raw path first, then a flattened version.
 func (r *Router) matchAPIRoute(path, fragment string) *Match {
+	m := r.tryMatchRoute(path, fragment)
+	if m != nil {
+		return m
+	}
+
+	// Try with /buckets/{projectId} stripped for web URL compatibility.
+	flat, projectID := flattenPath(path)
+	if flat == path {
+		return nil
+	}
+
+	m = r.tryMatchRoute(flat, fragment)
+	if m != nil {
+		m.ProjectID = projectID
+		m.Params["projectId"] = projectID
+	}
+	return m
+}
+
+func (r *Router) tryMatchRoute(path, fragment string) *Match {
 	for i := range r.routes {
 		rt := &r.routes[i]
 		matches := rt.regex.FindStringSubmatch(path)
