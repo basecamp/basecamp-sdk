@@ -64,10 +64,10 @@ class WebhooksServiceTest < Minitest::Test
   def test_get_with_recent_deliveries
     fixture = JSON.parse(File.read(File.expand_path("../../../../spec/fixtures/webhooks/get.json", __dir__)))
 
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks/\d+})
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/webhooks/\d+})
       .to_return(status: 200, body: fixture.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.webhooks.get(project_id: 1, webhook_id: 9007199254741433)
+    result = @account.webhooks.get(webhook_id: 9007199254741433)
     assert_equal 1, result["recent_deliveries"].length
 
     delivery = result["recent_deliveries"].first

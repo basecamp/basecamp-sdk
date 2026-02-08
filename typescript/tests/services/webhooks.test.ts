@@ -106,12 +106,12 @@ describe("WebhooksService", () => {
       const mockWebhook = fixture.default ?? fixture;
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/webhooks/1`, () => {
+        http.get(`${BASE_URL}/webhooks/1`, () => {
           return HttpResponse.json(mockWebhook);
         })
       );
 
-      const webhook = await client.webhooks.get(1, 1);
+      const webhook = await client.webhooks.get(1);
 
       expect(webhook.recent_deliveries).toBeDefined();
       expect(webhook.recent_deliveries).toHaveLength(1);
