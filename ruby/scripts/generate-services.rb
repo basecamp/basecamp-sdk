@@ -34,6 +34,7 @@ class ServiceGenerator
     'Projects' => 'Projects',
     'Automation' => 'Automation',
     'ClientFeatures' => 'ClientFeatures',
+    'Boosts' => 'Boosts',
     'Untagged' => 'Miscellaneous'
   }.freeze
 

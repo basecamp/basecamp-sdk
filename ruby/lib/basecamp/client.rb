@@ -392,6 +392,11 @@ module Basecamp
       service(:todolist_groups) { Services::TodolistGroupsService.new(self) }
     end
 
+    # @return [Services::BoostsService]
+    def boosts
+      service(:boosts) { Services::BoostsService.new(self) }
+    end
+
     # @!endgroup
 
     private

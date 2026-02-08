@@ -155,6 +155,7 @@ const TAG_TO_SERVICE: Record<string, string> = {
   Projects: "Projects",
   Automation: "Automation",
   ClientFeatures: "ClientFeatures",
+  Boosts: "Boosts",
   Untagged: "Miscellaneous",
 };
 
@@ -322,6 +323,10 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   GetPersonProgress: "personProgress",
   SubscribeToCardColumn: "subscribeToColumn",
   UnsubscribeFromCardColumn: "unsubscribeFromColumn",
+  ListRecordingBoosts: "listForRecording",
+  CreateRecordingBoost: "createForRecording",
+  ListEventBoosts: "listForEvent",
+  CreateEventBoost: "createForEvent",
   SetClientVisibility: "setVisibility",
   GetCampfire: "get",
   ListCampfires: "list",
@@ -578,6 +583,7 @@ function isSimpleResource(resource: string): boolean {
     "clientreply", "clientreplies", "forwardreply", "forwardreplies",
     "campfireline", "campfirelines", "todolistgroup", "todolistgroups",
     "todolistorgroup", "uploadversions",
+    "boost", "boosts",
   ];
   return simpleResources.includes(resource.toLowerCase());
 }

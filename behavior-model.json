@@ -137,6 +137,17 @@
         ]
       }
     },
+    "CreateEventBoost": {
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "CreateForwardReply": {
       "retry": {
         "max": 2,
@@ -204,6 +215,17 @@
       }
     },
     "CreateQuestion": {
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateRecordingBoost": {
       "retry": {
         "max": 2,
         "base_delay_ms": 1000,
@@ -305,6 +327,18 @@
     "CreateWebhook": {
       "retry": {
         "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "DeleteBoost": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
         "base_delay_ms": 1000,
         "backoff": "exponential",
         "retry_on": [
@@ -472,6 +506,18 @@
       }
     },
     "GetAssignedTodos": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetBoost": {
       "readonly": true,
       "retry": {
         "max": 3,
@@ -1231,6 +1277,22 @@
         ]
       }
     },
+    "ListEventBoosts": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "ListEvents": {
       "readonly": true,
       "pagination": {
@@ -1392,6 +1454,22 @@
       }
     },
     "ListQuestions": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "ListRecordingBoosts": {
       "readonly": true,
       "pagination": {
         "style": "link",

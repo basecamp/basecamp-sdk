@@ -101,7 +101,7 @@ describe("TimesheetsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/${projectId}/timesheet.json`, () => {
+        http.get(`${BASE_URL}/projects/${projectId}/timesheet.json`, () => {
           return HttpResponse.json(mockEntries);
         })
       );
@@ -115,7 +115,7 @@ describe("TimesheetsService", () => {
       const projectId = 67890;
 
       server.use(
-        http.get(`${BASE_URL}/buckets/${projectId}/timesheet.json`, ({ request }) => {
+        http.get(`${BASE_URL}/projects/${projectId}/timesheet.json`, ({ request }) => {
           const url = new URL(request.url);
           expect(url.searchParams.get("from")).toBe("2024-02-01");
           expect(url.searchParams.get("person_id")).toBe("999");
@@ -146,7 +146,7 @@ describe("TimesheetsService", () => {
 
       server.use(
         http.get(
-          `${BASE_URL}/buckets/${projectId}/recordings/${recordingId}/timesheet.json`,
+          `${BASE_URL}/projects/${projectId}/recordings/${recordingId}/timesheet.json`,
           () => {
             return HttpResponse.json(mockEntries);
           }

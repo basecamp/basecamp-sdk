@@ -347,6 +347,15 @@ export {
   type Tool,
 } from "./generated/services/tools.js";
 
+// Boosts service - generated
+export {
+  BoostsService,
+  type ListForRecordingBoostOptions,
+  type CreateForRecordingBoostRequest,
+  type ListForEventBoostOptions,
+  type CreateForEventBoostRequest,
+} from "./generated/services/boosts.js";
+
 // OpenTelemetry hooks
 export {
   otelHooks,

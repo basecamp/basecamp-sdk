@@ -59,6 +59,7 @@ import { ToolsService } from "./generated/services/tools.js";
 import { TimesheetsService } from "./generated/services/timesheets.js";
 import { TimelineService } from "./generated/services/timeline.js";
 import { ClientVisibilityService } from "./generated/services/client-visibility.js";
+import { BoostsService } from "./generated/services/boosts.js";
 
 // ============================================================================
 // Services - Hand-written (not spec-driven, e.g., OAuth flows)
@@ -164,6 +165,8 @@ export interface BasecampClient extends RawClient {
   readonly timeline: TimelineService;
   /** Client visibility service - manage client visibility */
   readonly clientVisibility: ClientVisibilityService;
+  /** Boosts service - manage recording boosts */
+  readonly boosts: BoostsService;
 }
 
 /**
@@ -335,6 +338,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("timesheets", () => new TimesheetsService(client, hooks, fetchPage));
   defineService("timeline", () => new TimelineService(client, hooks, fetchPage));
   defineService("clientVisibility", () => new ClientVisibilityService(client, hooks, fetchPage));
+  defineService("boosts", () => new BoostsService(client, hooks, fetchPage));
 
   return enhancedClient;
 }

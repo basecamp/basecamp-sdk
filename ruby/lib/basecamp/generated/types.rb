@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-02-05T09:17:01Z
+# Generated: 2026-02-08T06:22:25Z
 
 require "json"
 require "time"
@@ -100,6 +100,34 @@ module Basecamp
       end
     end
 
+    # Boost
+    class Boost
+      include TypeHelpers
+      attr_accessor :id, :content, :created_at, :booster, :recording
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @content = data["content"]
+        @created_at = parse_datetime(data["created_at"])
+        @booster = parse_type(data["booster"], "Person")
+        @recording = parse_type(data["recording"], "RecordingParent")
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "content" => @content,
+          "created_at" => @created_at,
+          "booster" => @booster,
+          "recording" => @recording,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
     # Campfire
     class Campfire
       include TypeHelpers
@@ -155,7 +183,7 @@ module Basecamp
     # CampfireLine
     class CampfireLine
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :content, :parent, :bucket, :creator
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :content, :parent, :bucket, :creator, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -173,6 +201,8 @@ module Basecamp
         @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @creator = parse_type(data["creator"], "Person")
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -192,6 +222,8 @@ module Basecamp
           "parent" => @parent,
           "bucket" => @bucket,
           "creator" => @creator,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
@@ -203,7 +235,7 @@ module Basecamp
     # Card
     class Card
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :position, :content, :description, :due_on, :completed, :completed_at, :comments_count, :comments_url, :completion_url, :parent, :bucket, :creator, :completer, :assignees, :completion_subscribers, :steps
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :position, :content, :description, :due_on, :completed, :completed_at, :comments_count, :comments_url, :completion_url, :parent, :bucket, :creator, :completer, :assignees, :completion_subscribers, :steps, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -234,6 +266,8 @@ module Basecamp
         @assignees = parse_array(data["assignees"], "Person")
         @completion_subscribers = parse_array(data["completion_subscribers"], "Person")
         @steps = parse_array(data["steps"], "CardStep")
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -266,6 +300,8 @@ module Basecamp
           "assignees" => @assignees,
           "completion_subscribers" => @completion_subscribers,
           "steps" => @steps,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
@@ -741,7 +777,7 @@ module Basecamp
     # Comment
     class Comment
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :parent, :bucket, :creator, :content
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :parent, :bucket, :creator, :content, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -759,6 +795,8 @@ module Basecamp
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @creator = parse_type(data["creator"], "Person")
         @content = data["content"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -778,6 +816,8 @@ module Basecamp
           "bucket" => @bucket,
           "creator" => @creator,
           "content" => @content,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
@@ -847,7 +887,7 @@ module Basecamp
     # Document
     class Document
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :content
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :content, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -869,6 +909,8 @@ module Basecamp
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @creator = parse_type(data["creator"], "Person")
         @content = data["content"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -892,6 +934,8 @@ module Basecamp
           "bucket" => @bucket,
           "creator" => @creator,
           "content" => @content,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
@@ -903,7 +947,7 @@ module Basecamp
     # Event
     class Event
       include TypeHelpers
-      attr_accessor :id, :recording_id, :action, :details, :created_at, :creator
+      attr_accessor :id, :recording_id, :action, :details, :created_at, :creator, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -912,6 +956,8 @@ module Basecamp
         @details = parse_type(data["details"], "EventDetails")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -922,6 +968,8 @@ module Basecamp
           "details" => @details,
           "created_at" => @created_at,
           "creator" => @creator,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
@@ -1015,7 +1063,7 @@ module Basecamp
     # ForwardReply
     class ForwardReply
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :parent, :bucket, :creator, :content
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :parent, :bucket, :creator, :content, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -1033,6 +1081,8 @@ module Basecamp
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @creator = parse_type(data["creator"], "Person")
         @content = data["content"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -1052,6 +1102,8 @@ module Basecamp
           "bucket" => @bucket,
           "creator" => @creator,
           "content" => @content,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
@@ -1113,7 +1165,7 @@ module Basecamp
     # Message
     class Message
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :parent, :bucket, :creator, :subject, :content, :category
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :parent, :bucket, :creator, :subject, :content, :category, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -1136,6 +1188,8 @@ module Basecamp
         @subject = data["subject"]
         @content = data["content"]
         @category = parse_type(data["category"], "MessageType")
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -1160,6 +1214,8 @@ module Basecamp
           "subject" => @subject,
           "content" => @content,
           "category" => @category,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
@@ -1481,7 +1537,7 @@ module Basecamp
     # QuestionAnswer
     class QuestionAnswer
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :content, :group_on, :parent, :bucket, :creator
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :content, :group_on, :parent, :bucket, :creator, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -1503,6 +1559,8 @@ module Basecamp
         @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "RecordingBucket")
         @creator = parse_type(data["creator"], "Person")
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -1526,6 +1584,8 @@ module Basecamp
           "parent" => @parent,
           "bucket" => @bucket,
           "creator" => @creator,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
@@ -1863,7 +1923,7 @@ module Basecamp
     # ScheduleEntry
     class ScheduleEntry
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :parent, :bucket, :creator, :summary, :description, :all_day, :starts_at, :ends_at, :participants
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :parent, :bucket, :creator, :summary, :description, :all_day, :starts_at, :ends_at, :participants, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -1889,6 +1949,8 @@ module Basecamp
         @starts_at = parse_datetime(data["starts_at"])
         @ends_at = parse_datetime(data["ends_at"])
         @participants = parse_array(data["participants"], "Person")
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -1916,6 +1978,8 @@ module Basecamp
           "starts_at" => @starts_at,
           "ends_at" => @ends_at,
           "participants" => @participants,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
@@ -2179,7 +2243,7 @@ module Basecamp
     # Todo
     class Todo
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :description, :completed, :content, :starts_on, :due_on, :assignees, :completion_subscribers, :completion_url
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :description, :completed, :content, :starts_on, :due_on, :assignees, :completion_subscribers, :completion_url, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -2208,6 +2272,8 @@ module Basecamp
         @assignees = parse_array(data["assignees"], "Person")
         @completion_subscribers = parse_array(data["completion_subscribers"], "Person")
         @completion_url = data["completion_url"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -2238,6 +2304,8 @@ module Basecamp
           "assignees" => @assignees,
           "completion_subscribers" => @completion_subscribers,
           "completion_url" => @completion_url,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
@@ -2301,7 +2369,7 @@ module Basecamp
     # Todolist
     class Todolist
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :description, :completed, :completed_ratio, :name, :todos_url, :groups_url, :app_todos_url
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :description, :completed, :completed_ratio, :name, :todos_url, :groups_url, :app_todos_url, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -2329,6 +2397,8 @@ module Basecamp
         @todos_url = data["todos_url"]
         @groups_url = data["groups_url"]
         @app_todos_url = data["app_todos_url"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -2358,6 +2428,8 @@ module Basecamp
           "todos_url" => @todos_url,
           "groups_url" => @groups_url,
           "app_todos_url" => @app_todos_url,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
@@ -2537,7 +2609,7 @@ module Basecamp
     # Upload
     class Upload
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :description, :content_type, :byte_size, :width, :height, :download_url, :filename
+      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :description, :content_type, :byte_size, :width, :height, :download_url, :filename, :boosts_count, :boosts_url
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -2565,6 +2637,8 @@ module Basecamp
         @height = parse_integer(data["height"])
         @download_url = data["download_url"]
         @filename = data["filename"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
       end
 
       def to_h
@@ -2594,6 +2668,8 @@ module Basecamp
           "height" => @height,
           "download_url" => @download_url,
           "filename" => @filename,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
         }.compact
       end
 
