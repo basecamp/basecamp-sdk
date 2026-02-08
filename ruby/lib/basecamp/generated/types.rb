@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-02-08T06:20:35Z
+# Generated: 2026-02-08T06:22:25Z
 
 require "json"
 require "time"
@@ -92,6 +92,34 @@ module Basecamp
           "due_on" => @due_on,
           "starts_on" => @starts_on,
           "assignees" => @assignees,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Boost
+    class Boost
+      include TypeHelpers
+      attr_accessor :id, :content, :created_at, :booster, :recording
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @content = data["content"]
+        @created_at = parse_datetime(data["created_at"])
+        @booster = parse_type(data["booster"], "Person")
+        @recording = parse_type(data["recording"], "RecordingParent")
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "content" => @content,
+          "created_at" => @created_at,
+          "booster" => @booster,
+          "recording" => @recording,
         }.compact
       end
 

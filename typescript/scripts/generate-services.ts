@@ -155,6 +155,7 @@ const TAG_TO_SERVICE: Record<string, string> = {
   Projects: "Projects",
   Automation: "Automation",
   ClientFeatures: "ClientFeatures",
+  Boosts: "Boosts",
   Untagged: "Miscellaneous",
 };
 

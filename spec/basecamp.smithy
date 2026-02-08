@@ -242,7 +242,15 @@ service Basecamp {
     ListAssignablePeople,
     GetAssignedTodos,
     GetOverdueTodos,
-    GetUpcomingSchedule
+    GetUpcomingSchedule,
+
+    // Batch 12 - Boosts
+    ListRecordingBoosts,
+    ListEventBoosts,
+    GetBoost,
+    CreateRecordingBoost,
+    CreateEventBoost,
+    DeleteBoost
   ]
 }
 
@@ -6987,4 +6995,206 @@ structure LineupMarker {
   bucket: RecordingBucket
 }
 
+// =============================================================================
+// BATCH 12: Boosts
+// =============================================================================
+
+// ===== Boost Operations =====
+
+long BoostId
+
+/// List boosts on a recording
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/boosts.json")
+operation ListRecordingBoosts {
+  input: ListRecordingBoostsInput
+  output: ListRecordingBoostsOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure ListRecordingBoostsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+}
+
+structure ListRecordingBoostsOutput {
+  boosts: BoostList
+}
+
+/// List boosts on a specific event within a recording
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/events/{eventId}/boosts.json")
+operation ListEventBoosts {
+  input: ListEventBoostsInput
+  output: ListEventBoostsOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure ListEventBoostsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  @required
+  @httpLabel
+  eventId: EventId
+}
+
+structure ListEventBoostsOutput {
+  boosts: BoostList
+}
+
+/// Get a single boost
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/boosts/{boostId}")
+operation GetBoost {
+  input: GetBoostInput
+  output: GetBoostOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure GetBoostInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  boostId: BoostId
+}
+
+structure GetBoostOutput {
+  boost: Boost
+}
+
+/// Create a boost on a recording
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/boosts.json", code: 201)
+operation CreateRecordingBoost {
+  input: CreateRecordingBoostInput
+  output: CreateRecordingBoostOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateRecordingBoostInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  @required
+  content: String
+}
+
+structure CreateRecordingBoostOutput {
+  boost: Boost
+}
+
+/// Create a boost on a specific event within a recording
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/events/{eventId}/boosts.json", code: 201)
+operation CreateEventBoost {
+  input: CreateEventBoostInput
+  output: CreateEventBoostOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateEventBoostInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  @required
+  @httpLabel
+  eventId: EventId
+
+  @required
+  content: String
+}
+
+structure CreateEventBoostOutput {
+  boost: Boost
+}
+
+/// Delete a boost
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/boosts/{boostId}", code: 204)
+operation DeleteBoost {
+  input: DeleteBoostInput
+  output: DeleteBoostOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure DeleteBoostInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
+  boostId: BoostId
+}
+
+structure DeleteBoostOutput {}
+
+// ===== Boost Shapes =====
+
+list BoostList {
+  member: Boost
+}
+
+structure Boost {
+  id: BoostId
+  content: String
+  created_at: ISO8601Timestamp
+  booster: Person
+  recording: RecordingParent
+}
 

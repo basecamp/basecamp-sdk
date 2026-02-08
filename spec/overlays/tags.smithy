@@ -169,6 +169,14 @@ apply CreateLineupMarker @tags(["Automation"])
 apply UpdateLineupMarker @tags(["Automation"])
 apply DeleteLineupMarker @tags(["Automation"])
 
+// Boosts
+apply ListRecordingBoosts @tags(["Boosts"])
+apply ListEventBoosts @tags(["Boosts"])
+apply GetBoost @tags(["Boosts"])
+apply CreateRecordingBoost @tags(["Boosts"])
+apply CreateEventBoost @tags(["Boosts"])
+apply DeleteBoost @tags(["Boosts"])
+
 // Checkins (under Automation)
 apply GetQuestionnaire @tags(["Automation"])
 apply ListQuestions @tags(["Automation"])
