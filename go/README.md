@@ -276,7 +276,7 @@ ctx := context.Background()
 campfires, err := account.Campfires().List(ctx)
 
 // Send a message
-line, err := account.Campfires().CreateLine(ctx, projectID, campfireID, "Hello, team!")
+line, err := account.Campfires().CreateLine(ctx, projectID, campfireID, "Hello, team!", nil)
 
 // List recent messages
 lines, err := account.Campfires().ListLines(ctx, projectID, campfireID)

@@ -328,6 +328,11 @@ func TestCreateCampfireLineRequest_Marshal(t *testing.T) {
 		t.Errorf("unexpected content: %v", data["content"])
 	}
 
+	// content_type should be omitted when empty
+	if _, exists := data["content_type"]; exists {
+		t.Errorf("content_type should be omitted when empty, got: %v", data["content_type"])
+	}
+
 	// Round-trip test
 	var roundtrip CreateCampfireLineRequest
 	if err := json.Unmarshal(out, &roundtrip); err != nil {
@@ -336,6 +341,69 @@ func TestCreateCampfireLineRequest_Marshal(t *testing.T) {
 
 	if roundtrip.Content != req.Content {
 		t.Errorf("expected content %q, got %q", req.Content, roundtrip.Content)
+	}
+}
+
+func TestCreateCampfireLineRequest_MarshalWithContentType(t *testing.T) {
+	req := CreateCampfireLineRequest{
+		Content:     "<strong>Hello</strong>",
+		ContentType: LineContentTypeHTML,
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateCampfireLineRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["content"] != "<strong>Hello</strong>" {
+		t.Errorf("unexpected content: %v", data["content"])
+	}
+	if data["content_type"] != "text/html" {
+		t.Errorf("unexpected content_type: %v", data["content_type"])
+	}
+
+	// Round-trip test
+	var roundtrip CreateCampfireLineRequest
+	if err := json.Unmarshal(out, &roundtrip); err != nil {
+		t.Fatalf("failed to unmarshal round-trip: %v", err)
+	}
+	if roundtrip.ContentType != "text/html" {
+		t.Errorf("expected content_type %q, got %q", "text/html", roundtrip.ContentType)
+	}
+}
+
+func TestCreateCampfireLineRequest_MarshalWithPlainContentType(t *testing.T) {
+	req := CreateCampfireLineRequest{
+		Content:     "Hello team!",
+		ContentType: LineContentTypePlain,
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateCampfireLineRequest: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["content_type"] != "text/plain" {
+		t.Errorf("unexpected content_type: %v", data["content_type"])
+	}
+}
+
+func TestLineContentTypeConstants(t *testing.T) {
+	if LineContentTypePlain != "text/plain" {
+		t.Errorf("expected LineContentTypePlain to be 'text/plain', got %q", LineContentTypePlain)
+	}
+	if LineContentTypeHTML != "text/html" {
+		t.Errorf("expected LineContentTypeHTML to be 'text/html', got %q", LineContentTypeHTML)
 	}
 }
 
