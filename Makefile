@@ -252,7 +252,7 @@ conformance: conformance-go
 # Swift SDK targets (delegates to swift/Makefile)
 #------------------------------------------------------------------------------
 
-.PHONY: swift-build swift-test swift-check swift-clean
+.PHONY: swift-build swift-test swift-check swift-clean swift-generate
 
 # Build Swift SDK
 swift-build:
@@ -265,6 +265,10 @@ swift-test:
 # Run all Swift checks
 swift-check:
 	@$(MAKE) -C swift check
+
+# Regenerate Swift SDK services from OpenAPI spec
+swift-generate:
+	@$(MAKE) -C swift generate
 
 # Clean Swift build artifacts
 swift-clean:
@@ -317,6 +321,7 @@ help:
 	@echo "  ts-clean              Remove TypeScript build artifacts"
 	@echo ""
 	@echo "Swift SDK:"
+	@echo "  swift-generate   Generate service classes from OpenAPI"
 	@echo "  swift-build      Build Swift SDK"
 	@echo "  swift-test       Run Swift tests"
 	@echo "  swift-check      Run all Swift checks"

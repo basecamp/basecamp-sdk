@@ -14,7 +14,13 @@ let package = Package(
         .target(
             name: "Basecamp",
             path: "Sources/Basecamp",
-            exclude: ["Generated"],
+            swiftSettings: [
+                .swiftLanguageMode(.v6),
+            ]
+        ),
+        .executableTarget(
+            name: "BasecampGenerator",
+            path: "Sources/BasecampGenerator",
             swiftSettings: [
                 .swiftLanguageMode(.v6),
             ]

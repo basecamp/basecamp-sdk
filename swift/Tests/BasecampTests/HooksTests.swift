@@ -47,6 +47,129 @@ final class HooksTests: XCTestCase {
         XCTAssertEqual(info.projectId, 123)
         XCTAssertFalse(info.isMutation)
     }
+
+    // MARK: - P0 Regression: Single onOperationEnd on HTTP errors
+
+    func testOnOperationEndFiresExactlyOnceOnHTTPError() async throws {
+        let spy = SpyHooks()
+
+        let transport = MockTransport(statusCode: 404, data: Data())
+        let account = makeTestAccountClient(transport: transport, hooks: spy)
+
+        do {
+            let _: Todo = try await account.todos.get(projectId: 1, todoId: 2)
+            XCTFail("Expected error")
+        } catch {
+            // Expected
+        }
+
+        XCTAssertEqual(spy.operationStarts.count, 1, "onOperationStart should fire once")
+        XCTAssertEqual(spy.operationEnds.count, 1, "onOperationEnd should fire exactly once on HTTP error")
+        XCTAssertNotNil(spy.operationEnds.first?.1.error, "onOperationEnd should include the error")
+    }
+
+    func testOnOperationEndFiresExactlyOnceOnHTTPErrorVoid() async throws {
+        let spy = SpyHooks()
+
+        let transport = MockTransport(statusCode: 500, data: Data())
+        let account = makeTestAccountClient(transport: transport, hooks: spy)
+
+        do {
+            try await account.todos.complete(projectId: 1, todoId: 2)
+            XCTFail("Expected error")
+        } catch {
+            // Expected
+        }
+
+        XCTAssertEqual(spy.operationStarts.count, 1, "onOperationStart should fire once")
+        XCTAssertEqual(spy.operationEnds.count, 1, "onOperationEnd should fire exactly once on HTTP error (void)")
+        XCTAssertNotNil(spy.operationEnds.first?.1.error)
+    }
+
+    func testOnOperationEndFiresExactlyOnceOnHTTPErrorPaginated() async throws {
+        let spy = SpyHooks()
+
+        let transport = MockTransport(statusCode: 403, data: Data())
+        let account = makeTestAccountClient(transport: transport, hooks: spy)
+
+        do {
+            let _: ListResult<Todo> = try await account.todos.list(projectId: 1, todolistId: 2)
+            XCTFail("Expected error")
+        } catch {
+            // Expected
+        }
+
+        XCTAssertEqual(spy.operationStarts.count, 1, "onOperationStart should fire once")
+        XCTAssertEqual(spy.operationEnds.count, 1, "onOperationEnd should fire exactly once on HTTP error (paginated)")
+        XCTAssertNotNil(spy.operationEnds.first?.1.error)
+    }
+
+    func testOnOperationEndFiresOnceOnSuccess() async throws {
+        let spy = SpyHooks()
+
+        let todo: [String: Any] = ["id": 1, "content": "Test"]
+        let data = try JSONSerialization.data(withJSONObject: todo)
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport, hooks: spy)
+
+        let _: Todo = try await account.todos.get(projectId: 1, todoId: 1)
+
+        XCTAssertEqual(spy.operationStarts.count, 1)
+        XCTAssertEqual(spy.operationEnds.count, 1, "onOperationEnd should fire exactly once on success")
+        XCTAssertNil(spy.operationEnds.first?.1.error, "onOperationEnd should have no error on success")
+    }
+
+    // MARK: - P0 Regression: ETag 304 cache returns success
+
+    func testETagCacheHitReturnsSuccessfully() async throws {
+        let spy = SpyHooks()
+        let todo: [String: Any] = ["id": 1, "content": "Cached"]
+        let cachedData = try JSONSerialization.data(withJSONObject: todo)
+
+        let counter = RequestCounter()
+        let transport = MockTransport { request in
+            let count = counter.increment()
+            if count == 1 {
+                // First request: 200 with ETag
+                let response = HTTPURLResponse(
+                    url: request.url!, statusCode: 200,
+                    httpVersion: "HTTP/1.1",
+                    headerFields: ["ETag": "\"abc123\""]
+                )!
+                return (cachedData, response)
+            } else {
+                // Second request: 304 Not Modified
+                let response = HTTPURLResponse(
+                    url: request.url!, statusCode: 304,
+                    httpVersion: "HTTP/1.1", headerFields: [:]
+                )!
+                return (Data(), response)
+            }
+        }
+
+        let client = makeTestClient(transport: transport, enableCache: true, hooks: spy)
+        let account = client.forAccount("999999999")
+
+        // First request: populate cache
+        let first: Todo = try await account.todos.get(projectId: 1, todoId: 1)
+        XCTAssertEqual(first.id, 1)
+        XCTAssertEqual(first.content, "Cached")
+
+        // Second request: should use cache, not throw a 304 error
+        let second: Todo = try await account.todos.get(projectId: 1, todoId: 1)
+        XCTAssertEqual(second.id, 1)
+        XCTAssertEqual(second.content, "Cached")
+
+        // Both operations should succeed with exactly one start/end each
+        XCTAssertEqual(spy.operationStarts.count, 2)
+        XCTAssertEqual(spy.operationEnds.count, 2)
+        XCTAssertNil(spy.operationEnds[0].1.error, "First operation should succeed")
+        XCTAssertNil(spy.operationEnds[1].1.error, "Cached operation should succeed, not throw 304 error")
+
+        // The second request-level hook should report fromCache
+        let cachedRequestEnd = spy.requestEnds.last!
+        XCTAssertTrue(cachedRequestEnd.1.fromCache, "Request result should indicate cache hit")
+    }
 }
 
 /// A spy hooks implementation that records all callbacks.
@@ -87,5 +210,19 @@ private final class SpyHooks: BasecampHooks, @unchecked Sendable {
 
     func onRequestEnd(_ info: RequestInfo, result: RequestResult) {
         lock.withLock { _requestEnds.append((info, result)) }
+    }
+}
+
+/// Thread-safe counter for use in @Sendable closures.
+private final class RequestCounter: Sendable {
+    private let lock = NSLock()
+    nonisolated(unsafe) private var _count = 0
+
+    @discardableResult
+    func increment() -> Int {
+        lock.withLock {
+            _count += 1
+            return _count
+        }
     }
 }
