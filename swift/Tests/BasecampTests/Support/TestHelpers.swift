@@ -7,7 +7,7 @@ import Foundation
 /// - A static test token ("test-token")
 /// - User-Agent: "test-suite"
 /// - Retry disabled (for deterministic tests)
-/// - A localhost base URL (to skip HTTPS validation)
+/// - The default HTTPS base URL
 func makeTestClient(
     transport: MockTransport,
     enableRetry: Bool = false,
