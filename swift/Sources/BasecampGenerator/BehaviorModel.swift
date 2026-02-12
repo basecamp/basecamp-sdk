@@ -25,8 +25,17 @@ func parseBehaviorModel(data: Data) throws -> [BehaviorRetryConfig] {
 
         let maxAttempts = retry["max"] as? Int ?? 3
         let baseDelayMs = retry["base_delay_ms"] as? Int ?? 1000
-        let backoff = retry["backoff"] as? String ?? "exponential"
         let retryOn = retry["retry_on"] as? [Int] ?? [429, 503]
+
+        let allowedBackoffs: Set<String> = ["exponential", "linear", "constant"]
+        let rawBackoff = retry["backoff"] as? String ?? "exponential"
+        let backoff: String
+        if allowedBackoffs.contains(rawBackoff) {
+            backoff = rawBackoff
+        } else {
+            printError("Warning: unknown backoff '\(rawBackoff)' for \(operationId), defaulting to exponential\n")
+            backoff = "exponential"
+        }
 
         configs.append(BehaviorRetryConfig(
             operationId: operationId,

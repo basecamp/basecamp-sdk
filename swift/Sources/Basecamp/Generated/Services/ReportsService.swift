@@ -53,7 +53,7 @@ public final class ReportsService: BaseService, @unchecked Sendable {
 
     public func personProgress(personId: Int) async throws -> GetPersonProgressResponseContent {
         return try await request(
-            OperationInfo(service: "Reports", operation: "GetPersonProgress", resourceType: "person_progress", isMutation: false, resourceId: personId),
+            OperationInfo(service: "Reports", operation: "GetPersonProgress", resourceType: "person_progres", isMutation: false, resourceId: personId),
             method: "GET",
             path: "/reports/users/progress/\(personId)",
             retryConfig: Metadata.retryConfig(for: "GetPersonProgress")

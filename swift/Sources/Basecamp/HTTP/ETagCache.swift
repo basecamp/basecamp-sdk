@@ -1,9 +1,9 @@
 import Foundation
 
-/// In-memory LRU cache for ETag-based HTTP caching.
+/// In-memory cache for ETag-based HTTP caching.
 ///
 /// Thread-safe via `NSLock`. Bounded to `maxEntries` to prevent unbounded growth.
-/// When the cache is full, the oldest entry (by insertion order) is evicted.
+/// When the cache is full, the oldest entry (by insertion order) is evicted (FIFO).
 package final class ETagCache: Sendable {
     package static let defaultMaxEntries = 1000
 

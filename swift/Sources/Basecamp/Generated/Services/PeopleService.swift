@@ -83,7 +83,7 @@ public final class PeopleService: BaseService, @unchecked Sendable {
 
     public func updateProjectAccess(projectId: Int, req: UpdateProjectAccessRequest) async throws -> ProjectAccessResult {
         return try await request(
-            OperationInfo(service: "People", operation: "UpdateProjectAccess", resourceType: "project_access", isMutation: true, projectId: projectId),
+            OperationInfo(service: "People", operation: "UpdateProjectAccess", resourceType: "project_acces", isMutation: true, projectId: projectId),
             method: "PUT",
             path: "/projects/\(projectId)/people/users.json",
             body: req,

@@ -2,6 +2,21 @@ import Foundation
 
 // MARK: - CLI
 
+func printError(_ message: String) {
+    FileHandle.standardError.write(Data(message.utf8))
+}
+
+func usage() -> Never {
+    printError("""
+        Usage: BasecampGenerator [options]
+          --openapi <path>    OpenAPI spec (default: ../openapi.json)
+          --behavior <path>   Behavior model (default: ../behavior-model.json)
+          --output <path>     Output directory (default: Sources/Basecamp/Generated)
+
+        """)
+    exit(1)
+}
+
 @MainActor
 func run() throws {
     let args = CommandLine.arguments
@@ -13,13 +28,20 @@ func run() throws {
     while i < args.count {
         switch args[i] {
         case "--openapi":
-            i += 1; openapiPath = args[i]
+            i += 1
+            guard i < args.count else { usage() }
+            openapiPath = args[i]
         case "--behavior":
-            i += 1; behaviorPath = args[i]
+            i += 1
+            guard i < args.count else { usage() }
+            behaviorPath = args[i]
         case "--output":
-            i += 1; outputDir = args[i]
+            i += 1
+            guard i < args.count else { usage() }
+            outputDir = args[i]
         default:
-            break
+            printError("Unknown argument: \(args[i])\n")
+            usage()
         }
         i += 1
     }
@@ -38,17 +60,17 @@ func run() throws {
     // MARK: - Load inputs
 
     guard let openapiData = fm.contents(atPath: resolvedOpenAPI) else {
-        fputs("Error: OpenAPI file not found: \(resolvedOpenAPI)\n", stderr)
+        printError("Error: OpenAPI file not found: \(resolvedOpenAPI)\n")
         exit(1)
     }
 
     guard let behaviorData = fm.contents(atPath: resolvedBehavior) else {
-        fputs("Error: Behavior model not found: \(resolvedBehavior)\n", stderr)
+        printError("Error: Behavior model not found: \(resolvedBehavior)\n")
         exit(1)
     }
 
     guard let spec = try? JSONSerialization.jsonObject(with: openapiData) as? [String: Any] else {
-        fputs("Error: Failed to parse OpenAPI JSON\n", stderr)
+        printError("Error: Failed to parse OpenAPI JSON\n")
         exit(1)
     }
 

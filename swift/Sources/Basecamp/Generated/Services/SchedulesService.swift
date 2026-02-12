@@ -56,7 +56,7 @@ public final class SchedulesService: BaseService, @unchecked Sendable {
             queryItems.append(URLQueryItem(name: "status", value: status))
         }
         return try await requestPaginated(
-            OperationInfo(service: "Schedules", operation: "ListScheduleEntries", resourceType: "schedule_entrie", isMutation: false, projectId: projectId, resourceId: scheduleId),
+            OperationInfo(service: "Schedules", operation: "ListScheduleEntries", resourceType: "schedule_entry", isMutation: false, projectId: projectId, resourceId: scheduleId),
             path: "/buckets/\(projectId)/schedules/\(scheduleId)/entries.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },

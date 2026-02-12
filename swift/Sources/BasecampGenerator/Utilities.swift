@@ -31,12 +31,24 @@ func lowercaseFirst(_ str: String) -> String {
     return first.lowercased() + str.dropFirst()
 }
 
-/// Naive singularization for service names.
+/// Singularization for service/type names (PascalCase or lowercase).
 func singularize(_ str: String) -> String {
     if str.hasSuffix("ies") { return String(str.dropLast(3)) + "y" }
     if str.hasSuffix("ses") { return String(str.dropLast(2)) }
     if str.hasSuffix("s") { return String(str.dropLast(1)) }
     return str
+}
+
+/// Singularizes a snake_case string by singularizing only the last segment.
+///
+/// `"schedule_entries"` → `"schedule_entry"`, `"client_replies"` → `"client_reply"`
+func singularizeSnakeCase(_ str: String) -> String {
+    guard let lastUnderscore = str.lastIndex(of: "_") else {
+        return singularize(str)
+    }
+    let prefix = str[str.startIndex...lastUnderscore]
+    let suffix = singularize(String(str[str.index(after: lastUnderscore)...]))
+    return prefix + suffix
 }
 
 /// Converts PascalCase to kebab-case.
@@ -101,11 +113,7 @@ func extractResourceType(_ operationId: String) -> String {
                 }
                 snakeCase.append(ch.lowercased())
             }
-            // Naive de-pluralize: remove trailing 's' if not 'ss'
-            if snakeCase.hasSuffix("s") && !snakeCase.hasSuffix("ss") {
-                snakeCase = String(snakeCase.dropLast())
-            }
-            return snakeCase
+            return singularizeSnakeCase(snakeCase)
         }
     }
     return "resource"

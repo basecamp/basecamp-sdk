@@ -58,7 +58,7 @@ public final class ForwardsService: BaseService, @unchecked Sendable {
 
     public func listReplies(projectId: Int, forwardId: Int, options: ListRepliesForwardOptions? = nil) async throws -> ListResult<ForwardReply> {
         return try await requestPaginated(
-            OperationInfo(service: "Forwards", operation: "ListForwardReplies", resourceType: "forward_replie", isMutation: false, projectId: projectId, resourceId: forwardId),
+            OperationInfo(service: "Forwards", operation: "ListForwardReplies", resourceType: "forward_reply", isMutation: false, projectId: projectId, resourceId: forwardId),
             path: "/buckets/\(projectId)/inbox_forwards/\(forwardId)/replies.json",
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListForwardReplies")
