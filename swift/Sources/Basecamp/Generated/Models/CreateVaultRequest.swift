@@ -1,0 +1,10 @@
+// @generated from OpenAPI spec — do not edit directly
+import Foundation
+
+public struct CreateVaultRequest: Codable, Sendable {
+    public let title: String
+
+    public init(title: String) {
+        self.title = title
+    }
+}

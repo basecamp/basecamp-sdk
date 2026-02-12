@@ -4,12 +4,13 @@
 
 | Component | Status | Details |
 |-----------|--------|---------|
-| **Smithy Spec** | 166 operations | Single source of truth for all APIs |
+| **Smithy Spec** | 175 operations | Single source of truth for all APIs |
 | **Go SDK** | Production-ready | Full generated client + service wrappers |
 | **TypeScript SDK** | Production-ready | 37 generated services, openapi-fetch based |
 | **Ruby SDK** | Production-ready | 37 generated services |
+| **Swift SDK** | Production-ready | 38 generated services, URLSession-based |
 
-All three SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. No hand-written API methods exist in any SDK runtime.
+All four SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. No hand-written API methods exist in any SDK runtime.
 
 ---
 
@@ -40,8 +41,9 @@ Smithy Spec → OpenAPI → Generated Client → Service Layer → User
 | **Go** | `pkg/generated/client.gen.go` | `pkg/basecamp/*.go` (wraps generated client) | ✅ Complete |
 | **TypeScript** | `openapi-fetch` + `schema.d.ts` | `src/generated/services/*.ts` | ✅ Complete |
 | **Ruby** | HTTP client | `lib/basecamp/generated/services/*.rb` | ✅ Complete |
+| **Swift** | `URLSession` via `Transport` protocol | `Sources/Basecamp/Generated/Services/*.swift` | ✅ Complete |
 
-**All three SDKs have complete generated service layers** covering 166 operations across 37 services.
+**All four production SDKs have complete generated service layers** covering 175 operations across 38 services.
 
 **TypeScript/Ruby runtime**: Wired to generated services (`src/generated/services/`, `lib/basecamp/generated/services/`). Hand-written services remain only for infrastructure (`base.ts`/`base_service.rb`) and OAuth (`authorization.ts`/`authorization_service.rb`).
 
@@ -55,6 +57,7 @@ Every new API endpoint MUST follow this sequence:
    - `cd go && make generate`
    - `make ts-generate-services`
    - `make rb-generate-services`
+   - `make swift-generate`
 4. **Run `make`** - Verifies all SDKs build and pass tests
 
 That's it. Generated services are the runtime—no hand-written service updates needed.
@@ -163,5 +166,6 @@ Reuse these common shapes throughout the spec:
 |-----|-----------------|----------------|
 | **TypeScript** | `src/generated/services/*.ts` | `src/services/base.ts`, `src/services/authorization.ts` |
 | **Ruby** | `lib/basecamp/generated/services/*.rb` | `lib/basecamp/services/base_service.rb`, `lib/basecamp/services/authorization_service.rb` |
+| **Swift** | `swift/Sources/Basecamp/Generated/Services/*.swift` | `swift/Sources/Basecamp/Services/BaseService.swift` |
 
 Hand-written API services in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) are NOT loaded at runtime. They exist only as reference implementations.

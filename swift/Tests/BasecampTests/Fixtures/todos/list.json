@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "content": "Buy groceries",
+    "completed": false,
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "content": "Ship feature",
+    "completed": true,
+    "created_at": "2024-01-02T00:00:00Z"
+  }
+]

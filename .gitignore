@@ -20,3 +20,8 @@ ruby/vendor/
 ruby/pkg/
 ruby/*.gem
 review-session.md
+
+# Swift SDK build artifacts
+swift/.build/
+swift/.swiftpm/
+swift/Package.resolved
