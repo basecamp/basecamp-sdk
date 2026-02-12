@@ -33,6 +33,8 @@ func lowercaseFirst(_ str: String) -> String {
 
 /// Singularization for service/type names (PascalCase or lowercase).
 func singularize(_ str: String) -> String {
+    if str.hasSuffix("sses") { return String(str.dropLast(2)) }  // glasses → glass
+    if str.hasSuffix("ss") { return str }                         // progress, access → unchanged
     if str.hasSuffix("ies") { return String(str.dropLast(3)) + "y" }
     if str.hasSuffix("ses") { return String(str.dropLast(2)) }
     if str.hasSuffix("s") { return String(str.dropLast(1)) }
