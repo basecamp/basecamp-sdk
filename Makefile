@@ -249,15 +249,37 @@ conformance: conformance-go
 	@echo "==> Conformance tests passed"
 
 #------------------------------------------------------------------------------
+# Swift SDK targets (delegates to swift/Makefile)
+#------------------------------------------------------------------------------
+
+.PHONY: swift-build swift-test swift-check swift-clean
+
+# Build Swift SDK
+swift-build:
+	@$(MAKE) -C swift build
+
+# Run Swift tests
+swift-test:
+	@$(MAKE) -C swift test
+
+# Run all Swift checks
+swift-check:
+	@$(MAKE) -C swift check
+
+# Clean Swift build artifacts
+swift-clean:
+	@$(MAKE) -C swift clean
+
+#------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
 
-# Run all checks (Smithy + Go + TypeScript + Ruby + Behavior Model + Conformance + Provenance)
-check: smithy-check behavior-model-check provenance-check go-check-drift go-check ts-check rb-check conformance
+# Run all checks (Smithy + Go + TypeScript + Ruby + Swift + Behavior Model + Conformance + Provenance)
+check: smithy-check behavior-model-check provenance-check go-check-drift go-check ts-check rb-check swift-check conformance
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
-clean: smithy-clean go-clean ts-clean rb-clean
+clean: smithy-clean go-clean ts-clean rb-clean swift-clean
 
 # Help
 help:
@@ -294,6 +316,12 @@ help:
 		@echo "  ts-check              Run all TypeScript checks"
 	@echo "  ts-clean              Remove TypeScript build artifacts"
 	@echo ""
+	@echo "Swift SDK:"
+	@echo "  swift-build      Build Swift SDK"
+	@echo "  swift-test       Run Swift tests"
+	@echo "  swift-check      Run all Swift checks"
+	@echo "  swift-clean      Remove Swift build artifacts"
+	@echo ""
 	@echo "Conformance:"
 	@echo "  conformance      Run all conformance tests"
 	@echo "  conformance-go   Run Go conformance tests"
@@ -314,6 +342,6 @@ help:
 	@echo "  sync-status      Show upstream changes since last spec sync"
 	@echo ""
 	@echo "Combined:"
-	@echo "  check            Run all checks (Smithy + Go + TypeScript + Ruby + Conformance + Provenance)"
+	@echo "  check            Run all checks (Smithy + Go + TypeScript + Ruby + Swift + Conformance + Provenance)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"

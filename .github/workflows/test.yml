@@ -144,6 +144,21 @@ jobs:
       - name: Test
         run: bundle exec rake test
 
+  test-swift:
+    name: Swift Tests
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: swift
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test
+
   conformance:
     name: Conformance Tests
     runs-on: ubuntu-latest
