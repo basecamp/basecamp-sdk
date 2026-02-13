@@ -168,18 +168,63 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
 
     guard let properties = schema["properties"] as? [String: Any] else { return "" }
 
+    let requiredFields = Set(schema["required"] as? [String] ?? [])
+
+    // Partition: required properties first (sorted), then optional (sorted)
+    let requiredProps = properties.keys.filter { requiredFields.contains($0) }.sorted()
+    let optionalProps = properties.keys.filter { !requiredFields.contains($0) }.sorted()
+    let orderedProps = requiredProps + optionalProps
+
     var lines: [String] = []
     lines.append("// @generated from OpenAPI spec \u{2014} do not edit directly")
     lines.append("import Foundation")
     lines.append("")
     lines.append("public struct \(typeName): Codable, Sendable {")
 
-    // Sort properties for deterministic output
-    for propName in properties.keys.sorted() {
+    for propName in orderedProps {
         guard let propSchema = properties[propName] as? [String: Any] else { continue }
         let swiftType = schemaToSwiftType(propSchema)
         let camelName = toCamelCase(propName)
-        lines.append("    public var \(camelName): \(swiftType)?")
+        let isRequired = requiredFields.contains(propName)
+
+        if isRequired {
+            lines.append("    public let \(camelName): \(swiftType)")
+        } else {
+            lines.append("    public var \(camelName): \(swiftType)?")
+        }
+    }
+
+    if !requiredFields.isEmpty {
+        lines.append("")
+        var initParams: [String] = []
+        for propName in orderedProps {
+            guard let propSchema = properties[propName] as? [String: Any] else { continue }
+            let swiftType = schemaToSwiftType(propSchema)
+            let camelName = toCamelCase(propName)
+            let isRequired = requiredFields.contains(propName)
+            if isRequired {
+                initParams.append("\(camelName): \(swiftType)")
+            } else {
+                initParams.append("\(camelName): \(swiftType)? = nil")
+            }
+        }
+
+        if initParams.count <= 3 {
+            lines.append("    public init(\(initParams.joined(separator: ", "))) {")
+        } else {
+            lines.append("    public init(")
+            for (i, param) in initParams.enumerated() {
+                let comma = i < initParams.count - 1 ? "," : ""
+                lines.append("        \(param)\(comma)")
+            }
+            lines.append("    ) {")
+        }
+
+        for propName in orderedProps {
+            let camelName = toCamelCase(propName)
+            lines.append("        self.\(camelName) = \(camelName)")
+        }
+        lines.append("    }")
     }
 
     lines.append("}")

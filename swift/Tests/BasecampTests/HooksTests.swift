@@ -107,7 +107,16 @@ final class HooksTests: XCTestCase {
     func testOnOperationEndFiresOnceOnSuccess() async throws {
         let spy = SpyHooks()
 
-        let todo: [String: Any] = ["id": 1, "content": "Test"]
+        let todo: [String: Any] = [
+            "id": 1, "content": "Test",
+            "app_url": "https://3.basecamp.com/1/buckets/1/todos/1", "url": "https://3.basecampapi.com/1/buckets/1/todos/1.json",
+            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+            "status": "active", "title": "Test", "type": "Todo",
+            "inherits_status": false, "visible_to_clients": false,
+            "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
+            "creator": ["id": 1, "name": "Test User"] as [String: Any],
+            "parent": ["id": 2, "title": "Todolist", "type": "Todolist", "app_url": "https://3.basecamp.com/1/buckets/1/todolists/2", "url": "https://3.basecampapi.com/1/buckets/1/todolists/2.json"] as [String: Any],
+        ]
         let data = try JSONSerialization.data(withJSONObject: todo)
         let transport = MockTransport(statusCode: 200, data: data)
         let account = makeTestAccountClient(transport: transport, hooks: spy)
@@ -123,7 +132,16 @@ final class HooksTests: XCTestCase {
 
     func testETagCacheHitReturnsSuccessfully() async throws {
         let spy = SpyHooks()
-        let todo: [String: Any] = ["id": 1, "content": "Cached"]
+        let todo: [String: Any] = [
+            "id": 1, "content": "Cached",
+            "app_url": "https://3.basecamp.com/1/buckets/1/todos/1", "url": "https://3.basecampapi.com/1/buckets/1/todos/1.json",
+            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+            "status": "active", "title": "Cached", "type": "Todo",
+            "inherits_status": false, "visible_to_clients": false,
+            "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
+            "creator": ["id": 1, "name": "Test User"] as [String: Any],
+            "parent": ["id": 2, "title": "Todolist", "type": "Todolist", "app_url": "https://3.basecamp.com/1/buckets/1/todolists/2", "url": "https://3.basecampapi.com/1/buckets/1/todolists/2.json"] as [String: Any],
+        ]
         let cachedData = try JSONSerialization.data(withJSONObject: todo)
 
         let counter = RequestCounter()

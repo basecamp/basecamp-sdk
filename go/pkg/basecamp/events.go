@@ -150,13 +150,13 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, o
 // eventFromGenerated converts a generated Event to our clean type.
 func eventFromGenerated(ge generated.Event) Event {
 	e := Event{
-		RecordingID: derefInt64(ge.RecordingId),
+		RecordingID: ge.RecordingId,
 		Action:      ge.Action,
 		CreatedAt:   ge.CreatedAt,
 	}
 
-	if ge.Id != nil {
-		e.ID = *ge.Id
+	if ge.Id != 0 {
+		e.ID = ge.Id
 	}
 
 	// Convert details
@@ -168,9 +168,9 @@ func eventFromGenerated(ge generated.Event) Event {
 		}
 	}
 
-	if ge.Creator.Id != nil || ge.Creator.Name != "" {
+	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
 		e.Creator = &Person{
-			ID:           derefInt64(ge.Creator.Id),
+			ID:           ge.Creator.Id,
 			Name:         ge.Creator.Name,
 			EmailAddress: ge.Creator.EmailAddress,
 			AvatarURL:    ge.Creator.AvatarUrl,

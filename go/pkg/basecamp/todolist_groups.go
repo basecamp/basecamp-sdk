@@ -321,14 +321,14 @@ func todolistGroupFromGenerated(gg generated.TodolistGroup) TodolistGroup {
 		UpdatedAt:        gg.UpdatedAt,
 	}
 
-	if gg.Id != nil {
-		g.ID = *gg.Id
+	if gg.Id != 0 {
+		g.ID = gg.Id
 	}
 
 	// Convert nested types
-	if gg.Parent.Id != nil || gg.Parent.Title != "" {
+	if gg.Parent.Id != 0 || gg.Parent.Title != "" {
 		g.Parent = &Parent{
-			ID:     derefInt64(gg.Parent.Id),
+			ID:     gg.Parent.Id,
 			Title:  gg.Parent.Title,
 			Type:   gg.Parent.Type,
 			URL:    gg.Parent.Url,
@@ -336,17 +336,17 @@ func todolistGroupFromGenerated(gg generated.TodolistGroup) TodolistGroup {
 		}
 	}
 
-	if gg.Bucket.Id != nil || gg.Bucket.Name != "" {
+	if gg.Bucket.Id != 0 || gg.Bucket.Name != "" {
 		g.Bucket = &Bucket{
-			ID:   derefInt64(gg.Bucket.Id),
+			ID:   gg.Bucket.Id,
 			Name: gg.Bucket.Name,
 			Type: gg.Bucket.Type,
 		}
 	}
 
-	if gg.Creator.Id != nil || gg.Creator.Name != "" {
+	if gg.Creator.Id != 0 || gg.Creator.Name != "" {
 		g.Creator = &Person{
-			ID:           derefInt64(gg.Creator.Id),
+			ID:           gg.Creator.Id,
 			Name:         gg.Creator.Name,
 			EmailAddress: gg.Creator.EmailAddress,
 			AvatarURL:    gg.Creator.AvatarUrl,

@@ -407,8 +407,8 @@ func personFromGenerated(gp generated.Person) Person {
 		CanManagePeople:   gp.CanManagePeople,
 	}
 
-	if gp.Id != nil {
-		p.ID = *gp.Id
+	if gp.Id != 0 {
+		p.ID = gp.Id
 	}
 
 	// Convert timestamps to strings (the SDK Person type uses strings for these)
@@ -420,9 +420,9 @@ func personFromGenerated(gp generated.Person) Person {
 	}
 
 	// Convert company
-	if gp.Company.Id != nil || gp.Company.Name != "" {
+	if gp.Company.Id != 0 || gp.Company.Name != "" {
 		p.Company = &PersonCompany{
-			ID:   derefInt64(gp.Company.Id),
+			ID:   gp.Company.Id,
 			Name: gp.Company.Name,
 		}
 	}

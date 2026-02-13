@@ -554,21 +554,19 @@ func campfireFromGenerated(gc generated.Campfire) Campfire {
 		UpdatedAt:        gc.UpdatedAt,
 	}
 
-	if gc.Id != nil {
-		c.ID = *gc.Id
-	}
+	c.ID = gc.Id
 
-	if gc.Bucket.Id != nil || gc.Bucket.Name != "" {
+	if gc.Bucket.Id != 0 || gc.Bucket.Name != "" {
 		c.Bucket = &Bucket{
-			ID:   derefInt64(gc.Bucket.Id),
+			ID:   gc.Bucket.Id,
 			Name: gc.Bucket.Name,
 			Type: gc.Bucket.Type,
 		}
 	}
 
-	if gc.Creator.Id != nil || gc.Creator.Name != "" {
+	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
 		c.Creator = &Person{
-			ID:           derefInt64(gc.Creator.Id),
+			ID:           gc.Creator.Id,
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -595,13 +593,11 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 		UpdatedAt:        gl.UpdatedAt,
 	}
 
-	if gl.Id != nil {
-		l.ID = *gl.Id
-	}
+	l.ID = gl.Id
 
-	if gl.Parent.Id != nil || gl.Parent.Title != "" {
+	if gl.Parent.Id != 0 || gl.Parent.Title != "" {
 		l.Parent = &Parent{
-			ID:     derefInt64(gl.Parent.Id),
+			ID:     gl.Parent.Id,
 			Title:  gl.Parent.Title,
 			Type:   gl.Parent.Type,
 			URL:    gl.Parent.Url,
@@ -609,17 +605,17 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 		}
 	}
 
-	if gl.Bucket.Id != nil || gl.Bucket.Name != "" {
+	if gl.Bucket.Id != 0 || gl.Bucket.Name != "" {
 		l.Bucket = &Bucket{
-			ID:   derefInt64(gl.Bucket.Id),
+			ID:   gl.Bucket.Id,
 			Name: gl.Bucket.Name,
 			Type: gl.Bucket.Type,
 		}
 	}
 
-	if gl.Creator.Id != nil || gl.Creator.Name != "" {
+	if gl.Creator.Id != 0 || gl.Creator.Name != "" {
 		l.Creator = &Person{
-			ID:           derefInt64(gl.Creator.Id),
+			ID:           gl.Creator.Id,
 			Name:         gl.Creator.Name,
 			EmailAddress: gl.Creator.EmailAddress,
 			AvatarURL:    gl.Creator.AvatarUrl,
@@ -643,9 +639,7 @@ func chatbotFromGenerated(gc generated.Chatbot) Chatbot {
 		UpdatedAt:   gc.UpdatedAt,
 	}
 
-	if gc.Id != nil {
-		c.ID = *gc.Id
-	}
+	c.ID = gc.Id
 
 	return c
 }

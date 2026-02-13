@@ -7,6 +7,7 @@
 # Usage: ruby scripts/ruby/generate-types.rb > lib/basecamp/generated/types.rb
 
 require 'json'
+require 'set'
 require 'time'
 
 # Schemas to skip (internal/generated response wrappers)
@@ -114,17 +115,35 @@ if __FILE__ == $PROGRAM_NAME
     properties = schema['properties'] || {}
     next if properties.empty?
 
+    required_fields = schema['required'] || []
+    required_set = required_fields.to_set
+
+    required_props = properties.keys.select { |k| required_set.include?(k) }.sort
+    optional_props = properties.keys.reject { |k| required_set.include?(k) }.sort
+    ordered_props = required_props + optional_props
+
     puts ''
     puts "    # #{name}"
     puts "    class #{name}"
     puts '      include TypeHelpers'
 
-    attr_names = properties.keys.map { |k| k.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, '') }
+    attr_names = ordered_props.map { |k| k.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, '') }
     puts "      attr_accessor #{attr_names.map { |n| ":#{n}" }.join(", ")}"
+
+    unless required_props.empty?
+      required_symbols = required_props.map { |k| k.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, '') }
+      puts ''
+      puts '      # @return [Array<Symbol>]'
+      puts '      def self.required_fields'
+      puts "        %i[#{required_symbols.join(' ')}].freeze"
+      puts '      end'
+    end
+
     puts ''
 
     puts '      def initialize(data = {})'
-    properties.each do |prop_name, prop_schema|
+    ordered_props.each do |prop_name|
+      prop_schema = properties[prop_name]
       attr_name = prop_name.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, '')
 
       converter = if prop_schema['$ref']
@@ -152,7 +171,7 @@ if __FILE__ == $PROGRAM_NAME
 
     puts '      def to_h'
     puts '        {'
-    properties.each_key do |prop_name|
+    ordered_props.each do |prop_name|
       attr_name = prop_name.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, '')
       puts "          \"#{prop_name}\" => @#{attr_name},"
     end

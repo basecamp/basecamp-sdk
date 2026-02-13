@@ -334,8 +334,8 @@ func templateFromGenerated(gt generated.Template) Template {
 		Description: gt.Description,
 	}
 
-	if gt.Id != nil {
-		t.ID = *gt.Id
+	if gt.Id != 0 {
+		t.ID = gt.Id
 	}
 
 	return t
@@ -348,11 +348,11 @@ func projectConstructionFromGenerated(gc generated.ProjectConstruction) ProjectC
 		URL:    gc.Url,
 	}
 
-	if gc.Id != nil {
-		c.ID = *gc.Id
+	if gc.Id != 0 {
+		c.ID = gc.Id
 	}
 
-	if gc.Project.Id != nil || gc.Project.Name != "" {
+	if gc.Project.Id != 0 || gc.Project.Name != "" {
 		c.Project = &Project{
 			Name:        gc.Project.Name,
 			Description: gc.Project.Description,
@@ -363,9 +363,7 @@ func projectConstructionFromGenerated(gc generated.ProjectConstruction) ProjectC
 			URL:         gc.Project.Url,
 			AppURL:      gc.Project.AppUrl,
 		}
-		if gc.Project.Id != nil {
-			c.Project.ID = *gc.Project.Id
-		}
+		c.Project.ID = gc.Project.Id
 	}
 
 	return c

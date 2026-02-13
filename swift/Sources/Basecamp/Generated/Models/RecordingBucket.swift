@@ -2,7 +2,13 @@
 import Foundation
 
 public struct RecordingBucket: Codable, Sendable {
-    public var id: Int?
-    public var name: String?
-    public var type: String?
+    public let id: Int
+    public let name: String
+    public let type: String
+
+    public init(id: Int, name: String, type: String) {
+        self.id = id
+        self.name = name
+        self.type = type
+    }
 }

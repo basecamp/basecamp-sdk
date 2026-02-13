@@ -9,7 +9,11 @@ final class GeneratedServiceTests: XCTestCase {
     // MARK: - request<T> path (GET with JSON decode)
 
     func testGetProjectDecodesResponse() async throws {
-        let json: [String: Any] = ["id": 42, "name": "My Project", "status": "active"]
+        let json: [String: Any] = [
+            "id": 42, "name": "My Project", "status": "active",
+            "app_url": "https://3.basecamp.com/1/projects/42", "url": "https://3.basecampapi.com/1/projects/42.json",
+            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+        ]
         let data = try JSONSerialization.data(withJSONObject: json)
 
         let transport = MockTransport(statusCode: 200, data: data)
@@ -28,7 +32,16 @@ final class GeneratedServiceTests: XCTestCase {
     // MARK: - request<T> path (POST with body)
 
     func testCreateTodoEncodesBodyAndDecodes() async throws {
-        let responseJSON: [String: Any] = ["id": 99, "content": "Buy milk", "completed": false]
+        let responseJSON: [String: Any] = [
+            "id": 99, "content": "Buy milk", "completed": false,
+            "app_url": "https://3.basecamp.com/1/buckets/1/todos/99", "url": "https://3.basecampapi.com/1/buckets/1/todos/99.json",
+            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+            "status": "active", "title": "Buy milk", "type": "Todo",
+            "inherits_status": false, "visible_to_clients": false,
+            "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
+            "creator": ["id": 1, "name": "Test User"] as [String: Any],
+            "parent": ["id": 2, "title": "Todolist", "type": "Todolist", "app_url": "https://3.basecamp.com/1/buckets/1/todolists/2", "url": "https://3.basecampapi.com/1/buckets/1/todolists/2.json"] as [String: Any],
+        ]
         let responseData = try JSONSerialization.data(withJSONObject: responseJSON)
 
         let transport = MockTransport(statusCode: 201, data: responseData)
@@ -64,8 +77,12 @@ final class GeneratedServiceTests: XCTestCase {
 
     func testListProjectsReturnsPaginatedResult() async throws {
         let projects: [[String: Any]] = [
-            ["id": 1, "name": "Project A"],
-            ["id": 2, "name": "Project B"],
+            ["id": 1, "name": "Project A", "status": "active",
+             "app_url": "https://3.basecamp.com/1/projects/1", "url": "https://3.basecampapi.com/1/projects/1.json",
+             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"],
+            ["id": 2, "name": "Project B", "status": "active",
+             "app_url": "https://3.basecamp.com/1/projects/2", "url": "https://3.basecampapi.com/1/projects/2.json",
+             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"],
         ]
         let data = try JSONSerialization.data(withJSONObject: projects)
 

@@ -369,8 +369,8 @@ func projectFromGenerated(gp generated.Project) Project {
 		UpdatedAt:      gp.UpdatedAt,
 	}
 
-	if gp.Id != nil {
-		p.ID = *gp.Id
+	if gp.Id != 0 {
+		p.ID = gp.Id
 	}
 
 	// Convert dock items
@@ -384,8 +384,8 @@ func projectFromGenerated(gp generated.Project) Project {
 				URL:     gd.Url,
 				AppURL:  gd.AppUrl,
 			}
-			if gd.Id != nil {
-				di.ID = *gd.Id
+			if gd.Id != 0 {
+				di.ID = gd.Id
 			}
 			if gd.Position != 0 {
 				pos := int(gd.Position)
@@ -396,9 +396,9 @@ func projectFromGenerated(gp generated.Project) Project {
 	}
 
 	// Convert client company
-	if gp.ClientCompany.Id != nil || gp.ClientCompany.Name != "" {
+	if gp.ClientCompany.Id != 0 || gp.ClientCompany.Name != "" {
 		p.ClientCompany = &ClientCompany{
-			ID:   derefInt64(gp.ClientCompany.Id),
+			ID:   gp.ClientCompany.Id,
 			Name: gp.ClientCompany.Name,
 		}
 	}

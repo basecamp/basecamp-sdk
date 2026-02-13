@@ -1020,13 +1020,13 @@ func vaultFromGenerated(gv generated.Vault) Vault {
 		UpdatedAt:        gv.UpdatedAt,
 	}
 
-	if gv.Id != nil {
-		v.ID = *gv.Id
+	if gv.Id != 0 {
+		v.ID = gv.Id
 	}
 
-	if gv.Parent.Id != nil || gv.Parent.Title != "" {
+	if gv.Parent.Id != 0 || gv.Parent.Title != "" {
 		v.Parent = &Parent{
-			ID:     derefInt64(gv.Parent.Id),
+			ID:     gv.Parent.Id,
 			Title:  gv.Parent.Title,
 			Type:   gv.Parent.Type,
 			URL:    gv.Parent.Url,
@@ -1034,17 +1034,17 @@ func vaultFromGenerated(gv generated.Vault) Vault {
 		}
 	}
 
-	if gv.Bucket.Id != nil || gv.Bucket.Name != "" {
+	if gv.Bucket.Id != 0 || gv.Bucket.Name != "" {
 		v.Bucket = &Bucket{
-			ID:   derefInt64(gv.Bucket.Id),
+			ID:   gv.Bucket.Id,
 			Name: gv.Bucket.Name,
 			Type: gv.Bucket.Type,
 		}
 	}
 
-	if gv.Creator.Id != nil || gv.Creator.Name != "" {
+	if gv.Creator.Id != 0 || gv.Creator.Name != "" {
 		v.Creator = &Person{
-			ID:           derefInt64(gv.Creator.Id),
+			ID:           gv.Creator.Id,
 			Name:         gv.Creator.Name,
 			EmailAddress: gv.Creator.EmailAddress,
 			AvatarURL:    gv.Creator.AvatarUrl,
@@ -1076,13 +1076,13 @@ func documentFromGenerated(gd generated.Document) Document {
 		UpdatedAt:        gd.UpdatedAt,
 	}
 
-	if gd.Id != nil {
-		d.ID = *gd.Id
+	if gd.Id != 0 {
+		d.ID = gd.Id
 	}
 
-	if gd.Parent.Id != nil || gd.Parent.Title != "" {
+	if gd.Parent.Id != 0 || gd.Parent.Title != "" {
 		d.Parent = &Parent{
-			ID:     derefInt64(gd.Parent.Id),
+			ID:     gd.Parent.Id,
 			Title:  gd.Parent.Title,
 			Type:   gd.Parent.Type,
 			URL:    gd.Parent.Url,
@@ -1090,17 +1090,17 @@ func documentFromGenerated(gd generated.Document) Document {
 		}
 	}
 
-	if gd.Bucket.Id != nil || gd.Bucket.Name != "" {
+	if gd.Bucket.Id != 0 || gd.Bucket.Name != "" {
 		d.Bucket = &Bucket{
-			ID:   derefInt64(gd.Bucket.Id),
+			ID:   gd.Bucket.Id,
 			Name: gd.Bucket.Name,
 			Type: gd.Bucket.Type,
 		}
 	}
 
-	if gd.Creator.Id != nil || gd.Creator.Name != "" {
+	if gd.Creator.Id != 0 || gd.Creator.Name != "" {
 		d.Creator = &Person{
-			ID:           derefInt64(gd.Creator.Id),
+			ID:           gd.Creator.Id,
 			Name:         gd.Creator.Name,
 			EmailAddress: gd.Creator.EmailAddress,
 			AvatarURL:    gd.Creator.AvatarUrl,
@@ -1138,13 +1138,13 @@ func uploadFromGenerated(gu generated.Upload) Upload {
 		UpdatedAt:        gu.UpdatedAt,
 	}
 
-	if gu.Id != nil {
-		u.ID = *gu.Id
+	if gu.Id != 0 {
+		u.ID = gu.Id
 	}
 
-	if gu.Parent.Id != nil || gu.Parent.Title != "" {
+	if gu.Parent.Id != 0 || gu.Parent.Title != "" {
 		u.Parent = &Parent{
-			ID:     derefInt64(gu.Parent.Id),
+			ID:     gu.Parent.Id,
 			Title:  gu.Parent.Title,
 			Type:   gu.Parent.Type,
 			URL:    gu.Parent.Url,
@@ -1152,17 +1152,17 @@ func uploadFromGenerated(gu generated.Upload) Upload {
 		}
 	}
 
-	if gu.Bucket.Id != nil || gu.Bucket.Name != "" {
+	if gu.Bucket.Id != 0 || gu.Bucket.Name != "" {
 		u.Bucket = &Bucket{
-			ID:   derefInt64(gu.Bucket.Id),
+			ID:   gu.Bucket.Id,
 			Name: gu.Bucket.Name,
 			Type: gu.Bucket.Type,
 		}
 	}
 
-	if gu.Creator.Id != nil || gu.Creator.Name != "" {
+	if gu.Creator.Id != 0 || gu.Creator.Name != "" {
 		u.Creator = &Person{
-			ID:           derefInt64(gu.Creator.Id),
+			ID:           gu.Creator.Id,
 			Name:         gu.Creator.Name,
 			EmailAddress: gu.Creator.EmailAddress,
 			AvatarURL:    gu.Creator.AvatarUrl,
