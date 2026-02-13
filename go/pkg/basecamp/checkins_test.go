@@ -428,7 +428,7 @@ func TestCreateQuestionRequest_Marshal(t *testing.T) {
 		t.Errorf("unexpected title: %v", data["title"])
 	}
 
-	schedule, ok := data["schedule"].(map[string]interface{})
+	schedule, ok := data["schedule"].(map[string]any)
 	if !ok {
 		t.Fatal("expected schedule to be a map")
 	}
@@ -444,7 +444,7 @@ func TestCreateQuestionRequest_Marshal(t *testing.T) {
 		t.Errorf("unexpected minute: %v", schedule["minute"])
 	}
 
-	days, ok := schedule["days"].([]interface{})
+	days, ok := schedule["days"].([]any)
 	if !ok {
 		t.Fatal("expected days to be an array")
 	}
@@ -487,7 +487,7 @@ func TestUpdateQuestionRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateQuestionRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -499,7 +499,7 @@ func TestUpdateQuestionRequest_Marshal(t *testing.T) {
 		t.Errorf("unexpected paused: %v", data["paused"])
 	}
 
-	schedule, ok := data["schedule"].(map[string]interface{})
+	schedule, ok := data["schedule"].(map[string]any)
 	if !ok {
 		t.Fatal("expected schedule to be a map")
 	}
@@ -519,7 +519,7 @@ func TestUpdateQuestionRequest_MarshalPartial(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateQuestionRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -547,7 +547,7 @@ func TestCreateAnswerRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateAnswerRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -584,7 +584,7 @@ func TestCreateAnswerRequest_MarshalMinimal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateAnswerRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -608,7 +608,7 @@ func TestUpdateAnswerRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateAnswerRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -642,13 +642,13 @@ func TestCreateAnswerRequestWrapper_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal wrapper: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
 	// Verify the structure is wrapped in "question_answer" key
-	questionAnswer, ok := data["question_answer"].(map[string]interface{})
+	questionAnswer, ok := data["question_answer"].(map[string]any)
 	if !ok {
 		t.Fatal("expected question_answer to be a map")
 	}
@@ -673,13 +673,13 @@ func TestUpdateAnswerRequestWrapper_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal wrapper: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
 	// Verify the structure is wrapped in "question_answer" key
-	questionAnswer, ok := data["question_answer"].(map[string]interface{})
+	questionAnswer, ok := data["question_answer"].(map[string]any)
 	if !ok {
 		t.Fatal("expected question_answer to be a map")
 	}

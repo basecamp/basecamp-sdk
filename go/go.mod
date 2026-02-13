@@ -1,6 +1,6 @@
 module github.com/basecamp/basecamp-sdk/go
 
-go 1.25.7
+go 1.26
 
 require (
 	github.com/oapi-codegen/runtime v1.1.2

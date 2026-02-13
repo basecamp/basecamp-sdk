@@ -198,8 +198,7 @@ func ErrAmbiguous(resource string, matches []string) *Error {
 // AsError attempts to convert an error to an *Error.
 // If the error is not an *Error, it wraps it in one.
 func AsError(err error) *Error {
-	var e *Error
-	if errors.As(err, &e) {
+	if e, ok := errors.AsType[*Error](err); ok {
 		return e
 	}
 	return &Error{

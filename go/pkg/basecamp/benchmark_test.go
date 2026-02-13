@@ -185,7 +185,7 @@ func BenchmarkJSONUnmarshalProjectList(b *testing.B) {
 	// Build JSON for 50 projects
 	var buf bytes.Buffer
 	buf.WriteString("[")
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		if i > 0 {
 			buf.WriteString(",")
 		}

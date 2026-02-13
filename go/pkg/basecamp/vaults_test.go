@@ -541,7 +541,7 @@ func TestUploadsService_Download_MissingDownloadURL(t *testing.T) {
 		// Return an upload without a download_url
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"id":       1069479400,
 			"title":    "logo.png",
 			"filename": "logo.png",
@@ -576,7 +576,7 @@ func TestUploadsService_Download_S3Error(t *testing.T) {
 	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"id":           1069479400,
 			"title":        "logo.png",
 			"filename":     "logo.png",
@@ -617,7 +617,7 @@ func TestUploadsService_Download_Success(t *testing.T) {
 	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"id":           1069479400,
 			"title":        "logo.png",
 			"filename":     "logo.png",

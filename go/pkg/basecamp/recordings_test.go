@@ -194,7 +194,7 @@ func TestSetClientVisibilityRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal SetClientVisibilityRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -217,7 +217,7 @@ func TestSetClientVisibilityRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal SetClientVisibilityRequest (false): %v", err)
 	}
 
-	var dataFalse map[string]interface{}
+	var dataFalse map[string]any
 	if err := json.Unmarshal(outFalse, &dataFalse); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}

@@ -240,7 +240,7 @@ func TestCreateTimesheetEntryRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateTimesheetEntryRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -267,7 +267,7 @@ func TestCreateTimesheetEntryRequest_MarshalMinimal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateTimesheetEntryRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -365,7 +365,7 @@ func TestUpdateTimesheetEntryRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateTimesheetEntryRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}

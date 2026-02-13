@@ -150,24 +150,25 @@ var paramPattern = regexp.MustCompile(`\{([^}]+)\}`)
 // into a regexp and extracts the parameter names.
 func compilePattern(pattern string) (*regexp.Regexp, []string) {
 	var params []string
-	regexStr := "^"
+	var regexStr strings.Builder
+	regexStr.WriteString("^")
 
 	remaining := pattern
 	for remaining != "" {
 		loc := paramPattern.FindStringIndex(remaining)
 		if loc == nil {
-			regexStr += regexp.QuoteMeta(remaining)
+			regexStr.WriteString(regexp.QuoteMeta(remaining))
 			break
 		}
-		regexStr += regexp.QuoteMeta(remaining[:loc[0]])
+		regexStr.WriteString(regexp.QuoteMeta(remaining[:loc[0]]))
 		match := paramPattern.FindStringSubmatch(remaining[loc[0]:])
 		params = append(params, match[1])
-		regexStr += `([^/]+)`
+		regexStr.WriteString(`([^/]+)`)
 		remaining = remaining[loc[0]+len(match[0]):]
 	}
-	regexStr += `$`
+	regexStr.WriteString(`$`)
 
-	return regexp.MustCompile(regexStr), params
+	return regexp.MustCompile(regexStr.String()), params
 }
 
 // sortRoutes sorts routes by descending segment count, then alphabetically by pattern.
@@ -258,9 +259,9 @@ func preprocessURL(rawURL string) (path, fragment string, ok bool) {
 	}
 
 	urlPart := rawURL
-	if idx := strings.Index(rawURL, "#"); idx != -1 {
-		fragment = rawURL[idx+1:]
-		urlPart = rawURL[:idx]
+	if before, after, ok0 := strings.Cut(rawURL, "#"); ok0 {
+		fragment = after
+		urlPart = before
 	}
 
 	path = extractPath(urlPart)
@@ -404,11 +405,11 @@ func derivePathType(path string) string {
 	// Find the resource path: for bucket URLs, skip /buckets/{id}/
 	// For account-level URLs, skip /{accountId}/
 	var resourcePath string
-	if idx := strings.Index(path, "/buckets/"); idx != -1 {
-		rest := path[idx+len("/buckets/"):]
+	if _, after, ok := strings.Cut(path, "/buckets/"); ok {
+		rest := after
 		// Skip the bucket ID
-		if slashIdx := strings.Index(rest, "/"); slashIdx != -1 {
-			resourcePath = rest[slashIdx+1:]
+		if _, after, ok := strings.Cut(rest, "/"); ok {
+			resourcePath = after
 		} else {
 			return "" // Just /buckets/{id}, no resource path
 		}
@@ -416,10 +417,10 @@ func derivePathType(path string) string {
 		// Account-level path: /{accountId}/resource/...
 		// Skip the account ID segment
 		rest := path[1:]
-		if slashIdx := strings.Index(rest, "/"); slashIdx != -1 {
-			firstSeg := rest[:slashIdx]
+		if before, after, ok := strings.Cut(rest, "/"); ok {
+			firstSeg := before
 			if isNumeric(firstSeg) {
-				resourcePath = rest[slashIdx+1:]
+				resourcePath = after
 			}
 		}
 	}
@@ -464,8 +465,8 @@ func extractPath(urlPart string) string {
 	path := urlPart
 
 	// Strip scheme if present: https://host/path → host/path
-	if idx := strings.Index(urlPart, "://"); idx != -1 {
-		path = urlPart[idx+3:]
+	if _, after, ok := strings.Cut(urlPart, "://"); ok {
+		path = after
 	} else if strings.HasPrefix(urlPart, "//") {
 		// Protocol-relative: //host/path → host/path
 		path = urlPart[2:]

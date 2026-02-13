@@ -285,7 +285,7 @@ func TestCreateScheduleEntryRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateScheduleEntryRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -307,7 +307,7 @@ func TestCreateScheduleEntryRequest_Marshal(t *testing.T) {
 	}
 
 	// Check participant_ids
-	pids, ok := data["participant_ids"].([]interface{})
+	pids, ok := data["participant_ids"].([]any)
 	if !ok {
 		t.Fatalf("expected participant_ids to be array, got %T", data["participant_ids"])
 	}
@@ -345,7 +345,7 @@ func TestCreateScheduleEntryRequest_MarshalMinimal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateScheduleEntryRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -384,7 +384,7 @@ func TestUpdateScheduleEntryRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateScheduleEntryRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -427,7 +427,7 @@ func TestUpdateScheduleEntryRequest_MarshalPartial(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateScheduleEntryRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -461,7 +461,7 @@ func TestUpdateScheduleSettingsRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateScheduleSettingsRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -490,7 +490,7 @@ func TestUpdateScheduleSettingsRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateScheduleSettingsRequest with false: %v", err)
 	}
 
-	var dataFalse map[string]interface{}
+	var dataFalse map[string]any
 	if err := json.Unmarshal(outFalse, &dataFalse); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}

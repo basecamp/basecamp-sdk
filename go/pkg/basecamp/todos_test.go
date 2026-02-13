@@ -270,7 +270,7 @@ func TestCreateTodoRequest_Marshal(t *testing.T) {
 	}
 
 	// Verify assignee_ids
-	assigneeIDs, ok := data["assignee_ids"].([]interface{})
+	assigneeIDs, ok := data["assignee_ids"].([]any)
 	if !ok {
 		t.Fatalf("expected assignee_ids to be array, got %T", data["assignee_ids"])
 	}
@@ -303,7 +303,7 @@ func TestCreateTodoRequest_MarshalMinimal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateTodoRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -419,7 +419,7 @@ func TestUpdateTodoRequest_MarshalPartial(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateTodoRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -525,7 +525,7 @@ func TestCreateTodoRequest_CompletionSubscriberIDs(t *testing.T) {
 	}
 
 	// Verify completion_subscriber_ids is present
-	subscriberIDs, ok := data["completion_subscriber_ids"].([]interface{})
+	subscriberIDs, ok := data["completion_subscriber_ids"].([]any)
 	if !ok {
 		t.Fatalf("expected completion_subscriber_ids to be array, got %T", data["completion_subscriber_ids"])
 	}
@@ -578,7 +578,7 @@ func TestUpdateTodoRequest_CompletionSubscriberIDs(t *testing.T) {
 	}
 
 	// Verify completion_subscriber_ids is present
-	subscriberIDs, ok := data["completion_subscriber_ids"].([]interface{})
+	subscriberIDs, ok := data["completion_subscriber_ids"].([]any)
 	if !ok {
 		t.Fatalf("expected completion_subscriber_ids to be array, got %T", data["completion_subscriber_ids"])
 	}
@@ -599,7 +599,7 @@ func TestCreateTodoRequest_CompletionSubscriberIDs_Omitted(t *testing.T) {
 		t.Fatalf("failed to marshal CreateTodoRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}

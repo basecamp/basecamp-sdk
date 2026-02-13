@@ -14,7 +14,7 @@ import (
 func TestDiscoverer_Discover(t *testing.T) {
 	tests := []struct {
 		name       string
-		response   interface{}
+		response   any
 		statusCode int
 		wantErr    bool
 	}{
@@ -96,7 +96,7 @@ func TestExchanger_Exchange(t *testing.T) {
 	tests := []struct {
 		name            string
 		req             ExchangeRequest
-		response        interface{}
+		response        any
 		statusCode      int
 		wantErr         bool
 		wantLegacyParam bool
@@ -109,7 +109,7 @@ func TestExchanger_Exchange(t *testing.T) {
 				RedirectURI:   "http://localhost/callback",
 				ClientID:      "client123",
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"access_token":  "access123",
 				"refresh_token": "refresh123",
 				"token_type":    "Bearer",
@@ -127,7 +127,7 @@ func TestExchanger_Exchange(t *testing.T) {
 				ClientID:        "client123",
 				UseLegacyFormat: true,
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"access_token":  "access123",
 				"refresh_token": "refresh123",
 			},
@@ -143,7 +143,7 @@ func TestExchanger_Exchange(t *testing.T) {
 				RedirectURI:   "http://localhost/callback",
 				ClientID:      "client123",
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"error":             "invalid_grant",
 				"error_description": "The authorization code has expired",
 			},
@@ -228,7 +228,7 @@ func TestExchanger_Refresh(t *testing.T) {
 	tests := []struct {
 		name            string
 		req             RefreshRequest
-		response        interface{}
+		response        any
 		statusCode      int
 		wantErr         bool
 		wantLegacyParam bool
@@ -239,7 +239,7 @@ func TestExchanger_Refresh(t *testing.T) {
 				TokenEndpoint: "will be replaced",
 				RefreshToken:  "refresh123",
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"access_token":  "new_access123",
 				"refresh_token": "new_refresh123",
 				"expires_in":    3600,
@@ -254,7 +254,7 @@ func TestExchanger_Refresh(t *testing.T) {
 				RefreshToken:    "refresh123",
 				UseLegacyFormat: true,
 			},
-			response: map[string]interface{}{
+			response: map[string]any{
 				"access_token": "new_access123",
 			},
 			statusCode:      http.StatusOK,
@@ -317,7 +317,7 @@ func TestExchanger_Refresh(t *testing.T) {
 
 func TestToken_ExpiresAt(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"access_token": "access123",
 			"expires_in":   3600,
 		})
@@ -416,7 +416,7 @@ func TestExchanger_Exchange_TruncatesLargeErrorDescription(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		largeDesc := strings.Repeat("y", 10000)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"error":             "invalid_grant",
 			"error_description": largeDesc,
 		})

@@ -160,8 +160,8 @@ func TestCreateRecordingBoost_EmptyContent(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for empty content")
 	}
-	var apiErr *Error
-	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
 		t.Errorf("expected usage error, got: %v", err)
 	}
 }
@@ -172,8 +172,8 @@ func TestCreateEventBoost_EmptyContent(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for empty content")
 	}
-	var apiErr *Error
-	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
 		t.Errorf("expected usage error, got: %v", err)
 	}
 }
@@ -291,8 +291,8 @@ func TestBoostsService_Get_NotFound(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for 404")
 	}
-	var apiErr *Error
-	if !errors.As(err, &apiErr) || apiErr.Code != CodeNotFound {
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeNotFound {
 		t.Errorf("expected not_found error, got: %v", err)
 	}
 }
@@ -408,8 +408,8 @@ func TestBoostsService_Delete_NotFound(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for 404")
 	}
-	var apiErr *Error
-	if !errors.As(err, &apiErr) || apiErr.Code != CodeNotFound {
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeNotFound {
 		t.Errorf("expected not_found error, got: %v", err)
 	}
 }

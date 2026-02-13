@@ -131,8 +131,7 @@
 //
 //	resp, err := client.Get(ctx, "/projects/999.json")
 //	if err != nil {
-//	    var apiErr *basecamp.Error
-//	    if errors.As(err, &apiErr) {
+//	    if apiErr, ok := errors.AsType[*basecamp.Error](err); ok {
 //	        switch apiErr.Code {
 //	        case basecamp.CodeNotFound:
 //	            // Handle 404

@@ -122,7 +122,7 @@ func TestWebhookEvent_UnmarshalMessageCopied(t *testing.T) {
 	if event.Details == nil {
 		t.Fatal("expected non-nil details")
 	}
-	detailsMap, ok := event.Details.(map[string]interface{})
+	detailsMap, ok := event.Details.(map[string]any)
 	if !ok {
 		t.Fatalf("expected details to be a map, got %T", event.Details)
 	}
@@ -185,7 +185,7 @@ func TestWebhookEvent_UnmarshalUnknownFuture(t *testing.T) {
 	if event.Details == nil {
 		t.Fatal("expected non-nil details")
 	}
-	detailsMap, ok := event.Details.(map[string]interface{})
+	detailsMap, ok := event.Details.(map[string]any)
 	if !ok {
 		t.Fatalf("expected details to be a map, got %T", event.Details)
 	}
@@ -200,7 +200,7 @@ func TestWebhookEvent_UnmarshalUnknownFuture(t *testing.T) {
 	if !ok {
 		t.Fatal("expected nested in details")
 	}
-	nestedMap, ok := nested.(map[string]interface{})
+	nestedMap, ok := nested.(map[string]any)
 	if !ok {
 		t.Fatal("expected nested to be a map")
 	}

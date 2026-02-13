@@ -119,7 +119,7 @@ func TestCreateMarkerRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateMarkerRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestUpdateMarkerRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateMarkerRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestUpdateMarkerRequest_MarshalPartial(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateMarkerRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
