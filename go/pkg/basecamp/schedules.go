@@ -546,21 +546,21 @@ func scheduleFromGenerated(gs generated.Schedule) Schedule {
 		EntriesURL:            gs.EntriesUrl,
 	}
 
-	if gs.Id != nil {
-		s.ID = *gs.Id
+	if gs.Id != 0 {
+		s.ID = gs.Id
 	}
 
-	if gs.Bucket.Id != nil || gs.Bucket.Name != "" {
+	if gs.Bucket.Id != 0 || gs.Bucket.Name != "" {
 		s.Bucket = &Bucket{
-			ID:   derefInt64(gs.Bucket.Id),
+			ID:   gs.Bucket.Id,
 			Name: gs.Bucket.Name,
 			Type: gs.Bucket.Type,
 		}
 	}
 
-	if gs.Creator.Id != nil || gs.Creator.Name != "" {
+	if gs.Creator.Id != 0 || gs.Creator.Name != "" {
 		s.Creator = &Person{
-			ID:           derefInt64(gs.Creator.Id),
+			ID:           gs.Creator.Id,
 			Name:         gs.Creator.Name,
 			EmailAddress: gs.Creator.EmailAddress,
 			AvatarURL:    gs.Creator.AvatarUrl,
@@ -595,13 +595,13 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 		Description:      ge.Description,
 	}
 
-	if ge.Id != nil {
-		e.ID = *ge.Id
+	if ge.Id != 0 {
+		e.ID = ge.Id
 	}
 
-	if ge.Parent.Id != nil || ge.Parent.Title != "" {
+	if ge.Parent.Id != 0 || ge.Parent.Title != "" {
 		e.Parent = &Parent{
-			ID:     derefInt64(ge.Parent.Id),
+			ID:     ge.Parent.Id,
 			Title:  ge.Parent.Title,
 			Type:   ge.Parent.Type,
 			URL:    ge.Parent.Url,
@@ -609,17 +609,17 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 		}
 	}
 
-	if ge.Bucket.Id != nil || ge.Bucket.Name != "" {
+	if ge.Bucket.Id != 0 || ge.Bucket.Name != "" {
 		e.Bucket = &Bucket{
-			ID:   derefInt64(ge.Bucket.Id),
+			ID:   ge.Bucket.Id,
 			Name: ge.Bucket.Name,
 			Type: ge.Bucket.Type,
 		}
 	}
 
-	if ge.Creator.Id != nil || ge.Creator.Name != "" {
+	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
 		e.Creator = &Person{
-			ID:           derefInt64(ge.Creator.Id),
+			ID:           ge.Creator.Id,
 			Name:         ge.Creator.Name,
 			EmailAddress: ge.Creator.EmailAddress,
 			AvatarURL:    ge.Creator.AvatarUrl,
@@ -639,8 +639,8 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 				Admin:        gp.Admin,
 				Owner:        gp.Owner,
 			}
-			if gp.Id != nil {
-				p.ID = *gp.Id
+			if gp.Id != 0 {
+				p.ID = gp.Id
 			}
 			e.Participants = append(e.Participants, p)
 		}

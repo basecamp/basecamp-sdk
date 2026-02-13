@@ -425,21 +425,21 @@ func inboxFromGenerated(gi generated.Inbox) Inbox {
 		AppURL:    gi.AppUrl,
 	}
 
-	if gi.Id != nil {
-		i.ID = *gi.Id
+	if gi.Id != 0 {
+		i.ID = gi.Id
 	}
 
-	if gi.Bucket.Id != nil || gi.Bucket.Name != "" {
+	if gi.Bucket.Id != 0 || gi.Bucket.Name != "" {
 		i.Bucket = &Bucket{
-			ID:   derefInt64(gi.Bucket.Id),
+			ID:   gi.Bucket.Id,
 			Name: gi.Bucket.Name,
 			Type: gi.Bucket.Type,
 		}
 	}
 
-	if gi.Creator.Id != nil || gi.Creator.Name != "" {
+	if gi.Creator.Id != 0 || gi.Creator.Name != "" {
 		i.Creator = &Person{
-			ID:           derefInt64(gi.Creator.Id),
+			ID:           gi.Creator.Id,
 			Name:         gi.Creator.Name,
 			EmailAddress: gi.Creator.EmailAddress,
 			AvatarURL:    gi.Creator.AvatarUrl,
@@ -465,13 +465,13 @@ func forwardFromGenerated(gf generated.Forward) Forward {
 		AppURL:    gf.AppUrl,
 	}
 
-	if gf.Id != nil {
-		f.ID = *gf.Id
+	if gf.Id != 0 {
+		f.ID = gf.Id
 	}
 
-	if gf.Parent.Id != nil || gf.Parent.Title != "" {
+	if gf.Parent.Id != 0 || gf.Parent.Title != "" {
 		f.Parent = &Parent{
-			ID:     derefInt64(gf.Parent.Id),
+			ID:     gf.Parent.Id,
 			Title:  gf.Parent.Title,
 			Type:   gf.Parent.Type,
 			URL:    gf.Parent.Url,
@@ -479,17 +479,17 @@ func forwardFromGenerated(gf generated.Forward) Forward {
 		}
 	}
 
-	if gf.Bucket.Id != nil || gf.Bucket.Name != "" {
+	if gf.Bucket.Id != 0 || gf.Bucket.Name != "" {
 		f.Bucket = &Bucket{
-			ID:   derefInt64(gf.Bucket.Id),
+			ID:   gf.Bucket.Id,
 			Name: gf.Bucket.Name,
 			Type: gf.Bucket.Type,
 		}
 	}
 
-	if gf.Creator.Id != nil || gf.Creator.Name != "" {
+	if gf.Creator.Id != 0 || gf.Creator.Name != "" {
 		f.Creator = &Person{
-			ID:           derefInt64(gf.Creator.Id),
+			ID:           gf.Creator.Id,
 			Name:         gf.Creator.Name,
 			EmailAddress: gf.Creator.EmailAddress,
 			AvatarURL:    gf.Creator.AvatarUrl,
@@ -513,13 +513,13 @@ func forwardReplyFromGenerated(gr generated.ForwardReply) ForwardReply {
 		AppURL:    gr.AppUrl,
 	}
 
-	if gr.Id != nil {
-		r.ID = *gr.Id
+	if gr.Id != 0 {
+		r.ID = gr.Id
 	}
 
-	if gr.Parent.Id != nil || gr.Parent.Title != "" {
+	if gr.Parent.Id != 0 || gr.Parent.Title != "" {
 		r.Parent = &Parent{
-			ID:     derefInt64(gr.Parent.Id),
+			ID:     gr.Parent.Id,
 			Title:  gr.Parent.Title,
 			Type:   gr.Parent.Type,
 			URL:    gr.Parent.Url,
@@ -527,17 +527,17 @@ func forwardReplyFromGenerated(gr generated.ForwardReply) ForwardReply {
 		}
 	}
 
-	if gr.Bucket.Id != nil || gr.Bucket.Name != "" {
+	if gr.Bucket.Id != 0 || gr.Bucket.Name != "" {
 		r.Bucket = &Bucket{
-			ID:   derefInt64(gr.Bucket.Id),
+			ID:   gr.Bucket.Id,
 			Name: gr.Bucket.Name,
 			Type: gr.Bucket.Type,
 		}
 	}
 
-	if gr.Creator.Id != nil || gr.Creator.Name != "" {
+	if gr.Creator.Id != 0 || gr.Creator.Name != "" {
 		r.Creator = &Person{
-			ID:           derefInt64(gr.Creator.Id),
+			ID:           gr.Creator.Id,
 			Name:         gr.Creator.Name,
 			EmailAddress: gr.Creator.EmailAddress,
 			AvatarURL:    gr.Creator.AvatarUrl,

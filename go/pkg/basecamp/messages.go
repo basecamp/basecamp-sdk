@@ -432,14 +432,14 @@ func messageFromGenerated(gm generated.Message) Message {
 		UpdatedAt: gm.UpdatedAt,
 	}
 
-	if gm.Id != nil {
-		m.ID = *gm.Id
+	if gm.Id != 0 {
+		m.ID = gm.Id
 	}
 
 	// Convert nested types
-	if gm.Parent.Id != nil || gm.Parent.Title != "" {
+	if gm.Parent.Id != 0 || gm.Parent.Title != "" {
 		m.Parent = &Parent{
-			ID:     derefInt64(gm.Parent.Id),
+			ID:     gm.Parent.Id,
 			Title:  gm.Parent.Title,
 			Type:   gm.Parent.Type,
 			URL:    gm.Parent.Url,
@@ -447,17 +447,17 @@ func messageFromGenerated(gm generated.Message) Message {
 		}
 	}
 
-	if gm.Bucket.Id != nil || gm.Bucket.Name != "" {
+	if gm.Bucket.Id != 0 || gm.Bucket.Name != "" {
 		m.Bucket = &Bucket{
-			ID:   derefInt64(gm.Bucket.Id),
+			ID:   gm.Bucket.Id,
 			Name: gm.Bucket.Name,
 			Type: gm.Bucket.Type,
 		}
 	}
 
-	if gm.Creator.Id != nil || gm.Creator.Name != "" {
+	if gm.Creator.Id != 0 || gm.Creator.Name != "" {
 		m.Creator = &Person{
-			ID:           derefInt64(gm.Creator.Id),
+			ID:           gm.Creator.Id,
 			Name:         gm.Creator.Name,
 			EmailAddress: gm.Creator.EmailAddress,
 			AvatarURL:    gm.Creator.AvatarUrl,
@@ -466,9 +466,9 @@ func messageFromGenerated(gm generated.Message) Message {
 		}
 	}
 
-	if gm.Category.Id != nil || gm.Category.Name != "" {
+	if gm.Category.Id != 0 || gm.Category.Name != "" {
 		m.Category = &MessageType{
-			ID:        derefInt64(gm.Category.Id),
+			ID:        gm.Category.Id,
 			Name:      gm.Category.Name,
 			Icon:      gm.Category.Icon,
 			CreatedAt: gm.Category.CreatedAt,

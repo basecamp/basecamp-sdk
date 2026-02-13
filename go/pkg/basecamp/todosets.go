@@ -103,8 +103,8 @@ func todosetFromGenerated(gts generated.Todoset) Todoset {
 		UpdatedAt:         gts.UpdatedAt,
 	}
 
-	if gts.Id != nil {
-		ts.ID = *gts.Id
+	if gts.Id != 0 {
+		ts.ID = gts.Id
 	}
 
 	if gts.Position != 0 {
@@ -113,17 +113,17 @@ func todosetFromGenerated(gts generated.Todoset) Todoset {
 	}
 
 	// Convert nested types
-	if gts.Bucket.Id != nil || gts.Bucket.Name != "" {
+	if gts.Bucket.Id != 0 || gts.Bucket.Name != "" {
 		ts.Bucket = &Bucket{
-			ID:   derefInt64(gts.Bucket.Id),
+			ID:   gts.Bucket.Id,
 			Name: gts.Bucket.Name,
 			Type: gts.Bucket.Type,
 		}
 	}
 
-	if gts.Creator.Id != nil || gts.Creator.Name != "" {
+	if gts.Creator.Id != 0 || gts.Creator.Name != "" {
 		ts.Creator = &Person{
-			ID:           derefInt64(gts.Creator.Id),
+			ID:           gts.Creator.Id,
 			Name:         gts.Creator.Name,
 			EmailAddress: gts.Creator.EmailAddress,
 			AvatarURL:    gts.Creator.AvatarUrl,

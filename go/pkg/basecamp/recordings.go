@@ -378,13 +378,13 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		BookmarkURL:      gr.BookmarkUrl,
 	}
 
-	if gr.Id != nil {
-		r.ID = *gr.Id
+	if gr.Id != 0 {
+		r.ID = gr.Id
 	}
 
-	if gr.Parent.Id != nil || gr.Parent.Title != "" {
+	if gr.Parent.Id != 0 || gr.Parent.Title != "" {
 		r.Parent = &Parent{
-			ID:     derefInt64(gr.Parent.Id),
+			ID:     gr.Parent.Id,
 			Title:  gr.Parent.Title,
 			Type:   gr.Parent.Type,
 			URL:    gr.Parent.Url,
@@ -392,17 +392,17 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		}
 	}
 
-	if gr.Bucket.Id != nil || gr.Bucket.Name != "" {
+	if gr.Bucket.Id != 0 || gr.Bucket.Name != "" {
 		r.Bucket = &Bucket{
-			ID:   derefInt64(gr.Bucket.Id),
+			ID:   gr.Bucket.Id,
 			Name: gr.Bucket.Name,
 			Type: gr.Bucket.Type,
 		}
 	}
 
-	if gr.Creator.Id != nil || gr.Creator.Name != "" {
+	if gr.Creator.Id != 0 || gr.Creator.Name != "" {
 		r.Creator = &Person{
-			ID:           derefInt64(gr.Creator.Id),
+			ID:           gr.Creator.Id,
 			Name:         gr.Creator.Name,
 			EmailAddress: gr.Creator.EmailAddress,
 			AvatarURL:    gr.Creator.AvatarUrl,

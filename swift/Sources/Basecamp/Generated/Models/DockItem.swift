@@ -2,11 +2,29 @@
 import Foundation
 
 public struct DockItem: Codable, Sendable {
-    public var appUrl: String?
-    public var enabled: Bool?
-    public var id: Int?
-    public var name: String?
+    public let appUrl: String
+    public let enabled: Bool
+    public let id: Int
+    public let name: String
+    public let title: String
+    public let url: String
     public var position: Int32?
-    public var title: String?
-    public var url: String?
+
+    public init(
+        appUrl: String,
+        enabled: Bool,
+        id: Int,
+        name: String,
+        title: String,
+        url: String,
+        position: Int32? = nil
+    ) {
+        self.appUrl = appUrl
+        self.enabled = enabled
+        self.id = id
+        self.name = name
+        self.title = title
+        self.url = url
+        self.position = position
+    }
 }

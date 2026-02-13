@@ -169,8 +169,8 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		ApprovalStatus:   ga.ApprovalStatus,
 	}
 
-	if ga.Id != nil {
-		a.ID = *ga.Id
+	if ga.Id != 0 {
+		a.ID = ga.Id
 	}
 
 	if !ga.DueOn.IsZero() {
@@ -178,9 +178,9 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		a.DueOn = &dueOn
 	}
 
-	if ga.Parent.Id != nil || ga.Parent.Title != "" {
+	if ga.Parent.Id != 0 || ga.Parent.Title != "" {
 		a.Parent = &Parent{
-			ID:     derefInt64(ga.Parent.Id),
+			ID:     ga.Parent.Id,
 			Title:  ga.Parent.Title,
 			Type:   ga.Parent.Type,
 			URL:    ga.Parent.Url,
@@ -188,17 +188,17 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		}
 	}
 
-	if ga.Bucket.Id != nil || ga.Bucket.Name != "" {
+	if ga.Bucket.Id != 0 || ga.Bucket.Name != "" {
 		a.Bucket = &Bucket{
-			ID:   derefInt64(ga.Bucket.Id),
+			ID:   ga.Bucket.Id,
 			Name: ga.Bucket.Name,
 			Type: ga.Bucket.Type,
 		}
 	}
 
-	if ga.Creator.Id != nil || ga.Creator.Name != "" {
+	if ga.Creator.Id != 0 || ga.Creator.Name != "" {
 		a.Creator = &Person{
-			ID:           derefInt64(ga.Creator.Id),
+			ID:           ga.Creator.Id,
 			Name:         ga.Creator.Name,
 			EmailAddress: ga.Creator.EmailAddress,
 			AvatarURL:    ga.Creator.AvatarUrl,
@@ -207,9 +207,9 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		}
 	}
 
-	if ga.Approver.Id != nil || ga.Approver.Name != "" {
+	if ga.Approver.Id != 0 || ga.Approver.Name != "" {
 		a.Approver = &Person{
-			ID:           derefInt64(ga.Approver.Id),
+			ID:           ga.Approver.Id,
 			Name:         ga.Approver.Name,
 			EmailAddress: ga.Approver.EmailAddress,
 			AvatarURL:    ga.Approver.AvatarUrl,
@@ -238,25 +238,25 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 			if gr.Id != nil {
 				resp.ID = *gr.Id
 			}
-			if gr.Parent.Id != nil || gr.Parent.Title != "" {
+			if gr.Parent.Id != 0 || gr.Parent.Title != "" {
 				resp.Parent = &Parent{
-					ID:     derefInt64(gr.Parent.Id),
+					ID:     gr.Parent.Id,
 					Title:  gr.Parent.Title,
 					Type:   gr.Parent.Type,
 					URL:    gr.Parent.Url,
 					AppURL: gr.Parent.AppUrl,
 				}
 			}
-			if gr.Bucket.Id != nil || gr.Bucket.Name != "" {
+			if gr.Bucket.Id != 0 || gr.Bucket.Name != "" {
 				resp.Bucket = &Bucket{
-					ID:   derefInt64(gr.Bucket.Id),
+					ID:   gr.Bucket.Id,
 					Name: gr.Bucket.Name,
 					Type: gr.Bucket.Type,
 				}
 			}
-			if gr.Creator.Id != nil || gr.Creator.Name != "" {
+			if gr.Creator.Id != 0 || gr.Creator.Name != "" {
 				resp.Creator = &Person{
-					ID:           derefInt64(gr.Creator.Id),
+					ID:           gr.Creator.Id,
 					Name:         gr.Creator.Name,
 					EmailAddress: gr.Creator.EmailAddress,
 					AvatarURL:    gr.Creator.AvatarUrl,

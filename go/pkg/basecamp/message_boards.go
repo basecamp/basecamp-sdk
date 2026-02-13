@@ -81,21 +81,21 @@ func messageBoardFromGenerated(gb generated.MessageBoard) MessageBoard {
 		UpdatedAt:     gb.UpdatedAt,
 	}
 
-	if gb.Id != nil {
-		mb.ID = *gb.Id
+	if gb.Id != 0 {
+		mb.ID = gb.Id
 	}
 
-	if gb.Bucket.Id != nil || gb.Bucket.Name != "" {
+	if gb.Bucket.Id != 0 || gb.Bucket.Name != "" {
 		mb.Bucket = &Bucket{
-			ID:   derefInt64(gb.Bucket.Id),
+			ID:   gb.Bucket.Id,
 			Name: gb.Bucket.Name,
 			Type: gb.Bucket.Type,
 		}
 	}
 
-	if gb.Creator.Id != nil || gb.Creator.Name != "" {
+	if gb.Creator.Id != 0 || gb.Creator.Name != "" {
 		mb.Creator = &Person{
-			ID:           derefInt64(gb.Creator.Id),
+			ID:           gb.Creator.Id,
 			Name:         gb.Creator.Name,
 			EmailAddress: gb.Creator.EmailAddress,
 			AvatarURL:    gb.Creator.AvatarUrl,

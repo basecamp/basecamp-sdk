@@ -251,8 +251,8 @@ func messageTypeFromGenerated(gt generated.MessageType) MessageType {
 		UpdatedAt: gt.UpdatedAt,
 	}
 
-	if gt.Id != nil {
-		mt.ID = *gt.Id
+	if gt.Id != 0 {
+		mt.ID = gt.Id
 	}
 
 	return mt

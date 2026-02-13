@@ -2,9 +2,23 @@
 import Foundation
 
 public struct RecordingParent: Codable, Sendable {
-    public var appUrl: String?
-    public var id: Int?
-    public var title: String?
-    public var type: String?
-    public var url: String?
+    public let appUrl: String
+    public let id: Int
+    public let title: String
+    public let type: String
+    public let url: String
+
+    public init(
+        appUrl: String,
+        id: Int,
+        title: String,
+        type: String,
+        url: String
+    ) {
+        self.appUrl = appUrl
+        self.id = id
+        self.title = title
+        self.type = type
+        self.url = url
+    }
 }

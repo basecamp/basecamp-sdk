@@ -10591,7 +10591,33 @@
                         "todolist": {
                           "id": 987654,
                           "status": "active",
-                          "name": "Launch Tasks"
+                          "name": "Launch Tasks",
+                          "visible_to_clients": false,
+                          "created_at": "2025-01-01T00:00:00Z",
+                          "updated_at": "2025-01-01T00:00:00Z",
+                          "title": "Launch Tasks",
+                          "inherits_status": true,
+                          "type": "Todolist",
+                          "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
+                          "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654",
+                          "creator": {
+                            "id": 1,
+                            "name": "Someone",
+                            "created_at": "2025-01-01T00:00:00Z",
+                            "updated_at": "2025-01-01T00:00:00Z"
+                          },
+                          "bucket": {
+                            "id": 12345678,
+                            "name": "My Project",
+                            "type": "Project"
+                          },
+                          "parent": {
+                            "id": 99999,
+                            "title": "To-dos",
+                            "type": "Todoset",
+                            "url": "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json",
+                            "app_url": "https://3.basecamp.com/999/buckets/12345678/todosets/99999"
+                          }
                         }
                       }
                     }
@@ -10604,7 +10630,33 @@
                         "group": {
                           "id": 111222,
                           "status": "active",
-                          "name": "Q1 Milestones"
+                          "name": "Q1 Milestones",
+                          "visible_to_clients": false,
+                          "created_at": "2025-01-01T00:00:00Z",
+                          "updated_at": "2025-01-01T00:00:00Z",
+                          "title": "Q1 Milestones",
+                          "inherits_status": true,
+                          "type": "TodolistGroup",
+                          "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/111222.json",
+                          "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/111222",
+                          "creator": {
+                            "id": 1,
+                            "name": "Someone",
+                            "created_at": "2025-01-01T00:00:00Z",
+                            "updated_at": "2025-01-01T00:00:00Z"
+                          },
+                          "bucket": {
+                            "id": 12345678,
+                            "name": "My Project",
+                            "type": "Project"
+                          },
+                          "parent": {
+                            "id": 99999,
+                            "title": "To-dos",
+                            "type": "Todoset",
+                            "url": "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json",
+                            "app_url": "https://3.basecamp.com/999/buckets/12345678/todosets/99999"
+                          }
                         }
                       }
                     }
@@ -17106,7 +17158,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "title": {
             "type": "string"
@@ -17127,10 +17180,20 @@
             "$ref": "#/components/schemas/TodoParent"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "starts_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "assignees": {
             "type": "array",
@@ -17159,13 +17222,19 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "content": {
             "type": "string"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "booster": {
             "$ref": "#/components/schemas/Person"
@@ -17173,14 +17242,19 @@
           "recording": {
             "$ref": "#/components/schemas/RecordingParent"
           }
-        }
+        },
+        "required": [
+          "created_at",
+          "id"
+        ]
       },
       "Campfire": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17189,10 +17263,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17231,14 +17315,29 @@
           "lines_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "CampfireLine": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17247,10 +17346,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17289,14 +17398,31 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "content",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "Card": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17305,10 +17431,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17342,13 +17478,23 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "completed": {
             "type": "boolean"
           },
           "completed_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "comments_count": {
             "type": "integer",
@@ -17397,14 +17543,30 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "CardColumn": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17413,10 +17575,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17472,14 +17644,30 @@
               "$ref": "#/components/schemas/Person"
             }
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "CardStep": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17488,10 +17676,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17516,13 +17714,23 @@
             "format": "int32"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "completed": {
             "type": "boolean"
           },
           "completed_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "parent": {
             "$ref": "#/components/schemas/RecordingParent"
@@ -17545,14 +17753,30 @@
           "completion_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "CardTable": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17561,10 +17785,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17605,20 +17839,45 @@
               "$ref": "#/components/schemas/CardColumn"
             }
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "Chatbot": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "service_name": {
             "type": "string"
@@ -17635,14 +17894,21 @@
           "lines_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "created_at",
+          "id",
+          "service_name",
+          "updated_at"
+        ]
       },
       "ClientApproval": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17651,10 +17917,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17693,7 +17969,12 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "replies_count": {
             "type": "integer",
@@ -17714,14 +17995,30 @@
               "$ref": "#/components/schemas/ClientApprovalResponse"
             }
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "ClientApprovalResponse": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17730,10 +18027,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17772,19 +18079,25 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
       },
       "ClientCorrespondence": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17793,10 +18106,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17841,14 +18164,31 @@
           "replies_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "subject",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "ClientReply": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17857,10 +18197,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17892,7 +18242,23 @@
           "content": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "content",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "ClientSide": {
         "type": "object",
@@ -17912,7 +18278,8 @@
         "properties": {
           "source_recording_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -17927,7 +18294,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17936,10 +18304,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17978,7 +18356,23 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "content",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "CreateAnswerResponseContent": {
         "$ref": "#/components/schemas/QuestionAnswer"
@@ -18039,10 +18433,16 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -18059,7 +18459,12 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "assignees": {
             "type": "array",
@@ -18186,7 +18591,8 @@
           },
           "category_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -18312,10 +18718,20 @@
             "type": "string"
           },
           "starts_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "ends_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "description": {
             "type": "string"
@@ -18328,10 +18744,12 @@
             }
           },
           "all_day": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -18374,7 +18792,8 @@
           },
           "person_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -18409,13 +18828,24 @@
             }
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "starts_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -18503,7 +18933,8 @@
             }
           },
           "active": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -18522,7 +18953,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "title": {
             "type": "string"
@@ -18543,14 +18975,23 @@
           "app_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "enabled",
+          "id",
+          "name",
+          "title",
+          "url"
+        ]
       },
       "Document": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -18559,10 +19000,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -18615,7 +19066,22 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "EnableCardColumnOnHoldResponseContent": {
         "$ref": "#/components/schemas/CardColumn"
@@ -18625,11 +19091,13 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "recording_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "action": {
             "type": "string"
@@ -18638,7 +19106,12 @@
             "$ref": "#/components/schemas/EventDetails"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "creator": {
             "$ref": "#/components/schemas/Person"
@@ -18650,7 +19123,14 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "action",
+          "created_at",
+          "creator",
+          "id",
+          "recording_id"
+        ]
       },
       "EventDetails": {
         "type": "object",
@@ -18697,7 +19177,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -18706,10 +19187,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -18757,14 +19248,31 @@
           "replies_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "subject",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "ForwardReply": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -18773,10 +19281,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -18815,7 +19333,23 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "content",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "GetAnswerResponseContent": {
         "$ref": "#/components/schemas/QuestionAnswer"
@@ -19067,7 +19601,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19076,10 +19611,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19116,7 +19661,21 @@
           "forwards_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "InternalServerErrorResponseContent": {
         "type": "object",
@@ -19341,7 +19900,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19350,10 +19910,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19408,14 +19978,32 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "content",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "subject",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "MessageBoard": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19424,10 +20012,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19467,14 +20065,29 @@
           "app_messages_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "MessageType": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string"
@@ -19483,23 +20096,42 @@
             "type": "string"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           }
-        }
+        },
+        "required": [
+          "created_at",
+          "icon",
+          "id",
+          "name",
+          "updated_at"
+        ]
       },
       "MoveCardColumnRequestContent": {
         "type": "object",
         "properties": {
           "source_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "target_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "position": {
             "type": "integer",
@@ -19516,7 +20148,8 @@
         "properties": {
           "column_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -19550,7 +20183,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "attachable_sgid": {
             "type": "string"
@@ -19599,10 +20233,20 @@
             }
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "admin": {
             "type": "boolean"
@@ -19645,37 +20289,57 @@
           "can_access_hill_charts": {
             "type": "boolean"
           }
-        }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
       },
       "PersonCompany": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string",
             "format": "password"
           }
-        }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
       },
       "Project": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string",
             "description": "active|archived|trashed"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "name": {
             "type": "string"
@@ -19714,7 +20378,16 @@
             "$ref": "#/components/schemas/ClientSide",
             "deprecated": true
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "created_at",
+          "id",
+          "name",
+          "status",
+          "updated_at",
+          "url"
+        ]
       },
       "ProjectAccessResult": {
         "type": "object",
@@ -19738,7 +20411,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19749,14 +20423,19 @@
           "project": {
             "$ref": "#/components/schemas/Project"
           }
-        }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
       },
       "Question": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19765,10 +20444,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19813,14 +20502,30 @@
           "answers_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "QuestionAnswer": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19829,10 +20534,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19866,7 +20581,12 @@
             "type": "string"
           },
           "group_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "parent": {
             "$ref": "#/components/schemas/RecordingParent"
@@ -19884,7 +20604,23 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "content",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "QuestionAnswerPayload": {
         "type": "object",
@@ -19893,7 +20629,12 @@
             "type": "string"
           },
           "group_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -19916,13 +20657,24 @@
         "properties": {
           "reminder_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "remind_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "group_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "question": {
             "$ref": "#/components/schemas/Question"
@@ -19975,7 +20727,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19984,10 +20737,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20023,7 +20786,22 @@
           "creator": {
             "$ref": "#/components/schemas/Person"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "name",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "RateLimitErrorResponseContent": {
         "type": "object",
@@ -20048,7 +20826,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -20057,10 +20836,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20102,14 +20891,30 @@
           "creator": {
             "$ref": "#/components/schemas/Person"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "RecordingBucket": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string"
@@ -20117,14 +20922,20 @@
           "type": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "id",
+          "name",
+          "type"
+        ]
       },
       "RecordingParent": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "title": {
             "type": "string"
@@ -20138,14 +20949,22 @@
           "app_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "id",
+          "title",
+          "type",
+          "url"
+        ]
       },
       "RepositionCardStepRequestContent": {
         "type": "object",
         "properties": {
           "source_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "position": {
             "type": "integer",
@@ -20168,7 +20987,8 @@
           "parent_id": {
             "type": "integer",
             "description": "Optional todolist ID to move the todo to a different parent",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -20212,7 +21032,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -20221,10 +21042,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20264,7 +21095,21 @@
           "entries_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "ScheduleAttributes": {
         "type": "object",
@@ -20282,7 +21127,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -20291,10 +21137,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20343,10 +21199,20 @@
             "type": "boolean"
           },
           "starts_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "ends_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "participants": {
             "type": "array",
@@ -20361,7 +21227,23 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "summary",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "SearchMetadata": {
         "type": "object",
@@ -20379,7 +21261,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string"
@@ -20397,7 +21280,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -20406,10 +21290,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20447,7 +21341,14 @@
           "subject": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "id",
+          "title",
+          "type",
+          "url"
+        ]
       },
       "SetCardColumnColorRequestContent": {
         "type": "object",
@@ -20515,23 +21416,39 @@
               "$ref": "#/components/schemas/Person"
             }
           }
-        }
+        },
+        "required": [
+          "count",
+          "subscribed",
+          "url"
+        ]
       },
       "Template": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "name": {
             "type": "string"
@@ -20551,24 +21468,37 @@
               "$ref": "#/components/schemas/DockItem"
             }
           }
-        }
+        },
+        "required": [
+          "created_at",
+          "id",
+          "name",
+          "updated_at"
+        ]
       },
       "TimelineEvent": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "kind": {
             "type": "string"
           },
           "parent_recording_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "url": {
             "type": "string"
@@ -20601,7 +21531,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -20610,10 +21541,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20654,14 +21595,30 @@
           "person": {
             "$ref": "#/components/schemas/Person"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "Todo": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string",
@@ -20671,10 +21628,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20727,10 +21694,20 @@
             "type": "string"
           },
           "starts_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "assignees": {
             "type": "array",
@@ -20754,14 +21731,31 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "content",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "TodoBucket": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string"
@@ -20769,14 +21763,20 @@
           "type": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "id",
+          "name",
+          "type"
+        ]
       },
       "TodoParent": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "title": {
             "type": "string"
@@ -20790,14 +21790,22 @@
           "app_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "id",
+          "title",
+          "type",
+          "url"
+        ]
       },
       "Todolist": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string",
@@ -20807,10 +21815,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20881,14 +21899,31 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "name",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "TodolistGroup": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -20897,10 +21932,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20958,7 +22003,23 @@
           "app_todos_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "name",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "TodolistOrGroup": {
         "description": "Union type for polymorphic todolist endpoint",
@@ -20994,7 +22055,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -21003,10 +22065,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -21067,23 +22139,49 @@
           "app_todolists_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "name",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "Tool": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -21107,7 +22205,15 @@
           "bucket": {
             "$ref": "#/components/schemas/RecordingBucket"
           }
-        }
+        },
+        "required": [
+          "created_at",
+          "enabled",
+          "id",
+          "name",
+          "title",
+          "updated_at"
+        ]
       },
       "UnauthorizedErrorResponseContent": {
         "type": "object",
@@ -21147,7 +22253,12 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "assignee_ids": {
             "type": "array",
@@ -21168,7 +22279,12 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "assignees": {
             "type": "array",
@@ -21253,7 +22369,8 @@
           },
           "category_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -21331,11 +22448,13 @@
         "properties": {
           "notify_on_answer": {
             "type": "boolean",
-            "description": "Notify when someone answers"
+            "description": "Notify when someone answers",
+            "x-go-type-skip-optional-pointer": false
           },
           "digest_include_unanswered": {
             "type": "boolean",
-            "description": "Include unanswered in digest"
+            "description": "Include unanswered in digest",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -21360,7 +22479,8 @@
             "$ref": "#/components/schemas/QuestionSchedule"
           },
           "paused": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -21374,10 +22494,20 @@
             "type": "string"
           },
           "starts_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "ends_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "description": {
             "type": "string"
@@ -21390,10 +22520,12 @@
             }
           },
           "all_day": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -21464,7 +22596,8 @@
           },
           "person_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -21495,13 +22628,24 @@
             }
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "starts_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -21576,7 +22720,8 @@
             }
           },
           "active": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -21588,7 +22733,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -21597,10 +22743,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -21674,7 +22830,22 @@
           "boosts_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "ValidationErrorResponseContent": {
         "type": "object",
@@ -21695,7 +22866,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -21704,10 +22876,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -21761,23 +22943,48 @@
           "vaults_url": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "Webhook": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "active": {
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "payload_url": {
             "type": "string"
@@ -21800,7 +23007,15 @@
               "$ref": "#/components/schemas/WebhookDelivery"
             }
           }
-        }
+        },
+        "required": [
+          "app_url",
+          "created_at",
+          "id",
+          "payload_url",
+          "updated_at",
+          "url"
+        ]
       },
       "WebhookCopy": {
         "type": "object",
@@ -21808,7 +23023,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "url": {
             "type": "string"
@@ -21826,7 +23042,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -21835,10 +23052,16 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "request": {
             "$ref": "#/components/schemas/WebhookDeliveryRequest"
@@ -21880,14 +23103,20 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "kind": {
             "type": "string"
           },
           "details": {},
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "recording": {
             "$ref": "#/components/schemas/Recording"

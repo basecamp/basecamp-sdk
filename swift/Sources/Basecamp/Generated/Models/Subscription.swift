@@ -2,8 +2,20 @@
 import Foundation
 
 public struct Subscription: Codable, Sendable {
-    public var count: Int32?
-    public var subscribed: Bool?
+    public let count: Int32
+    public let subscribed: Bool
+    public let url: String
     public var subscribers: [Person]?
-    public var url: String?
+
+    public init(
+        count: Int32,
+        subscribed: Bool,
+        url: String,
+        subscribers: [Person]? = nil
+    ) {
+        self.count = count
+        self.subscribed = subscribed
+        self.url = url
+        self.subscribers = subscribers
+    }
 }

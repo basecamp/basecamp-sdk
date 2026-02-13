@@ -2,6 +2,11 @@
 import Foundation
 
 public struct ClientCompany: Codable, Sendable {
-    public var id: Int?
-    public var name: String?
+    public let id: Int
+    public let name: String
+
+    public init(id: Int, name: String) {
+        self.id = id
+        self.name = name
+    }
 }
