@@ -3,6 +3,7 @@ name: Test
 on:
   push:
     branches: [main]
+    tags: ['kotlin/v*']
   pull_request:
   workflow_dispatch:
 
@@ -195,7 +196,7 @@ jobs:
   publish-kotlin:
     name: Publish Kotlin SDK
     needs: [test-kotlin]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/kotlin/v') && !github.event.deleted
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -218,16 +219,17 @@ jobs:
       - name: Publish to GitHub Packages
         shell: bash
         run: |
-          set +o errexit
-          ./gradlew :basecamp-sdk:publish 2>&1 | tee publish.log
-          status=${PIPESTATUS[0]}
-          set -o errexit
-          if [ "$status" -ne 0 ]; then
-            if grep -q "status code 409" publish.log; then
-              echo "Version already published — skipping"
-            else
-              exit "$status"
-            fi
+          set +e
+          output=$(./gradlew :basecamp-sdk:publish 2>&1)
+          status=$?
+          set -e
+          echo "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "Publish succeeded."
+          elif echo "$output" | grep -q "status code 409"; then
+            echo "Version already published — treating as success for idempotency."
+          else
+            exit "$status"
           fi
         env:
           GITHUB_USER: x-access-token
