@@ -12,8 +12,8 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class Subscription(
-    val subscribed: Boolean = false,
-    val count: Int = 0,
-    val url: String? = null,
+    val subscribed: Boolean,
+    val count: Int,
+    val url: String,
     val subscribers: List<Person> = emptyList()
 )

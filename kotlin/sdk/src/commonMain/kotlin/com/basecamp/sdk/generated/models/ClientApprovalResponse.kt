@@ -22,8 +22,8 @@ data class ClientApprovalResponse(
     val type: String? = null,
     @SerialName("app_url") val appUrl: String? = null,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
-    val parent: JsonObject? = null,
-    val bucket: JsonObject? = null,
+    val parent: RecordingParent? = null,
+    val bucket: RecordingBucket? = null,
     val creator: Person? = null,
     val content: String? = null,
     val approved: Boolean = false

@@ -12,19 +12,19 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class Project(
-    val id: Long = 0L,
-    val status: String? = null,
-    @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("updated_at") val updatedAt: String? = null,
-    val name: String? = null,
+    val id: Long,
+    val status: String,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String,
+    val name: String,
+    val url: String,
+    @SerialName("app_url") val appUrl: String,
     val description: String? = null,
     val purpose: String? = null,
     @SerialName("clients_enabled") val clientsEnabled: Boolean = false,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
-    val url: String? = null,
-    @SerialName("app_url") val appUrl: String? = null,
-    val dock: List<JsonObject> = emptyList(),
+    val dock: List<DockItem> = emptyList(),
     val bookmarked: Boolean = false,
-    @SerialName("client_company") val clientCompany: JsonObject? = null,
-    val clientside: JsonObject? = null
+    @SerialName("client_company") val clientCompany: ClientCompany? = null,
+    val clientside: ClientSide? = null
 )

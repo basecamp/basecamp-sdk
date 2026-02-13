@@ -12,9 +12,9 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class RecordingParent(
-    val id: Long = 0L,
-    val title: String? = null,
-    val type: String? = null,
-    val url: String? = null,
-    @SerialName("app_url") val appUrl: String? = null
+    val id: Long,
+    val title: String,
+    val type: String,
+    val url: String,
+    @SerialName("app_url") val appUrl: String
 )

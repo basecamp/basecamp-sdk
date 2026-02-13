@@ -12,12 +12,12 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class Event(
-    val id: Long = 0L,
-    @SerialName("recording_id") val recordingId: Long = 0L,
-    val action: String? = null,
-    val details: JsonObject? = null,
-    @SerialName("created_at") val createdAt: String? = null,
-    val creator: Person? = null,
+    val id: Long,
+    @SerialName("recording_id") val recordingId: Long,
+    val action: String,
+    @SerialName("created_at") val createdAt: String,
+    val creator: Person,
+    val details: EventDetails? = null,
     @SerialName("boosts_count") val boostsCount: Int = 0,
     @SerialName("boosts_url") val boostsUrl: String? = null
 )

@@ -12,6 +12,6 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class ClientCompany(
-    val id: Long = 0L,
-    val name: String? = null
+    val id: Long,
+    val name: String
 )

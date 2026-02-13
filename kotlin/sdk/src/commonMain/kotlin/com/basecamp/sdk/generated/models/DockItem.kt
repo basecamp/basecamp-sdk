@@ -12,11 +12,11 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class DockItem(
-    val id: Long = 0L,
-    val title: String? = null,
-    val name: String? = null,
-    val enabled: Boolean = false,
-    val position: Int = 0,
-    val url: String? = null,
-    @SerialName("app_url") val appUrl: String? = null
+    val id: Long,
+    val title: String,
+    val name: String,
+    val enabled: Boolean,
+    val url: String,
+    @SerialName("app_url") val appUrl: String,
+    val position: Int = 0
 )

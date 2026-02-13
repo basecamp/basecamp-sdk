@@ -25,6 +25,19 @@ class TodosServiceTest {
         }
     }
 
+    private fun todoJson(id: Long, content: String, completed: Boolean = false, extras: String = "") = """{
+        "id": $id, "content": "$content", "completed": $completed,
+        "status": "active", "title": "$content", "type": "Todo",
+        "visible_to_clients": false, "inherits_status": true,
+        "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z",
+        "url": "https://3.basecampapi.com/1/buckets/1/todos/$id.json",
+        "app_url": "https://3.basecamp.com/1/buckets/1/todos/$id",
+        "creator": {"id": 1, "name": "Test", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z"},
+        "bucket": {"id": 1, "name": "Project", "type": "Project"},
+        "parent": {"id": 2, "title": "Todolist", "type": "Todolist", "url": "https://3.basecampapi.com/1/buckets/1/todolists/2.json", "app_url": "https://3.basecamp.com/1/buckets/1/todolists/2"}
+        ${if (extras.isNotEmpty()) ", $extras" else ""}
+    }"""
+
     @Test
     fun listTodos() = runTest {
         val client = mockClient { request ->
@@ -34,8 +47,8 @@ class TodosServiceTest {
 
             respond(
                 content = """[
-                    {"id": 100, "content": "Buy milk", "completed": false},
-                    {"id": 101, "content": "Walk dog", "completed": true}
+                    ${todoJson(100, "Buy milk")},
+                    ${todoJson(101, "Walk dog", completed = true)}
                 ]""",
                 status = HttpStatusCode.OK,
                 headers = headersOf(
@@ -65,7 +78,7 @@ class TodosServiceTest {
             assertTrue(request.url.encodedPath.contains("/buckets/1/todos/100"))
 
             respond(
-                content = """{"id": 100, "content": "Buy milk", "completed": false, "position": 1}""",
+                content = todoJson(100, "Buy milk", extras = """"position": 1"""),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
@@ -91,7 +104,7 @@ class TodosServiceTest {
             capturedBody = request.body.toByteArray().decodeToString()
 
             respond(
-                content = """{"id": 200, "content": "New todo", "completed": false}""",
+                content = todoJson(200, "New todo"),
                 status = HttpStatusCode.Created,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
@@ -189,7 +202,7 @@ class TodosServiceTest {
 
             when (page) {
                 1 -> respond(
-                    content = """[{"id": 1, "content": "Todo 1"}]""",
+                    content = """[${todoJson(1, "Todo 1")}]""",
                     status = HttpStatusCode.OK,
                     headers = headersOf(
                         HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
@@ -198,7 +211,7 @@ class TodosServiceTest {
                     ),
                 )
                 else -> respond(
-                    content = """[{"id": 2, "content": "Todo 2"}]""",
+                    content = """[${todoJson(2, "Todo 2")}]""",
                     status = HttpStatusCode.OK,
                     headers = headersOf(
                         HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),

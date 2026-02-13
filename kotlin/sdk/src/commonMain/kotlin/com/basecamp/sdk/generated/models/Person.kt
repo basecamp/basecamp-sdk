@@ -12,9 +12,9 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class Person(
-    val id: Long = 0L,
+    val id: Long,
+    val name: String,
     @SerialName("attachable_sgid") val attachableSgid: String? = null,
-    val name: String? = null,
     @SerialName("email_address") val emailAddress: String? = null,
     @SerialName("personable_type") val personableType: String? = null,
     val title: String? = null,
@@ -28,7 +28,7 @@ data class Person(
     val employee: Boolean = false,
     @SerialName("time_zone") val timeZone: String? = null,
     @SerialName("avatar_url") val avatarUrl: String? = null,
-    val company: JsonObject? = null,
+    val company: PersonCompany? = null,
     @SerialName("can_manage_projects") val canManageProjects: Boolean = false,
     @SerialName("can_manage_people") val canManagePeople: Boolean = false,
     @SerialName("can_ping") val canPing: Boolean = false,

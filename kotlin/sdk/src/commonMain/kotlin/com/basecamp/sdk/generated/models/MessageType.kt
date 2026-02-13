@@ -12,9 +12,9 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class MessageType(
-    val id: Long = 0L,
-    val name: String? = null,
-    val icon: String? = null,
-    @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("updated_at") val updatedAt: String? = null
+    val id: Long,
+    val name: String,
+    val icon: String,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String
 )
