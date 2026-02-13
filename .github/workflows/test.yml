@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [main]
+    branches: [main, kotlin]
   pull_request:
   workflow_dispatch:
 
@@ -158,11 +158,73 @@ jobs:
 
       - name: Test
         run: swift test
+  test-kotlin:
+    name: Kotlin Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kotlin
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew :basecamp-sdk:build
+
+      - name: Test
+        run: ./gradlew :basecamp-sdk:check
+
+      - name: Check generated code drift
+        run: |
+          ./gradlew :generator:run --args="--openapi ../openapi.json --behavior ../behavior-model.json --output sdk/src/commonMain/kotlin/com/basecamp/sdk/generated"
+          if ! git diff --quiet -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/; then
+            echo "::error::Generated Kotlin code is out of date. Run 'make kt-generate-services' and commit."
+            git diff --stat -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/
+            exit 1
+          fi
+          echo "Generated code is up to date"
+
+  publish-kotlin:
+    name: Publish Kotlin SDK
+    needs: [test-kotlin]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/kotlin')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    defaults:
+      run:
+        working-directory: kotlin
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Publish to GitHub Packages
+        run: ./gradlew :basecamp-sdk:publish
+        env:
+          GITHUB_USER: x-access-token
+          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   conformance:
     name: Conformance Tests
     runs-on: ubuntu-latest
-    needs: [test-go, test-typescript, test-ruby]
+    needs: [test-go, test-typescript, test-ruby, test-kotlin]
     defaults:
       run:
         working-directory: conformance/runner/go
@@ -179,6 +241,19 @@ jobs:
 
       - name: Run conformance tests
         run: ./conformance-runner
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run Kotlin conformance tests
+        working-directory: kotlin
+        run: ./gradlew :conformance:run
 
   lint:
     name: Lint

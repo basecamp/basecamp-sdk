@@ -21,6 +21,25 @@ updates:
       - "dependencies"
       - "go"
 
+  # Kotlin SDK dependencies
+  - package-ecosystem: gradle
+    directory: "/kotlin"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 10
+    groups:
+      gradle-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(kotlin):"
+    labels:
+      - "dependencies"
+      - "kotlin"
+
   # TypeScript SDK dependencies
   - package-ecosystem: npm
     directory: "/typescript"

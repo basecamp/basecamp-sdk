@@ -21,7 +21,15 @@ ruby/pkg/
 ruby/*.gem
 review-session.md
 
+
 # Swift SDK build artifacts
 swift/.build/
 swift/.swiftpm/
 swift/Package.resolved
+
+# Kotlin SDK build artifacts
+kotlin/.gradle/
+kotlin/build/
+kotlin/sdk/build/
+kotlin/generator/build/
+kotlin/conformance/build/

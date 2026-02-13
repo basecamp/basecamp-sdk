@@ -232,7 +232,7 @@ rb-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-build
+.PHONY: conformance conformance-go conformance-kotlin conformance-build
 
 # Build conformance test runner
 conformance-build:
@@ -244,9 +244,49 @@ conformance-go: conformance-build
 	@echo "==> Running Go conformance tests..."
 	cd conformance/runner/go && ./conformance-runner
 
+# Run Kotlin conformance tests
+conformance-kotlin:
+	@echo "==> Running Kotlin conformance tests..."
+	cd kotlin && ./gradlew :conformance:run
+
 # Run all conformance tests
-conformance: conformance-go
+conformance: conformance-go conformance-kotlin
 	@echo "==> Conformance tests passed"
+
+#------------------------------------------------------------------------------
+# Kotlin SDK targets
+#------------------------------------------------------------------------------
+
+.PHONY: kt-generate-services kt-build kt-test kt-check kt-check-drift kt-clean
+
+# Generate Kotlin services from OpenAPI
+kt-generate-services:
+	@echo "==> Generating Kotlin services..."
+	cd kotlin && ./gradlew :generator:run --args="--openapi ../openapi.json --behavior ../behavior-model.json --output sdk/src/commonMain/kotlin/com/basecamp/sdk/generated"
+
+# Build Kotlin SDK
+kt-build:
+	@echo "==> Building Kotlin SDK..."
+	cd kotlin && ./gradlew :sdk:build
+
+# Run Kotlin tests
+kt-test:
+	@echo "==> Running Kotlin tests..."
+	cd kotlin && ./gradlew :sdk:check
+
+# Run all Kotlin checks
+kt-check: kt-test
+	@echo "==> Kotlin SDK checks passed"
+
+# Check for drift between generated Kotlin services and OpenAPI spec
+kt-check-drift:
+	@echo "==> Checking Kotlin service drift..."
+	@./scripts/check-kotlin-service-drift.sh
+
+# Clean Kotlin build artifacts
+kt-clean:
+	@echo "==> Cleaning Kotlin SDK..."
+	cd kotlin && ./gradlew clean
 
 #------------------------------------------------------------------------------
 # Swift SDK targets (delegates to swift/Makefile)
@@ -278,12 +318,12 @@ swift-clean:
 # Combined targets
 #------------------------------------------------------------------------------
 
-# Run all checks (Smithy + Go + TypeScript + Ruby + Swift + Behavior Model + Conformance + Provenance)
-check: smithy-check behavior-model-check provenance-check go-check-drift go-check ts-check rb-check swift-check conformance
+# Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Behavior Model + Conformance + Provenance)
+check: smithy-check behavior-model-check provenance-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check conformance
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
-clean: smithy-clean go-clean ts-clean rb-clean swift-clean
+clean: smithy-clean go-clean ts-clean rb-clean kt-clean swift-clean
 
 # Help
 help:
@@ -319,6 +359,14 @@ help:
 	@echo "  ts-typecheck          Run TypeScript type checking"
 		@echo "  ts-check              Run all TypeScript checks"
 	@echo "  ts-clean              Remove TypeScript build artifacts"
+	@echo ""
+	@echo "Kotlin SDK:"
+	@echo "  kt-generate-services Generate service classes from OpenAPI"
+	@echo "  kt-build             Build Kotlin SDK"
+	@echo "  kt-test              Run Kotlin tests"
+	@echo "  kt-check             Run all Kotlin checks"
+	@echo "  kt-check-drift       Check service drift vs OpenAPI spec"
+	@echo "  kt-clean             Remove Kotlin build artifacts"
 	@echo ""
 	@echo "Swift SDK:"
 	@echo "  swift-generate   Generate service classes from OpenAPI"
