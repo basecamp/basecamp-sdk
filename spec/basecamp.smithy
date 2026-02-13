@@ -1211,9 +1211,7 @@ structure Person {
   @basecampSensitive(category: "pii", redact: false)
   location: PersonLocation
 
-  @required
   created_at: ISO8601Timestamp
-  @required
   updated_at: ISO8601Timestamp
   admin: Boolean
   owner: Boolean

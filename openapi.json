@@ -22293,10 +22293,8 @@
           }
         },
         "required": [
-          "created_at",
           "id",
-          "name",
-          "updated_at"
+          "name"
         ]
       },
       "PersonCompany": {
