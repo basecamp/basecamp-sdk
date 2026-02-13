@@ -48,8 +48,9 @@ internal class BasecampHttpClient(
 
     /**
      * Executes an HTTP request, applying retry logic for retryable errors.
-     * Idempotent methods (GET, PUT, DELETE, HEAD) are retried on 429/503.
-     * Non-idempotent methods (POST, PATCH) are not retried.
+     * Safe HTTP methods (GET, PUT, DELETE, HEAD) are always retried.
+     * Non-safe methods (POST, PATCH) are retried only when per-operation
+     * metadata marks them as idempotent.
      */
     suspend fun requestWithRetry(
         method: HttpMethod,
@@ -88,13 +89,15 @@ internal class BasecampHttpClient(
 
         val status = response.status.value
 
-        // Determine retry eligibility from per-operation metadata when available,
-        // falling back to HTTP-method-based heuristic otherwise.
-        val opRetry = operationName?.let { Metadata.operations[it]?.retry }
-        val shouldRetry = config.enableRetry && if (opRetry != null) {
+        // Determine retry eligibility: safe HTTP methods (GET, PUT, DELETE, HEAD) are
+        // always retryable, and the per-operation `idempotent` flag can upgrade others.
+        val opConfig = operationName?.let { Metadata.operations[it] }
+        val opRetry = opConfig?.retry
+        val isRetryable = method in IDEMPOTENT_METHODS || opConfig?.idempotent == true
+        val shouldRetry = config.enableRetry && isRetryable && if (opRetry != null) {
             status in opRetry.retryOn
         } else {
-            status in RETRYABLE_STATUS_CODES && method in IDEMPOTENT_METHODS
+            status in RETRYABLE_STATUS_CODES
         }
         val maxAttempts = opRetry?.maxRetries ?: config.maxRetries
         val baseDelayMs = opRetry?.baseDelayMs ?: config.baseRetryDelay.inWholeMilliseconds

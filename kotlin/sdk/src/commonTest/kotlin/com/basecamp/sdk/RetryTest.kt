@@ -155,6 +155,73 @@ class RetryTest {
     }
 
     @Test
+    fun noRetryForNonIdempotentOperationWithMetadata() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            respond(
+                content = "",
+                status = HttpStatusCode.ServiceUnavailable,
+            )
+        }
+
+        val client = BasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            this.engine = engine
+        }
+
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects.json"
+        // CreateProject has metadata (idempotent=false, retryOn=[429,503])
+        // Should NOT retry because idempotent=false
+        val response = account.httpClient.requestWithRetry(
+            HttpMethod.Post, url, """{"name":"test"}""",
+            operationName = "CreateProject",
+        )
+
+        assertEquals(503, response.status.value)
+        assertEquals(1, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun retryForIdempotentOperationWithMetadata() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            if (requestCount == 1) {
+                respond(content = "", status = HttpStatusCode.ServiceUnavailable)
+            } else {
+                respond(
+                    content = """{"id": 1, "name": "Updated"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                )
+            }
+        }
+
+        val client = BasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            this.engine = engine
+        }
+
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects/1.json"
+        // UpdateProject has metadata (idempotent=true, retryOn=[429,503])
+        // Should retry because idempotent=true and 503 is in retryOn
+        val response = account.httpClient.requestWithRetry(
+            HttpMethod.Put, url, """{"name":"test"}""",
+            operationName = "UpdateProject",
+        )
+
+        assertEquals(200, response.status.value)
+        assertEquals(2, requestCount)
+        client.close()
+    }
+
+    @Test
     fun maxRetriesRespected() = runTest {
         var requestCount = 0
         val engine = MockEngine { _ ->
