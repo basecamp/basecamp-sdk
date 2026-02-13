@@ -196,7 +196,7 @@ jobs:
   publish-kotlin:
     name: Publish Kotlin SDK
     needs: [test-kotlin]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/kotlin/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/kotlin/v') && !github.event.deleted
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -217,7 +217,20 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Publish to GitHub Packages
-        run: ./gradlew :basecamp-sdk:publish
+        shell: bash
+        run: |
+          set +e
+          output=$(./gradlew :basecamp-sdk:publish 2>&1)
+          status=$?
+          set -e
+          echo "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "Publish succeeded."
+          elif echo "$output" | grep -q "status code 409"; then
+            echo "Version already published — treating as success for idempotency."
+          else
+            exit "$status"
+          fi
         env:
           GITHUB_USER: x-access-token
           GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
