@@ -267,12 +267,12 @@ kt-generate-services:
 # Build Kotlin SDK
 kt-build:
 	@echo "==> Building Kotlin SDK..."
-	cd kotlin && ./gradlew :sdk:build
+	cd kotlin && ./gradlew :basecamp-sdk:build
 
 # Run Kotlin tests
 kt-test:
 	@echo "==> Running Kotlin tests..."
-	cd kotlin && ./gradlew :sdk:check
+	cd kotlin && ./gradlew :basecamp-sdk:check
 
 # Run all Kotlin checks
 kt-check: kt-test
