@@ -11806,8 +11806,8 @@
                           "title": "Launch Tasks",
                           "inherits_status": true,
                           "type": "Todolist",
-                          "url": "https://3.basecampapi.com/1/buckets/2/todolists/987654.json",
-                          "app_url": "https://3.basecamp.com/1/buckets/2/todolists/987654",
+                          "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
+                          "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654",
                           "creator": {
                             "id": 1,
                             "name": "Someone",
@@ -11823,8 +11823,8 @@
                             "id": 99999,
                             "title": "To-dos",
                             "type": "Todoset",
-                            "url": "https://3.basecampapi.com/1/buckets/2/todosets/99999.json",
-                            "app_url": "https://3.basecamp.com/1/buckets/2/todosets/99999"
+                            "url": "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json",
+                            "app_url": "https://3.basecamp.com/999/buckets/12345678/todosets/99999"
                           }
                         }
                       }
@@ -11845,8 +11845,8 @@
                           "title": "Q1 Milestones",
                           "inherits_status": true,
                           "type": "TodolistGroup",
-                          "url": "https://3.basecampapi.com/1/buckets/2/todolists/111222.json",
-                          "app_url": "https://3.basecamp.com/1/buckets/2/todolists/111222",
+                          "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/111222.json",
+                          "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/111222",
                           "creator": {
                             "id": 1,
                             "name": "Someone",
@@ -11862,8 +11862,8 @@
                             "id": 99999,
                             "title": "To-dos",
                             "type": "Todoset",
-                            "url": "https://3.basecampapi.com/1/buckets/2/todosets/99999.json",
-                            "app_url": "https://3.basecamp.com/1/buckets/2/todosets/99999"
+                            "url": "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json",
+                            "app_url": "https://3.basecamp.com/999/buckets/12345678/todosets/99999"
                           }
                         }
                       }
