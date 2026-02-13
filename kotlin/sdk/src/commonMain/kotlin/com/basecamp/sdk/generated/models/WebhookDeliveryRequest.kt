@@ -6,13 +6,12 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /**
- * TodoBucket entity from the Basecamp API.
+ * WebhookDeliveryRequest entity from the Basecamp API.
  *
  * @generated from OpenAPI spec — do not edit directly
  */
 @Serializable
-data class TodoBucket(
-    val id: Long,
-    val name: String,
-    val type: String
+data class WebhookDeliveryRequest(
+    val headers: JsonObject? = null,
+    val body: WebhookEvent? = null
 )

@@ -7,7 +7,7 @@
     "path": "/projects/{projectId}",
     "pathParams": {"projectId": 12345},
     "mockResponses": [
-      {"status": 200, "body": {"id": 12345, "name": "Test Project"}}
+      {"status": 200, "body": {"id": 12345, "name": "Test Project", "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/projects/12345.json", "app_url": "https://3.basecamp.com/999/projects/12345"}}
     ],
     "assertions": [
       {"type": "statusCode", "expected": 200},
@@ -24,7 +24,7 @@
     "pathParams": {"projectId": 12345},
     "requestBody": {"name": "Updated Name"},
     "mockResponses": [
-      {"status": 200, "body": {"id": 12345, "name": "Updated Name"}}
+      {"status": 200, "body": {"id": 12345, "name": "Updated Name", "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/projects/12345.json", "app_url": "https://3.basecamp.com/999/projects/12345"}}
     ],
     "assertions": [
       {"type": "statusCode", "expected": 200},
@@ -40,7 +40,7 @@
     "path": "/projects.json",
     "requestBody": {"name": "New Project"},
     "mockResponses": [
-      {"status": 201, "body": {"id": 99999, "name": "New Project"}}
+      {"status": 201, "body": {"id": 99999, "name": "New Project", "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/projects/99999.json", "app_url": "https://3.basecamp.com/999/projects/99999"}}
     ],
     "assertions": [
       {"type": "statusCode", "expected": 201},
@@ -57,7 +57,7 @@
     "pathParams": {"projectId": 12345, "todolistId": 67890},
     "requestBody": {"content": "New todo item"},
     "mockResponses": [
-      {"status": 201, "body": {"id": 111, "content": "New todo item"}}
+      {"status": 201, "body": {"id": 111, "content": "New todo item", "status": "active", "visible_to_clients": false, "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "title": "New todo item", "inherits_status": true, "type": "Todo", "url": "https://3.basecampapi.com/999/buckets/12345/todos/111.json", "app_url": "https://3.basecamp.com/999/buckets/12345/todos/111", "parent": {"id": 67890, "title": "Todolist", "type": "Todolist", "url": "https://3.basecampapi.com/999/buckets/12345/todolists/67890.json", "app_url": "https://3.basecamp.com/999/buckets/12345/todolists/67890"}, "bucket": {"id": 12345, "name": "Project", "type": "Project"}, "creator": {"id": 1, "name": "Test User", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z"}}}
     ],
     "assertions": [
       {"type": "statusCode", "expected": 201},
@@ -184,7 +184,7 @@
     "method": "GET",
     "path": "/projects.json",
     "mockResponses": [
-      {"status": 200, "body": [{"id": 1, "name": "Project A"}, {"id": 2, "name": "Project B"}]}
+      {"status": 200, "body": [{"id": 1, "name": "Project A", "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"}, {"id": 2, "name": "Project B", "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/projects/2.json", "app_url": "https://3.basecamp.com/999/projects/2"}]}
     ],
     "assertions": [
       {"type": "statusCode", "expected": 200},

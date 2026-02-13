@@ -12,9 +12,9 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class Boost(
-    val id: Long = 0L,
+    val id: Long,
+    @SerialName("created_at") val createdAt: String,
     val content: String? = null,
-    @SerialName("created_at") val createdAt: String? = null,
     val booster: Person? = null,
-    val recording: JsonObject? = null
+    val recording: RecordingParent? = null
 )

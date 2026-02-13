@@ -6,14 +6,17 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /**
- * WebhookDelivery entity from the Basecamp API.
+ * WebhookEvent entity from the Basecamp API.
  *
  * @generated from OpenAPI spec — do not edit directly
  */
 @Serializable
-data class WebhookDelivery(
+data class WebhookEvent(
     val id: Long = 0L,
+    val kind: String? = null,
+    val details: JsonElement? = null,
     @SerialName("created_at") val createdAt: String? = null,
-    val request: WebhookDeliveryRequest? = null,
-    val response: WebhookDeliveryResponse? = null
+    val recording: Recording? = null,
+    val creator: Person? = null,
+    val copy: WebhookCopy? = null
 )

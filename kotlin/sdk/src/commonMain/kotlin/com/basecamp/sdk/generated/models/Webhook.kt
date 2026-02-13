@@ -12,13 +12,13 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class Webhook(
-    val id: Long = 0L,
+    val id: Long,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("payload_url") val payloadUrl: String,
+    val url: String,
+    @SerialName("app_url") val appUrl: String,
     val active: Boolean = false,
-    @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("updated_at") val updatedAt: String? = null,
-    @SerialName("payload_url") val payloadUrl: String? = null,
     val types: List<String> = emptyList(),
-    val url: String? = null,
-    @SerialName("app_url") val appUrl: String? = null,
-    @SerialName("recent_deliveries") val recentDeliveries: List<JsonObject> = emptyList()
+    @SerialName("recent_deliveries") val recentDeliveries: List<WebhookDelivery> = emptyList()
 )

@@ -12,15 +12,15 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class Tool(
-    val id: Long = 0L,
+    val id: Long,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String,
+    val title: String,
+    val name: String,
+    val enabled: Boolean,
     val status: String? = null,
-    @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("updated_at") val updatedAt: String? = null,
-    val title: String? = null,
-    val name: String? = null,
-    val enabled: Boolean = false,
     val position: Int = 0,
     val url: String? = null,
     @SerialName("app_url") val appUrl: String? = null,
-    val bucket: JsonObject? = null
+    val bucket: RecordingBucket? = null
 )

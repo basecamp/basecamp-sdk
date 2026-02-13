@@ -12,7 +12,7 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class RecordingBucket(
-    val id: Long = 0L,
-    val name: String? = null,
-    val type: String? = null
+    val id: Long,
+    val name: String,
+    val type: String
 )

@@ -21,6 +21,11 @@ class ModelEmitter(private val api: OpenApiParser) {
         val properties = schema["properties"]?.jsonObject ?: return null
         if (properties.isEmpty()) return null
 
+        val requiredFields = schema["required"]?.jsonArray
+            ?.map { it.jsonPrimitive.content }
+            ?.toSet()
+            ?: emptySet()
+
         val lines = mutableListOf<String>()
         lines += "package com.basecamp.sdk.generated.models"
         lines += ""
@@ -37,10 +42,21 @@ class ModelEmitter(private val api: OpenApiParser) {
         lines += "@Serializable"
         lines += "data class $typeName("
 
-        val propLines = mutableListOf<String>()
+        // Required fields first (no defaults), then optional fields (with defaults)
+        val requiredProps = mutableListOf<Pair<String, JsonObject>>()
+        val optionalProps = mutableListOf<Pair<String, JsonObject>>()
         for ((propName, propSchema) in properties) {
-            val propObj = propSchema.jsonObject
-            val kotlinType = resolvePropertyType(propObj)
+            if (propName in requiredFields) {
+                requiredProps += propName to propSchema.jsonObject
+            } else {
+                optionalProps += propName to propSchema.jsonObject
+            }
+        }
+
+        val propLines = mutableListOf<String>()
+        for ((propName, propObj) in requiredProps + optionalProps) {
+            val isRequired = propName in requiredFields
+            val kotlinType = resolvePropertyType(propObj, isRequired)
             val camelName = propName.snakeToCamelCase()
             val needsSerialName = camelName != propName
 
@@ -50,7 +66,10 @@ class ModelEmitter(private val api: OpenApiParser) {
                 } else {
                     append("    ")
                 }
-                append("val $camelName: $kotlinType = ${defaultValue(kotlinType)}")
+                append("val $camelName: $kotlinType")
+                if (!isRequired) {
+                    append(" = ${defaultValue(kotlinType)}")
+                }
             }
             propLines += propLine
         }
@@ -63,16 +82,20 @@ class ModelEmitter(private val api: OpenApiParser) {
 
     /**
      * Resolves a property schema to the appropriate Kotlin type.
-     * All fields default to optional (nullable with defaults) since the
-     * Basecamp API doesn't guarantee all fields are always present.
+     * Required fields are non-nullable; optional fields are nullable with defaults.
      */
-    private fun resolvePropertyType(schema: JsonObject): String {
+    private fun resolvePropertyType(schema: JsonObject, isRequired: Boolean = false): String {
         val ref = schema["\$ref"]?.jsonPrimitive?.content
         if (ref != null) {
             val refName = api.resolveRef(ref)
-            // Use the entity type if it's one we generate, otherwise JsonObject
-            val typeName = TYPE_ALIASES[refName] ?: return "JsonObject?"
-            return "$typeName?"
+            // Use TYPE_ALIASES for mapped names, fall back to schema name for supporting types.
+            // Only use the schema name if it's a generatable object (has properties).
+            val typeName = TYPE_ALIASES[refName] ?: run {
+                val refSchema = api.getSchema(refName)
+                val hasProperties = refSchema?.get("properties")?.jsonObject?.isNotEmpty() == true
+                if (hasProperties) refName else return if (isRequired) "JsonObject" else "JsonObject?"
+            }
+            return if (isRequired) typeName else "$typeName?"
         }
 
         return when (schema["type"]?.jsonPrimitive?.content) {
@@ -82,16 +105,13 @@ class ModelEmitter(private val api: OpenApiParser) {
             }
             "boolean" -> "Boolean"
             "number" -> "Double"
-            "string" -> {
-                // Password-marked fields are still strings
-                "String?"
-            }
+            "string" -> if (isRequired) "String" else "String?"
             "array" -> {
                 val itemType = resolveArrayItemType(schema["items"]?.jsonObject)
                 "List<$itemType>"
             }
-            "object" -> "JsonObject?"
-            else -> "JsonElement?"
+            "object" -> if (isRequired) "JsonObject" else "JsonObject?"
+            else -> if (isRequired) "JsonElement" else "JsonElement?"
         }
     }
 
@@ -100,7 +120,11 @@ class ModelEmitter(private val api: OpenApiParser) {
         val ref = items["\$ref"]?.jsonPrimitive?.content
         if (ref != null) {
             val refName = api.resolveRef(ref)
-            return TYPE_ALIASES[refName] ?: "JsonObject"
+            return TYPE_ALIASES[refName] ?: run {
+                val refSchema = api.getSchema(refName)
+                val hasProperties = refSchema?.get("properties")?.jsonObject?.isNotEmpty() == true
+                if (hasProperties) refName else "JsonObject"
+            }
         }
         return when (items["type"]?.jsonPrimitive?.content) {
             "integer" -> when (items["format"]?.jsonPrimitive?.content) {

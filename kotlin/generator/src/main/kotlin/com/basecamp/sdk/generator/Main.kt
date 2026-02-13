@@ -124,17 +124,18 @@ fun main(args: Array<String>) {
 
 /**
  * Find model types referenced by entity schemas that aren't in TYPE_ALIASES.
- * E.g., TodoParent, TodoBucket, PersonCompany, etc.
+ * Recursively follows references so nested supporting types are also discovered.
+ * E.g., TodoParent, TodoBucket, PersonCompany, WebhookDeliveryRequest, etc.
  */
 private fun findSupportingModels(api: OpenApiParser): Map<String, String> {
     val result = mutableMapOf<String, String>()
+    val known = TYPE_ALIASES.keys.toMutableSet()
 
-    // Scan all entity schemas for $ref properties pointing to types we don't have
-    for ((schemaName, _) in TYPE_ALIASES) {
-        val schema = api.getSchema(schemaName) ?: continue
+    fun scanSchema(schemaName: String) {
+        val schema = api.getSchema(schemaName) ?: return
         val properties = schema["properties"]?.let {
             (it as? kotlinx.serialization.json.JsonObject)?.entries
-        } ?: continue
+        } ?: return
 
         for ((_, propValue) in properties) {
             val propObj = propValue as? kotlinx.serialization.json.JsonObject ?: continue
@@ -143,8 +144,10 @@ private fun findSupportingModels(api: OpenApiParser): Map<String, String> {
             val ref = propObj["\$ref"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
             if (ref != null) {
                 val refName = api.resolveRef(ref)
-                if (refName !in TYPE_ALIASES && refName !in result) {
+                if (refName !in known) {
+                    known += refName
                     result[refName] = refName
+                    scanSchema(refName)
                 }
             }
 
@@ -153,11 +156,17 @@ private fun findSupportingModels(api: OpenApiParser): Map<String, String> {
             val itemRef = items?.get("\$ref")?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
             if (itemRef != null) {
                 val refName = api.resolveRef(itemRef)
-                if (refName !in TYPE_ALIASES && refName !in result) {
+                if (refName !in known) {
+                    known += refName
                     result[refName] = refName
+                    scanSchema(refName)
                 }
             }
         }
+    }
+
+    for ((schemaName, _) in TYPE_ALIASES) {
+        scanSchema(schemaName)
     }
 
     return result

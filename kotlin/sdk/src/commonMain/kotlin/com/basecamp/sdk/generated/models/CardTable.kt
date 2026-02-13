@@ -12,20 +12,20 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class CardTable(
-    val id: Long = 0L,
-    val status: String? = null,
-    @SerialName("visible_to_clients") val visibleToClients: Boolean = false,
-    @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("updated_at") val updatedAt: String? = null,
-    val title: String? = null,
-    @SerialName("inherits_status") val inheritsStatus: Boolean = false,
-    val type: String? = null,
-    val url: String? = null,
-    @SerialName("app_url") val appUrl: String? = null,
+    val id: Long,
+    val status: String,
+    @SerialName("visible_to_clients") val visibleToClients: Boolean,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String,
+    val title: String,
+    @SerialName("inherits_status") val inheritsStatus: Boolean,
+    val type: String,
+    val url: String,
+    @SerialName("app_url") val appUrl: String,
+    val bucket: TodoBucket,
+    val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
-    val bucket: JsonObject? = null,
-    val creator: Person? = null,
     val subscribers: List<Person> = emptyList(),
     val lists: List<CardColumn> = emptyList()
 )

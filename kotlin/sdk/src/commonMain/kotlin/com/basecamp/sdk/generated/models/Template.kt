@@ -12,13 +12,13 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class Template(
-    val id: Long = 0L,
+    val id: Long,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String,
+    val name: String,
     val status: String? = null,
-    @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("updated_at") val updatedAt: String? = null,
-    val name: String? = null,
     val description: String? = null,
     val url: String? = null,
     @SerialName("app_url") val appUrl: String? = null,
-    val dock: List<JsonObject> = emptyList()
+    val dock: List<DockItem> = emptyList()
 )

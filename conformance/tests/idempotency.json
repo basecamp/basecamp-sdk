@@ -9,7 +9,7 @@
     "requestBody": {"name": "Updated Name"},
     "mockResponses": [
       {"status": 503},
-      {"status": 200, "body": {"id": 12345, "name": "Updated Name"}}
+      {"status": 200, "body": {"id": 12345, "name": "Updated Name", "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/projects/12345.json", "app_url": "https://3.basecamp.com/999/projects/12345"}}
     ],
     "assertions": [
       {"type": "requestCount", "expected": 2},
