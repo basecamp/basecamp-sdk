@@ -14,72 +14,107 @@ All four SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated
 
 ---
 
-## SDK Development Rules
+## Architecture
 
-### NEVER Do These (Hard Rules)
-
-1. **NEVER edit files under `*/generated/`** - They get overwritten by generators
-2. **NEVER add hand-written service methods for API operations** - All API ops come from generators
-3. **NEVER skip running `make smithy-build` after Smithy changes** - Keeps OpenAPI in sync
-4. **NEVER construct API paths manually in SDK code** - Use the generated client methods
-
-### Always Do These
-
-1. **All new API coverage starts in `spec/basecamp.smithy`**
-2. **Run generators after spec changes**: `make smithy-build` then SDK-specific generators
-3. **Fix generators when output is wrong** - Don't patch generated files directly
-
-### SDK Architecture
-
-**Target architecture (all SDKs):**
 ```
 Smithy Spec → OpenAPI → Generated Client → Service Layer → User
 ```
 
-| SDK | Generated Client | Service Layer | Status |
-|-----|-----------------|---------------|--------|
-| **Go** | `pkg/generated/client.gen.go` | `pkg/basecamp/*.go` (wraps generated client) | ✅ Complete |
-| **TypeScript** | `openapi-fetch` + `schema.d.ts` | `src/generated/services/*.ts` | ✅ Complete |
-| **Ruby** | HTTP client | `lib/basecamp/generated/services/*.rb` | ✅ Complete |
-| **Swift** | `URLSession` via `Transport` protocol | `Sources/Basecamp/Generated/Services/*.swift` | ✅ Complete |
+| SDK | Generated Client | Service Layer |
+|-----|-----------------|---------------|
+| **Go** | `pkg/generated/client.gen.go` | `pkg/basecamp/*.go` (wraps generated client) |
+| **TypeScript** | `openapi-fetch` + `schema.d.ts` | `src/generated/services/*.ts` |
+| **Ruby** | HTTP client | `lib/basecamp/generated/services/*.rb` |
+| **Swift** | `URLSession` via `Transport` protocol | `Sources/Basecamp/Generated/Services/*.swift` |
 
-**All four production SDKs have complete generated service layers** covering 175 operations across 38 services.
+All 175 operations across 38 services are generated. Hand-written code is limited to infrastructure:
 
-**TypeScript/Ruby runtime**: Wired to generated services (`src/generated/services/`, `lib/basecamp/generated/services/`). Hand-written services remain only for infrastructure (`base.ts`/`base_service.rb`) and OAuth (`authorization.ts`/`authorization_service.rb`).
+| Purpose | TypeScript | Ruby | Swift |
+|---------|-----------|------|-------|
+| HTTP helpers, pagination, hooks | `src/services/base.ts` | `lib/basecamp/services/base_service.rb` | `Sources/Basecamp/Services/BaseService.swift` |
+| OAuth flows (not in OpenAPI spec) | `src/services/authorization.ts` | `lib/basecamp/services/authorization_service.rb` | — |
 
-### Required Workflow for Adding API Coverage
+Other hand-written service files in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) are NOT loaded at runtime. They exist only as reference implementations.
 
-Every new API endpoint MUST follow this sequence:
+### Smithy Spec vs Actual API Responses
 
-1. **Add operation to `spec/basecamp.smithy`** - This is mandatory, not optional
-2. **Run `make smithy-build`** - Regenerates `openapi.json`
-3. **Run SDK generators**:
-   - `cd go && make generate`
-   - `make ts-generate-services`
-   - `make rb-generate-services`
-   - `make swift-generate`
-4. **Run `make`** - Verifies all SDKs build and pass tests
+Smithy wrapper structures are a spec convention, not the API shape. The spec uses wrapper structures for list responses:
 
-That's it. Generated services are the runtime—no hand-written service updates needed.
+```smithy
+structure ListAssignablePeopleOutput {
+  people: PersonList
+}
+```
+
+But the actual API returns top-level arrays. The Go code generator unwraps these:
+
+```go
+ListAssignablePeopleResponseContent = []Person
+```
+
+When verifying API response shapes, check Go generated code in `go/pkg/generated/client.gen.go` — look for `*ResponseContent` type definitions. Don't assume Smithy wrapper structures match the wire format.
+
+**Why the wrappers exist:** Smithy's AWS restJson1 protocol requires list outputs to be wrapped structures because `@httpPayload` only supports string, blob, structure, union, and document types — not arrays directly. See the ARCHITECTURAL NOTE in `spec/basecamp.smithy`.
 
 ---
 
-## Smithy-First Development Workflow
+## Hard Rules
 
-When extending the Basecamp SDK, follow a Smithy-first approach where the API specification drives implementation.
+### Never Do These
 
-### 1. Design in Smithy First
+1. **NEVER edit files under `*/generated/`** — they get overwritten by generators
+2. **NEVER add hand-written service methods for API operations** — all API ops come from generators
+3. **NEVER skip running `make smithy-build` after Smithy changes** — keeps OpenAPI in sync
+4. **NEVER construct API paths manually** — use the generated client methods
+5. **NEVER bypass the SDK** — no raw `client.Get()`, string-concatenated URLs, or internal method calls
 
-Before writing Go code, add operations and shapes to `/spec/basecamp.smithy`:
+If you're writing `fmt.Sprintf` with an API path, you're doing it wrong. If the generated client lacks functionality, fix the spec and regenerate — don't work around it.
 
-1. **Add operations to the service definition** - Include new operations in the `Basecamp` service's `operations` list
-2. **Define the HTTP binding** - Use `@http` with method, uri, and appropriate traits
-3. **Create input/output structures** - Define request parameters with `@httpLabel`, `@httpQuery`, `@httpPayload` as needed
-4. **Add shared shapes** - Reuse existing types (ProjectId, PersonId, ISO8601Timestamp, etc.) where possible
+### Anti-patterns
 
-### 2. Smithy Patterns
+```go
+// WRONG - Manual path construction
+path := fmt.Sprintf("/buckets/%d/todolists/%d/todos.json", bucketID, todolistID)
 
-Follow existing patterns in the spec:
+// WRONG - Query parameter hacks
+path := generatedPath + "?status=active"
+
+// WRONG - "Just this once" shortcuts
+path := fmt.Sprintf("/projects/%d/people.json", projectID)
+```
+
+### Correct Patterns
+
+```go
+// Single-resource: use generated client directly
+resp, err := client.gen.GetTodoWithResponse(ctx, accountID, bucketID, todoID)
+
+// Paginated: generated client for first page, Link headers for subsequent
+resp, err := client.gen.ListTodosWithResponse(ctx, accountID, bucketID, todolistID, params)
+nextURL := parseNextLink(resp.HTTPResponse.Header.Get("Link"))
+for nextURL != "" {
+    resp, err := client.Get(ctx, nextURL)  // URL from API, not constructed
+    nextURL = parseNextLink(resp.Headers.Get("Link"))
+}
+```
+
+### Andon Cord — Stop and Fix Immediately
+
+Pull the andon cord when you see:
+
+- **Compilation errors referencing generated types/methods that don't exist** — regenerate from spec, update hand-written code to match. Do NOT patch around missing types.
+- **Operation count mismatches** — generators report different counts or wrong service groupings
+- **Test fixtures that don't match generated types** — the spec has drifted
+- **`make generate` fails or produces unexpected diffs** — investigate before proceeding
+- **Script failures in the generation pipeline** — fix tooling before continuing feature work
+
+---
+
+## Smithy-First Development
+
+All new API coverage starts in `spec/basecamp.smithy`. Before writing SDK code, add operations and shapes to the spec.
+
+### Smithy Patterns
 
 ```smithy
 /// Operation documentation
@@ -104,15 +139,7 @@ structure GetResourceOutput {
 }
 ```
 
-### 3. Reference Sources
-
-When adding new API coverage:
-
-- **Go SDK** (`go/pkg/basecamp/*.go`) - Check existing implementations for operation signatures
-- **BC3 API docs** (`~/Work/basecamp/bc3-api/sections/*.md`) - Authoritative HTTP endpoint documentation
-- **Existing Smithy** (`spec/basecamp.smithy`) - Follow established patterns and reuse types
-
-### 4. Naming Conventions
+### Naming Conventions
 
 - Operations: `Verb` + `Noun` (e.g., `ListTodos`, `GetProject`, `CreateMessage`, `TrashComment`)
 - Input structures: `{OperationName}Input`
@@ -120,52 +147,121 @@ When adding new API coverage:
 - IDs: `{Resource}Id` as `long` type (e.g., `MessageId`, `CommentId`)
 - Status enums: Use `@documentation` string with valid values (e.g., `"active|archived|trashed"`)
 
-### 5. Common Patterns
+### Common URL Patterns
 
-**Bucket-scoped resources** (most Basecamp resources):
-```
-/buckets/{projectId}/{resources}/{resourceId}.json
-```
+| Pattern | Example |
+|---------|---------|
+| Bucket-scoped | `/buckets/{projectId}/{resources}/{resourceId}.json` |
+| Recording ops | `/buckets/{projectId}/recordings/{recordingId}/status/trashed.json` |
+| Nested resources | `/buckets/{projectId}/recordings/{recordingId}/comments.json` |
+| Account-level | `/reports/{reportType}.json` |
 
-**Recording operations** (trash, archive, unarchive):
-```
-/buckets/{projectId}/recordings/{recordingId}/status/trashed.json
-/buckets/{projectId}/recordings/{recordingId}/status/archived.json
-/buckets/{projectId}/recordings/{recordingId}/status/active.json
-```
+### URI Constraints
 
-**Nested resources** (e.g., comments on recordings):
-```
-/buckets/{projectId}/recordings/{recordingId}/comments.json
-```
+Smithy's `@http` URI labels cannot have literal suffixes in the same segment. `.json` is only valid after literal path segments:
+- OK: `/{accountId}/projects.json`
+- OK: `/{accountId}/buckets/{projectId}/todos/{todoId}`
+- WRONG: `/{accountId}/buckets/{projectId}/boosts/{boostId}.json`
 
-**Account-level reports**:
-```
-/reports/{reportType}.json
-```
+### Shape Reuse
 
-### 6. Shape Reuse
+Reuse these common shapes: `ProjectId`, `PersonId`, `ISO8601Timestamp`, `ISO8601Date`, `Person`, `TodoParent`/`RecordingParent`, `TodoBucket`/`RecordingBucket`.
 
-Reuse these common shapes throughout the spec:
+### Reference Sources
 
-- `ProjectId` - Long identifier for projects (buckets)
-- `PersonId` - Long identifier for people
-- `ISO8601Timestamp` - String for datetime fields
-- `ISO8601Date` - String for date-only fields
-- `Person` - Full person object structure
-- `TodoParent` / `RecordingParent` - Parent reference (id, title, type, url, app_url)
-- `TodoBucket` / `RecordingBucket` - Project reference in recordings
+- **BC3 API docs** (`~/Work/basecamp/bc3-api/sections/*.md`) — authoritative HTTP endpoint documentation
+- **Go SDK** (`go/pkg/basecamp/*.go`) — existing operation signatures
+- **Existing Smithy** (`spec/basecamp.smithy`) — established patterns and reusable types
 
 ---
 
-## TypeScript/Ruby Service Layer
+## Generation Pipeline
 
-**Switchover complete.** Both SDKs use generated services at runtime.
+After any Smithy spec change, run the full pipeline:
 
-| SDK | Runtime Services | Infrastructure |
-|-----|-----------------|----------------|
-| **TypeScript** | `src/generated/services/*.ts` | `src/services/base.ts`, `src/services/authorization.ts` |
-| **Ruby** | `lib/basecamp/generated/services/*.rb` | `lib/basecamp/services/base_service.rb`, `lib/basecamp/services/authorization_service.rb` |
-| **Swift** | `swift/Sources/Basecamp/Generated/Services/*.swift` | `swift/Sources/Basecamp/Services/BaseService.swift` |
+```
+make smithy-build && make -C go generate && make url-routes && \
+  make ts-generate && make ts-generate-services && \
+  make rb-generate && make rb-generate-services && \
+  make swift-generate
+```
 
-Hand-written API services in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) are NOT loaded at runtime. They exist only as reference implementations.
+Or `make generate` if it cascades. Never commit a Smithy change without regenerating all downstream artifacts. Never assume "I'll regenerate later" — regenerate now, or the drift compounds.
+
+### Invariants
+
+1. **`openapi.json` must always reflect the current Smithy spec.** Run `make smithy-build` after any change to `spec/basecamp.smithy` or `spec/overlays/*.smithy`.
+2. **Service generator mappings must stay current.** Both `typescript/scripts/generate-services.ts` and `ruby/scripts/generate-services.rb` have hardcoded operation-to-service mappings. Update them for new/renamed/removed operations. Treat unmapped-operation warnings as errors.
+3. **Tags in `spec/overlays/tags.smithy` control service grouping.** Every new operation needs a tag or it won't appear in any generated service.
+4. **Hand-written Go service methods must use generated client types.** Field names, method signatures, and request/response body types come from `go/pkg/generated/client.gen.go`.
+
+### Verification
+
+When reviewing a PR that touches `spec/basecamp.smithy`, verify that `openapi.json` and all generated files are included in the diff.
+
+---
+
+## Upstream API Sync Workflow
+
+When syncing the SDK spec to match upstream API changes (bc3-api docs + bc3 Rails app):
+
+### Provenance is Mandatory
+
+Every sync MUST update `spec/api-provenance.json` with the upstream HEADs:
+```bash
+gh api repos/basecamp/bc3-api/commits/HEAD --jq '.sha'
+gh api repos/basecamp/bc3/commits/HEAD --jq '.sha'
+```
+
+Update both `revision` and `date` fields, then `make provenance-sync`. This is not optional — provenance tracks what the SDK is conformant to.
+
+### Pre-sync
+
+Use `make sync-status` to see upstream diffs since last sync.
+
+### Sync Checklist
+
+1. Update `spec/basecamp.smithy` — new operations, structures, field additions, path fixes
+2. Update `spec/overlays/tags.smithy` — tag new operations
+3. Update service generator `TAG_TO_SERVICE` mappings if adding new service groups
+4. Run full generation pipeline
+5. Wire new services into clients (`typescript/src/client.ts`, `typescript/src/index.ts`, `ruby/lib/basecamp/client.rb`)
+6. Write tests for ALL new operations (see Completeness Bar below)
+7. Update tests for any changed paths/signatures
+8. Update provenance, run `make provenance-sync`
+9. `make` must pass clean
+
+---
+
+## SDK Change Completeness Bar
+
+`make` passing is necessary but not sufficient. A change that compiles but ships new operations without tests is incomplete.
+
+### Every New Operation Requires
+
+1. **Smithy spec** — operation, input/output structures, error list
+2. **Tag** — in `spec/overlays/tags.smithy` for service grouping
+3. **Generator mapping** — if introducing a new service group
+4. **Client wiring** — import, type declaration, `defineService`/`service()` call, re-export from `index.ts`
+5. **TypeScript test** — in `typescript/tests/services/<service>.test.ts` (happy path + error case)
+6. **Ruby test** — in `ruby/test/basecamp/services/<service>_service_test.rb` (same coverage)
+7. **Regeneration** — all generated artifacts freshly regenerated, not stale
+
+### Every Changed Field/Path Requires
+
+1. **Existing tests updated** — every test stubbing a changed path must be updated
+2. **New field tests** — at least one test fixture should include new fields to verify they flow through
+
+### Pre-Merge Verification
+
+Run `make go-check-drift` (included in `make check`) and verify:
+- No new UNWRAPPED operations unless intentionally deferred (document why in PR)
+- No MISSING operations (service layer calling non-existent generated methods)
+
+### New SDK Method Checklist
+
+- [ ] Does the generated client have a method for this endpoint?
+- [ ] If not, is the endpoint in the OpenAPI spec? (Add it if missing)
+- [ ] Does my implementation use ONLY generated client methods for API calls?
+- [ ] Is there ANY `fmt.Sprintf` with a URL path? (If yes, refactor)
+- [ ] For pagination: am I using `FollowPagination()` with Link headers?
