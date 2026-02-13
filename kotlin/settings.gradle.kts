@@ -6,6 +6,7 @@ dependencyResolutionManagement {
     }
 }
 
-include(":sdk")
+include(":basecamp-sdk")
+project(":basecamp-sdk").projectDir = file("sdk")
 include(":generator")
 include(":conformance")

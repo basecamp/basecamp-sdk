@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [main]
+    branches: [main, kotlin]
   pull_request:
   workflow_dispatch:
 
@@ -177,10 +177,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build
-        run: ./gradlew :sdk:build
+        run: ./gradlew :basecamp-sdk:build
 
       - name: Test
-        run: ./gradlew :sdk:check
+        run: ./gradlew :basecamp-sdk:check
 
       - name: Check generated code drift
         run: |
@@ -191,6 +191,35 @@ jobs:
             exit 1
           fi
           echo "Generated code is up to date"
+
+  publish-kotlin:
+    name: Publish Kotlin SDK
+    needs: [test-kotlin]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/kotlin')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    defaults:
+      run:
+        working-directory: kotlin
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Publish to GitHub Packages
+        run: ./gradlew :basecamp-sdk:publish
+        env:
+          GITHUB_USER: x-access-token
+          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   conformance:
     name: Conformance Tests

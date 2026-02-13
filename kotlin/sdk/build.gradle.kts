@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
+    `maven-publish`
 }
 
 group = "com.basecamp"
@@ -33,4 +34,17 @@ kotlin {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/basecamp/basecamp-sdk")
+            credentials {
+                username = System.getenv("GITHUB_USER") ?: "x-access-token"
+                password = System.getenv("GITHUB_ACCESS_TOKEN") ?: ""
+            }
+        }
+    }
 }

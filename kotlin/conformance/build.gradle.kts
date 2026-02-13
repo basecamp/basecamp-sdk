@@ -13,7 +13,7 @@ tasks.named<JavaExec>("run") {
 }
 
 dependencies {
-    implementation(project(":sdk"))
+    implementation(project(":basecamp-sdk"))
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.ktor.client.mock)
     implementation(libs.kotlinx.coroutines.core)
