@@ -511,16 +511,23 @@ list ProjectList {
 }
 
 structure Project {
+  @required
   id: ProjectId
+  @required
   status: ProjectStatus
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   name: ProjectName
   description: ProjectDescription
   purpose: String
   clients_enabled: Boolean
   bookmark_url: String
+  @required
   url: String
+  @required
   app_url: String
   dock: DockItemList
   bookmarked: Boolean
@@ -534,17 +541,25 @@ list DockItemList {
 }
 
 structure DockItem {
+  @required
   id: Long
+  @required
   title: String
+  @required
   name: String
+  @required
   enabled: Boolean
   position: Integer
+  @required
   url: String
+  @required
   app_url: String
 }
 
 structure ClientCompany {
+  @required
   id: Long
+  @required
   name: String
 }
 
@@ -1107,26 +1122,40 @@ list PersonIdList {
 }
 
 structure Todo {
+  @required
   id: TodoId
+  @required
   status: TodoStatus
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
   comments_count: Integer
   comments_url: String
   position: Integer
+  @required
   parent: TodoParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   description: TodoDescription
   completed: Boolean
+  @required
   content: TodoContent
   starts_on: ISO8601Date
   due_on: ISO8601Date
@@ -1138,23 +1167,33 @@ structure Todo {
 }
 
 structure TodoParent {
+  @required
   id: TodolistId
+  @required
   title: String
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
 }
 
 structure TodoBucket {
+  @required
   id: ProjectId
+  @required
   name: String
+  @required
   type: String
 }
 
 structure Person {
+  @required
   id: PersonId
   attachable_sgid: String
 
+  @required
   @basecampSensitive(category: "pii", redact: true)
   name: PersonName
 
@@ -1172,7 +1211,9 @@ structure Person {
   @basecampSensitive(category: "pii", redact: false)
   location: PersonLocation
 
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
   admin: Boolean
   owner: Boolean
@@ -1192,7 +1233,9 @@ structure Person {
 }
 
 structure PersonCompany {
+  @required
   id: Long
+  @required
   name: CompanyName
 }
 
@@ -1206,20 +1249,33 @@ long TodosetId
 string TodosetName
 
 structure Todoset {
+  @required
   id: TodosetId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   position: Integer
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
+  @required
   name: TodosetName
   todolists_count: Integer
   todolists_url: String
@@ -1244,27 +1300,41 @@ list TodolistList {
 }
 
 structure Todolist {
+  @required
   id: TodolistId
+  @required
   status: TodolistStatus
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
   comments_count: Integer
   comments_url: String
   position: Integer
+  @required
   parent: TodoParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   description: TodolistDescription
   completed: Boolean
   completed_ratio: String
+  @required
   name: TodolistName
   todos_url: String
   groups_url: String
@@ -1283,24 +1353,38 @@ list TodolistGroupList {
 }
 
 structure TodolistGroup {
+  @required
   id: TodolistGroupId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
   comments_count: Integer
   comments_url: String
   position: Integer
+  @required
   parent: TodoParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
+  @required
   name: TodolistGroupName
   completed: Boolean
   completed_ratio: String
@@ -2735,30 +2819,49 @@ list CommentList {
 }
 
 structure Comment {
+  @required
   id: CommentId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
+  @required
   content: CommentContent
   boosts_count: Integer
   boosts_url: String
 }
 
 structure RecordingParent {
+  @required
   id: Long
+  @required
   title: String
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
 }
 
@@ -2777,24 +2880,39 @@ list MessageList {
 }
 
 structure Message {
+  @required
   id: MessageId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
   comments_count: Integer
   comments_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
+  @required
   subject: MessageSubject
+  @required
   content: MessageContent
   category: MessageType
   boosts_count: Integer
@@ -2802,19 +2920,31 @@ structure Message {
 }
 
 structure MessageBoard {
+  @required
   id: MessageBoardId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   position: Integer
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   messages_count: Integer
   messages_url: String
@@ -2826,10 +2956,15 @@ list MessageTypeList {
 }
 
 structure MessageType {
+  @required
   id: MessageTypeId
+  @required
   name: MessageTypeName
+  @required
   icon: MessageTypeIcon
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
 }
 
@@ -2843,20 +2978,32 @@ list VaultList {
 }
 
 structure Vault {
+  @required
   id: VaultId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: VaultTitle
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   position: Integer
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   documents_count: Integer
   documents_url: String
@@ -2877,23 +3024,36 @@ list DocumentList {
 }
 
 structure Document {
+  @required
   id: DocumentId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: DocumentTitle
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
   comments_count: Integer
   comments_url: String
   position: Integer
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   content: DocumentContent
   boosts_count: Integer
@@ -2913,23 +3073,36 @@ list UploadList {
 }
 
 structure Upload {
+  @required
   id: UploadId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
   comments_count: Integer
   comments_url: String
   position: Integer
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   description: UploadDescription
   content_type: String
@@ -2953,19 +3126,31 @@ string ScheduleEntryDescription
 string ScheduleEntryStatus
 
 structure Schedule {
+  @required
   id: ScheduleId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   position: Integer
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   include_due_assignments: Boolean
   entries_count: Integer
@@ -2977,23 +3162,37 @@ list ScheduleEntryList {
 }
 
 structure ScheduleEntry {
+  @required
   id: ScheduleEntryId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
   comments_count: Integer
   comments_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
+  @required
   summary: ScheduleEntrySummary
   description: ScheduleEntryDescription
   all_day: Boolean
@@ -3013,19 +3212,32 @@ list TimesheetEntryList {
 }
 
 structure TimesheetEntry {
+  @required
   id: TimesheetEntryId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   date: ISO8601Date
   description: String
@@ -3599,20 +3811,32 @@ list CampfireList {
 }
 
 structure Campfire {
+  @required
   id: CampfireId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
   position: Integer
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   topic: String
   lines_url: String
@@ -3623,20 +3847,34 @@ list CampfireLineList {
 }
 
 structure CampfireLine {
+  @required
   id: CampfireLineId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
+  @required
   content: String
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   boosts_count: Integer
   boosts_url: String
@@ -3647,9 +3885,13 @@ list ChatbotList {
 }
 
 structure Chatbot {
+  @required
   id: ChatbotId
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   service_name: String
   command_url: String
   url: String
@@ -3664,19 +3906,31 @@ long ForwardId
 long ForwardReplyId
 
 structure Inbox {
+  @required
   id: InboxId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   position: Integer
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   forwards_count: Integer
   forwards_url: String
@@ -3687,22 +3941,36 @@ list ForwardList {
 }
 
 structure Forward {
+  @required
   id: ForwardId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   content: String
+  @required
   subject: String
   from: String
   replies_count: Integer
@@ -3714,20 +3982,34 @@ list ForwardReplyList {
 }
 
 structure ForwardReply {
+  @required
   id: ForwardReplyId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
+  @required
   content: String
   boosts_count: Integer
   boosts_url: String
@@ -4353,19 +4635,31 @@ long CardColumnId
 long CardStepId
 
 structure CardTable {
+  @required
   id: CardTableId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   subscribers: PersonList
   lists: CardColumnList
@@ -4376,15 +4670,25 @@ list CardColumnList {
 }
 
 structure CardColumn {
+  @required
   id: CardColumnId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   position: Integer
@@ -4393,8 +4697,11 @@ structure CardColumn {
   cards_count: Integer
   comments_count: Integer
   cards_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   subscribers: PersonList
 }
@@ -4404,15 +4711,25 @@ list CardList {
 }
 
 structure Card {
+  @required
   id: CardId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
@@ -4425,8 +4742,11 @@ structure Card {
   comments_count: Integer
   comments_url: String
   completion_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   completer: Person
   assignees: PersonList
@@ -4441,23 +4761,36 @@ list CardStepList {
 }
 
 structure CardStep {
+  @required
   id: CardStepId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   position: Integer
   due_on: ISO8601Date
   completed: Boolean
   completed_at: ISO8601Timestamp
+  @required
   parent: RecordingParent
+  @required
   bucket: TodoBucket
+  @required
   creator: Person
   completer: Person
   assignees: PersonList
@@ -4767,8 +5100,11 @@ structure UpdateSubscriptionOutput {
 // ===== Subscription Shapes =====
 
 structure Subscription {
+  @required
   subscribed: Boolean
+  @required
   count: Integer
+  @required
   url: String
   subscribers: PersonList
 }
@@ -4976,20 +5312,33 @@ list ClientApprovalList {
 }
 
 structure ClientApproval {
+  @required
   id: ClientApprovalId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: RecordingBucket
+  @required
   creator: Person
   content: String
   subject: String
@@ -5028,22 +5377,36 @@ list ClientCorrespondenceList {
 }
 
 structure ClientCorrespondence {
+  @required
   id: ClientCorrespondenceId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: RecordingBucket
+  @required
   creator: Person
   content: String
+  @required
   subject: String
   replies_count: Integer
   replies_url: String
@@ -5054,26 +5417,43 @@ list ClientReplyList {
 }
 
 structure ClientReply {
+  @required
   id: ClientReplyId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: RecordingBucket
+  @required
   creator: Person
+  @required
   content: String
 }
 
 structure RecordingBucket {
+  @required
   id: ProjectId
+  @required
   name: String
+  @required
   type: String
 }
 
@@ -5468,13 +5848,19 @@ list WebhookTypeList {
 }
 
 structure Webhook {
+  @required
   id: WebhookId
   active: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   payload_url: String
   types: WebhookTypeList
+  @required
   url: String
+  @required
   app_url: String
   recent_deliveries: WebhookDeliveryList
 }
@@ -5540,11 +5926,16 @@ list EventList {
 }
 
 structure Event {
+  @required
   id: EventId
+  @required
   recording_id: RecordingId
+  @required
   action: String
   details: EventDetails
+  @required
   created_at: ISO8601Timestamp
+  @required
   creator: Person
   boosts_count: Integer
   boosts_url: String
@@ -5575,23 +5966,36 @@ list RecordingList {
 }
 
 structure Recording {
+  @required
   id: RecordingId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   content: String
   comments_count: Integer
   comments_url: String
   subscription_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: RecordingBucket
+  @required
   creator: Person
 }
 
@@ -6109,21 +6513,34 @@ structure QuestionReminder {
 long QuestionnaireId
 
 structure Questionnaire {
+  @required
   id: QuestionnaireId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   questions_url: String
   questions_count: Integer
+  @required
   name: String
+  @required
   bucket: RecordingBucket
+  @required
   creator: Person
 }
 
@@ -6136,20 +6553,33 @@ list QuestionList {
 }
 
 structure Question {
+  @required
   id: QuestionId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
+  @required
   parent: RecordingParent
+  @required
   bucket: RecordingBucket
+  @required
   creator: Person
   paused: Boolean
   schedule: QuestionSchedule
@@ -6182,24 +6612,38 @@ list QuestionAnswerList {
 }
 
 structure QuestionAnswer {
+  @required
   id: AnswerId
+  @required
   status: String
+  @required
   visible_to_clients: Boolean
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   subscription_url: String
   comments_count: Integer
   comments_url: String
+  @required
   content: String
   group_on: ISO8601Date
+  @required
   parent: RecordingParent
+  @required
   bucket: RecordingBucket
+  @required
   creator: Person
   boosts_count: Integer
   boosts_url: String
@@ -6955,15 +7399,20 @@ list SearchResultList {
 }
 
 structure SearchResult {
+  @required
   id: Long
   status: String
   visible_to_clients: Boolean
   created_at: ISO8601Timestamp
   updated_at: ISO8601Timestamp
+  @required
   title: String
   inherits_status: Boolean
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
   bookmark_url: String
   parent: RecordingParent
@@ -7000,10 +7449,14 @@ list TemplateList {
 }
 
 structure Template {
+  @required
   id: TemplateId
   status: String
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   name: String
   description: String
   url: String
@@ -7012,7 +7465,9 @@ structure Template {
 }
 
 structure ProjectConstruction {
+  @required
   id: ConstructionId
+  @required
   status: String
   url: String
   project: Project
@@ -7023,12 +7478,18 @@ structure ProjectConstruction {
 long ToolId
 
 structure Tool {
+  @required
   id: ToolId
   status: String
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   title: String
+  @required
   name: String
+  @required
   enabled: Boolean
   position: Integer
   url: String
@@ -7041,19 +7502,29 @@ structure Tool {
 long MarkerId
 
 structure LineupMarker {
+  @required
   id: MarkerId
+  @required
   status: String
   color: String
+  @required
   title: String
   starts_on: ISO8601Date
   ends_on: ISO8601Date
   description: String
+  @required
   created_at: ISO8601Timestamp
+  @required
   updated_at: ISO8601Timestamp
+  @required
   type: String
+  @required
   url: String
+  @required
   app_url: String
+  @required
   creator: Person
+  @required
   parent: RecordingParent
   bucket: RecordingBucket
 }
@@ -7254,8 +7725,10 @@ list BoostList {
 }
 
 structure Boost {
+  @required
   id: BoostId
   content: String
+  @required
   created_at: ISO8601Timestamp
   booster: Person
   recording: RecordingParent

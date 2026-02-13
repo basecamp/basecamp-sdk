@@ -9,13 +9,31 @@ apply GetTodolistOrGroup @examples([
     title: "Get a Todolist"
     documentation: "Returns a Todolist when ID refers to a todolist"
     input: { accountId: "999", projectId: 12345678, id: 987654 }
-    output: { result: { todolist: { id: 987654, status: "active", name: "Launch Tasks" } } }
+    output: { result: { todolist: {
+      id: 987654, status: "active", name: "Launch Tasks",
+      visible_to_clients: false, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z",
+      title: "Launch Tasks", inherits_status: true, type: "Todolist",
+      url: "https://3.basecampapi.com/1/buckets/2/todolists/987654.json",
+      app_url: "https://3.basecamp.com/1/buckets/2/todolists/987654",
+      creator: { id: 1, name: "Someone", created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
+      bucket: { id: 12345678, name: "My Project", type: "Project" },
+      parent: { id: 99999, title: "To-dos", type: "Todoset", url: "https://3.basecampapi.com/1/buckets/2/todosets/99999.json", app_url: "https://3.basecamp.com/1/buckets/2/todosets/99999" }
+    } } }
   },
   {
     title: "Get a TodolistGroup"
     documentation: "Returns a TodolistGroup when ID refers to a group"
     input: { accountId: "999", projectId: 12345678, id: 111222 }
-    output: { result: { group: { id: 111222, status: "active", name: "Q1 Milestones" } } }
+    output: { result: { group: {
+      id: 111222, status: "active", name: "Q1 Milestones",
+      visible_to_clients: false, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z",
+      title: "Q1 Milestones", inherits_status: true, type: "TodolistGroup",
+      url: "https://3.basecampapi.com/1/buckets/2/todolists/111222.json",
+      app_url: "https://3.basecamp.com/1/buckets/2/todolists/111222",
+      creator: { id: 1, name: "Someone", created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
+      bucket: { id: 12345678, name: "My Project", type: "Project" },
+      parent: { id: 99999, title: "To-dos", type: "Todoset", url: "https://3.basecampapi.com/1/buckets/2/todosets/99999.json", app_url: "https://3.basecamp.com/1/buckets/2/todosets/99999" }
+    } } }
   }
 ])
 
