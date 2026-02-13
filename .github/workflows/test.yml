@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [main, kotlin]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -195,7 +195,7 @@ jobs:
   publish-kotlin:
     name: Publish Kotlin SDK
     needs: [test-kotlin]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/kotlin')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
