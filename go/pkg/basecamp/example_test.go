@@ -295,8 +295,7 @@ func Example_errorHandling() {
 	// Get a project that may not exist
 	project, err := client.ForAccount("12345").Projects().Get(ctx, 999999999)
 	if err != nil {
-		var apiErr *basecamp.Error
-		if errors.As(err, &apiErr) {
+		if apiErr, ok := errors.AsType[*basecamp.Error](err); ok {
 			switch apiErr.Code {
 			case basecamp.CodeNotFound:
 				fmt.Println("Project not found")

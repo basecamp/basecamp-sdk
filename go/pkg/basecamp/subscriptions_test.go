@@ -175,7 +175,7 @@ func TestUpdateSubscriptionRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
-	subs, ok := data["subscriptions"].([]interface{})
+	subs, ok := data["subscriptions"].([]any)
 	if !ok {
 		t.Fatal("subscriptions should be an array")
 	}
@@ -187,7 +187,7 @@ func TestUpdateSubscriptionRequest_Marshal(t *testing.T) {
 		t.Errorf("expected subscription ID 1049715916, got %v", subs[0])
 	}
 
-	unsubs, ok := data["unsubscriptions"].([]interface{})
+	unsubs, ok := data["unsubscriptions"].([]any)
 	if !ok {
 		t.Fatal("unsubscriptions should be an array")
 	}
@@ -224,7 +224,7 @@ func TestUpdateSubscriptionRequest_MarshalOmitsEmpty(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateSubscriptionRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}

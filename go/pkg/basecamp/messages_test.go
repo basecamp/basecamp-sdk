@@ -262,7 +262,7 @@ func TestCreateMessageRequest_MarshalMinimal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateMessageRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -339,7 +339,7 @@ func TestUpdateMessageRequest_MarshalPartial(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateMessageRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}

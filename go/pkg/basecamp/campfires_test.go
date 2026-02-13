@@ -324,7 +324,7 @@ func TestCreateCampfireLineRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateCampfireLineRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -360,7 +360,7 @@ func TestCreateCampfireLineRequest_MarshalWithContentType(t *testing.T) {
 		t.Fatalf("failed to marshal CreateCampfireLineRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -393,7 +393,7 @@ func TestCreateCampfireLineRequest_MarshalWithPlainContentType(t *testing.T) {
 		t.Fatalf("failed to marshal CreateCampfireLineRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -426,8 +426,8 @@ func TestCreateLine_EmptyContent(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for empty content")
 	}
-	var apiErr *Error
-	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
 		t.Errorf("expected usage error, got: %v", err)
 	}
 }
@@ -440,8 +440,8 @@ func TestCreateLine_MultipleOptions(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for multiple options")
 	}
-	var apiErr *Error
-	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
 		t.Errorf("expected usage error, got: %v", err)
 	}
 }
@@ -453,8 +453,8 @@ func TestCreateLine_InvalidContentType(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid content_type")
 	}
-	var apiErr *Error
-	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
 		t.Errorf("expected usage error, got: %v", err)
 	}
 }
@@ -476,7 +476,7 @@ func testCampfiresServer(t *testing.T, handler http.HandlerFunc) *CampfiresServi
 }
 
 func TestCreateLine_NoOptions_Service(t *testing.T) {
-	var receivedBody map[string]interface{}
+	var receivedBody map[string]any
 	fixture := loadCampfiresFixture(t, "line_get.json")
 	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
@@ -510,7 +510,7 @@ func TestCreateLine_NoOptions_Service(t *testing.T) {
 }
 
 func TestCreateLine_HTMLOption_Service(t *testing.T) {
-	var receivedBody map[string]interface{}
+	var receivedBody map[string]any
 	fixture := loadCampfiresFixture(t, "line_get.json")
 	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
@@ -534,7 +534,7 @@ func TestCreateLine_HTMLOption_Service(t *testing.T) {
 }
 
 func TestCreateLine_PlainOption_Service(t *testing.T) {
-	var receivedBody map[string]interface{}
+	var receivedBody map[string]any
 	fixture := loadCampfiresFixture(t, "line_get.json")
 	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
@@ -655,7 +655,7 @@ func TestCreateChatbotRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateChatbotRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -676,7 +676,7 @@ func TestCreateChatbotRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateChatbotRequest without command_url: %v", err)
 	}
 
-	var dataNoURL map[string]interface{}
+	var dataNoURL map[string]any
 	if err := json.Unmarshal(outNoURL, &dataNoURL); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -700,7 +700,7 @@ func TestUpdateChatbotRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateChatbotRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}

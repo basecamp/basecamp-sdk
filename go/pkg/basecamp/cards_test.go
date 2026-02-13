@@ -394,7 +394,7 @@ func TestCreateCardRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateCardRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -423,7 +423,7 @@ func TestCreateCardRequest_MarshalMinimal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateCardRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -455,7 +455,7 @@ func TestUpdateCardRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateCardRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -470,7 +470,7 @@ func TestUpdateCardRequest_Marshal(t *testing.T) {
 		t.Errorf("unexpected due_on: %v", data["due_on"])
 	}
 
-	assigneeIDs, ok := data["assignee_ids"].([]interface{})
+	assigneeIDs, ok := data["assignee_ids"].([]any)
 	if !ok {
 		t.Fatalf("expected assignee_ids to be an array, got %T", data["assignee_ids"])
 	}
@@ -511,7 +511,7 @@ func TestCreateColumnRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateColumnRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -534,7 +534,7 @@ func TestSetColumnColorRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal SetColumnColorRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -587,7 +587,7 @@ func TestCreateStepRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateStepRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -598,7 +598,7 @@ func TestCreateStepRequest_Marshal(t *testing.T) {
 	if data["due_on"] != "2024-02-15" {
 		t.Errorf("unexpected due_on: %v", data["due_on"])
 	}
-	assignees, ok := data["assignees"].([]interface{})
+	assignees, ok := data["assignees"].([]any)
 	if !ok || len(assignees) != 2 {
 		t.Errorf("unexpected assignees: %v", data["assignees"])
 	}
@@ -615,7 +615,7 @@ func TestUpdateStepRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateStepRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}

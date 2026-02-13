@@ -527,8 +527,8 @@ func TestWebhookReceiver_SignatureVerification(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error with invalid signature")
 	}
-	var verErr *WebhookVerificationError
-	if !errors.As(err, &verErr) {
+	_, ok := errors.AsType[*WebhookVerificationError](err)
+	if !ok {
 		t.Errorf("expected WebhookVerificationError, got %T: %v", err, err)
 	}
 
@@ -537,7 +537,8 @@ func TestWebhookReceiver_SignatureVerification(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error with missing signature")
 	}
-	if !errors.As(err, &verErr) {
+	_, ok = errors.AsType[*WebhookVerificationError](err)
+	if !ok {
 		t.Errorf("expected WebhookVerificationError, got %T: %v", err, err)
 	}
 }
@@ -645,8 +646,8 @@ func TestWebhookReceiver_InvalidJSON(t *testing.T) {
 		t.Fatal("expected error for invalid JSON")
 	}
 
-	var syntaxErr *json.SyntaxError
-	if !errors.As(err, &syntaxErr) {
+	_, ok := errors.AsType[*json.SyntaxError](err)
+	if !ok {
 		// It should be a wrapped parse error
 		if !strings.Contains(err.Error(), "failed to parse webhook event") {
 			t.Errorf("expected parse error, got %v", err)

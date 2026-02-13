@@ -11,7 +11,7 @@ import (
 func TestAuthorizationService_GetInfo(t *testing.T) {
 	tests := []struct {
 		name       string
-		response   interface{}
+		response   any
 		statusCode int
 		opts       *GetInfoOptions
 		wantErr    bool
@@ -19,14 +19,14 @@ func TestAuthorizationService_GetInfo(t *testing.T) {
 	}{
 		{
 			name: "successful response",
-			response: map[string]interface{}{
-				"identity": map[string]interface{}{
+			response: map[string]any{
+				"identity": map[string]any{
 					"id":            123,
 					"first_name":    "Test",
 					"last_name":     "User",
 					"email_address": "test@example.com",
 				},
-				"accounts": []map[string]interface{}{
+				"accounts": []map[string]any{
 					{"id": 1, "name": "Account 1", "product": "bc3"},
 					{"id": 2, "name": "Account 2", "product": "hey"},
 				},
@@ -37,12 +37,12 @@ func TestAuthorizationService_GetInfo(t *testing.T) {
 		},
 		{
 			name: "filter by product",
-			response: map[string]interface{}{
-				"identity": map[string]interface{}{
+			response: map[string]any{
+				"identity": map[string]any{
 					"id":         123,
 					"first_name": "Test",
 				},
-				"accounts": []map[string]interface{}{
+				"accounts": []map[string]any{
 					{"id": 1, "name": "Basecamp Account", "product": "bc3"},
 					{"id": 2, "name": "HEY Account", "product": "hey"},
 					{"id": 3, "name": "Another BC", "product": "bc3"},
@@ -55,7 +55,7 @@ func TestAuthorizationService_GetInfo(t *testing.T) {
 		},
 		{
 			name:       "unauthorized",
-			response:   map[string]interface{}{"error": "invalid token"},
+			response:   map[string]any{"error": "invalid token"},
 			statusCode: http.StatusUnauthorized,
 			wantErr:    true,
 		},
@@ -141,9 +141,9 @@ func TestAuthorizationService_GetInfo_AllowsLocalhostHTTP(t *testing.T) {
 	// Start a test server (which runs on localhost/127.0.0.1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"identity": map[string]interface{}{"id": 123},
-			"accounts": []map[string]interface{}{},
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"identity": map[string]any{"id": 123},
+			"accounts": []map[string]any{},
 		})
 	}))
 	defer server.Close()

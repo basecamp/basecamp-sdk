@@ -190,7 +190,7 @@ func TestLargeResponseBody_ReturnsError(t *testing.T) {
 		srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(422)
 			// MaxErrorBodyBytes is 1MB; write 2MB
-			for i := 0; i < 2*1024; i++ {
+			for range 2 * 1024 {
 				fmt.Fprint(w, strings.Repeat("x", 1024))
 			}
 		}))
@@ -348,8 +348,8 @@ func TestHandleError_TruncatesLargeErrorMessage(t *testing.T) {
 		t.Fatal("Expected error, got nil")
 	}
 
-	var apiErr *Error
-	if !errors.As(err, &apiErr) {
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok {
 		t.Fatalf("Expected *Error, got %T", err)
 	}
 

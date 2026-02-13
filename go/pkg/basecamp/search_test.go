@@ -197,7 +197,7 @@ func TestSearchOptions_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal SearchOptions: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}

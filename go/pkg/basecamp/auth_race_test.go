@@ -33,7 +33,7 @@ func TestAuthManager_ConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Hammer all AuthManager methods concurrently
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		wg.Add(4)
 
 		go func() {
@@ -77,7 +77,7 @@ func TestAuthManager_LogoutDuringRefresh(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		// Re-populate credentials with EXPIRED token to trigger refresh path
 		_ = store.Save(origin, &Credentials{
 			AccessToken:  "expired-token",
@@ -113,7 +113,7 @@ func TestAccountClient_ConcurrentServiceAccess(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Hammer service accessors concurrently
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		wg.Add(6)
 
 		go func() {

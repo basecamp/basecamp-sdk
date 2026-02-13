@@ -174,7 +174,7 @@ func TestCreateCommentRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal CreateCommentRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestUpdateCommentRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to marshal UpdateCommentRequest: %v", err)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(out, &data); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}

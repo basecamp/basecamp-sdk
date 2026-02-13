@@ -40,10 +40,7 @@ func (h *paginationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	count := h.pageSize
-	if remaining < h.pageSize {
-		count = remaining
-	}
+	count := min(remaining, h.pageSize)
 
 	items := make([]map[string]int, count)
 	for i := 0; i < count; i++ {
@@ -368,10 +365,7 @@ func (h *followPaginationHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	count := h.pageSize
-	if remaining < h.pageSize {
-		count = remaining
-	}
+	count := min(remaining, h.pageSize)
 
 	items := make([]map[string]int, count)
 	for i := 0; i < count; i++ {
@@ -772,10 +766,7 @@ func (h *relativePaginationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	count := h.pageSize
-	if remaining < h.pageSize {
-		count = remaining
-	}
+	count := min(remaining, h.pageSize)
 
 	items := make([]map[string]int, count)
 	for i := 0; i < count; i++ {
