@@ -9,8 +9,9 @@
 | **TypeScript SDK** | Production-ready | 37 generated services, openapi-fetch based |
 | **Ruby SDK** | Production-ready | 37 generated services |
 | **Swift SDK** | Production-ready | 38 generated services, URLSession-based |
+| **Kotlin SDK** | Production-ready | 38 generated services, Ktor/KMP-based |
 
-All four SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. No hand-written API methods exist in any SDK runtime.
+All five SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. No hand-written API methods exist in any SDK runtime.
 
 ---
 
@@ -26,13 +27,14 @@ Smithy Spec → OpenAPI → Generated Client → Service Layer → User
 | **TypeScript** | `openapi-fetch` + `schema.d.ts` | `src/generated/services/*.ts` |
 | **Ruby** | HTTP client | `lib/basecamp/generated/services/*.rb` |
 | **Swift** | `URLSession` via `Transport` protocol | `Sources/Basecamp/Generated/Services/*.swift` |
+| **Kotlin** | Ktor via `BaseService` | `sdk/src/commonMain/kotlin/.../generated/services/*.kt` |
 
 All 175 operations across 38 services are generated. Hand-written code is limited to infrastructure:
 
-| Purpose | TypeScript | Ruby | Swift |
-|---------|-----------|------|-------|
-| HTTP helpers, pagination, hooks | `src/services/base.ts` | `lib/basecamp/services/base_service.rb` | `Sources/Basecamp/Services/BaseService.swift` |
-| OAuth flows (not in OpenAPI spec) | `src/services/authorization.ts` | `lib/basecamp/services/authorization_service.rb` | — |
+| Purpose | TypeScript | Ruby | Swift | Kotlin |
+|---------|-----------|------|-------|--------|
+| HTTP helpers, pagination, hooks | `src/services/base.ts` | `lib/basecamp/services/base_service.rb` | `Sources/Basecamp/Services/BaseService.swift` | `sdk/.../services/BaseService.kt` |
+| OAuth flows (not in OpenAPI spec) | `src/services/authorization.ts` | `lib/basecamp/services/authorization_service.rb` | — | `sdk/.../oauth/*.kt` |
 
 Other hand-written service files in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) are NOT loaded at runtime. They exist only as reference implementations.
 
@@ -183,7 +185,7 @@ After any Smithy spec change, run the full pipeline:
 make smithy-build && make -C go generate && make url-routes && \
   make ts-generate && make ts-generate-services && \
   make rb-generate && make rb-generate-services && \
-  make swift-generate
+  make swift-generate && make kt-generate-services
 ```
 
 Or `make generate` if it cascades. Never commit a Smithy change without regenerating all downstream artifacts. Never assume "I'll regenerate later" — regenerate now, or the drift compounds.
@@ -191,7 +193,7 @@ Or `make generate` if it cascades. Never commit a Smithy change without regenera
 ### Invariants
 
 1. **`openapi.json` must always reflect the current Smithy spec.** Run `make smithy-build` after any change to `spec/basecamp.smithy` or `spec/overlays/*.smithy`.
-2. **Service generator mappings must stay current.** Both `typescript/scripts/generate-services.ts` and `ruby/scripts/generate-services.rb` have hardcoded operation-to-service mappings. Update them for new/renamed/removed operations. Treat unmapped-operation warnings as errors.
+2. **Service generator mappings must stay current.** `typescript/scripts/generate-services.ts`, `ruby/scripts/generate-services.rb`, and `kotlin/generator/.../Config.kt` all have hardcoded `TAG_TO_SERVICE` mappings. Update them for new/renamed/removed operations. Treat unmapped-operation warnings as errors.
 3. **Tags in `spec/overlays/tags.smithy` control service grouping.** Every new operation needs a tag or it won't appear in any generated service.
 4. **Hand-written Go service methods must use generated client types.** Field names, method signatures, and request/response body types come from `go/pkg/generated/client.gen.go`.
 
@@ -254,7 +256,7 @@ Use `make sync-status` to see upstream diffs since last sync.
 
 ### Pre-Merge Verification
 
-Run `make go-check-drift` (included in `make check`) and verify:
+Run `make go-check-drift` and `make kt-check-drift` (both included in `make check`) and verify:
 - No new UNWRAPPED operations unless intentionally deferred (document why in PR)
 - No MISSING operations (service layer calling non-existent generated methods)
 
