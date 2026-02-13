@@ -216,7 +216,19 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Publish to GitHub Packages
-        run: ./gradlew :basecamp-sdk:publish
+        shell: bash
+        run: |
+          set +o errexit
+          ./gradlew :basecamp-sdk:publish 2>&1 | tee publish.log
+          status=${PIPESTATUS[0]}
+          set -o errexit
+          if [ "$status" -ne 0 ]; then
+            if grep -q "status code 409" publish.log; then
+              echo "Version already published — skipping"
+            else
+              exit "$status"
+            fi
+          fi
         env:
           GITHUB_USER: x-access-token
           GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
