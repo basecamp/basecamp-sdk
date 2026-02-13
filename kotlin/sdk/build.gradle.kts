@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.basecamp"
-version = "0.1.0"
+version = "0.1.1"
 
 kotlin {
     jvm()
@@ -19,7 +19,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
         }
         jvmMain.dependencies {
-            implementation(libs.ktor.client.okhttp)
+            implementation(libs.ktor.client.cio)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
