@@ -12,7 +12,9 @@ module Basecamp
       # @param column_id [Integer] column id ID
       # @return [Hash] response data
       def get(project_id:, column_id:)
-        http_get(bucket_path(project_id, "/card_tables/columns/#{column_id}")).json
+        with_operation(service: "cardcolumns", operation: "get", is_mutation: false, project_id: project_id, resource_id: column_id) do
+          http_get(bucket_path(project_id, "/card_tables/columns/#{column_id}")).json
+        end
       end
 
       # Update an existing column
@@ -22,7 +24,9 @@ module Basecamp
       # @param description [String, nil] description
       # @return [Hash] response data
       def update(project_id:, column_id:, title: nil, description: nil)
-        http_put(bucket_path(project_id, "/card_tables/columns/#{column_id}"), body: compact_params(title: title, description: description)).json
+        with_operation(service: "cardcolumns", operation: "update", is_mutation: true, project_id: project_id, resource_id: column_id) do
+          http_put(bucket_path(project_id, "/card_tables/columns/#{column_id}"), body: compact_params(title: title, description: description)).json
+        end
       end
 
       # Set the color of a column
@@ -31,7 +35,9 @@ module Basecamp
       # @param color [String] Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown
       # @return [Hash] response data
       def set_color(project_id:, column_id:, color:)
-        http_put(bucket_path(project_id, "/card_tables/columns/#{column_id}/color.json"), body: compact_params(color: color)).json
+        with_operation(service: "cardcolumns", operation: "set_color", is_mutation: true, project_id: project_id, resource_id: column_id) do
+          http_put(bucket_path(project_id, "/card_tables/columns/#{column_id}/color.json"), body: compact_params(color: color)).json
+        end
       end
 
       # Enable on-hold section in a column
@@ -39,7 +45,9 @@ module Basecamp
       # @param column_id [Integer] column id ID
       # @return [Hash] response data
       def enable_on_hold(project_id:, column_id:)
-        http_post(bucket_path(project_id, "/card_tables/columns/#{column_id}/on_hold.json")).json
+        with_operation(service: "cardcolumns", operation: "enable_on_hold", is_mutation: true, project_id: project_id, resource_id: column_id) do
+          http_post(bucket_path(project_id, "/card_tables/columns/#{column_id}/on_hold.json")).json
+        end
       end
 
       # Disable on-hold section in a column
@@ -47,7 +55,9 @@ module Basecamp
       # @param column_id [Integer] column id ID
       # @return [Hash] response data
       def disable_on_hold(project_id:, column_id:)
-        http_delete(bucket_path(project_id, "/card_tables/columns/#{column_id}/on_hold.json")).json
+        with_operation(service: "cardcolumns", operation: "disable_on_hold", is_mutation: true, project_id: project_id, resource_id: column_id) do
+          http_delete(bucket_path(project_id, "/card_tables/columns/#{column_id}/on_hold.json")).json
+        end
       end
 
       # Subscribe to a card column (watch for changes)
@@ -55,8 +65,10 @@ module Basecamp
       # @param column_id [Integer] column id ID
       # @return [void]
       def subscribe_to_column(project_id:, column_id:)
-        http_post(bucket_path(project_id, "/card_tables/lists/#{column_id}/subscription.json"))
-        nil
+        with_operation(service: "cardcolumns", operation: "subscribe_to_column", is_mutation: true, project_id: project_id, resource_id: column_id) do
+          http_post(bucket_path(project_id, "/card_tables/lists/#{column_id}/subscription.json"))
+          nil
+        end
       end
 
       # Unsubscribe from a card column (stop watching for changes)
@@ -64,8 +76,10 @@ module Basecamp
       # @param column_id [Integer] column id ID
       # @return [void]
       def unsubscribe_from_column(project_id:, column_id:)
-        http_delete(bucket_path(project_id, "/card_tables/lists/#{column_id}/subscription.json"))
-        nil
+        with_operation(service: "cardcolumns", operation: "unsubscribe_from_column", is_mutation: true, project_id: project_id, resource_id: column_id) do
+          http_delete(bucket_path(project_id, "/card_tables/lists/#{column_id}/subscription.json"))
+          nil
+        end
       end
 
       # Create a column in a card table
@@ -75,7 +89,9 @@ module Basecamp
       # @param description [String, nil] description
       # @return [Hash] response data
       def create(project_id:, card_table_id:, title:, description: nil)
-        http_post(bucket_path(project_id, "/card_tables/#{card_table_id}/columns.json"), body: compact_params(title: title, description: description)).json
+        with_operation(service: "cardcolumns", operation: "create", is_mutation: true, project_id: project_id, resource_id: card_table_id) do
+          http_post(bucket_path(project_id, "/card_tables/#{card_table_id}/columns.json"), body: compact_params(title: title, description: description)).json
+        end
       end
 
       # Move a column within a card table
@@ -86,8 +102,10 @@ module Basecamp
       # @param position [Integer, nil] position
       # @return [void]
       def move(project_id:, card_table_id:, source_id:, target_id:, position: nil)
-        http_post(bucket_path(project_id, "/card_tables/#{card_table_id}/moves.json"), body: compact_params(source_id: source_id, target_id: target_id, position: position))
-        nil
+        with_operation(service: "cardcolumns", operation: "move", is_mutation: true, project_id: project_id, resource_id: card_table_id) do
+          http_post(bucket_path(project_id, "/card_tables/#{card_table_id}/moves.json"), body: compact_params(source_id: source_id, target_id: target_id, position: position))
+          nil
+        end
       end
     end
   end

@@ -15,10 +15,13 @@ loader.collapse("#{__dir__}/basecamp/generated")
 
 # Ignore errors.rb - it defines multiple classes, loaded explicitly below
 loader.ignore("#{__dir__}/basecamp/errors.rb")
+# Ignore operation_info.rb - defines both OperationInfo and OperationResult
+loader.ignore("#{__dir__}/basecamp/operation_info.rb")
 loader.setup
 
 # Load infrastructure that generated services depend on
 require_relative "basecamp/errors"
+require_relative "basecamp/operation_info"
 require_relative "basecamp/services/base_service"
 require_relative "basecamp/services/authorization_service"
 

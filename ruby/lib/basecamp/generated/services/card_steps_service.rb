@@ -14,8 +14,10 @@ module Basecamp
       # @param position [Integer] 0-indexed position
       # @return [void]
       def reposition(project_id:, card_id:, source_id:, position:)
-        http_post(bucket_path(project_id, "/card_tables/cards/#{card_id}/positions.json"), body: compact_params(source_id: source_id, position: position))
-        nil
+        with_operation(service: "cardsteps", operation: "reposition", is_mutation: true, project_id: project_id, resource_id: card_id) do
+          http_post(bucket_path(project_id, "/card_tables/cards/#{card_id}/positions.json"), body: compact_params(source_id: source_id, position: position))
+          nil
+        end
       end
 
       # Create a step on a card
@@ -26,7 +28,9 @@ module Basecamp
       # @param assignees [Array, nil] assignees
       # @return [Hash] response data
       def create(project_id:, card_id:, title:, due_on: nil, assignees: nil)
-        http_post(bucket_path(project_id, "/card_tables/cards/#{card_id}/steps.json"), body: compact_params(title: title, due_on: due_on, assignees: assignees)).json
+        with_operation(service: "cardsteps", operation: "create", is_mutation: true, project_id: project_id, resource_id: card_id) do
+          http_post(bucket_path(project_id, "/card_tables/cards/#{card_id}/steps.json"), body: compact_params(title: title, due_on: due_on, assignees: assignees)).json
+        end
       end
 
       # Update an existing step
@@ -37,7 +41,9 @@ module Basecamp
       # @param assignees [Array, nil] assignees
       # @return [Hash] response data
       def update(project_id:, step_id:, title: nil, due_on: nil, assignees: nil)
-        http_put(bucket_path(project_id, "/card_tables/steps/#{step_id}"), body: compact_params(title: title, due_on: due_on, assignees: assignees)).json
+        with_operation(service: "cardsteps", operation: "update", is_mutation: true, project_id: project_id, resource_id: step_id) do
+          http_put(bucket_path(project_id, "/card_tables/steps/#{step_id}"), body: compact_params(title: title, due_on: due_on, assignees: assignees)).json
+        end
       end
 
       # Set card step completion status (PUT with completion: "on" to complete, "" to uncomplete)
@@ -46,7 +52,9 @@ module Basecamp
       # @param completion [String] Set to "on" to complete the step, "" (empty) to uncomplete
       # @return [Hash] response data
       def set_completion(project_id:, step_id:, completion:)
-        http_put(bucket_path(project_id, "/card_tables/steps/#{step_id}/completions.json"), body: compact_params(completion: completion)).json
+        with_operation(service: "cardsteps", operation: "set_completion", is_mutation: true, project_id: project_id, resource_id: step_id) do
+          http_put(bucket_path(project_id, "/card_tables/steps/#{step_id}/completions.json"), body: compact_params(completion: completion)).json
+        end
       end
     end
   end

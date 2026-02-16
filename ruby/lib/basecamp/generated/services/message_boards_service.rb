@@ -12,7 +12,9 @@ module Basecamp
       # @param board_id [Integer] board id ID
       # @return [Hash] response data
       def get(project_id:, board_id:)
-        http_get(bucket_path(project_id, "/message_boards/#{board_id}")).json
+        with_operation(service: "messageboards", operation: "get", is_mutation: false, project_id: project_id, resource_id: board_id) do
+          http_get(bucket_path(project_id, "/message_boards/#{board_id}")).json
+        end
       end
     end
   end

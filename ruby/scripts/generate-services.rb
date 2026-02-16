@@ -515,7 +515,7 @@ class ServiceGenerator
 
     service[:operations].each do |op|
       lines << ''
-      lines.concat(generate_method(op))
+      lines.concat(generate_method(op, service_name: service[:name]))
     end
 
     lines << '    end'
@@ -526,7 +526,7 @@ class ServiceGenerator
     lines.join("\n")
   end
 
-  def generate_method(op)
+  def generate_method(op, service_name:)
     lines = []
 
     # Method signature
@@ -584,17 +584,45 @@ class ServiceGenerator
     # Build the path
     path_expr = build_path_expression(op)
 
-    # Generate the method body based on operation type
-    if op[:returns_void]
-      lines.concat(generate_void_method_body(op, path_expr))
-    elsif op[:returns_array] || op[:has_pagination]
-      lines.concat(generate_list_method_body(op, path_expr))
+    is_paginated = op[:returns_array] || op[:has_pagination]
+    hook_kwargs = build_hook_kwargs(op, service_name)
+
+    if is_paginated
+      # wrap_paginated defers hooks to actual iteration time (lazy-safe)
+      lines << "        wrap_paginated(#{hook_kwargs}) do"
+      body_lines = generate_list_method_body(op, path_expr)
+      body_lines.each { |l| lines << "  #{l}" }
+      lines << '        end'
     else
-      lines.concat(generate_get_method_body(op, path_expr))
+      lines << "        with_operation(#{hook_kwargs}) do"
+
+      body_lines = if op[:returns_void]
+        generate_void_method_body(op, path_expr)
+      else
+        generate_get_method_body(op, path_expr)
+      end
+
+      body_lines.each { |l| lines << "  #{l}" }
+      lines << '        end'
     end
 
     lines << '      end'
     lines
+  end
+
+  def build_hook_kwargs(op, service_name)
+    kwargs = []
+    kwargs << "service: \"#{service_name.downcase}\""
+    kwargs << "operation: \"#{op[:method_name]}\""
+    kwargs << "is_mutation: #{op[:is_mutation]}"
+
+    project_param = op[:path_params].find { |p| p[:name] == 'projectId' }
+    resource_param = op[:path_params].reject { |p| p[:name] == 'projectId' }.last
+
+    kwargs << "project_id: project_id" if project_param
+    kwargs << "resource_id: #{to_snake_case(resource_param[:name])}" if resource_param
+
+    kwargs.join(', ')
   end
 
   def build_params(op)

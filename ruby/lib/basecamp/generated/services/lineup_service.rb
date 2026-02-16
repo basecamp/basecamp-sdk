@@ -12,8 +12,10 @@ module Basecamp
       # @param date [String] date
       # @return [void]
       def create(name:, date:)
-        http_post("/lineup/markers.json", body: compact_params(name: name, date: date))
-        nil
+        with_operation(service: "lineup", operation: "create", is_mutation: true) do
+          http_post("/lineup/markers.json", body: compact_params(name: name, date: date))
+          nil
+        end
       end
 
       # Update an existing lineup marker
@@ -22,16 +24,20 @@ module Basecamp
       # @param date [String, nil] date
       # @return [void]
       def update(marker_id:, name: nil, date: nil)
-        http_put("/lineup/markers/#{marker_id}", body: compact_params(name: name, date: date))
-        nil
+        with_operation(service: "lineup", operation: "update", is_mutation: true, resource_id: marker_id) do
+          http_put("/lineup/markers/#{marker_id}", body: compact_params(name: name, date: date))
+          nil
+        end
       end
 
       # Delete a lineup marker
       # @param marker_id [Integer] marker id ID
       # @return [void]
       def delete(marker_id:)
-        http_delete("/lineup/markers/#{marker_id}")
-        nil
+        with_operation(service: "lineup", operation: "delete", is_mutation: true, resource_id: marker_id) do
+          http_delete("/lineup/markers/#{marker_id}")
+          nil
+        end
       end
     end
   end

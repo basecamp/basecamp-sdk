@@ -11,7 +11,9 @@ module Basecamp
       # @param project_id [Integer] project id ID
       # @return [Enumerator<Hash>] paginated results
       def list(project_id:)
-        paginate(bucket_path(project_id, "/client/correspondences.json"))
+        wrap_paginated(service: "clientcorrespondences", operation: "list", is_mutation: false, project_id: project_id) do
+          paginate(bucket_path(project_id, "/client/correspondences.json"))
+        end
       end
 
       # Get a single client correspondence by id
@@ -19,7 +21,9 @@ module Basecamp
       # @param correspondence_id [Integer] correspondence id ID
       # @return [Hash] response data
       def get(project_id:, correspondence_id:)
-        http_get(bucket_path(project_id, "/client/correspondences/#{correspondence_id}")).json
+        with_operation(service: "clientcorrespondences", operation: "get", is_mutation: false, project_id: project_id, resource_id: correspondence_id) do
+          http_get(bucket_path(project_id, "/client/correspondences/#{correspondence_id}")).json
+        end
       end
     end
   end

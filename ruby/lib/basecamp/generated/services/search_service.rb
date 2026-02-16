@@ -13,14 +13,18 @@ module Basecamp
       # @param page [Integer, nil] page
       # @return [Enumerator<Hash>] paginated results
       def search(query:, sort: nil, page: nil)
-        params = compact_params(query: query, sort: sort, page: page)
-        paginate("/search.json", params: params)
+        wrap_paginated(service: "search", operation: "search", is_mutation: false) do
+          params = compact_params(query: query, sort: sort, page: page)
+          paginate("/search.json", params: params)
+        end
       end
 
       # Get search metadata (available filter options)
       # @return [Hash] response data
       def metadata()
-        http_get("/searches/metadata.json").json
+        with_operation(service: "search", operation: "metadata", is_mutation: false) do
+          http_get("/searches/metadata.json").json
+        end
       end
     end
   end

@@ -125,3 +125,46 @@ extension BasecampHooks {
 public struct NoopHooks: BasecampHooks, Sendable {
     public init() {}
 }
+
+/// Composes multiple ``BasecampHooks`` implementations into one.
+///
+/// Start events are called in order; end events are called in reverse order.
+///
+/// ```swift
+/// let client = BasecampClient(
+///     accessToken: "token",
+///     userAgent: "app/1.0",
+///     hooks: ChainHooks(LoggingHooks(), MetricsHooks())
+/// )
+/// ```
+public struct ChainHooks: BasecampHooks {
+    private let hooks: [any BasecampHooks]
+
+    public init(_ hooks: any BasecampHooks...) {
+        self.hooks = hooks
+    }
+
+    public init(_ hooks: [any BasecampHooks]) {
+        self.hooks = hooks
+    }
+
+    public func onOperationStart(_ info: OperationInfo) {
+        for hook in hooks { hook.onOperationStart(info) }
+    }
+
+    public func onOperationEnd(_ info: OperationInfo, result: OperationResult) {
+        for hook in hooks.reversed() { hook.onOperationEnd(info, result: result) }
+    }
+
+    public func onRequestStart(_ info: RequestInfo) {
+        for hook in hooks { hook.onRequestStart(info) }
+    }
+
+    public func onRequestEnd(_ info: RequestInfo, result: RequestResult) {
+        for hook in hooks.reversed() { hook.onRequestEnd(info, result: result) }
+    }
+
+    public func onRetry(_ info: RequestInfo, attempt: Int, error: any Error, delaySeconds: TimeInterval) {
+        for hook in hooks { hook.onRetry(info, attempt: attempt, error: error, delaySeconds: delaySeconds) }
+    }
+}

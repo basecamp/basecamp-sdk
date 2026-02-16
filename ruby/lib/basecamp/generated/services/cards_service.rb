@@ -12,7 +12,9 @@ module Basecamp
       # @param card_id [Integer] card id ID
       # @return [Hash] response data
       def get(project_id:, card_id:)
-        http_get(bucket_path(project_id, "/card_tables/cards/#{card_id}")).json
+        with_operation(service: "cards", operation: "get", is_mutation: false, project_id: project_id, resource_id: card_id) do
+          http_get(bucket_path(project_id, "/card_tables/cards/#{card_id}")).json
+        end
       end
 
       # Update an existing card
@@ -24,7 +26,9 @@ module Basecamp
       # @param assignee_ids [Array, nil] assignee ids
       # @return [Hash] response data
       def update(project_id:, card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil)
-        http_put(bucket_path(project_id, "/card_tables/cards/#{card_id}"), body: compact_params(title: title, content: content, due_on: due_on, assignee_ids: assignee_ids)).json
+        with_operation(service: "cards", operation: "update", is_mutation: true, project_id: project_id, resource_id: card_id) do
+          http_put(bucket_path(project_id, "/card_tables/cards/#{card_id}"), body: compact_params(title: title, content: content, due_on: due_on, assignee_ids: assignee_ids)).json
+        end
       end
 
       # Move a card to a different column
@@ -33,8 +37,10 @@ module Basecamp
       # @param column_id [Integer] column id
       # @return [void]
       def move(project_id:, card_id:, column_id:)
-        http_post(bucket_path(project_id, "/card_tables/cards/#{card_id}/moves.json"), body: compact_params(column_id: column_id))
-        nil
+        with_operation(service: "cards", operation: "move", is_mutation: true, project_id: project_id, resource_id: card_id) do
+          http_post(bucket_path(project_id, "/card_tables/cards/#{card_id}/moves.json"), body: compact_params(column_id: column_id))
+          nil
+        end
       end
 
       # List cards in a column
@@ -42,7 +48,9 @@ module Basecamp
       # @param column_id [Integer] column id ID
       # @return [Enumerator<Hash>] paginated results
       def list(project_id:, column_id:)
-        paginate(bucket_path(project_id, "/card_tables/lists/#{column_id}/cards.json"))
+        wrap_paginated(service: "cards", operation: "list", is_mutation: false, project_id: project_id, resource_id: column_id) do
+          paginate(bucket_path(project_id, "/card_tables/lists/#{column_id}/cards.json"))
+        end
       end
 
       # Create a card in a column
@@ -54,7 +62,9 @@ module Basecamp
       # @param notify [Boolean, nil] notify
       # @return [Hash] response data
       def create(project_id:, column_id:, title:, content: nil, due_on: nil, notify: nil)
-        http_post(bucket_path(project_id, "/card_tables/lists/#{column_id}/cards.json"), body: compact_params(title: title, content: content, due_on: due_on, notify: notify)).json
+        with_operation(service: "cards", operation: "create", is_mutation: true, project_id: project_id, resource_id: column_id) do
+          http_post(bucket_path(project_id, "/card_tables/lists/#{column_id}/cards.json"), body: compact_params(title: title, content: content, due_on: due_on, notify: notify)).json
+        end
       end
     end
   end
