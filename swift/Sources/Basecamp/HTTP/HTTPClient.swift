@@ -10,7 +10,7 @@ import Foundation
 /// 4. Retry with exponential backoff + jitter on 429/503
 package final class HTTPClient: Sendable {
     private let transport: any Transport
-    private let tokenProvider: any TokenProvider
+    private let authStrategy: any AuthStrategy
     private let config: BasecampConfig
     private let hooks: any BasecampHooks
     private let cache: ETagCache?
@@ -20,13 +20,13 @@ package final class HTTPClient: Sendable {
 
     package init(
         transport: any Transport,
-        tokenProvider: any TokenProvider,
+        authStrategy: any AuthStrategy,
         config: BasecampConfig,
         hooks: any BasecampHooks,
         cache: ETagCache?
     ) {
         self.transport = transport
-        self.tokenProvider = tokenProvider
+        self.authStrategy = authStrategy
         self.config = config
         self.hooks = hooks
         self.cache = cache
@@ -58,8 +58,7 @@ package final class HTTPClient: Sendable {
         request.timeoutInterval = config.timeoutInterval
 
         // Set auth and standard headers
-        let token = try await tokenProvider.accessToken()
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        try await authStrategy.authenticate(&request)
         request.setValue(config.userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
@@ -139,9 +138,8 @@ package final class HTTPClient: Sendable {
 
                     try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
 
-                    // Refresh token for retry
-                    let freshToken = try await tokenProvider.accessToken()
-                    request.setValue("Bearer \(freshToken)", forHTTPHeaderField: "Authorization")
+                    // Re-authenticate for retry (e.g. refresh expired token)
+                    try await authStrategy.authenticate(&request)
                     continue
                 }
 
@@ -189,8 +187,7 @@ package final class HTTPClient: Sendable {
         request.httpMethod = "GET"
         request.timeoutInterval = config.timeoutInterval
 
-        let token = try await tokenProvider.accessToken()
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        try await authStrategy.authenticate(&request)
         request.setValue(config.userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 

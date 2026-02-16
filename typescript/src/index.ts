@@ -39,6 +39,9 @@ export {
   type RawClient,
 } from "./client.js";
 
+// Authentication strategies
+export { type AuthStrategy, BearerAuth, bearerAuth } from "./auth-strategy.js";
+
 // Pagination helpers
 export { fetchAllPages, paginateAll } from "./client.js";
 

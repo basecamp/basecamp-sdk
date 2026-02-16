@@ -15,12 +15,15 @@ loader.collapse("#{__dir__}/basecamp/generated")
 
 # Ignore errors.rb - it defines multiple classes, loaded explicitly below
 loader.ignore("#{__dir__}/basecamp/errors.rb")
+# Ignore auth_strategy.rb - defines both AuthStrategy and BearerAuth
+loader.ignore("#{__dir__}/basecamp/auth_strategy.rb")
 # Ignore operation_info.rb - defines both OperationInfo and OperationResult
 loader.ignore("#{__dir__}/basecamp/operation_info.rb")
 loader.setup
 
 # Load infrastructure that generated services depend on
 require_relative "basecamp/errors"
+require_relative "basecamp/auth_strategy"
 require_relative "basecamp/operation_info"
 require_relative "basecamp/services/base_service"
 require_relative "basecamp/services/authorization_service"
@@ -67,28 +70,37 @@ module Basecamp
   #
   # This is a convenience method that creates a Client with the given options.
   #
-  # @param access_token [String] OAuth access token
+  # @param access_token [String, nil] OAuth access token
+  # @param auth [AuthStrategy, nil] custom authentication strategy
   # @param account_id [String, nil] Basecamp account ID (optional)
   # @param base_url [String] Base URL for API requests
   # @param hooks [Hooks, nil] Observability hooks
   # @return [Client, AccountClient] Client if no account_id, AccountClient if account_id provided
   #
-  # @example With account ID
+  # @example With access token
   #   client = Basecamp.client(access_token: "abc123", account_id: "12345")
   #   projects = client.projects.list.to_a
   #
-  # @example Without account ID
-  #   client = Basecamp.client(access_token: "abc123")
-  #   account = client.for_account("12345")
+  # @example With custom auth strategy
+  #   client = Basecamp.client(auth: MyCustomAuth.new, account_id: "12345")
   def self.client(
-    access_token:,
+    access_token: nil,
+    auth: nil,
     account_id: nil,
     base_url: Config::DEFAULT_BASE_URL,
     hooks: nil
   )
+    raise ArgumentError, "provide either access_token or auth, not both" if access_token && auth
+    raise ArgumentError, "provide access_token or auth" if !access_token && !auth
+
     config = Config.new(base_url: base_url)
-    token_provider = StaticTokenProvider.new(access_token)
-    client = Client.new(config: config, token_provider: token_provider, hooks: hooks)
+
+    client = if auth
+      Client.new(config: config, auth_strategy: auth, hooks: hooks)
+    else
+      token_provider = StaticTokenProvider.new(access_token)
+      Client.new(config: config, token_provider: token_provider, hooks: hooks)
+    end
 
     account_id ? client.for_account(account_id) : client
   end

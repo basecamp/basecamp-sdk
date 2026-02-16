@@ -14,6 +14,7 @@ import type { BasecampHooks, RequestInfo, RequestResult } from "./hooks.js";
 import { BasecampError } from "./errors.js";
 import { isLocalhost } from "./security.js";
 import { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
+import { type AuthStrategy, bearerAuth } from "./auth-strategy.js";
 
 // Use createRequire for JSON import (Node 18+ compatible)
 const require = createRequire(import.meta.url);
@@ -182,7 +183,9 @@ export interface BasecampClientOptions {
   /** Basecamp account ID (found in your Basecamp URL) */
   accountId: string;
   /** OAuth access token or async function that returns one */
-  accessToken: TokenProvider;
+  accessToken?: TokenProvider;
+  /** Authentication strategy (alternative to accessToken for custom auth schemes) */
+  auth?: AuthStrategy;
   /** Base URL override (defaults to https://3.basecampapi.com/{accountId}) */
   baseUrl?: string;
   /** User-Agent header (defaults to basecamp-sdk-ts/VERSION) */
@@ -220,12 +223,23 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   const {
     accountId,
     accessToken,
+    auth,
     baseUrl = `https://3.basecampapi.com/${accountId}`,
     userAgent = DEFAULT_USER_AGENT,
     enableCache = false,
     enableRetry = true,
     hooks,
   } = options;
+
+  // Validate auth options: exactly one of auth or accessToken must be provided
+  if (auth && accessToken) {
+    throw new BasecampError("usage", "Provide either 'auth' or 'accessToken', not both");
+  }
+  if (!auth && !accessToken) {
+    throw new BasecampError("usage", "Either 'auth' or 'accessToken' is required");
+  }
+
+  const authStrategy: AuthStrategy = auth ?? bearerAuth(accessToken!);
 
   // Validate configuration (skip HTTPS check for localhost in dev/test)
   if (baseUrl) {
@@ -243,7 +257,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   const client = createClient<paths>({ baseUrl });
 
   // Apply middleware in order: auth first, then hooks, then cache, then retry
-  client.use(createAuthMiddleware(accessToken, userAgent));
+  client.use(createAuthMiddleware(authStrategy, userAgent));
 
   if (hooks) {
     client.use(createHooksMiddleware(hooks));
@@ -272,15 +286,12 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 
   // Create fetchPage closure for pagination — uses same auth & User-Agent as main client
   const fetchPage = async (url: string): Promise<Response> => {
-    const token =
-      typeof accessToken === "function" ? await accessToken() : accessToken;
-    return fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "User-Agent": userAgent,
-        Accept: "application/json",
-      },
+    const headers = new Headers({
+      "User-Agent": userAgent,
+      Accept: "application/json",
     });
+    await authStrategy.authenticate(headers);
+    return fetch(url, { headers });
   };
 
   // Add lazy-initialized service accessors
@@ -305,7 +316,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("todolists", () => new TodolistsService(client, hooks, fetchPage));
   defineService("todosets", () => new TodosetsService(client, hooks, fetchPage));
   defineService("people", () => new PeopleService(client, hooks, fetchPage));
-  defineService("authorization", () => new AuthorizationService(client, hooks, accessToken, userAgent));
+  defineService("authorization", () => new AuthorizationService(client, hooks, authStrategy, userAgent));
   defineService("messages", () => new MessagesService(client, hooks, fetchPage));
   defineService("comments", () => new CommentsService(client, hooks, fetchPage));
   defineService("campfires", () => new CampfiresService(client, hooks, fetchPage));
@@ -347,13 +358,10 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 // Auth Middleware
 // =============================================================================
 
-function createAuthMiddleware(tokenProvider: TokenProvider, userAgent: string): Middleware {
+function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string): Middleware {
   return {
     async onRequest({ request }) {
-      const token =
-        typeof tokenProvider === "function" ? await tokenProvider() : tokenProvider;
-
-      request.headers.set("Authorization", `Bearer ${token}`);
+      await authStrategy.authenticate(request.headers);
       request.headers.set("User-Agent", userAgent);
       // Only set Content-Type if not already set (preserves binary uploads, etc.)
       if (!request.headers.has("Content-Type")) {
