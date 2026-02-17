@@ -35,13 +35,16 @@ module Basecamp
     # Creates a new Basecamp API client.
     #
     # @param config [Config] configuration settings
-    # @param token_provider [TokenProvider] OAuth token provider
+    # @param token_provider [TokenProvider, nil] OAuth token provider (deprecated, use auth_strategy)
+    # @param auth_strategy [AuthStrategy, nil] authentication strategy
     # @param hooks [Hooks, nil] observability hooks
-    def initialize(config:, token_provider:, hooks: nil)
+    def initialize(config:, token_provider: nil, auth_strategy: nil, hooks: nil)
+      raise ArgumentError, "provide either token_provider or auth_strategy, not both" if token_provider && auth_strategy
+      raise ArgumentError, "provide token_provider or auth_strategy" if !token_provider && !auth_strategy
+
       @config = config
-      @token_provider = token_provider
       @hooks = hooks || NoopHooks.new
-      @http = Http.new(config: config, token_provider: token_provider, hooks: @hooks)
+      @http = Http.new(config: config, token_provider: token_provider, auth_strategy: auth_strategy, hooks: @hooks)
       @mutex = Mutex.new
     end
 

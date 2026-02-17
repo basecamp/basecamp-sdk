@@ -7,6 +7,7 @@
 
 import { BaseService, type RawClient } from "./base.js";
 import type { BasecampHooks } from "../hooks.js";
+import type { AuthStrategy } from "../auth-strategy.js";
 
 /**
  * The authenticated user's identity.
@@ -124,17 +125,17 @@ const DEFAULT_AUTHORIZATION_ENDPOINT = "https://launchpad.37signals.com/authoriz
  * ```
  */
 export class AuthorizationService extends BaseService {
-  private accessToken: string | (() => Promise<string>);
+  private authStrategy: AuthStrategy;
   private userAgent: string;
 
   constructor(
     client: RawClient,
     hooks: BasecampHooks | undefined,
-    accessToken: string | (() => Promise<string>),
+    authStrategy: AuthStrategy,
     userAgent: string
   ) {
     super(client, hooks);
-    this.accessToken = accessToken;
+    this.authStrategy = authStrategy;
     this.userAgent = userAgent;
   }
 
@@ -171,20 +172,17 @@ export class AuthorizationService extends BaseService {
         isMutation: false,
       },
       async () => {
-        // Get the access token
-        const token =
-          typeof this.accessToken === "function"
-            ? await this.accessToken()
-            : this.accessToken;
+        // Build headers with auth strategy
+        const headers = new Headers({
+          "User-Agent": this.userAgent,
+          Accept: "application/json",
+        });
+        await this.authStrategy.authenticate(headers);
 
         // Make direct fetch request to Launchpad endpoint
         const response = await fetch(endpoint, {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "User-Agent": this.userAgent,
-            Accept: "application/json",
-          },
+          headers,
         });
 
         if (!response.ok) {

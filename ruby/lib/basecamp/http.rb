@@ -13,11 +13,13 @@ module Basecamp
     USER_AGENT = "basecamp-sdk-ruby/#{VERSION}".freeze
 
     # @param config [Config] configuration settings
-    # @param token_provider [TokenProvider] OAuth token provider
+    # @param token_provider [TokenProvider, nil] OAuth token provider (deprecated, use auth_strategy)
+    # @param auth_strategy [AuthStrategy, nil] authentication strategy
     # @param hooks [Hooks] observability hooks
-    def initialize(config:, token_provider:, hooks: nil)
+    def initialize(config:, token_provider: nil, auth_strategy: nil, hooks: nil)
       @config = config
-      @token_provider = token_provider
+      @auth_strategy = auth_strategy || BearerAuth.new(token_provider)
+      @token_provider = token_provider || (@auth_strategy.is_a?(BearerAuth) ? @auth_strategy.token_provider : nil)
       @hooks = hooks || NoopHooks.new
       @faraday = build_faraday_client
     end
@@ -263,11 +265,12 @@ module Basecamp
     end
 
     def request_headers
-      {
-        "Authorization" => "Bearer #{@token_provider.access_token}",
+      headers = {
         "User-Agent" => USER_AGENT,
         "Accept" => "application/json"
       }
+      @auth_strategy.authenticate(headers)
+      headers
     end
 
     def single_request_raw(method, url, body:, content_type:, attempt:)
@@ -319,7 +322,7 @@ module Basecamp
       case status
       when 401
         # Try token refresh
-        if @token_provider.refreshable? && @token_provider.refresh
+        if @token_provider&.refreshable? && @token_provider.refresh
           raise Basecamp::AuthError.new("Token refreshed", hint: "Retry the request")
         end
 

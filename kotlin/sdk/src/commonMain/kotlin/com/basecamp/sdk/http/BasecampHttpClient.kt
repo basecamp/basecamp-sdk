@@ -6,6 +6,7 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.client.plugins.ResponseException
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.json.Json
 
@@ -18,7 +19,7 @@ import kotlinx.serialization.json.Json
  */
 internal class BasecampHttpClient(
     val httpClient: HttpClient,
-    private val tokenProvider: TokenProvider,
+    private val authStrategy: AuthStrategy,
     private val config: BasecampConfig,
     private val hooks: BasecampHooks,
     internal val json: Json,
@@ -33,16 +34,21 @@ internal class BasecampHttpClient(
         url: String,
         body: String? = null,
     ): HttpResponse {
-        val token = tokenProvider.accessToken()
-        return httpClient.request(url) {
-            this.method = method
-            header(HttpHeaders.Authorization, "Bearer $token")
-            header(HttpHeaders.UserAgent, config.userAgent)
-            header(HttpHeaders.Accept, "application/json")
-            if (body != null) {
-                header(HttpHeaders.ContentType, "application/json")
-                setBody(body)
+        return try {
+            httpClient.request(url) {
+                this.method = method
+                authStrategy.authenticate(this)
+                header(HttpHeaders.UserAgent, config.userAgent)
+                header(HttpHeaders.Accept, "application/json")
+                if (body != null) {
+                    header(HttpHeaders.ContentType, "application/json")
+                    setBody(body)
+                }
             }
+        } catch (e: ResponseException) {
+            // External HttpClient with expectSuccess=true throws on non-2xx.
+            // Return the response so the SDK's error classification runs.
+            e.response
         }
     }
 
@@ -132,14 +138,17 @@ internal class BasecampHttpClient(
         data: ByteArray,
         contentType: String,
     ): HttpResponse {
-        val token = tokenProvider.accessToken()
-        return httpClient.request(url) {
-            this.method = method
-            header(HttpHeaders.Authorization, "Bearer $token")
-            header(HttpHeaders.UserAgent, config.userAgent)
-            header(HttpHeaders.Accept, "application/json")
-            header(HttpHeaders.ContentType, contentType)
-            setBody(data)
+        return try {
+            httpClient.request(url) {
+                this.method = method
+                authStrategy.authenticate(this)
+                header(HttpHeaders.UserAgent, config.userAgent)
+                header(HttpHeaders.Accept, "application/json")
+                header(HttpHeaders.ContentType, contentType)
+                setBody(data)
+            }
+        } catch (e: ResponseException) {
+            e.response
         }
     }
 

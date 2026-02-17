@@ -31,6 +31,7 @@ const DefaultUserAgent = "basecamp-sdk-go/" + Version
 type Client struct {
 	httpClient    *http.Client
 	tokenProvider TokenProvider
+	authStrategy  AuthStrategy
 	cfg           *Config
 	cache         *Cache
 	userAgent     string
@@ -151,6 +152,18 @@ func WithCache(cache *Cache) ClientOption {
 	}
 }
 
+// WithAuthStrategy sets a custom authentication strategy.
+// The default strategy is BearerAuth, which sets the Authorization header
+// with a Bearer token from the token provider.
+//
+// Use this to implement alternative auth schemes such as cookie-based auth,
+// API keys, or mutual TLS.
+func WithAuthStrategy(strategy AuthStrategy) ClientOption {
+	return func(client *Client) {
+		client.authStrategy = strategy
+	}
+}
+
 // NewClient creates a new API client with spec-driven defaults.
 //
 // The client automatically:
@@ -182,6 +195,11 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	// Apply options (may modify httpOpts)
 	for _, opt := range opts {
 		opt(c)
+	}
+
+	// Default to BearerAuth if no custom auth strategy was provided
+	if c.authStrategy == nil {
+		c.authStrategy = &BearerAuth{TokenProvider: c.tokenProvider}
 	}
 
 	// Create HTTP client with configured options
@@ -335,11 +353,9 @@ func (c *Client) initGeneratedClient() {
 	c.genOnce.Do(func() {
 		serverURL := strings.TrimSuffix(c.cfg.BaseURL, "/")
 		authEditor := func(ctx context.Context, req *http.Request) error {
-			token, err := c.tokenProvider.AccessToken(ctx)
-			if err != nil {
+			if err := c.authStrategy.Authenticate(ctx, req); err != nil {
 				return err
 			}
-			req.Header.Set("Authorization", "Bearer "+token)
 			req.Header.Set("User-Agent", c.userAgent)
 			// Only set Content-Type if not already set (preserves binary upload content types)
 			if req.Header.Get("Content-Type") == "" {
@@ -625,12 +641,6 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 	// Add attempt number to context for hooks in transport layer
 	ctx = contextWithAttempt(ctx, attempt)
 
-	// Get access token
-	token, err := c.tokenProvider.AccessToken(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	// Build request body
 	var bodyReader io.Reader
 	if body != nil {
@@ -647,15 +657,18 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+token)
+	if err := c.authStrategy.Authenticate(ctx, req); err != nil {
+		return nil, err
+	}
 	req.Header.Set("User-Agent", c.userAgent)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	// Add ETag for cached GET requests
+	// Add ETag for cached GET requests. Derive cache key from the Authorization
+	// header applied by the auth strategy, so each credential gets its own namespace.
 	var cacheKey string
 	if method == "GET" && c.cache != nil {
-		cacheKey = c.cache.Key(url, "", token) // URL already includes account when needed
+		cacheKey = c.cache.Key(url, "", req.Header.Get("Authorization")) // URL already includes account when needed
 		if etag := c.cache.GetETag(cacheKey); etag != "" {
 			req.Header.Set("If-None-Match", etag)
 			c.logger.Debug("cache conditional request", "etag", etag)

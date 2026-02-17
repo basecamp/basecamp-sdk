@@ -20,8 +20,11 @@ import kotlinx.serialization.json.Json
  * ```
  */
 class BasecampClientBuilder {
-    /** Token provider for authentication. Must be set before building. */
+    /** Token provider for authentication. Set via [accessToken]. */
     var tokenProvider: TokenProvider? = null
+
+    /** Custom authentication strategy. Mutually exclusive with [tokenProvider]. */
+    var authStrategy: AuthStrategy? = null
 
     /** Base URL for the API. Defaults to the production Basecamp API. */
     var baseUrl: String = BasecampConfig.DEFAULT_BASE_URL
@@ -41,6 +44,9 @@ class BasecampClientBuilder {
     /** Custom Ktor [HttpClientEngine] (e.g., for testing with MockEngine). */
     var engine: HttpClientEngine? = null
 
+    /** Pre-configured Ktor [HttpClient] to use instead of creating one internally. */
+    var httpClient: HttpClient? = null
+
     /** Set a static access token. */
     fun accessToken(token: String) {
         tokenProvider = StaticTokenProvider(token)
@@ -51,10 +57,24 @@ class BasecampClientBuilder {
         tokenProvider = TokenProvider { provider() }
     }
 
+    /** Set a custom authentication strategy. */
+    fun auth(strategy: AuthStrategy) {
+        authStrategy = strategy
+    }
+
     internal fun build(): BasecampClient {
-        val tp = requireNotNull(tokenProvider) {
-            "accessToken must be configured. Use accessToken(\"token\") or set tokenProvider."
+        require(tokenProvider == null || authStrategy == null) {
+            "Cannot set both accessToken and auth. Use one or the other."
         }
+        require(httpClient == null || engine == null) {
+            "Cannot set both httpClient and engine. Use one or the other."
+        }
+
+        val resolvedAuth = authStrategy
+            ?: tokenProvider?.let { BearerAuth(it) }
+            ?: throw IllegalArgumentException(
+                "Authentication must be configured. Use accessToken(\"token\") or auth(strategy)."
+            )
 
         val config = BasecampConfig(
             baseUrl = baseUrl,
@@ -71,7 +91,7 @@ class BasecampClientBuilder {
             }
         }
 
-        return BasecampClient(tp, config, hooks, engine)
+        return BasecampClient(resolvedAuth, config, hooks, engine, httpClient)
     }
 }
 
@@ -112,11 +132,15 @@ fun BasecampClient(block: BasecampClientBuilder.() -> Unit): BasecampClient =
  * Thread-safe after construction.
  */
 class BasecampClient internal constructor(
-    internal val tokenProvider: TokenProvider,
+    internal val authStrategy: AuthStrategy,
     internal val config: BasecampConfig,
     internal val hooks: BasecampHooks,
     engine: HttpClientEngine?,
+    externalHttpClient: HttpClient?,
 ) {
+    /** Whether the SDK created (and therefore owns) the underlying HttpClient. */
+    private val ownsHttpClient = externalHttpClient == null
+
     internal val json: Json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -124,12 +148,12 @@ class BasecampClient internal constructor(
     }
 
     internal val httpClient: BasecampHttpClient = BasecampHttpClient(
-        httpClient = if (engine != null) {
+        httpClient = externalHttpClient ?: if (engine != null) {
             HttpClient(engine) { configureClient() }
         } else {
             HttpClient { configureClient() }
         },
-        tokenProvider = tokenProvider,
+        authStrategy = authStrategy,
         config = config,
         hooks = hooks,
         json = json,
@@ -158,9 +182,15 @@ class BasecampClient internal constructor(
         return AccountClient(this, accountId)
     }
 
-    /** Shuts down the underlying HTTP client. Call when done using the SDK. */
+    /**
+     * Shuts down the underlying HTTP client, if the SDK created it.
+     * If a caller-provided [HttpClient] was passed to the builder, the SDK
+     * does not close it — the caller retains ownership.
+     */
     fun close() {
-        httpClient.httpClient.close()
+        if (ownsHttpClient) {
+            httpClient.httpClient.close()
+        }
     }
 }
 

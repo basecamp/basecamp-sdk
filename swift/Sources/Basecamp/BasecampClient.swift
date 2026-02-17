@@ -56,8 +56,35 @@ public final class BasecampClient: Sendable {
     ///   - config: Configuration options.
     ///   - hooks: Optional observability hooks.
     ///   - transport: Optional custom transport (for testing).
-    public init(
+    public convenience init(
         tokenProvider: any TokenProvider,
+        userAgent: String,
+        config: BasecampConfig = BasecampConfig(),
+        hooks: (any BasecampHooks)? = nil,
+        transport: (any Transport)? = nil
+    ) {
+        self.init(
+            auth: BearerAuth(tokenProvider: tokenProvider),
+            userAgent: userAgent,
+            config: config,
+            hooks: hooks,
+            transport: transport
+        )
+    }
+
+    /// Creates a client with a custom authentication strategy.
+    ///
+    /// Use this initializer for non-Bearer authentication schemes
+    /// such as cookie-based auth, API keys, or mutual TLS.
+    ///
+    /// - Parameters:
+    ///   - auth: An authentication strategy applied to every request.
+    ///   - userAgent: Required User-Agent identifying your app.
+    ///   - config: Configuration options.
+    ///   - hooks: Optional observability hooks.
+    ///   - transport: Optional custom transport (for testing).
+    public init(
+        auth: any AuthStrategy,
         userAgent: String,
         config: BasecampConfig = BasecampConfig(),
         hooks: (any BasecampHooks)? = nil,
@@ -88,7 +115,7 @@ public final class BasecampClient: Sendable {
         self.hooks = effectiveHooks
         self.httpClient = HTTPClient(
             transport: effectiveTransport,
-            tokenProvider: tokenProvider,
+            authStrategy: auth,
             config: effectiveConfig,
             hooks: effectiveHooks,
             cache: cache
