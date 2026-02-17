@@ -2732,7 +2732,7 @@ structure GetTimesheetEntryOutput {
 
 /// Create a timesheet entry on a recording
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/timesheet/entries.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/projects/{projectId}/recordings/{recordingId}/timesheet/entries.json", code: 201)
 operation CreateTimesheetEntry {
   input: CreateTimesheetEntryInput
   output: CreateTimesheetEntryOutput
