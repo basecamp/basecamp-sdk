@@ -7,20 +7,6 @@ module Basecamp
     # @generated from OpenAPI spec
     class TimesheetsService < BaseService
 
-      # Create a timesheet entry on a recording
-      # @param project_id [Integer] project id ID
-      # @param recording_id [Integer] recording id ID
-      # @param date [String] date
-      # @param hours [String] hours
-      # @param description [String, nil] description
-      # @param person_id [Integer, nil] person id
-      # @return [Hash] response data
-      def create(project_id:, recording_id:, date:, hours:, description: nil, person_id: nil)
-        with_operation(service: "timesheets", operation: "create", is_mutation: true, project_id: project_id, resource_id: recording_id) do
-          http_post(bucket_path(project_id, "/recordings/#{recording_id}/timesheet/entries.json"), body: compact_params(date: date, hours: hours, description: description, person_id: person_id)).json
-        end
-      end
-
       # Get timesheet for a specific recording
       # @param project_id [Integer] project id ID
       # @param recording_id [Integer] recording id ID
@@ -31,6 +17,20 @@ module Basecamp
       def for_recording(project_id:, recording_id:, from: nil, to: nil, person_id: nil)
         with_operation(service: "timesheets", operation: "for_recording", is_mutation: false, project_id: project_id, resource_id: recording_id) do
           http_get("/projects/#{project_id}/recordings/#{recording_id}/timesheet.json", params: compact_params(from: from, to: to, person_id: person_id)).json
+        end
+      end
+
+      # Create a timesheet entry on a recording
+      # @param project_id [Integer] project id ID
+      # @param recording_id [Integer] recording id ID
+      # @param date [String] date
+      # @param hours [String] hours
+      # @param description [String, nil] description
+      # @param person_id [Integer, nil] person id
+      # @return [Hash] response data
+      def create(project_id:, recording_id:, date:, hours:, description: nil, person_id: nil)
+        with_operation(service: "timesheets", operation: "create", is_mutation: true, project_id: project_id, resource_id: recording_id) do
+          http_post("/projects/#{project_id}/recordings/#{recording_id}/timesheet/entries.json", body: compact_params(date: date, hours: hours, description: description, person_id: person_id)).json
         end
       end
 

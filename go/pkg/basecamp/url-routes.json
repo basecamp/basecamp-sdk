@@ -1318,27 +1318,6 @@
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/recordings/{recordingId}/timesheet/entries",
-      "resource": "Schedule",
-      "operations": {
-        "POST": "CreateTimesheetEntry"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
       "pattern": "/{accountId}/buckets/{projectId}/recordings/{toolId}/position",
       "resource": "Automation",
       "operations": {
@@ -2018,6 +1997,27 @@
       "resource": "Schedule",
       "operations": {
         "GET": "GetRecordingTimesheet"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/projects/{projectId}/recordings/{recordingId}/timesheet/entries",
+      "resource": "Schedule",
+      "operations": {
+        "POST": "CreateTimesheetEntry"
       },
       "params": {
         "accountId": {

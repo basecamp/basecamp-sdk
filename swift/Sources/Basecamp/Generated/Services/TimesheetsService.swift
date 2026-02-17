@@ -43,7 +43,7 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
         return try await request(
             OperationInfo(service: "Timesheets", operation: "CreateTimesheetEntry", resourceType: "timesheet_entry", isMutation: true, projectId: projectId, resourceId: recordingId),
             method: "POST",
-            path: "/buckets/\(projectId)/recordings/\(recordingId)/timesheet/entries.json",
+            path: "/projects/\(projectId)/recordings/\(recordingId)/timesheet/entries.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "CreateTimesheetEntry")
         )

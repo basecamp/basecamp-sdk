@@ -13,33 +13,6 @@ import kotlinx.serialization.json.JsonElement
 class TimesheetsService(client: AccountClient) : BaseService(client) {
 
     /**
-     * Create a timesheet entry on a recording
-     * @param projectId The project ID
-     * @param recordingId The recording ID
-     * @param body Request body
-     */
-    suspend fun create(projectId: Long, recordingId: Long, body: CreateTimesheetEntryBody): JsonElement {
-        val info = OperationInfo(
-            service = "Timesheets",
-            operation = "CreateTimesheetEntry",
-            resourceType = "timesheet_entry",
-            isMutation = true,
-            projectId = projectId,
-            resourceId = recordingId,
-        )
-        return request(info, {
-            httpPost("/buckets/${projectId}/recordings/${recordingId}/timesheet/entries.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
-                put("date", kotlinx.serialization.json.JsonPrimitive(body.date))
-                put("hours", kotlinx.serialization.json.JsonPrimitive(body.hours))
-                body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
-                body.personId?.let { put("person_id", kotlinx.serialization.json.JsonPrimitive(it)) }
-            }), operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<JsonElement>(body)
-        }
-    }
-
-    /**
      * Get timesheet for a specific recording
      * @param projectId The project ID
      * @param recordingId The recording ID
@@ -61,6 +34,33 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
         )
         return request(info, {
             httpGet("/projects/${projectId}/recordings/${recordingId}/timesheet.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
+     * Create a timesheet entry on a recording
+     * @param projectId The project ID
+     * @param recordingId The recording ID
+     * @param body Request body
+     */
+    suspend fun create(projectId: Long, recordingId: Long, body: CreateTimesheetEntryBody): JsonElement {
+        val info = OperationInfo(
+            service = "Timesheets",
+            operation = "CreateTimesheetEntry",
+            resourceType = "timesheet_entry",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = recordingId,
+        )
+        return request(info, {
+            httpPost("/projects/${projectId}/recordings/${recordingId}/timesheet/entries.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("date", kotlinx.serialization.json.JsonPrimitive(body.date))
+                put("hours", kotlinx.serialization.json.JsonPrimitive(body.hours))
+                body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.personId?.let { put("person_id", kotlinx.serialization.json.JsonPrimitive(it)) }
+            }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<JsonElement>(body)
         }

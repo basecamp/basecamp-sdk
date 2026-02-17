@@ -340,14 +340,6 @@ data class CreateProjectFromTemplateBody(
     val description: String? = null
 )
 
-/** Request body for CreateTimesheetEntry. */
-data class CreateTimesheetEntryBody(
-    val date: String,
-    val hours: String,
-    val description: String? = null,
-    val personId: Long? = null
-)
-
 /** Options for GetRecordingTimesheet. */
 data class GetRecordingTimesheetOptions(
     val from: String? = null,
@@ -355,6 +347,14 @@ data class GetRecordingTimesheetOptions(
     val personId: Long? = null
 ) {
 }
+
+/** Request body for CreateTimesheetEntry. */
+data class CreateTimesheetEntryBody(
+    val date: String,
+    val hours: String,
+    val description: String? = null,
+    val personId: Long? = null
+)
 
 /** Options for GetProjectTimesheet. */
 data class GetProjectTimesheetOptions(

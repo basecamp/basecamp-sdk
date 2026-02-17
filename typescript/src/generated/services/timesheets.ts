@@ -14,6 +14,18 @@ import { Errors } from "../../errors.js";
 
 
 /**
+ * Options for forRecording.
+ */
+export interface ForRecordingTimesheetOptions {
+  /** From */
+  from?: string;
+  /** To */
+  to?: string;
+  /** Person id */
+  personId?: number;
+}
+
+/**
  * Request parameters for create.
  */
 export interface CreateTimesheetRequest {
@@ -23,18 +35,6 @@ export interface CreateTimesheetRequest {
   hours: string;
   /** Rich text description (HTML) */
   description?: string;
-  /** Person id */
-  personId?: number;
-}
-
-/**
- * Options for forRecording.
- */
-export interface ForRecordingTimesheetOptions {
-  /** From */
-  from?: string;
-  /** To */
-  to?: string;
   /** Person id */
   personId?: number;
 }
@@ -88,51 +88,6 @@ export interface ReportTimesheetOptions {
 export class TimesheetsService extends BaseService {
 
   /**
-   * Create a timesheet entry on a recording
-   * @param projectId - The project ID
-   * @param recordingId - The recording ID
-   * @param req - Timesheet_entry creation parameters
-   * @returns The timesheet_entry
-   * @throws {BasecampError} If required fields are missing or invalid
-   *
-   * @example
-   * ```ts
-   * const result = await client.timesheets.create(123, 123, { date: "example", hours: "example" });
-   * ```
-   */
-  async create(projectId: number, recordingId: number, req: CreateTimesheetRequest): Promise<components["schemas"]["CreateTimesheetEntryResponseContent"]> {
-    if (!req.date) {
-      throw Errors.validation("Date is required");
-    }
-    if (!req.hours) {
-      throw Errors.validation("Hours is required");
-    }
-    const response = await this.request(
-      {
-        service: "Timesheets",
-        operation: "CreateTimesheetEntry",
-        resourceType: "timesheet_entry",
-        isMutation: true,
-        projectId,
-        resourceId: recordingId,
-      },
-      () =>
-        this.client.POST("/buckets/{projectId}/recordings/{recordingId}/timesheet/entries.json", {
-          params: {
-            path: { projectId, recordingId },
-          },
-          body: {
-            date: req.date,
-            hours: req.hours,
-            description: req.description,
-            person_id: req.personId,
-          },
-        })
-    );
-    return response;
-  }
-
-  /**
    * Get timesheet for a specific recording
    * @param projectId - The project ID
    * @param recordingId - The recording ID
@@ -163,6 +118,51 @@ export class TimesheetsService extends BaseService {
         })
     );
     return response ?? [];
+  }
+
+  /**
+   * Create a timesheet entry on a recording
+   * @param projectId - The project ID
+   * @param recordingId - The recording ID
+   * @param req - Timesheet_entry creation parameters
+   * @returns The timesheet_entry
+   * @throws {BasecampError} If required fields are missing or invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.timesheets.create(123, 123, { date: "example", hours: "example" });
+   * ```
+   */
+  async create(projectId: number, recordingId: number, req: CreateTimesheetRequest): Promise<components["schemas"]["CreateTimesheetEntryResponseContent"]> {
+    if (!req.date) {
+      throw Errors.validation("Date is required");
+    }
+    if (!req.hours) {
+      throw Errors.validation("Hours is required");
+    }
+    const response = await this.request(
+      {
+        service: "Timesheets",
+        operation: "CreateTimesheetEntry",
+        resourceType: "timesheet_entry",
+        isMutation: true,
+        projectId,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.POST("/projects/{projectId}/recordings/{recordingId}/timesheet/entries.json", {
+          params: {
+            path: { projectId, recordingId },
+          },
+          body: {
+            date: req.date,
+            hours: req.hours,
+            description: req.description,
+            person_id: req.personId,
+          },
+        })
+    );
+    return response;
   }
 
   /**
