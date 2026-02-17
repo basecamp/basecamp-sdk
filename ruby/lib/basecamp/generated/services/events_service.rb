@@ -12,7 +12,9 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [Enumerator<Hash>] paginated results
       def list(project_id:, recording_id:)
-        paginate(bucket_path(project_id, "/recordings/#{recording_id}/events.json"))
+        wrap_paginated(service: "events", operation: "list", is_mutation: false, project_id: project_id, resource_id: recording_id) do
+          paginate(bucket_path(project_id, "/recordings/#{recording_id}/events.json"))
+        end
       end
     end
   end

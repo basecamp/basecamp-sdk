@@ -12,7 +12,9 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [Hash] response data
       def get(project_id:, recording_id:)
-        http_get(bucket_path(project_id, "/recordings/#{recording_id}")).json
+        with_operation(service: "recordings", operation: "get", is_mutation: false, project_id: project_id, resource_id: recording_id) do
+          http_get(bucket_path(project_id, "/recordings/#{recording_id}")).json
+        end
       end
 
       # Unarchive a recording (restore to active status)
@@ -20,8 +22,10 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [void]
       def unarchive(project_id:, recording_id:)
-        http_put(bucket_path(project_id, "/recordings/#{recording_id}/status/active.json"))
-        nil
+        with_operation(service: "recordings", operation: "unarchive", is_mutation: true, project_id: project_id, resource_id: recording_id) do
+          http_put(bucket_path(project_id, "/recordings/#{recording_id}/status/active.json"))
+          nil
+        end
       end
 
       # Archive a recording
@@ -29,8 +33,10 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [void]
       def archive(project_id:, recording_id:)
-        http_put(bucket_path(project_id, "/recordings/#{recording_id}/status/archived.json"))
-        nil
+        with_operation(service: "recordings", operation: "archive", is_mutation: true, project_id: project_id, resource_id: recording_id) do
+          http_put(bucket_path(project_id, "/recordings/#{recording_id}/status/archived.json"))
+          nil
+        end
       end
 
       # Trash a recording
@@ -38,8 +44,10 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [void]
       def trash(project_id:, recording_id:)
-        http_put(bucket_path(project_id, "/recordings/#{recording_id}/status/trashed.json"))
-        nil
+        with_operation(service: "recordings", operation: "trash", is_mutation: true, project_id: project_id, resource_id: recording_id) do
+          http_put(bucket_path(project_id, "/recordings/#{recording_id}/status/trashed.json"))
+          nil
+        end
       end
 
       # List recordings of a given type across projects
@@ -50,8 +58,10 @@ module Basecamp
       # @param direction [String, nil] asc|desc
       # @return [Enumerator<Hash>] paginated results
       def list(type:, bucket: nil, status: nil, sort: nil, direction: nil)
-        params = compact_params(type: type, bucket: bucket, status: status, sort: sort, direction: direction)
-        paginate("/projects/recordings.json", params: params)
+        wrap_paginated(service: "recordings", operation: "list", is_mutation: false) do
+          params = compact_params(type: type, bucket: bucket, status: status, sort: sort, direction: direction)
+          paginate("/projects/recordings.json", params: params)
+        end
       end
     end
   end

@@ -19,6 +19,21 @@ module Basecamp
   #
   #   client = Basecamp::Client.new(config: config, token_provider: provider, hooks: LoggingHooks.new)
   module Hooks
+    # Called when a service operation starts (e.g., projects.list, todos.create).
+    # @param info [OperationInfo] operation information
+    # @return [void]
+    def on_operation_start(info)
+      # Override in implementation
+    end
+
+    # Called when a service operation completes (success or failure).
+    # @param info [OperationInfo] operation information
+    # @param result [OperationResult] result information
+    # @return [void]
+    def on_operation_end(info, result)
+      # Override in implementation
+    end
+
     # Called when an HTTP request starts.
     # @param info [RequestInfo] request information
     # @return [void]

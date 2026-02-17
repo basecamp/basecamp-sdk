@@ -12,7 +12,9 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [Hash] response data
       def get(project_id:, recording_id:)
-        http_get(bucket_path(project_id, "/recordings/#{recording_id}/subscription.json")).json
+        with_operation(service: "subscriptions", operation: "get", is_mutation: false, project_id: project_id, resource_id: recording_id) do
+          http_get(bucket_path(project_id, "/recordings/#{recording_id}/subscription.json")).json
+        end
       end
 
       # Subscribe the current user to a recording
@@ -20,7 +22,9 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [Hash] response data
       def subscribe(project_id:, recording_id:)
-        http_post(bucket_path(project_id, "/recordings/#{recording_id}/subscription.json")).json
+        with_operation(service: "subscriptions", operation: "subscribe", is_mutation: true, project_id: project_id, resource_id: recording_id) do
+          http_post(bucket_path(project_id, "/recordings/#{recording_id}/subscription.json")).json
+        end
       end
 
       # Update subscriptions by adding or removing specific users
@@ -30,7 +34,9 @@ module Basecamp
       # @param unsubscriptions [Array, nil] unsubscriptions
       # @return [Hash] response data
       def update(project_id:, recording_id:, subscriptions: nil, unsubscriptions: nil)
-        http_put(bucket_path(project_id, "/recordings/#{recording_id}/subscription.json"), body: compact_params(subscriptions: subscriptions, unsubscriptions: unsubscriptions)).json
+        with_operation(service: "subscriptions", operation: "update", is_mutation: true, project_id: project_id, resource_id: recording_id) do
+          http_put(bucket_path(project_id, "/recordings/#{recording_id}/subscription.json"), body: compact_params(subscriptions: subscriptions, unsubscriptions: unsubscriptions)).json
+        end
       end
 
       # Unsubscribe the current user from a recording
@@ -38,8 +44,10 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [void]
       def unsubscribe(project_id:, recording_id:)
-        http_delete(bucket_path(project_id, "/recordings/#{recording_id}/subscription.json"))
-        nil
+        with_operation(service: "subscriptions", operation: "unsubscribe", is_mutation: true, project_id: project_id, resource_id: recording_id) do
+          http_delete(bucket_path(project_id, "/recordings/#{recording_id}/subscription.json"))
+          nil
+        end
       end
     end
   end

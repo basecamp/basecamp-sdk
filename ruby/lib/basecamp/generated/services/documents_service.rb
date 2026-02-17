@@ -12,7 +12,9 @@ module Basecamp
       # @param document_id [Integer] document id ID
       # @return [Hash] response data
       def get(project_id:, document_id:)
-        http_get(bucket_path(project_id, "/documents/#{document_id}")).json
+        with_operation(service: "documents", operation: "get", is_mutation: false, project_id: project_id, resource_id: document_id) do
+          http_get(bucket_path(project_id, "/documents/#{document_id}")).json
+        end
       end
 
       # Update an existing document
@@ -22,7 +24,9 @@ module Basecamp
       # @param content [String, nil] content
       # @return [Hash] response data
       def update(project_id:, document_id:, title: nil, content: nil)
-        http_put(bucket_path(project_id, "/documents/#{document_id}"), body: compact_params(title: title, content: content)).json
+        with_operation(service: "documents", operation: "update", is_mutation: true, project_id: project_id, resource_id: document_id) do
+          http_put(bucket_path(project_id, "/documents/#{document_id}"), body: compact_params(title: title, content: content)).json
+        end
       end
 
       # List documents in a vault
@@ -30,7 +34,9 @@ module Basecamp
       # @param vault_id [Integer] vault id ID
       # @return [Enumerator<Hash>] paginated results
       def list(project_id:, vault_id:)
-        paginate(bucket_path(project_id, "/vaults/#{vault_id}/documents.json"))
+        wrap_paginated(service: "documents", operation: "list", is_mutation: false, project_id: project_id, resource_id: vault_id) do
+          paginate(bucket_path(project_id, "/vaults/#{vault_id}/documents.json"))
+        end
       end
 
       # Create a new document in a vault
@@ -41,7 +47,9 @@ module Basecamp
       # @param status [String, nil] active|drafted
       # @return [Hash] response data
       def create(project_id:, vault_id:, title:, content: nil, status: nil)
-        http_post(bucket_path(project_id, "/vaults/#{vault_id}/documents.json"), body: compact_params(title: title, content: content, status: status)).json
+        with_operation(service: "documents", operation: "create", is_mutation: true, project_id: project_id, resource_id: vault_id) do
+          http_post(bucket_path(project_id, "/vaults/#{vault_id}/documents.json"), body: compact_params(title: title, content: content, status: status)).json
+        end
       end
     end
   end

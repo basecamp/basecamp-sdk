@@ -12,7 +12,9 @@ module Basecamp
       # @param forward_id [Integer] forward id ID
       # @return [Hash] response data
       def get(project_id:, forward_id:)
-        http_get(bucket_path(project_id, "/inbox_forwards/#{forward_id}")).json
+        with_operation(service: "forwards", operation: "get", is_mutation: false, project_id: project_id, resource_id: forward_id) do
+          http_get(bucket_path(project_id, "/inbox_forwards/#{forward_id}")).json
+        end
       end
 
       # List all replies to a forward
@@ -20,7 +22,9 @@ module Basecamp
       # @param forward_id [Integer] forward id ID
       # @return [Enumerator<Hash>] paginated results
       def list_replies(project_id:, forward_id:)
-        paginate(bucket_path(project_id, "/inbox_forwards/#{forward_id}/replies.json"))
+        wrap_paginated(service: "forwards", operation: "list_replies", is_mutation: false, project_id: project_id, resource_id: forward_id) do
+          paginate(bucket_path(project_id, "/inbox_forwards/#{forward_id}/replies.json"))
+        end
       end
 
       # Create a reply to a forward
@@ -29,7 +33,9 @@ module Basecamp
       # @param content [String] content
       # @return [Hash] response data
       def create_reply(project_id:, forward_id:, content:)
-        http_post(bucket_path(project_id, "/inbox_forwards/#{forward_id}/replies.json"), body: compact_params(content: content)).json
+        with_operation(service: "forwards", operation: "create_reply", is_mutation: true, project_id: project_id, resource_id: forward_id) do
+          http_post(bucket_path(project_id, "/inbox_forwards/#{forward_id}/replies.json"), body: compact_params(content: content)).json
+        end
       end
 
       # Get a forward reply by ID
@@ -38,7 +44,9 @@ module Basecamp
       # @param reply_id [Integer] reply id ID
       # @return [Hash] response data
       def get_reply(project_id:, forward_id:, reply_id:)
-        http_get(bucket_path(project_id, "/inbox_forwards/#{forward_id}/replies/#{reply_id}")).json
+        with_operation(service: "forwards", operation: "get_reply", is_mutation: false, project_id: project_id, resource_id: reply_id) do
+          http_get(bucket_path(project_id, "/inbox_forwards/#{forward_id}/replies/#{reply_id}")).json
+        end
       end
 
       # Get an inbox by ID
@@ -46,7 +54,9 @@ module Basecamp
       # @param inbox_id [Integer] inbox id ID
       # @return [Hash] response data
       def get_inbox(project_id:, inbox_id:)
-        http_get(bucket_path(project_id, "/inboxes/#{inbox_id}")).json
+        with_operation(service: "forwards", operation: "get_inbox", is_mutation: false, project_id: project_id, resource_id: inbox_id) do
+          http_get(bucket_path(project_id, "/inboxes/#{inbox_id}")).json
+        end
       end
 
       # List all forwards in an inbox
@@ -54,7 +64,9 @@ module Basecamp
       # @param inbox_id [Integer] inbox id ID
       # @return [Enumerator<Hash>] paginated results
       def list(project_id:, inbox_id:)
-        paginate(bucket_path(project_id, "/inboxes/#{inbox_id}/forwards.json"))
+        wrap_paginated(service: "forwards", operation: "list", is_mutation: false, project_id: project_id, resource_id: inbox_id) do
+          paginate(bucket_path(project_id, "/inboxes/#{inbox_id}/forwards.json"))
+        end
       end
     end
   end
