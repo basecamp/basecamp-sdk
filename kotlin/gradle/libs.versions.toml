@@ -5,7 +5,7 @@ kotlinx-serialization = "1.10.0"
 kotlinx-coroutines = "1.10.2"
 
 # Testing
-junit = "6.0.2"
+junit = "6.0.3"
 
 [libraries]
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
