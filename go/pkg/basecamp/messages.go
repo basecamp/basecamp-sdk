@@ -14,19 +14,20 @@ const DefaultMessageLimit = 100
 
 // Message represents a Basecamp message on a message board.
 type Message struct {
-	ID        int64        `json:"id"`
-	Status    string       `json:"status"`
-	Subject   string       `json:"subject"`
-	Content   string       `json:"content"`
-	CreatedAt time.Time    `json:"created_at"`
-	UpdatedAt time.Time    `json:"updated_at"`
-	Type      string       `json:"type"`
-	URL       string       `json:"url"`
-	AppURL    string       `json:"app_url"`
-	Parent    *Parent      `json:"parent,omitempty"`
-	Bucket    *Bucket      `json:"bucket,omitempty"`
-	Creator   *Person      `json:"creator,omitempty"`
-	Category  *MessageType `json:"category,omitempty"`
+	ID          int64        `json:"id"`
+	Status      string       `json:"status"`
+	Subject     string       `json:"subject"`
+	Content     string       `json:"content"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
+	Type        string       `json:"type"`
+	URL         string       `json:"url"`
+	AppURL      string       `json:"app_url"`
+	Parent      *Parent      `json:"parent,omitempty"`
+	Bucket      *Bucket      `json:"bucket,omitempty"`
+	Creator     *Person      `json:"creator,omitempty"`
+	Category    *MessageType `json:"category,omitempty"`
+	BoostsCount int          `json:"boosts_count,omitempty"`
 }
 
 // CreateMessageRequest specifies the parameters for creating a message.
@@ -422,14 +423,15 @@ func (s *MessagesService) Unarchive(ctx context.Context, bucketID, messageID int
 // messageFromGenerated converts a generated Message to our clean Message type.
 func messageFromGenerated(gm generated.Message) Message {
 	m := Message{
-		Status:    gm.Status,
-		Subject:   gm.Subject,
-		Content:   gm.Content,
-		Type:      gm.Type,
-		URL:       gm.Url,
-		AppURL:    gm.AppUrl,
-		CreatedAt: gm.CreatedAt,
-		UpdatedAt: gm.UpdatedAt,
+		Status:      gm.Status,
+		Subject:     gm.Subject,
+		Content:     gm.Content,
+		Type:        gm.Type,
+		URL:         gm.Url,
+		AppURL:      gm.AppUrl,
+		CreatedAt:   gm.CreatedAt,
+		UpdatedAt:   gm.UpdatedAt,
+		BoostsCount: int(gm.BoostsCount),
 	}
 
 	if gm.Id != 0 {

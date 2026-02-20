@@ -34,6 +34,7 @@ type Todo struct {
 	StartsOn    string     `json:"starts_on,omitempty"`
 	DueOn       string     `json:"due_on,omitempty"`
 	Completed   bool       `json:"completed"`
+	BoostsCount int        `json:"boosts_count,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	Completer   *Person    `json:"completer,omitempty"`
 	Assignees   []Person   `json:"assignees,omitempty"`
@@ -526,6 +527,7 @@ func todoFromGenerated(gt generated.Todo) Todo {
 		CreatedAt:   gt.CreatedAt,
 		UpdatedAt:   gt.UpdatedAt,
 		InheritsVis: gt.InheritsStatus,
+		BoostsCount: int(gt.BoostsCount),
 	}
 
 	if gt.Id != 0 {

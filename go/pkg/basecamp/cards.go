@@ -76,6 +76,7 @@ type Card struct {
 	Completed             bool       `json:"completed"`
 	CompletedAt           *time.Time `json:"completed_at,omitempty"`
 	CommentsCount         int        `json:"comments_count"`
+	BoostsCount           int        `json:"boosts_count"`
 	CommentsURL           string     `json:"comments_url,omitempty"`
 	CommentCount          int        `json:"comment_count"`
 	CompletionURL         string     `json:"completion_url,omitempty"`
@@ -1269,6 +1270,7 @@ func cardFromGenerated(gc generated.Card) Card {
 		Description:      gc.Description,
 		Completed:        gc.Completed,
 		CommentsCount:    int(gc.CommentsCount),
+		BoostsCount:      int(gc.BoostsCount),
 		CommentsURL:      gc.CommentsUrl,
 		CompletionURL:    gc.CompletionUrl,
 		CreatedAt:        gc.CreatedAt,

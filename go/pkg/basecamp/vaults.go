@@ -111,6 +111,7 @@ type Document struct {
 	BookmarkURL      string    `json:"bookmark_url"`
 	SubscriptionURL  string    `json:"subscription_url"`
 	CommentsCount    int       `json:"comments_count"`
+	BoostsCount      int       `json:"boosts_count,omitempty"`
 	CommentsURL      string    `json:"comments_url"`
 	Position         int       `json:"position,omitempty"`
 	Parent           *Parent   `json:"parent,omitempty"`
@@ -134,6 +135,7 @@ type Upload struct {
 	BookmarkURL      string    `json:"bookmark_url"`
 	SubscriptionURL  string    `json:"subscription_url"`
 	CommentsCount    int       `json:"comments_count"`
+	BoostsCount      int       `json:"boosts_count,omitempty"`
 	CommentsURL      string    `json:"comments_url"`
 	Position         int       `json:"position,omitempty"`
 	Parent           *Parent   `json:"parent,omitempty"`
@@ -1069,6 +1071,7 @@ func documentFromGenerated(gd generated.Document) Document {
 		BookmarkURL:      gd.BookmarkUrl,
 		SubscriptionURL:  gd.SubscriptionUrl,
 		CommentsCount:    int(gd.CommentsCount),
+		BoostsCount:      int(gd.BoostsCount),
 		CommentsURL:      gd.CommentsUrl,
 		Position:         int(gd.Position),
 		Content:          gd.Content,

@@ -23,6 +23,7 @@ type Campfire struct {
 	LinesURL         string    `json:"lines_url"`
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
+	BoostsCount      int       `json:"boosts_count,omitempty"`
 }
 
 // CampfireLine represents a message in a Campfire chat.
@@ -41,6 +42,7 @@ type CampfireLine struct {
 	Parent           *Parent   `json:"parent,omitempty"`
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
+	BoostsCount      int       `json:"boosts_count,omitempty"`
 }
 
 // Line content type constants for campfire messages.
@@ -591,6 +593,7 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 		Content:          gl.Content,
 		CreatedAt:        gl.CreatedAt,
 		UpdatedAt:        gl.UpdatedAt,
+		BoostsCount:      int(gl.BoostsCount),
 	}
 
 	l.ID = gl.Id
