@@ -61,9 +61,12 @@ linters:
     gosec:
       excludes:
         - G104  # Unhandled errors (covered by errcheck)
-        - G304  # File path provided as taint input (SDK uses controlled paths)
         - G115  # Integer overflow conversion (safe for API int32 conversions)
+        - G117  # Exported struct fields matching secret patterns (SDK auth types necessarily expose token fields)
+        - G304  # File path provided as taint input (SDK uses controlled paths)
         - G404  # Weak random number generator (acceptable for jitter/backoff)
+        - G703  # Path traversal via taint analysis (SDK file cache uses caller-provided paths)
+        - G704  # SSRF via taint analysis (SDK is an HTTP client — making requests to user-provided URLs is the point)
 
     revive:
       rules:
