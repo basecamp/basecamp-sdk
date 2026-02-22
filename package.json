@@ -1,0 +1,27 @@
+{
+  "name": "@basecamp/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript SDK for the Basecamp 3 API",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "type": "module",
+  "main": "typescript/dist/index.js",
+  "types": "typescript/dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./typescript/dist/index.js",
+      "types": "./typescript/dist/index.d.ts"
+    }
+  },
+  "files": [
+    "typescript/dist"
+  ],
+  "scripts": {
+    "prepare": "cd typescript && npm ci --include=dev --ignore-scripts && npm run build"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
+  }
+}

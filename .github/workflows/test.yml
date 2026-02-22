@@ -117,6 +117,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify root pack includes compiled SDK
+        working-directory: .
+        run: |
+          FILES=$(npm pack --ignore-scripts --json | jq -r '.[0].files[].path')
+          echo "$FILES" | grep -q '^typescript/dist/index\.js$'
+          echo "$FILES" | grep -q '^typescript/dist/index\.d\.ts$'
+
   test-ruby:
     name: Ruby ${{ matrix.ruby }}
     runs-on: ubuntu-latest
