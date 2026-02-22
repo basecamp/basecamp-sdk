@@ -14,20 +14,19 @@ class CardTablesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a card table by ID
-     * @param projectId The project ID
      * @param cardTableId The card table ID
      */
-    suspend fun get(projectId: Long, cardTableId: Long): CardTable {
+    suspend fun get(cardTableId: Long): CardTable {
         val info = OperationInfo(
             service = "CardTables",
             operation = "GetCardTable",
             resourceType = "card_table",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = cardTableId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/card_tables/${cardTableId}", operationName = info.operation)
+            httpGet("/card_tables/${cardTableId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<CardTable>(body)
         }

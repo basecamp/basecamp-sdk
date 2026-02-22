@@ -116,216 +116,67 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/reports/todos/assigned/{personId}": "GetAssignedTodos",
   "GET:/{accountId}/reports/todos/overdue.json": "GetOverdueTodos",
   "GET:/{accountId}/reports/users/progress/{personId}": "GetPersonProgress",
-
-  // Schedule Entries
-  "GET:/{accountId}/buckets/{projectId}/schedule_entries/{entryId}": "GetScheduleEntry",
-
-  "PUT:/{accountId}/buckets/{projectId}/schedule_entries/{entryId}": "UpdateScheduleEntry",
-
-  "GET:/{accountId}/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}": "GetScheduleEntryOccurrence",
-
-  // Schedules
-  "GET:/{accountId}/buckets/{projectId}/schedules/{scheduleId}": "GetSchedule",
-
-  "PUT:/{accountId}/buckets/{projectId}/schedules/{scheduleId}": "UpdateScheduleSettings",
-
-  "GET:/{accountId}/buckets/{projectId}/schedules/{scheduleId}/entries.json": "ListScheduleEntries",
-
-  "POST:/{accountId}/buckets/{projectId}/schedules/{scheduleId}/entries.json": "CreateScheduleEntry",
-
-  // Todolists
-  "PUT:/{accountId}/buckets/{projectId}/todolists/{groupId}/position.json": "RepositionTodolistGroup",
-
-  "GET:/{accountId}/buckets/{projectId}/todolists/{id}": "GetTodolistOrGroup",
-
-  "PUT:/{accountId}/buckets/{projectId}/todolists/{id}": "UpdateTodolistOrGroup",
-
-  "GET:/{accountId}/buckets/{projectId}/todolists/{todolistId}/groups.json": "ListTodolistGroups",
-
-  "POST:/{accountId}/buckets/{projectId}/todolists/{todolistId}/groups.json": "CreateTodolistGroup",
-
-  "GET:/{accountId}/buckets/{projectId}/todolists/{todolistId}/todos.json": "ListTodos",
-
-  "POST:/{accountId}/buckets/{projectId}/todolists/{todolistId}/todos.json": "CreateTodo",
-
-  // Todos
-  "DELETE:/{accountId}/buckets/{projectId}/todos/{todoId}": "TrashTodo",
-
-  "GET:/{accountId}/buckets/{projectId}/todos/{todoId}": "GetTodo",
-
-  "PUT:/{accountId}/buckets/{projectId}/todos/{todoId}": "UpdateTodo",
-
-  "DELETE:/{accountId}/buckets/{projectId}/todos/{todoId}/completion.json": "UncompleteTodo",
-
-  "POST:/{accountId}/buckets/{projectId}/todos/{todoId}/completion.json": "CompleteTodo",
-
-  "PUT:/{accountId}/buckets/{projectId}/todos/{todoId}/position.json": "RepositionTodo",
-
-  // Todosets
-  "GET:/{accountId}/buckets/{projectId}/todosets/{todosetId}": "GetTodoset",
-
-  "GET:/{accountId}/buckets/{projectId}/todosets/{todosetId}/todolists.json": "ListTodolists",
-
-  "POST:/{accountId}/buckets/{projectId}/todosets/{todosetId}/todolists.json": "CreateTodolist",
-
-  // Uploads
-  "GET:/{accountId}/buckets/{projectId}/uploads/{uploadId}": "GetUpload",
-
-  "PUT:/{accountId}/buckets/{projectId}/uploads/{uploadId}": "UpdateUpload",
-
-  "GET:/{accountId}/buckets/{projectId}/uploads/{uploadId}/versions.json": "ListUploadVersions",
-
-  // Vaults
-  "GET:/{accountId}/buckets/{projectId}/vaults/{vaultId}": "GetVault",
-
-  "PUT:/{accountId}/buckets/{projectId}/vaults/{vaultId}": "UpdateVault",
-
-  "GET:/{accountId}/buckets/{projectId}/vaults/{vaultId}/documents.json": "ListDocuments",
-
-  "POST:/{accountId}/buckets/{projectId}/vaults/{vaultId}/documents.json": "CreateDocument",
-
-  "GET:/{accountId}/buckets/{projectId}/vaults/{vaultId}/uploads.json": "ListUploads",
-
-  "POST:/{accountId}/buckets/{projectId}/vaults/{vaultId}/uploads.json": "CreateUpload",
-
-  "GET:/{accountId}/buckets/{projectId}/vaults/{vaultId}/vaults.json": "ListVaults",
-
-  "POST:/{accountId}/buckets/{projectId}/vaults/{vaultId}/vaults.json": "CreateVault",
-
-  // Webhooks
-  "GET:/{accountId}/buckets/{projectId}/webhooks.json": "ListWebhooks",
-
-  "POST:/{accountId}/buckets/{projectId}/webhooks.json": "CreateWebhook",
-
-  "DELETE:/{accountId}/buckets/{projectId}/webhooks/{webhookId}": "DeleteWebhook",
-
-  "GET:/{accountId}/buckets/{projectId}/webhooks/{webhookId}": "GetWebhook",
-
-  "PUT:/{accountId}/buckets/{projectId}/webhooks/{webhookId}": "UpdateWebhook",
+  "GET:/{accountId}/schedule_entries/{entryId}": "GetScheduleEntry",
+  "PUT:/{accountId}/schedule_entries/{entryId}": "UpdateScheduleEntry",
+  "GET:/{accountId}/schedule_entries/{entryId}/occurrences/{date}": "GetScheduleEntryOccurrence",
+  "GET:/{accountId}/schedules/{scheduleId}": "GetSchedule",
+  "PUT:/{accountId}/schedules/{scheduleId}": "UpdateScheduleSettings",
+  "GET:/{accountId}/schedules/{scheduleId}/entries.json": "ListScheduleEntries",
+  "POST:/{accountId}/schedules/{scheduleId}/entries.json": "CreateScheduleEntry",
+  "GET:/{accountId}/timeline.json": "GetProjectTimeline",
+  "GET:/{accountId}/timesheet.json": "GetProjectTimesheet",
+  "GET:/{accountId}/timesheet/entries/{entryId}": "GetTimesheetEntry",
+  "PUT:/{accountId}/timesheet/entries/{entryId}": "UpdateTimesheetEntry",
+  "PUT:/{accountId}/todolists/{groupId}/position.json": "RepositionTodolistGroup",
+  "GET:/{accountId}/todolists/{id}": "GetTodolistOrGroup",
+  "PUT:/{accountId}/todolists/{id}": "UpdateTodolistOrGroup",
+  "GET:/{accountId}/todolists/{todolistId}/groups.json": "ListTodolistGroups",
+  "POST:/{accountId}/todolists/{todolistId}/groups.json": "CreateTodolistGroup",
+  "GET:/{accountId}/todolists/{todolistId}/todos.json": "ListTodos",
+  "POST:/{accountId}/todolists/{todolistId}/todos.json": "CreateTodo",
+  "DELETE:/{accountId}/todos/{todoId}": "TrashTodo",
+  "GET:/{accountId}/todos/{todoId}": "GetTodo",
+  "PUT:/{accountId}/todos/{todoId}": "UpdateTodo",
+  "DELETE:/{accountId}/todos/{todoId}/completion.json": "UncompleteTodo",
+  "POST:/{accountId}/todos/{todoId}/completion.json": "CompleteTodo",
+  "PUT:/{accountId}/todos/{todoId}/position.json": "RepositionTodo",
+  "GET:/{accountId}/todosets/{todosetId}": "GetTodoset",
+  "GET:/{accountId}/todosets/{todosetId}/todolists.json": "ListTodolists",
+  "POST:/{accountId}/todosets/{todosetId}/todolists.json": "CreateTodolist",
+  "GET:/{accountId}/uploads/{uploadId}": "GetUpload",
+  "PUT:/{accountId}/uploads/{uploadId}": "UpdateUpload",
+  "GET:/{accountId}/uploads/{uploadId}/versions.json": "ListUploadVersions",
+  "GET:/{accountId}/vaults/{vaultId}": "GetVault",
+  "PUT:/{accountId}/vaults/{vaultId}": "UpdateVault",
+  "GET:/{accountId}/vaults/{vaultId}/documents.json": "ListDocuments",
+  "POST:/{accountId}/vaults/{vaultId}/documents.json": "CreateDocument",
+  "GET:/{accountId}/vaults/{vaultId}/uploads.json": "ListUploads",
+  "POST:/{accountId}/vaults/{vaultId}/uploads.json": "CreateUpload",
+  "GET:/{accountId}/vaults/{vaultId}/vaults.json": "ListVaults",
+  "POST:/{accountId}/vaults/{vaultId}/vaults.json": "CreateVault",
+  "GET:/{accountId}/webhooks.json": "ListWebhooks",
+  "POST:/{accountId}/webhooks.json": "CreateWebhook",
+  "DELETE:/{accountId}/webhooks/{webhookId}": "DeleteWebhook",
+  "GET:/{accountId}/webhooks/{webhookId}": "GetWebhook",
+  "PUT:/{accountId}/webhooks/{webhookId}": "UpdateWebhook",
 
   // People
   "GET:/{accountId}/circles/people.json": "ListPingablePeople",
-
   "GET:/{accountId}/people.json": "ListPeople",
-
   "GET:/{accountId}/people/{personId}": "GetPerson",
 
   // My Profile
   "GET:/{accountId}/my/profile.json": "GetMyProfile",
-
   "GET:/{accountId}/my/question_reminders.json": "GetQuestionReminders",
 
   // Projects
   "GET:/{accountId}/projects.json": "ListProjects",
-
   "POST:/{accountId}/projects.json": "CreateProject",
-
   "DELETE:/{accountId}/projects/{projectId}": "TrashProject",
-
   "GET:/{accountId}/projects/{projectId}": "GetProject",
-
   "PUT:/{accountId}/projects/{projectId}": "UpdateProject",
-
   "GET:/{accountId}/projects/{projectId}/people.json": "ListProjectPeople",
-
   "PUT:/{accountId}/projects/{projectId}/people/users.json": "UpdateProjectAccess",
-
-  "POST:/{accountId}/projects/{projectId}/recordings/{recordingId}/timesheet/entries.json": "CreateTimesheetEntry",
-
-  "GET:/{accountId}/projects/{projectId}/timeline.json": "GetProjectTimeline",
-
-  "GET:/{accountId}/projects/{projectId}/timesheet.json": "GetProjectTimesheet",
-
-  "GET:/{accountId}/projects/{projectId}/timesheet/entries/{entryId}": "GetTimesheetEntry",
-
-  "PUT:/{accountId}/projects/{projectId}/timesheet/entries/{entryId}": "UpdateTimesheetEntry",
-
-  "GET:/{accountId}/schedule_entries/{entryId}": "GetScheduleEntry",
-
-  "PUT:/{accountId}/schedule_entries/{entryId}": "UpdateScheduleEntry",
-
-  "GET:/{accountId}/schedule_entries/{entryId}/occurrences/{date}": "GetScheduleEntryOccurrence",
-
-  "GET:/{accountId}/schedules/{scheduleId}": "GetSchedule",
-
-  "PUT:/{accountId}/schedules/{scheduleId}": "UpdateScheduleSettings",
-
-  "GET:/{accountId}/schedules/{scheduleId}/entries.json": "ListScheduleEntries",
-
-  "POST:/{accountId}/schedules/{scheduleId}/entries.json": "CreateScheduleEntry",
-
-  "GET:/{accountId}/timeline.json": "GetProjectTimeline",
-
-  "GET:/{accountId}/timesheet.json": "GetProjectTimesheet",
-
-  "GET:/{accountId}/timesheet/entries/{entryId}": "GetTimesheetEntry",
-
-  "PUT:/{accountId}/timesheet/entries/{entryId}": "UpdateTimesheetEntry",
-
-  "PUT:/{accountId}/todolists/{groupId}/position.json": "RepositionTodolistGroup",
-
-  "GET:/{accountId}/todolists/{id}": "GetTodolistOrGroup",
-
-  "PUT:/{accountId}/todolists/{id}": "UpdateTodolistOrGroup",
-
-  "GET:/{accountId}/todolists/{todolistId}/groups.json": "ListTodolistGroups",
-
-  "POST:/{accountId}/todolists/{todolistId}/groups.json": "CreateTodolistGroup",
-
-  "GET:/{accountId}/todolists/{todolistId}/todos.json": "ListTodos",
-
-  "POST:/{accountId}/todolists/{todolistId}/todos.json": "CreateTodo",
-
-  "DELETE:/{accountId}/todos/{todoId}": "TrashTodo",
-
-  "GET:/{accountId}/todos/{todoId}": "GetTodo",
-
-  "PUT:/{accountId}/todos/{todoId}": "UpdateTodo",
-
-  "DELETE:/{accountId}/todos/{todoId}/completion.json": "UncompleteTodo",
-
-  "POST:/{accountId}/todos/{todoId}/completion.json": "CompleteTodo",
-
-  "PUT:/{accountId}/todos/{todoId}/position.json": "RepositionTodo",
-
-  "GET:/{accountId}/todosets/{todosetId}": "GetTodoset",
-
-  "GET:/{accountId}/todosets/{todosetId}/todolists.json": "ListTodolists",
-
-  "POST:/{accountId}/todosets/{todosetId}/todolists.json": "CreateTodolist",
-
-  "GET:/{accountId}/uploads/{uploadId}": "GetUpload",
-
-  "PUT:/{accountId}/uploads/{uploadId}": "UpdateUpload",
-
-  "GET:/{accountId}/uploads/{uploadId}/versions.json": "ListUploadVersions",
-
-  "GET:/{accountId}/vaults/{vaultId}": "GetVault",
-
-  "PUT:/{accountId}/vaults/{vaultId}": "UpdateVault",
-
-  "GET:/{accountId}/vaults/{vaultId}/documents.json": "ListDocuments",
-
-  "POST:/{accountId}/vaults/{vaultId}/documents.json": "CreateDocument",
-
-  "GET:/{accountId}/vaults/{vaultId}/uploads.json": "ListUploads",
-
-  "POST:/{accountId}/vaults/{vaultId}/uploads.json": "CreateUpload",
-
-  "GET:/{accountId}/vaults/{vaultId}/vaults.json": "ListVaults",
-
-  "POST:/{accountId}/vaults/{vaultId}/vaults.json": "CreateVault",
-
-  "GET:/{accountId}/webhooks.json": "ListWebhooks",
-
-  "POST:/{accountId}/webhooks.json": "CreateWebhook",
-
-  "DELETE:/{accountId}/webhooks/{webhookId}": "DeleteWebhook",
-
-  "GET:/{accountId}/webhooks/{webhookId}": "GetWebhook",
-
-  "PUT:/{accountId}/webhooks/{webhookId}": "UpdateWebhook",
-
   "GET:/{accountId}/projects/recordings.json": "ListRecordings",
 
   // Events

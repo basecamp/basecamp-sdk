@@ -356,6 +356,14 @@ data class CreateTimesheetEntryBody(
     val personId: Long? = null
 )
 
+/** Options for GetTimesheetReport. */
+data class GetTimesheetReportOptions(
+    val from: String? = null,
+    val to: String? = null,
+    val personId: Long? = null
+) {
+}
+
 /** Options for GetProjectTimesheet. */
 data class GetProjectTimesheetOptions(
     val from: String? = null,
@@ -371,14 +379,6 @@ data class UpdateTimesheetEntryBody(
     val description: String? = null,
     val personId: Long? = null
 )
-
-/** Options for GetTimesheetReport. */
-data class GetTimesheetReportOptions(
-    val from: String? = null,
-    val to: String? = null,
-    val personId: Long? = null
-) {
-}
 
 /** Request body for RepositionTodolistGroup. */
 data class RepositionTodolistGroupBody(

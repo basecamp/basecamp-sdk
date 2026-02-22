@@ -14,20 +14,19 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a forward by ID
-     * @param projectId The project ID
      * @param forwardId The forward ID
      */
-    suspend fun get(projectId: Long, forwardId: Long): Forward {
+    suspend fun get(forwardId: Long): Forward {
         val info = OperationInfo(
             service = "Forwards",
             operation = "GetForward",
             resourceType = "forward",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = forwardId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/inbox_forwards/${forwardId}", operationName = info.operation)
+            httpGet("/inbox_forwards/${forwardId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<Forward>(body)
         }
@@ -35,21 +34,20 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
 
     /**
      * List all replies to a forward
-     * @param projectId The project ID
      * @param forwardId The forward ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listReplies(projectId: Long, forwardId: Long, options: PaginationOptions? = null): ListResult<ForwardReply> {
+    suspend fun listReplies(forwardId: Long, options: PaginationOptions? = null): ListResult<ForwardReply> {
         val info = OperationInfo(
             service = "Forwards",
             operation = "ListForwardReplies",
             resourceType = "forward_reply",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = forwardId,
         )
         return requestPaginated(info, options, {
-            httpGet("/buckets/${projectId}/inbox_forwards/${forwardId}/replies.json", operationName = info.operation)
+            httpGet("/inbox_forwards/${forwardId}/replies.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<ForwardReply>>(body)
         }
@@ -57,21 +55,20 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Create a reply to a forward
-     * @param projectId The project ID
      * @param forwardId The forward ID
      * @param body Request body
      */
-    suspend fun createReply(projectId: Long, forwardId: Long, body: CreateForwardReplyBody): ForwardReply {
+    suspend fun createReply(forwardId: Long, body: CreateForwardReplyBody): ForwardReply {
         val info = OperationInfo(
             service = "Forwards",
             operation = "CreateForwardReply",
             resourceType = "forward_reply",
             isMutation = true,
-            projectId = projectId,
+            projectId = null,
             resourceId = forwardId,
         )
         return request(info, {
-            httpPost("/buckets/${projectId}/inbox_forwards/${forwardId}/replies.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPost("/inbox_forwards/${forwardId}/replies.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("content", kotlinx.serialization.json.JsonPrimitive(body.content))
             }), operationName = info.operation)
         }) { body ->
@@ -81,21 +78,20 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a forward reply by ID
-     * @param projectId The project ID
      * @param forwardId The forward ID
      * @param replyId The reply ID
      */
-    suspend fun getReply(projectId: Long, forwardId: Long, replyId: Long): ForwardReply {
+    suspend fun getReply(forwardId: Long, replyId: Long): ForwardReply {
         val info = OperationInfo(
             service = "Forwards",
             operation = "GetForwardReply",
             resourceType = "forward_reply",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = forwardId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/inbox_forwards/${forwardId}/replies/${replyId}", operationName = info.operation)
+            httpGet("/inbox_forwards/${forwardId}/replies/${replyId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<ForwardReply>(body)
         }
@@ -103,20 +99,19 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get an inbox by ID
-     * @param projectId The project ID
      * @param inboxId The inbox ID
      */
-    suspend fun getInbox(projectId: Long, inboxId: Long): Inbox {
+    suspend fun getInbox(inboxId: Long): Inbox {
         val info = OperationInfo(
             service = "Forwards",
             operation = "GetInbox",
             resourceType = "inbox",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = inboxId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/inboxes/${inboxId}", operationName = info.operation)
+            httpGet("/inboxes/${inboxId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<Inbox>(body)
         }
@@ -124,21 +119,20 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
 
     /**
      * List all forwards in an inbox
-     * @param projectId The project ID
      * @param inboxId The inbox ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(projectId: Long, inboxId: Long, options: PaginationOptions? = null): ListResult<Forward> {
+    suspend fun list(inboxId: Long, options: PaginationOptions? = null): ListResult<Forward> {
         val info = OperationInfo(
             service = "Forwards",
             operation = "ListForwards",
             resourceType = "forward",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = inboxId,
         )
         return requestPaginated(info, options, {
-            httpGet("/buckets/${projectId}/inboxes/${inboxId}/forwards.json", operationName = info.operation)
+            httpGet("/inboxes/${inboxId}/forwards.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Forward>>(body)
         }

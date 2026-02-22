@@ -11,7 +11,9 @@ module Basecamp
       # @param vault_id [Integer] vault id ID
       # @return [Hash] response data
       def get(vault_id:)
-        http_get("/vaults/#{vault_id}").json
+        with_operation(service: "vaults", operation: "get", is_mutation: false, resource_id: vault_id) do
+          http_get("/vaults/#{vault_id}").json
+        end
       end
 
       # Update an existing vault
@@ -19,14 +21,18 @@ module Basecamp
       # @param title [String, nil] title
       # @return [Hash] response data
       def update(vault_id:, title: nil)
-        http_put("/vaults/#{vault_id}", body: compact_params(title: title)).json
+        with_operation(service: "vaults", operation: "update", is_mutation: true, resource_id: vault_id) do
+          http_put("/vaults/#{vault_id}", body: compact_params(title: title)).json
+        end
       end
 
       # List vaults (subfolders) in a vault
       # @param vault_id [Integer] vault id ID
       # @return [Enumerator<Hash>] paginated results
       def list(vault_id:)
-        paginate("/vaults/#{vault_id}/vaults.json")
+        wrap_paginated(service: "vaults", operation: "list", is_mutation: false, resource_id: vault_id) do
+          paginate("/vaults/#{vault_id}/vaults.json")
+        end
       end
 
       # Create a new vault (subfolder) in a vault
@@ -34,7 +40,9 @@ module Basecamp
       # @param title [String] title
       # @return [Hash] response data
       def create(vault_id:, title:)
-        http_post("/vaults/#{vault_id}/vaults.json", body: compact_params(title: title)).json
+        with_operation(service: "vaults", operation: "create", is_mutation: true, resource_id: vault_id) do
+          http_post("/vaults/#{vault_id}/vaults.json", body: compact_params(title: title)).json
+        end
       end
     end
   end

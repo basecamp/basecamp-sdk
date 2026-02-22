@@ -13,84 +13,6 @@ import kotlinx.serialization.json.JsonElement
 class RecordingsService(client: AccountClient) : BaseService(client) {
 
     /**
-     * Get a single recording by id
-     * @param projectId The project ID
-     * @param recordingId The recording ID
-     */
-    suspend fun get(projectId: Long, recordingId: Long): Recording {
-        val info = OperationInfo(
-            service = "Recordings",
-            operation = "GetRecording",
-            resourceType = "recording",
-            isMutation = false,
-            projectId = projectId,
-            resourceId = recordingId,
-        )
-        return request(info, {
-            httpGet("/buckets/${projectId}/recordings/${recordingId}", operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<Recording>(body)
-        }
-    }
-
-    /**
-     * Unarchive a recording (restore to active status)
-     * @param projectId The project ID
-     * @param recordingId The recording ID
-     */
-    suspend fun unarchive(projectId: Long, recordingId: Long): Unit {
-        val info = OperationInfo(
-            service = "Recordings",
-            operation = "UnarchiveRecording",
-            resourceType = "recording",
-            isMutation = true,
-            projectId = projectId,
-            resourceId = recordingId,
-        )
-        request(info, {
-            httpPut("/buckets/${projectId}/recordings/${recordingId}/status/active.json", operationName = info.operation)
-        }) { Unit }
-    }
-
-    /**
-     * Archive a recording
-     * @param projectId The project ID
-     * @param recordingId The recording ID
-     */
-    suspend fun archive(projectId: Long, recordingId: Long): Unit {
-        val info = OperationInfo(
-            service = "Recordings",
-            operation = "ArchiveRecording",
-            resourceType = "recording",
-            isMutation = true,
-            projectId = projectId,
-            resourceId = recordingId,
-        )
-        request(info, {
-            httpPut("/buckets/${projectId}/recordings/${recordingId}/status/archived.json", operationName = info.operation)
-        }) { Unit }
-    }
-
-    /**
-     * Trash a recording. Trashed items can be recovered.
-     * @param projectId The project ID
-     * @param recordingId The recording ID
-     */
-    suspend fun trash(projectId: Long, recordingId: Long): Unit {
-        val info = OperationInfo(
-            service = "Recordings",
-            operation = "TrashRecording",
-            resourceType = "recording",
-            isMutation = true,
-            projectId = projectId,
-            resourceId = recordingId,
-        )
-        request(info, {
-            httpPut("/buckets/${projectId}/recordings/${recordingId}/status/trashed.json", operationName = info.operation)
-        }) { Unit }
-    }
-
-    /**
      * List recordings of a given type across projects
      * @param type Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
      * @param options Optional query parameters and pagination control
@@ -116,5 +38,79 @@ class RecordingsService(client: AccountClient) : BaseService(client) {
         }) { body ->
             json.decodeFromString<List<Recording>>(body)
         }
+    }
+
+    /**
+     * Get a single recording by id
+     * @param recordingId The recording ID
+     */
+    suspend fun get(recordingId: Long): Recording {
+        val info = OperationInfo(
+            service = "Recordings",
+            operation = "GetRecording",
+            resourceType = "recording",
+            isMutation = false,
+            projectId = null,
+            resourceId = recordingId,
+        )
+        return request(info, {
+            httpGet("/recordings/${recordingId}", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Recording>(body)
+        }
+    }
+
+    /**
+     * Unarchive a recording (restore to active status)
+     * @param recordingId The recording ID
+     */
+    suspend fun unarchive(recordingId: Long): Unit {
+        val info = OperationInfo(
+            service = "Recordings",
+            operation = "UnarchiveRecording",
+            resourceType = "recording",
+            isMutation = true,
+            projectId = null,
+            resourceId = recordingId,
+        )
+        request(info, {
+            httpPut("/recordings/${recordingId}/status/active.json", operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
+     * Archive a recording
+     * @param recordingId The recording ID
+     */
+    suspend fun archive(recordingId: Long): Unit {
+        val info = OperationInfo(
+            service = "Recordings",
+            operation = "ArchiveRecording",
+            resourceType = "recording",
+            isMutation = true,
+            projectId = null,
+            resourceId = recordingId,
+        )
+        request(info, {
+            httpPut("/recordings/${recordingId}/status/archived.json", operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
+     * Trash a recording. Trashed items can be recovered.
+     * @param recordingId The recording ID
+     */
+    suspend fun trash(recordingId: Long): Unit {
+        val info = OperationInfo(
+            service = "Recordings",
+            operation = "TrashRecording",
+            resourceType = "recording",
+            isMutation = true,
+            projectId = null,
+            resourceId = recordingId,
+        )
+        request(info, {
+            httpPut("/recordings/${recordingId}/status/trashed.json", operationName = info.operation)
+        }) { Unit }
     }
 }

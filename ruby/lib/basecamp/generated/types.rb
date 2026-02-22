@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-02-08T06:51:50Z
+# Generated: 2026-02-22T08:10:37Z
 
 require "json"
 require "time"
@@ -65,33 +65,33 @@ module Basecamp
     # Assignable
     class Assignable
       include TypeHelpers
-      attr_accessor :id, :title, :type, :url, :app_url, :bucket, :parent, :due_on, :starts_on, :assignees
+      attr_accessor :app_url, :assignees, :bucket, :due_on, :id, :parent, :starts_on, :title, :type, :url
 
       def initialize(data = {})
+        @app_url = data["app_url"]
+        @assignees = parse_array(data["assignees"], "Person")
+        @bucket = parse_type(data["bucket"], "TodoBucket")
+        @due_on = data["due_on"]
         @id = parse_integer(data["id"])
+        @parent = parse_type(data["parent"], "TodoParent")
+        @starts_on = data["starts_on"]
         @title = data["title"]
         @type = data["type"]
         @url = data["url"]
-        @app_url = data["app_url"]
-        @bucket = parse_type(data["bucket"], "TodoBucket")
-        @parent = parse_type(data["parent"], "TodoParent")
-        @due_on = data["due_on"]
-        @starts_on = data["starts_on"]
-        @assignees = parse_array(data["assignees"], "Person")
       end
 
       def to_h
         {
+          "app_url" => @app_url,
+          "assignees" => @assignees,
+          "bucket" => @bucket,
+          "due_on" => @due_on,
           "id" => @id,
+          "parent" => @parent,
+          "starts_on" => @starts_on,
           "title" => @title,
           "type" => @type,
           "url" => @url,
-          "app_url" => @app_url,
-          "bucket" => @bucket,
-          "parent" => @parent,
-          "due_on" => @due_on,
-          "starts_on" => @starts_on,
-          "assignees" => @assignees,
         }.compact
       end
 
@@ -103,22 +103,27 @@ module Basecamp
     # Boost
     class Boost
       include TypeHelpers
-      attr_accessor :id, :content, :created_at, :booster, :recording
+      attr_accessor :created_at, :id, :booster, :content, :recording
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[created_at id].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @content = data["content"]
         @created_at = parse_datetime(data["created_at"])
+        @id = parse_integer(data["id"])
         @booster = parse_type(data["booster"], "Person")
+        @content = data["content"]
         @recording = parse_type(data["recording"], "RecordingParent")
       end
 
       def to_h
         {
-          "id" => @id,
-          "content" => @content,
           "created_at" => @created_at,
+          "id" => @id,
           "booster" => @booster,
+          "content" => @content,
           "recording" => @recording,
         }.compact
       end
@@ -131,47 +136,52 @@ module Basecamp
     # Campfire
     class Campfire
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :position, :bucket, :creator, :topic, :lines_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :lines_url, :position, :subscription_url, :topic
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @position = parse_integer(data["position"])
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @topic = data["topic"]
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @lines_url = data["lines_url"]
+        @position = parse_integer(data["position"])
+        @subscription_url = data["subscription_url"]
+        @topic = data["topic"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "position" => @position,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
-          "topic" => @topic,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "lines_url" => @lines_url,
+          "position" => @position,
+          "subscription_url" => @subscription_url,
+          "topic" => @topic,
         }.compact
       end
 
@@ -183,45 +193,50 @@ module Basecamp
     # CampfireLine
     class CampfireLine
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :content, :parent, :bucket, :creator, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @content = data["content"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @content = data["content"]
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "content" => @content,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "content" => @content,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
         }.compact
@@ -235,73 +250,78 @@ module Basecamp
     # Card
     class Card
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :position, :content, :description, :due_on, :completed, :completed_at, :comments_count, :comments_url, :completion_url, :parent, :bucket, :creator, :completer, :assignees, :completion_subscribers, :steps, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_at, :completer, :completion_subscribers, :completion_url, :content, :description, :due_on, :position, :steps, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @assignees = parse_array(data["assignees"], "Person")
         @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @position = parse_integer(data["position"])
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @completed = parse_boolean(data["completed"])
+        @completed_at = parse_datetime(data["completed_at"])
+        @completer = parse_type(data["completer"], "Person")
+        @completion_subscribers = parse_array(data["completion_subscribers"], "Person")
+        @completion_url = data["completion_url"]
         @content = data["content"]
         @description = data["description"]
         @due_on = data["due_on"]
-        @completed = parse_boolean(data["completed"])
-        @completed_at = parse_datetime(data["completed_at"])
-        @comments_count = parse_integer(data["comments_count"])
-        @comments_url = data["comments_url"]
-        @completion_url = data["completion_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
-        @bucket = parse_type(data["bucket"], "TodoBucket")
-        @creator = parse_type(data["creator"], "Person")
-        @completer = parse_type(data["completer"], "Person")
-        @assignees = parse_array(data["assignees"], "Person")
-        @completion_subscribers = parse_array(data["completion_subscribers"], "Person")
+        @position = parse_integer(data["position"])
         @steps = parse_array(data["steps"], "CardStep")
-        @boosts_count = parse_integer(data["boosts_count"])
-        @boosts_url = data["boosts_url"]
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
+          "bucket" => @bucket,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "assignees" => @assignees,
           "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "position" => @position,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "completed" => @completed,
+          "completed_at" => @completed_at,
+          "completer" => @completer,
+          "completion_subscribers" => @completion_subscribers,
+          "completion_url" => @completion_url,
           "content" => @content,
           "description" => @description,
           "due_on" => @due_on,
-          "completed" => @completed,
-          "completed_at" => @completed_at,
-          "comments_count" => @comments_count,
-          "comments_url" => @comments_url,
-          "completion_url" => @completion_url,
-          "parent" => @parent,
-          "bucket" => @bucket,
-          "creator" => @creator,
-          "completer" => @completer,
-          "assignees" => @assignees,
-          "completion_subscribers" => @completion_subscribers,
+          "position" => @position,
           "steps" => @steps,
-          "boosts_count" => @boosts_count,
-          "boosts_url" => @boosts_url,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -313,54 +333,59 @@ module Basecamp
     # CardColumn
     class CardColumn
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :position, :color, :description, :cards_count, :comments_count, :cards_url, :parent, :bucket, :creator, :subscribers
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :cards_count, :cards_url, :color, :comments_count, :description, :position, :subscribers
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @position = parse_integer(data["position"])
-        @color = data["color"]
-        @description = data["description"]
-        @cards_count = parse_integer(data["cards_count"])
-        @comments_count = parse_integer(data["comments_count"])
-        @cards_url = data["cards_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
+        @cards_count = parse_integer(data["cards_count"])
+        @cards_url = data["cards_url"]
+        @color = data["color"]
+        @comments_count = parse_integer(data["comments_count"])
+        @description = data["description"]
+        @position = parse_integer(data["position"])
         @subscribers = parse_array(data["subscribers"], "Person")
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "position" => @position,
-          "color" => @color,
-          "description" => @description,
-          "cards_count" => @cards_count,
-          "comments_count" => @comments_count,
-          "cards_url" => @cards_url,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
+          "cards_count" => @cards_count,
+          "cards_url" => @cards_url,
+          "color" => @color,
+          "comments_count" => @comments_count,
+          "description" => @description,
+          "position" => @position,
           "subscribers" => @subscribers,
         }.compact
       end
@@ -373,55 +398,60 @@ module Basecamp
     # CardStep
     class CardStep
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :position, :due_on, :completed, :completed_at, :parent, :bucket, :creator, :completer, :assignees, :completion_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :completed, :completed_at, :completer, :completion_url, :due_on, :position
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @assignees = parse_array(data["assignees"], "Person")
         @bookmark_url = data["bookmark_url"]
-        @position = parse_integer(data["position"])
-        @due_on = data["due_on"]
         @completed = parse_boolean(data["completed"])
         @completed_at = parse_datetime(data["completed_at"])
-        @parent = parse_type(data["parent"], "RecordingParent")
-        @bucket = parse_type(data["bucket"], "TodoBucket")
-        @creator = parse_type(data["creator"], "Person")
         @completer = parse_type(data["completer"], "Person")
-        @assignees = parse_array(data["assignees"], "Person")
         @completion_url = data["completion_url"]
+        @due_on = data["due_on"]
+        @position = parse_integer(data["position"])
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
+          "bucket" => @bucket,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "assignees" => @assignees,
           "bookmark_url" => @bookmark_url,
-          "position" => @position,
-          "due_on" => @due_on,
           "completed" => @completed,
           "completed_at" => @completed_at,
-          "parent" => @parent,
-          "bucket" => @bucket,
-          "creator" => @creator,
           "completer" => @completer,
-          "assignees" => @assignees,
           "completion_url" => @completion_url,
+          "due_on" => @due_on,
+          "position" => @position,
         }.compact
       end
 
@@ -433,45 +463,50 @@ module Basecamp
     # CardTable
     class CardTable
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :bucket, :creator, :subscribers, :lists
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :lists, :subscribers, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @subscribers = parse_array(data["subscribers"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @lists = parse_array(data["lists"], "CardColumn")
+        @subscribers = parse_array(data["subscribers"], "Person")
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
-          "subscribers" => @subscribers,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "lists" => @lists,
+          "subscribers" => @subscribers,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -483,29 +518,34 @@ module Basecamp
     # Chatbot
     class Chatbot
       include TypeHelpers
-      attr_accessor :id, :created_at, :updated_at, :service_name, :command_url, :url, :app_url, :lines_url
+      attr_accessor :created_at, :id, :service_name, :updated_at, :app_url, :command_url, :lines_url, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[created_at id service_name updated_at].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
         @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
+        @id = parse_integer(data["id"])
         @service_name = data["service_name"]
-        @command_url = data["command_url"]
-        @url = data["url"]
+        @updated_at = parse_datetime(data["updated_at"])
         @app_url = data["app_url"]
+        @command_url = data["command_url"]
         @lines_url = data["lines_url"]
+        @url = data["url"]
       end
 
       def to_h
         {
-          "id" => @id,
           "created_at" => @created_at,
-          "updated_at" => @updated_at,
+          "id" => @id,
           "service_name" => @service_name,
-          "command_url" => @command_url,
-          "url" => @url,
+          "updated_at" => @updated_at,
           "app_url" => @app_url,
+          "command_url" => @command_url,
           "lines_url" => @lines_url,
+          "url" => @url,
         }.compact
       end
 
@@ -517,59 +557,64 @@ module Basecamp
     # ClientApproval
     class ClientApproval
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :parent, :bucket, :creator, :content, :subject, :due_on, :replies_count, :replies_url, :approval_status, :approver, :responses
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :approval_status, :approver, :bookmark_url, :content, :due_on, :replies_count, :replies_url, :responses, :subject, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @approval_status = data["approval_status"]
+        @approver = parse_type(data["approver"], "Person")
+        @bookmark_url = data["bookmark_url"]
         @content = data["content"]
-        @subject = data["subject"]
         @due_on = data["due_on"]
         @replies_count = parse_integer(data["replies_count"])
         @replies_url = data["replies_url"]
-        @approval_status = data["approval_status"]
-        @approver = parse_type(data["approver"], "Person")
         @responses = parse_array(data["responses"], "ClientApprovalResponse")
+        @subject = data["subject"]
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "approval_status" => @approval_status,
+          "approver" => @approver,
+          "bookmark_url" => @bookmark_url,
           "content" => @content,
-          "subject" => @subject,
           "due_on" => @due_on,
           "replies_count" => @replies_count,
           "replies_url" => @replies_url,
-          "approval_status" => @approval_status,
-          "approver" => @approver,
           "responses" => @responses,
+          "subject" => @subject,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -581,43 +626,43 @@ module Basecamp
     # ClientApprovalResponse
     class ClientApprovalResponse
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :app_url, :bookmark_url, :parent, :bucket, :creator, :content, :approved
+      attr_accessor :app_url, :approved, :bookmark_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :visible_to_clients
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
-        @bucket = parse_type(data["bucket"], "RecordingBucket")
-        @creator = parse_type(data["creator"], "Person")
-        @content = data["content"]
         @approved = parse_boolean(data["approved"])
+        @bookmark_url = data["bookmark_url"]
+        @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @content = data["content"]
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "parent" => @parent,
-          "bucket" => @bucket,
-          "creator" => @creator,
-          "content" => @content,
           "approved" => @approved,
+          "bookmark_url" => @bookmark_url,
+          "bucket" => @bucket,
+          "content" => @content,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "visible_to_clients" => @visible_to_clients,
         }.compact
       end
 
@@ -630,6 +675,11 @@ module Basecamp
     class ClientCompany
       include TypeHelpers
       attr_accessor :id, :name
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id name].freeze
+      end
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -651,51 +701,56 @@ module Basecamp
     # ClientCorrespondence
     class ClientCorrespondence
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :parent, :bucket, :creator, :content, :subject, :replies_count, :replies_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :subject, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :content, :replies_count, :replies_url, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status subject title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @content = data["content"]
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
         @subject = data["subject"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
+        @content = data["content"]
         @replies_count = parse_integer(data["replies_count"])
         @replies_url = data["replies_url"]
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
-          "content" => @content,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
           "subject" => @subject,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
+          "content" => @content,
           "replies_count" => @replies_count,
           "replies_url" => @replies_url,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -707,43 +762,48 @@ module Basecamp
     # ClientReply
     class ClientReply
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :parent, :bucket, :creator, :content
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "RecordingBucket")
-        @creator = parse_type(data["creator"], "Person")
         @content = data["content"]
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "parent" => @parent,
           "bucket" => @bucket,
-          "creator" => @creator,
           "content" => @content,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
         }.compact
       end
 
@@ -755,17 +815,17 @@ module Basecamp
     # ClientSide
     class ClientSide
       include TypeHelpers
-      attr_accessor :url, :app_url
+      attr_accessor :app_url, :url
 
       def initialize(data = {})
-        @url = data["url"]
         @app_url = data["app_url"]
+        @url = data["url"]
       end
 
       def to_h
         {
-          "url" => @url,
           "app_url" => @app_url,
+          "url" => @url,
         }.compact
       end
 
@@ -777,45 +837,50 @@ module Basecamp
     # Comment
     class Comment
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :parent, :bucket, :creator, :content, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
-        @creator = parse_type(data["creator"], "Person")
         @content = data["content"]
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "parent" => @parent,
           "bucket" => @bucket,
-          "creator" => @creator,
           "content" => @content,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
         }.compact
@@ -829,21 +894,26 @@ module Basecamp
     # CreatePersonRequest
     class CreatePersonRequest
       include TypeHelpers
-      attr_accessor :name, :email_address, :title, :company_name
+      attr_accessor :email_address, :name, :company_name, :title
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[email_address name].freeze
+      end
 
       def initialize(data = {})
-        @name = data["name"]
         @email_address = data["email_address"]
-        @title = data["title"]
+        @name = data["name"]
         @company_name = data["company_name"]
+        @title = data["title"]
       end
 
       def to_h
         {
-          "name" => @name,
           "email_address" => @email_address,
-          "title" => @title,
+          "name" => @name,
           "company_name" => @company_name,
+          "title" => @title,
         }.compact
       end
 
@@ -855,27 +925,32 @@ module Basecamp
     # DockItem
     class DockItem
       include TypeHelpers
-      attr_accessor :id, :title, :name, :enabled, :position, :url, :app_url
+      attr_accessor :app_url, :enabled, :id, :name, :title, :url, :position
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url enabled id name title url].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @title = data["title"]
-        @name = data["name"]
-        @enabled = parse_boolean(data["enabled"])
-        @position = parse_integer(data["position"])
-        @url = data["url"]
         @app_url = data["app_url"]
+        @enabled = parse_boolean(data["enabled"])
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+        @title = data["title"]
+        @url = data["url"]
+        @position = parse_integer(data["position"])
       end
 
       def to_h
         {
-          "id" => @id,
-          "title" => @title,
-          "name" => @name,
-          "enabled" => @enabled,
-          "position" => @position,
-          "url" => @url,
           "app_url" => @app_url,
+          "enabled" => @enabled,
+          "id" => @id,
+          "name" => @name,
+          "title" => @title,
+          "url" => @url,
+          "position" => @position,
         }.compact
       end
 
@@ -887,55 +962,60 @@ module Basecamp
     # Document
     class Document
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :content, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :content, :position, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @comments_count = parse_integer(data["comments_count"])
-        @comments_url = data["comments_url"]
-        @position = parse_integer(data["position"])
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @content = data["content"]
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @content = data["content"]
+        @position = parse_integer(data["position"])
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "comments_count" => @comments_count,
-          "comments_url" => @comments_url,
-          "position" => @position,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
-          "content" => @content,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "content" => @content,
+          "position" => @position,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -947,29 +1027,34 @@ module Basecamp
     # Event
     class Event
       include TypeHelpers
-      attr_accessor :id, :recording_id, :action, :details, :created_at, :creator, :boosts_count, :boosts_url
+      attr_accessor :action, :created_at, :creator, :id, :recording_id, :boosts_count, :boosts_url, :details
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[action created_at creator id recording_id].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @recording_id = parse_integer(data["recording_id"])
         @action = data["action"]
-        @details = parse_type(data["details"], "EventDetails")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @recording_id = parse_integer(data["recording_id"])
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @details = parse_type(data["details"], "EventDetails")
       end
 
       def to_h
         {
-          "id" => @id,
-          "recording_id" => @recording_id,
           "action" => @action,
-          "details" => @details,
           "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "recording_id" => @recording_id,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "details" => @details,
         }.compact
       end
 
@@ -981,19 +1066,19 @@ module Basecamp
     # EventDetails
     class EventDetails
       include TypeHelpers
-      attr_accessor :added_person_ids, :removed_person_ids, :notified_recipient_ids
+      attr_accessor :added_person_ids, :notified_recipient_ids, :removed_person_ids
 
       def initialize(data = {})
         @added_person_ids = data["added_person_ids"]
-        @removed_person_ids = data["removed_person_ids"]
         @notified_recipient_ids = data["notified_recipient_ids"]
+        @removed_person_ids = data["removed_person_ids"]
       end
 
       def to_h
         {
           "added_person_ids" => @added_person_ids,
-          "removed_person_ids" => @removed_person_ids,
           "notified_recipient_ids" => @notified_recipient_ids,
+          "removed_person_ids" => @removed_person_ids,
         }.compact
       end
 
@@ -1005,53 +1090,58 @@ module Basecamp
     # Forward
     class Forward
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :parent, :bucket, :creator, :content, :subject, :from, :replies_count, :replies_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :subject, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :content, :from, :replies_count, :replies_url, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status subject title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @content = data["content"]
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
         @subject = data["subject"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
+        @content = data["content"]
         @from = data["from"]
         @replies_count = parse_integer(data["replies_count"])
         @replies_url = data["replies_url"]
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
-          "content" => @content,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
           "subject" => @subject,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
+          "content" => @content,
           "from" => @from,
           "replies_count" => @replies_count,
           "replies_url" => @replies_url,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -1063,45 +1153,50 @@ module Basecamp
     # ForwardReply
     class ForwardReply
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :parent, :bucket, :creator, :content, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
-        @creator = parse_type(data["creator"], "Person")
         @content = data["content"]
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "parent" => @parent,
           "bucket" => @bucket,
-          "creator" => @creator,
           "content" => @content,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
         }.compact
@@ -1115,45 +1210,50 @@ module Basecamp
     # Inbox
     class Inbox
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :position, :bucket, :creator, :forwards_count, :forwards_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :forwards_count, :forwards_url, :position
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @position = parse_integer(data["position"])
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @forwards_count = parse_integer(data["forwards_count"])
         @forwards_url = data["forwards_url"]
+        @position = parse_integer(data["position"])
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "position" => @position,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "forwards_count" => @forwards_count,
           "forwards_url" => @forwards_url,
+          "position" => @position,
         }.compact
       end
 
@@ -1165,57 +1265,62 @@ module Basecamp
     # Message
     class Message
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :parent, :bucket, :creator, :subject, :content, :category, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :subject, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :category, :comments_count, :comments_url, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket content created_at creator id inherits_status parent status subject title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @comments_count = parse_integer(data["comments_count"])
-        @comments_url = data["comments_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
-        @creator = parse_type(data["creator"], "Person")
-        @subject = data["subject"]
         @content = data["content"]
-        @category = parse_type(data["category"], "MessageType")
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @subject = data["subject"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @category = parse_type(data["category"], "MessageType")
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "comments_count" => @comments_count,
-          "comments_url" => @comments_url,
-          "parent" => @parent,
           "bucket" => @bucket,
-          "creator" => @creator,
-          "subject" => @subject,
           "content" => @content,
-          "category" => @category,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "subject" => @subject,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "category" => @category,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -1227,47 +1332,52 @@ module Basecamp
     # MessageBoard
     class MessageBoard
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :position, :bucket, :creator, :messages_count, :messages_url, :app_messages_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_messages_url, :bookmark_url, :messages_count, :messages_url, :position
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @position = parse_integer(data["position"])
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @app_messages_url = data["app_messages_url"]
+        @bookmark_url = data["bookmark_url"]
         @messages_count = parse_integer(data["messages_count"])
         @messages_url = data["messages_url"]
-        @app_messages_url = data["app_messages_url"]
+        @position = parse_integer(data["position"])
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "position" => @position,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "app_messages_url" => @app_messages_url,
+          "bookmark_url" => @bookmark_url,
           "messages_count" => @messages_count,
           "messages_url" => @messages_url,
-          "app_messages_url" => @app_messages_url,
+          "position" => @position,
         }.compact
       end
 
@@ -1279,22 +1389,27 @@ module Basecamp
     # MessageType
     class MessageType
       include TypeHelpers
-      attr_accessor :id, :name, :icon, :created_at, :updated_at
+      attr_accessor :created_at, :icon, :id, :name, :updated_at
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[created_at icon id name updated_at].freeze
+      end
 
       def initialize(data = {})
+        @created_at = parse_datetime(data["created_at"])
+        @icon = data["icon"]
         @id = parse_integer(data["id"])
         @name = data["name"]
-        @icon = data["icon"]
-        @created_at = parse_datetime(data["created_at"])
         @updated_at = parse_datetime(data["updated_at"])
       end
 
       def to_h
         {
+          "created_at" => @created_at,
+          "icon" => @icon,
           "id" => @id,
           "name" => @name,
-          "icon" => @icon,
-          "created_at" => @created_at,
           "updated_at" => @updated_at,
         }.compact
       end
@@ -1307,51 +1422,62 @@ module Basecamp
     # Person
     class Person
       include TypeHelpers
-      attr_accessor :id, :attachable_sgid, :name, :email_address, :personable_type, :title, :bio, :location, :created_at, :updated_at, :admin, :owner, :client, :employee, :time_zone, :avatar_url, :company, :can_manage_projects, :can_manage_people
+      attr_accessor :id, :name, :admin, :attachable_sgid, :avatar_url, :bio, :can_access_hill_charts, :can_access_timesheet, :can_manage_people, :can_manage_projects, :can_ping, :client, :company, :created_at, :email_address, :employee, :location, :owner, :personable_type, :time_zone, :title, :updated_at
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id name].freeze
+      end
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
-        @attachable_sgid = data["attachable_sgid"]
         @name = data["name"]
-        @email_address = data["email_address"]
-        @personable_type = data["personable_type"]
-        @title = data["title"]
-        @bio = data["bio"]
-        @location = data["location"]
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
         @admin = parse_boolean(data["admin"])
-        @owner = parse_boolean(data["owner"])
-        @client = parse_boolean(data["client"])
-        @employee = parse_boolean(data["employee"])
-        @time_zone = data["time_zone"]
+        @attachable_sgid = data["attachable_sgid"]
         @avatar_url = data["avatar_url"]
-        @company = parse_type(data["company"], "PersonCompany")
-        @can_manage_projects = parse_boolean(data["can_manage_projects"])
+        @bio = data["bio"]
+        @can_access_hill_charts = parse_boolean(data["can_access_hill_charts"])
+        @can_access_timesheet = parse_boolean(data["can_access_timesheet"])
         @can_manage_people = parse_boolean(data["can_manage_people"])
+        @can_manage_projects = parse_boolean(data["can_manage_projects"])
+        @can_ping = parse_boolean(data["can_ping"])
+        @client = parse_boolean(data["client"])
+        @company = parse_type(data["company"], "PersonCompany")
+        @created_at = parse_datetime(data["created_at"])
+        @email_address = data["email_address"]
+        @employee = parse_boolean(data["employee"])
+        @location = data["location"]
+        @owner = parse_boolean(data["owner"])
+        @personable_type = data["personable_type"]
+        @time_zone = data["time_zone"]
+        @title = data["title"]
+        @updated_at = parse_datetime(data["updated_at"])
       end
 
       def to_h
         {
           "id" => @id,
-          "attachable_sgid" => @attachable_sgid,
           "name" => @name,
-          "email_address" => @email_address,
-          "personable_type" => @personable_type,
-          "title" => @title,
-          "bio" => @bio,
-          "location" => @location,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
           "admin" => @admin,
-          "owner" => @owner,
-          "client" => @client,
-          "employee" => @employee,
-          "time_zone" => @time_zone,
+          "attachable_sgid" => @attachable_sgid,
           "avatar_url" => @avatar_url,
-          "company" => @company,
-          "can_manage_projects" => @can_manage_projects,
+          "bio" => @bio,
+          "can_access_hill_charts" => @can_access_hill_charts,
+          "can_access_timesheet" => @can_access_timesheet,
           "can_manage_people" => @can_manage_people,
+          "can_manage_projects" => @can_manage_projects,
+          "can_ping" => @can_ping,
+          "client" => @client,
+          "company" => @company,
+          "created_at" => @created_at,
+          "email_address" => @email_address,
+          "employee" => @employee,
+          "location" => @location,
+          "owner" => @owner,
+          "personable_type" => @personable_type,
+          "time_zone" => @time_zone,
+          "title" => @title,
+          "updated_at" => @updated_at,
         }.compact
       end
 
@@ -1364,6 +1490,11 @@ module Basecamp
     class PersonCompany
       include TypeHelpers
       attr_accessor :id, :name
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id name].freeze
+      end
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -1385,43 +1516,48 @@ module Basecamp
     # Project
     class Project
       include TypeHelpers
-      attr_accessor :id, :status, :created_at, :updated_at, :name, :description, :purpose, :clients_enabled, :bookmark_url, :url, :app_url, :dock, :bookmarked, :client_company, :clientside
+      attr_accessor :app_url, :created_at, :id, :name, :status, :updated_at, :url, :bookmark_url, :bookmarked, :client_company, :clients_enabled, :clientside, :description, :dock, :purpose
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url created_at id name status updated_at url].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @name = data["name"]
-        @description = data["description"]
-        @purpose = data["purpose"]
-        @clients_enabled = parse_boolean(data["clients_enabled"])
-        @bookmark_url = data["bookmark_url"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @dock = parse_array(data["dock"], "DockItem")
+        @created_at = parse_datetime(data["created_at"])
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+        @status = data["status"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @bookmark_url = data["bookmark_url"]
         @bookmarked = parse_boolean(data["bookmarked"])
         @client_company = parse_type(data["client_company"], "ClientCompany")
+        @clients_enabled = parse_boolean(data["clients_enabled"])
         @clientside = parse_type(data["clientside"], "ClientSide")
+        @description = data["description"]
+        @dock = parse_array(data["dock"], "DockItem")
+        @purpose = data["purpose"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "name" => @name,
-          "description" => @description,
-          "purpose" => @purpose,
-          "clients_enabled" => @clients_enabled,
-          "bookmark_url" => @bookmark_url,
-          "url" => @url,
           "app_url" => @app_url,
-          "dock" => @dock,
+          "created_at" => @created_at,
+          "id" => @id,
+          "name" => @name,
+          "status" => @status,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "bookmark_url" => @bookmark_url,
           "bookmarked" => @bookmarked,
           "client_company" => @client_company,
+          "clients_enabled" => @clients_enabled,
           "clientside" => @clientside,
+          "description" => @description,
+          "dock" => @dock,
+          "purpose" => @purpose,
         }.compact
       end
 
@@ -1455,21 +1591,26 @@ module Basecamp
     # ProjectConstruction
     class ProjectConstruction
       include TypeHelpers
-      attr_accessor :id, :status, :url, :project
+      attr_accessor :id, :status, :project, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id status].freeze
+      end
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
         @status = data["status"]
-        @url = data["url"]
         @project = parse_type(data["project"], "Project")
+        @url = data["url"]
       end
 
       def to_h
         {
           "id" => @id,
           "status" => @status,
-          "url" => @url,
           "project" => @project,
+          "url" => @url,
         }.compact
       end
 
@@ -1481,51 +1622,56 @@ module Basecamp
     # Question
     class Question
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :parent, :bucket, :creator, :paused, :schedule, :answers_count, :answers_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :answers_count, :answers_url, :bookmark_url, :paused, :schedule, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @paused = parse_boolean(data["paused"])
-        @schedule = parse_type(data["schedule"], "QuestionSchedule")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @answers_count = parse_integer(data["answers_count"])
         @answers_url = data["answers_url"]
+        @bookmark_url = data["bookmark_url"]
+        @paused = parse_boolean(data["paused"])
+        @schedule = parse_type(data["schedule"], "QuestionSchedule")
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
-          "paused" => @paused,
-          "schedule" => @schedule,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
           "answers_count" => @answers_count,
           "answers_url" => @answers_url,
+          "bookmark_url" => @bookmark_url,
+          "paused" => @paused,
+          "schedule" => @schedule,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -1537,55 +1683,60 @@ module Basecamp
     # QuestionAnswer
     class QuestionAnswer
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :content, :group_on, :parent, :bucket, :creator, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :group_on, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @comments_count = parse_integer(data["comments_count"])
-        @comments_url = data["comments_url"]
-        @content = data["content"]
-        @group_on = data["group_on"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @content = data["content"]
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @group_on = data["group_on"]
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "comments_count" => @comments_count,
-          "comments_url" => @comments_url,
-          "content" => @content,
-          "group_on" => @group_on,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "content" => @content,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "group_on" => @group_on,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -1598,6 +1749,11 @@ module Basecamp
     class QuestionAnswerPayload
       include TypeHelpers
       attr_accessor :content, :group_on
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[content].freeze
+      end
 
       def initialize(data = {})
         @content = data["content"]
@@ -1621,6 +1777,11 @@ module Basecamp
       include TypeHelpers
       attr_accessor :content
 
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[content].freeze
+      end
+
       def initialize(data = {})
         @content = data["content"]
       end
@@ -1639,21 +1800,21 @@ module Basecamp
     # QuestionReminder
     class QuestionReminder
       include TypeHelpers
-      attr_accessor :reminder_id, :remind_at, :group_on, :question
+      attr_accessor :group_on, :question, :remind_at, :reminder_id
 
       def initialize(data = {})
-        @reminder_id = parse_integer(data["reminder_id"])
-        @remind_at = parse_datetime(data["remind_at"])
         @group_on = data["group_on"]
         @question = parse_type(data["question"], "Question")
+        @remind_at = parse_datetime(data["remind_at"])
+        @reminder_id = parse_integer(data["reminder_id"])
       end
 
       def to_h
         {
-          "reminder_id" => @reminder_id,
-          "remind_at" => @remind_at,
           "group_on" => @group_on,
           "question" => @question,
+          "remind_at" => @remind_at,
+          "reminder_id" => @reminder_id,
         }.compact
       end
 
@@ -1665,31 +1826,31 @@ module Basecamp
     # QuestionSchedule
     class QuestionSchedule
       include TypeHelpers
-      attr_accessor :frequency, :days, :hour, :minute, :week_instance, :week_interval, :month_interval, :start_date, :end_date
+      attr_accessor :days, :end_date, :frequency, :hour, :minute, :month_interval, :start_date, :week_instance, :week_interval
 
       def initialize(data = {})
-        @frequency = data["frequency"]
         @days = data["days"]
+        @end_date = data["end_date"]
+        @frequency = data["frequency"]
         @hour = parse_integer(data["hour"])
         @minute = parse_integer(data["minute"])
-        @week_instance = parse_integer(data["week_instance"])
-        @week_interval = parse_integer(data["week_interval"])
         @month_interval = parse_integer(data["month_interval"])
         @start_date = data["start_date"]
-        @end_date = data["end_date"]
+        @week_instance = parse_integer(data["week_instance"])
+        @week_interval = parse_integer(data["week_interval"])
       end
 
       def to_h
         {
-          "frequency" => @frequency,
           "days" => @days,
+          "end_date" => @end_date,
+          "frequency" => @frequency,
           "hour" => @hour,
           "minute" => @minute,
-          "week_instance" => @week_instance,
-          "week_interval" => @week_interval,
           "month_interval" => @month_interval,
           "start_date" => @start_date,
-          "end_date" => @end_date,
+          "week_instance" => @week_instance,
+          "week_interval" => @week_interval,
         }.compact
       end
 
@@ -1701,45 +1862,50 @@ module Basecamp
     # Questionnaire
     class Questionnaire
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :questions_url, :questions_count, :name, :bucket, :creator
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :questions_count, :questions_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status name status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @questions_url = data["questions_url"]
-        @questions_count = parse_integer(data["questions_count"])
-        @name = data["name"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @name = data["name"]
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
+        @questions_count = parse_integer(data["questions_count"])
+        @questions_url = data["questions_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "questions_url" => @questions_url,
-          "questions_count" => @questions_count,
-          "name" => @name,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "name" => @name,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
+          "questions_count" => @questions_count,
+          "questions_url" => @questions_url,
         }.compact
       end
 
@@ -1751,41 +1917,54 @@ module Basecamp
     # Recording
     class Recording
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :parent, :bucket, :creator
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :comments_count, :comments_url, :content, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @content = data["content"]
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "content" => @content,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -1798,6 +1977,11 @@ module Basecamp
     class RecordingBucket
       include TypeHelpers
       attr_accessor :id, :name, :type
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id name type].freeze
+      end
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -1821,23 +2005,28 @@ module Basecamp
     # RecordingParent
     class RecordingParent
       include TypeHelpers
-      attr_accessor :id, :title, :type, :url, :app_url
+      attr_accessor :app_url, :id, :title, :type, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url id title type url].freeze
+      end
 
       def initialize(data = {})
+        @app_url = data["app_url"]
         @id = parse_integer(data["id"])
         @title = data["title"]
         @type = data["type"]
         @url = data["url"]
-        @app_url = data["app_url"]
       end
 
       def to_h
         {
+          "app_url" => @app_url,
           "id" => @id,
           "title" => @title,
           "type" => @type,
           "url" => @url,
-          "app_url" => @app_url,
         }.compact
       end
 
@@ -1849,47 +2038,52 @@ module Basecamp
     # Schedule
     class Schedule
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :position, :bucket, :creator, :include_due_assignments, :entries_count, :entries_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :entries_count, :entries_url, :include_due_assignments, :position
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @position = parse_integer(data["position"])
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @include_due_assignments = parse_boolean(data["include_due_assignments"])
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @entries_count = parse_integer(data["entries_count"])
         @entries_url = data["entries_url"]
+        @include_due_assignments = parse_boolean(data["include_due_assignments"])
+        @position = parse_integer(data["position"])
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "position" => @position,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
-          "include_due_assignments" => @include_due_assignments,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "entries_count" => @entries_count,
           "entries_url" => @entries_url,
+          "include_due_assignments" => @include_due_assignments,
+          "position" => @position,
         }.compact
       end
 
@@ -1901,17 +2095,17 @@ module Basecamp
     # ScheduleAttributes
     class ScheduleAttributes
       include TypeHelpers
-      attr_accessor :start_date, :end_date
+      attr_accessor :end_date, :start_date
 
       def initialize(data = {})
-        @start_date = data["start_date"]
         @end_date = data["end_date"]
+        @start_date = data["start_date"]
       end
 
       def to_h
         {
-          "start_date" => @start_date,
           "end_date" => @end_date,
+          "start_date" => @start_date,
         }.compact
       end
 
@@ -1923,63 +2117,68 @@ module Basecamp
     # ScheduleEntry
     class ScheduleEntry
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :parent, :bucket, :creator, :summary, :description, :all_day, :starts_at, :ends_at, :participants, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :summary, :title, :type, :updated_at, :url, :visible_to_clients, :all_day, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :description, :ends_at, :participants, :starts_at, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status summary title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @comments_count = parse_integer(data["comments_count"])
-        @comments_url = data["comments_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
         @summary = data["summary"]
-        @description = data["description"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @all_day = parse_boolean(data["all_day"])
-        @starts_at = parse_datetime(data["starts_at"])
-        @ends_at = parse_datetime(data["ends_at"])
-        @participants = parse_array(data["participants"], "Person")
+        @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @description = data["description"]
+        @ends_at = parse_datetime(data["ends_at"])
+        @participants = parse_array(data["participants"], "Person")
+        @starts_at = parse_datetime(data["starts_at"])
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "comments_count" => @comments_count,
-          "comments_url" => @comments_url,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
           "summary" => @summary,
-          "description" => @description,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
           "all_day" => @all_day,
-          "starts_at" => @starts_at,
-          "ends_at" => @ends_at,
-          "participants" => @participants,
+          "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "description" => @description,
+          "ends_at" => @ends_at,
+          "participants" => @participants,
+          "starts_at" => @starts_at,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -2033,47 +2232,52 @@ module Basecamp
     # SearchResult
     class SearchResult
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :parent, :bucket, :creator, :content, :description, :subject
+      attr_accessor :app_url, :id, :title, :type, :url, :bookmark_url, :bucket, :content, :created_at, :creator, :description, :inherits_status, :parent, :status, :subject, :updated_at, :visible_to_clients
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url id title type url].freeze
+      end
 
       def initialize(data = {})
+        @app_url = data["app_url"]
         @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
         @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
         @type = data["type"]
         @url = data["url"]
-        @app_url = data["app_url"]
         @bookmark_url = data["bookmark_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "RecordingBucket")
-        @creator = parse_type(data["creator"], "Person")
         @content = data["content"]
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
         @description = data["description"]
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
         @subject = data["subject"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
       end
 
       def to_h
         {
+          "app_url" => @app_url,
           "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
           "title" => @title,
-          "inherits_status" => @inherits_status,
           "type" => @type,
           "url" => @url,
-          "app_url" => @app_url,
           "bookmark_url" => @bookmark_url,
-          "parent" => @parent,
           "bucket" => @bucket,
-          "creator" => @creator,
           "content" => @content,
+          "created_at" => @created_at,
+          "creator" => @creator,
           "description" => @description,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
           "subject" => @subject,
+          "updated_at" => @updated_at,
+          "visible_to_clients" => @visible_to_clients,
         }.compact
       end
 
@@ -2085,19 +2289,24 @@ module Basecamp
     # Subscription
     class Subscription
       include TypeHelpers
-      attr_accessor :subscribed, :count, :url, :subscribers
+      attr_accessor :count, :subscribed, :url, :subscribers
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[count subscribed url].freeze
+      end
 
       def initialize(data = {})
-        @subscribed = parse_boolean(data["subscribed"])
         @count = parse_integer(data["count"])
+        @subscribed = parse_boolean(data["subscribed"])
         @url = data["url"]
         @subscribers = parse_array(data["subscribers"], "Person")
       end
 
       def to_h
         {
-          "subscribed" => @subscribed,
           "count" => @count,
+          "subscribed" => @subscribed,
           "url" => @url,
           "subscribers" => @subscribers,
         }.compact
@@ -2111,31 +2320,36 @@ module Basecamp
     # Template
     class Template
       include TypeHelpers
-      attr_accessor :id, :status, :created_at, :updated_at, :name, :description, :url, :app_url, :dock
+      attr_accessor :created_at, :id, :name, :updated_at, :app_url, :description, :dock, :status, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[created_at id name updated_at].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
         @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
+        @id = parse_integer(data["id"])
         @name = data["name"]
-        @description = data["description"]
-        @url = data["url"]
+        @updated_at = parse_datetime(data["updated_at"])
         @app_url = data["app_url"]
+        @description = data["description"]
         @dock = parse_array(data["dock"], "DockItem")
+        @status = data["status"]
+        @url = data["url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
           "created_at" => @created_at,
-          "updated_at" => @updated_at,
+          "id" => @id,
           "name" => @name,
-          "description" => @description,
-          "url" => @url,
+          "updated_at" => @updated_at,
           "app_url" => @app_url,
+          "description" => @description,
           "dock" => @dock,
+          "status" => @status,
+          "url" => @url,
         }.compact
       end
 
@@ -2147,37 +2361,37 @@ module Basecamp
     # TimelineEvent
     class TimelineEvent
       include TypeHelpers
-      attr_accessor :id, :created_at, :kind, :parent_recording_id, :url, :app_url, :creator, :action, :target, :title, :summary_excerpt, :bucket
+      attr_accessor :action, :app_url, :bucket, :created_at, :creator, :id, :kind, :parent_recording_id, :summary_excerpt, :target, :title, :url
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
+        @action = data["action"]
+        @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "TodoBucket")
         @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
         @kind = data["kind"]
         @parent_recording_id = parse_integer(data["parent_recording_id"])
-        @url = data["url"]
-        @app_url = data["app_url"]
-        @creator = parse_type(data["creator"], "Person")
-        @action = data["action"]
+        @summary_excerpt = data["summary_excerpt"]
         @target = data["target"]
         @title = data["title"]
-        @summary_excerpt = data["summary_excerpt"]
-        @bucket = parse_type(data["bucket"], "TodoBucket")
+        @url = data["url"]
       end
 
       def to_h
         {
-          "id" => @id,
+          "action" => @action,
+          "app_url" => @app_url,
+          "bucket" => @bucket,
           "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
           "kind" => @kind,
           "parent_recording_id" => @parent_recording_id,
-          "url" => @url,
-          "app_url" => @app_url,
-          "creator" => @creator,
-          "action" => @action,
+          "summary_excerpt" => @summary_excerpt,
           "target" => @target,
           "title" => @title,
-          "summary_excerpt" => @summary_excerpt,
-          "bucket" => @bucket,
+          "url" => @url,
         }.compact
       end
 
@@ -2189,23 +2403,28 @@ module Basecamp
     # TimesheetEntry
     class TimesheetEntry
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :parent, :bucket, :creator, :date, :description, :hours, :person
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :date, :description, :hours, :person
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @date = data["date"]
         @description = data["description"]
         @hours = data["hours"]
@@ -2214,20 +2433,20 @@ module Basecamp
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "date" => @date,
           "description" => @description,
           "hours" => @hours,
@@ -2243,69 +2462,74 @@ module Basecamp
     # Todo
     class Todo
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :description, :completed, :content, :starts_on, :due_on, :assignees, :completion_subscribers, :completion_url, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @comments_count = parse_integer(data["comments_count"])
-        @comments_url = data["comments_url"]
-        @position = parse_integer(data["position"])
-        @parent = parse_type(data["parent"], "TodoParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
-        @creator = parse_type(data["creator"], "Person")
-        @description = data["description"]
-        @completed = parse_boolean(data["completed"])
         @content = data["content"]
-        @starts_on = data["starts_on"]
-        @due_on = data["due_on"]
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "TodoParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @assignees = parse_array(data["assignees"], "Person")
-        @completion_subscribers = parse_array(data["completion_subscribers"], "Person")
-        @completion_url = data["completion_url"]
+        @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @completed = parse_boolean(data["completed"])
+        @completion_subscribers = parse_array(data["completion_subscribers"], "Person")
+        @completion_url = data["completion_url"]
+        @description = data["description"]
+        @due_on = data["due_on"]
+        @position = parse_integer(data["position"])
+        @starts_on = data["starts_on"]
+        @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "comments_count" => @comments_count,
-          "comments_url" => @comments_url,
-          "position" => @position,
-          "parent" => @parent,
           "bucket" => @bucket,
-          "creator" => @creator,
-          "description" => @description,
-          "completed" => @completed,
           "content" => @content,
-          "starts_on" => @starts_on,
-          "due_on" => @due_on,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
           "assignees" => @assignees,
-          "completion_subscribers" => @completion_subscribers,
-          "completion_url" => @completion_url,
+          "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "completed" => @completed,
+          "completion_subscribers" => @completion_subscribers,
+          "completion_url" => @completion_url,
+          "description" => @description,
+          "due_on" => @due_on,
+          "position" => @position,
+          "starts_on" => @starts_on,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 
@@ -2318,6 +2542,11 @@ module Basecamp
     class TodoBucket
       include TypeHelpers
       attr_accessor :id, :name, :type
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id name type].freeze
+      end
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
@@ -2341,23 +2570,28 @@ module Basecamp
     # TodoParent
     class TodoParent
       include TypeHelpers
-      attr_accessor :id, :title, :type, :url, :app_url
+      attr_accessor :app_url, :id, :title, :type, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url id title type url].freeze
+      end
 
       def initialize(data = {})
+        @app_url = data["app_url"]
         @id = parse_integer(data["id"])
         @title = data["title"]
         @type = data["type"]
         @url = data["url"]
-        @app_url = data["app_url"]
       end
 
       def to_h
         {
+          "app_url" => @app_url,
           "id" => @id,
           "title" => @title,
           "type" => @type,
           "url" => @url,
-          "app_url" => @app_url,
         }.compact
       end
 
@@ -2369,67 +2603,72 @@ module Basecamp
     # Todolist
     class Todolist
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :description, :completed, :completed_ratio, :name, :todos_url, :groups_url, :app_todos_url, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_ratio, :description, :groups_url, :position, :subscription_url, :todos_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status name parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @comments_count = parse_integer(data["comments_count"])
-        @comments_url = data["comments_url"]
-        @position = parse_integer(data["position"])
-        @parent = parse_type(data["parent"], "TodoParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @description = data["description"]
-        @completed = parse_boolean(data["completed"])
-        @completed_ratio = data["completed_ratio"]
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
         @name = data["name"]
-        @todos_url = data["todos_url"]
-        @groups_url = data["groups_url"]
+        @parent = parse_type(data["parent"], "TodoParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @app_todos_url = data["app_todos_url"]
+        @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @completed = parse_boolean(data["completed"])
+        @completed_ratio = data["completed_ratio"]
+        @description = data["description"]
+        @groups_url = data["groups_url"]
+        @position = parse_integer(data["position"])
+        @subscription_url = data["subscription_url"]
+        @todos_url = data["todos_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "comments_count" => @comments_count,
-          "comments_url" => @comments_url,
-          "position" => @position,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
-          "description" => @description,
-          "completed" => @completed,
-          "completed_ratio" => @completed_ratio,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
           "name" => @name,
-          "todos_url" => @todos_url,
-          "groups_url" => @groups_url,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
           "app_todos_url" => @app_todos_url,
+          "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "completed" => @completed,
+          "completed_ratio" => @completed_ratio,
+          "description" => @description,
+          "groups_url" => @groups_url,
+          "position" => @position,
+          "subscription_url" => @subscription_url,
+          "todos_url" => @todos_url,
         }.compact
       end
 
@@ -2441,59 +2680,64 @@ module Basecamp
     # TodolistGroup
     class TodolistGroup
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :name, :completed, :completed_ratio, :todos_url, :app_todos_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :comments_count, :comments_url, :completed, :completed_ratio, :position, :subscription_url, :todos_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status name parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @name = data["name"]
+        @parent = parse_type(data["parent"], "TodoParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @app_todos_url = data["app_todos_url"]
         @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
-        @position = parse_integer(data["position"])
-        @parent = parse_type(data["parent"], "TodoParent")
-        @bucket = parse_type(data["bucket"], "TodoBucket")
-        @creator = parse_type(data["creator"], "Person")
-        @name = data["name"]
         @completed = parse_boolean(data["completed"])
         @completed_ratio = data["completed_ratio"]
+        @position = parse_integer(data["position"])
+        @subscription_url = data["subscription_url"]
         @todos_url = data["todos_url"]
-        @app_todos_url = data["app_todos_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
+          "bucket" => @bucket,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "name" => @name,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "app_todos_url" => @app_todos_url,
           "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
-          "position" => @position,
-          "parent" => @parent,
-          "bucket" => @bucket,
-          "creator" => @creator,
-          "name" => @name,
           "completed" => @completed,
           "completed_ratio" => @completed_ratio,
+          "position" => @position,
+          "subscription_url" => @subscription_url,
           "todos_url" => @todos_url,
-          "app_todos_url" => @app_todos_url,
         }.compact
       end
 
@@ -2505,59 +2749,64 @@ module Basecamp
     # Todoset
     class Todoset
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :position, :bucket, :creator, :name, :todolists_count, :todolists_url, :completed_ratio, :completed, :completed_count, :on_schedule_count, :over_schedule_count, :app_todolists_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todolists_url, :bookmark_url, :completed, :completed_count, :completed_ratio, :on_schedule_count, :over_schedule_count, :position, :todolists_count, :todolists_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status name status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @position = parse_integer(data["position"])
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
         @name = data["name"]
-        @todolists_count = parse_integer(data["todolists_count"])
-        @todolists_url = data["todolists_url"]
-        @completed_ratio = data["completed_ratio"]
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @app_todolists_url = data["app_todolists_url"]
+        @bookmark_url = data["bookmark_url"]
         @completed = parse_boolean(data["completed"])
         @completed_count = parse_integer(data["completed_count"])
+        @completed_ratio = data["completed_ratio"]
         @on_schedule_count = parse_integer(data["on_schedule_count"])
         @over_schedule_count = parse_integer(data["over_schedule_count"])
-        @app_todolists_url = data["app_todolists_url"]
+        @position = parse_integer(data["position"])
+        @todolists_count = parse_integer(data["todolists_count"])
+        @todolists_url = data["todolists_url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "position" => @position,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
           "name" => @name,
-          "todolists_count" => @todolists_count,
-          "todolists_url" => @todolists_url,
-          "completed_ratio" => @completed_ratio,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "app_todolists_url" => @app_todolists_url,
+          "bookmark_url" => @bookmark_url,
           "completed" => @completed,
           "completed_count" => @completed_count,
+          "completed_ratio" => @completed_ratio,
           "on_schedule_count" => @on_schedule_count,
           "over_schedule_count" => @over_schedule_count,
-          "app_todolists_url" => @app_todolists_url,
+          "position" => @position,
+          "todolists_count" => @todolists_count,
+          "todolists_url" => @todolists_url,
         }.compact
       end
 
@@ -2569,35 +2818,40 @@ module Basecamp
     # Tool
     class Tool
       include TypeHelpers
-      attr_accessor :id, :status, :created_at, :updated_at, :title, :name, :enabled, :position, :url, :app_url, :bucket
+      attr_accessor :created_at, :enabled, :id, :name, :title, :updated_at, :app_url, :bucket, :position, :status, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[created_at enabled id name title updated_at].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
         @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @name = data["name"]
         @enabled = parse_boolean(data["enabled"])
-        @position = parse_integer(data["position"])
-        @url = data["url"]
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+        @title = data["title"]
+        @updated_at = parse_datetime(data["updated_at"])
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @position = parse_integer(data["position"])
+        @status = data["status"]
+        @url = data["url"]
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
           "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "name" => @name,
           "enabled" => @enabled,
-          "position" => @position,
-          "url" => @url,
+          "id" => @id,
+          "name" => @name,
+          "title" => @title,
+          "updated_at" => @updated_at,
           "app_url" => @app_url,
           "bucket" => @bucket,
+          "position" => @position,
+          "status" => @status,
+          "url" => @url,
         }.compact
       end
 
@@ -2609,67 +2863,72 @@ module Basecamp
     # Upload
     class Upload
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :subscription_url, :comments_count, :comments_url, :position, :parent, :bucket, :creator, :description, :content_type, :byte_size, :width, :height, :download_url, :filename, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :byte_size, :comments_count, :comments_url, :content_type, :description, :download_url, :filename, :height, :position, :subscription_url, :width
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @subscription_url = data["subscription_url"]
-        @comments_count = parse_integer(data["comments_count"])
-        @comments_url = data["comments_url"]
-        @position = parse_integer(data["position"])
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @description = data["description"]
-        @content_type = data["content_type"]
-        @byte_size = parse_integer(data["byte_size"])
-        @width = parse_integer(data["width"])
-        @height = parse_integer(data["height"])
-        @download_url = data["download_url"]
-        @filename = data["filename"]
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @byte_size = parse_integer(data["byte_size"])
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @content_type = data["content_type"]
+        @description = data["description"]
+        @download_url = data["download_url"]
+        @filename = data["filename"]
+        @height = parse_integer(data["height"])
+        @position = parse_integer(data["position"])
+        @subscription_url = data["subscription_url"]
+        @width = parse_integer(data["width"])
       end
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "subscription_url" => @subscription_url,
-          "comments_count" => @comments_count,
-          "comments_url" => @comments_url,
-          "position" => @position,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
-          "description" => @description,
-          "content_type" => @content_type,
-          "byte_size" => @byte_size,
-          "width" => @width,
-          "height" => @height,
-          "download_url" => @download_url,
-          "filename" => @filename,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "byte_size" => @byte_size,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "content_type" => @content_type,
+          "description" => @description,
+          "download_url" => @download_url,
+          "filename" => @filename,
+          "height" => @height,
+          "position" => @position,
+          "subscription_url" => @subscription_url,
+          "width" => @width,
         }.compact
       end
 
@@ -2681,26 +2940,31 @@ module Basecamp
     # Vault
     class Vault
       include TypeHelpers
-      attr_accessor :id, :status, :visible_to_clients, :created_at, :updated_at, :title, :inherits_status, :type, :url, :app_url, :bookmark_url, :position, :parent, :bucket, :creator, :documents_count, :documents_url, :uploads_count, :uploads_url, :vaults_count, :vaults_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :documents_count, :documents_url, :parent, :position, :uploads_count, :uploads_url, :vaults_count, :vaults_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status status title type updated_at url visible_to_clients].freeze
+      end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @status = data["status"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @title = data["title"]
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @type = data["type"]
-        @url = data["url"]
         @app_url = data["app_url"]
-        @bookmark_url = data["bookmark_url"]
-        @position = parse_integer(data["position"])
-        @parent = parse_type(data["parent"], "RecordingParent")
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
         @documents_count = parse_integer(data["documents_count"])
         @documents_url = data["documents_url"]
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @position = parse_integer(data["position"])
         @uploads_count = parse_integer(data["uploads_count"])
         @uploads_url = data["uploads_url"]
         @vaults_count = parse_integer(data["vaults_count"])
@@ -2709,23 +2973,23 @@ module Basecamp
 
       def to_h
         {
-          "id" => @id,
-          "status" => @status,
-          "visible_to_clients" => @visible_to_clients,
-          "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "title" => @title,
-          "inherits_status" => @inherits_status,
-          "type" => @type,
-          "url" => @url,
           "app_url" => @app_url,
-          "bookmark_url" => @bookmark_url,
-          "position" => @position,
-          "parent" => @parent,
           "bucket" => @bucket,
+          "created_at" => @created_at,
           "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
           "documents_count" => @documents_count,
           "documents_url" => @documents_url,
+          "parent" => @parent,
+          "position" => @position,
           "uploads_count" => @uploads_count,
           "uploads_url" => @uploads_url,
           "vaults_count" => @vaults_count,
@@ -2741,29 +3005,186 @@ module Basecamp
     # Webhook
     class Webhook
       include TypeHelpers
-      attr_accessor :id, :active, :created_at, :updated_at, :payload_url, :types, :url, :app_url
+      attr_accessor :app_url, :created_at, :id, :payload_url, :updated_at, :url, :active, :recent_deliveries, :types
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url created_at id payload_url updated_at url].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @created_at = parse_datetime(data["created_at"])
+        @id = parse_integer(data["id"])
+        @payload_url = data["payload_url"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @active = parse_boolean(data["active"])
+        @recent_deliveries = parse_array(data["recent_deliveries"], "WebhookDelivery")
+        @types = data["types"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "created_at" => @created_at,
+          "id" => @id,
+          "payload_url" => @payload_url,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "active" => @active,
+          "recent_deliveries" => @recent_deliveries,
+          "types" => @types,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookCopy
+    class WebhookCopy
+      include TypeHelpers
+      attr_accessor :app_url, :bucket, :id, :url
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "WebhookCopyBucket")
+        @id = parse_integer(data["id"])
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "bucket" => @bucket,
+          "id" => @id,
+          "url" => @url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookCopyBucket
+    class WebhookCopyBucket
+      include TypeHelpers
+      attr_accessor :id
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
-        @active = parse_boolean(data["active"])
-        @created_at = parse_datetime(data["created_at"])
-        @updated_at = parse_datetime(data["updated_at"])
-        @payload_url = data["payload_url"]
-        @types = data["types"]
-        @url = data["url"]
-        @app_url = data["app_url"]
       end
 
       def to_h
         {
           "id" => @id,
-          "active" => @active,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookDelivery
+    class WebhookDelivery
+      include TypeHelpers
+      attr_accessor :created_at, :id, :request, :response
+
+      def initialize(data = {})
+        @created_at = parse_datetime(data["created_at"])
+        @id = parse_integer(data["id"])
+        @request = parse_type(data["request"], "WebhookDeliveryRequest")
+        @response = parse_type(data["response"], "WebhookDeliveryResponse")
+      end
+
+      def to_h
+        {
           "created_at" => @created_at,
-          "updated_at" => @updated_at,
-          "payload_url" => @payload_url,
-          "types" => @types,
-          "url" => @url,
-          "app_url" => @app_url,
+          "id" => @id,
+          "request" => @request,
+          "response" => @response,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookDeliveryRequest
+    class WebhookDeliveryRequest
+      include TypeHelpers
+      attr_accessor :body, :headers
+
+      def initialize(data = {})
+        @body = parse_type(data["body"], "WebhookEvent")
+        @headers = parse_type(data["headers"], "WebhookHeadersMap")
+      end
+
+      def to_h
+        {
+          "body" => @body,
+          "headers" => @headers,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookDeliveryResponse
+    class WebhookDeliveryResponse
+      include TypeHelpers
+      attr_accessor :code, :headers, :message
+
+      def initialize(data = {})
+        @code = parse_integer(data["code"])
+        @headers = parse_type(data["headers"], "WebhookHeadersMap")
+        @message = data["message"]
+      end
+
+      def to_h
+        {
+          "code" => @code,
+          "headers" => @headers,
+          "message" => @message,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # WebhookEvent
+    class WebhookEvent
+      include TypeHelpers
+      attr_accessor :copy, :created_at, :creator, :details, :id, :kind, :recording
+
+      def initialize(data = {})
+        @copy = parse_type(data["copy"], "WebhookCopy")
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @details = data["details"]
+        @id = parse_integer(data["id"])
+        @kind = data["kind"]
+        @recording = parse_type(data["recording"], "Recording")
+      end
+
+      def to_h
+        {
+          "copy" => @copy,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "details" => @details,
+          "id" => @id,
+          "kind" => @kind,
+          "recording" => @recording,
         }.compact
       end
 

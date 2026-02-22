@@ -12,7 +12,7 @@ module Basecamp
       # @param position [Integer] position
       # @return [void]
       def reposition(group_id:, position:)
-        with_operation(service: "todolistgroups", operation: "reposition", is_mutation: true, project_id: project_id, resource_id: group_id) do
+        with_operation(service: "todolistgroups", operation: "reposition", is_mutation: true, resource_id: group_id) do
           http_put("/todolists/#{group_id}/position.json", body: compact_params(position: position))
           nil
         end
@@ -22,7 +22,7 @@ module Basecamp
       # @param todolist_id [Integer] todolist id ID
       # @return [Enumerator<Hash>] paginated results
       def list(todolist_id:)
-        wrap_paginated(service: "todolistgroups", operation: "list", is_mutation: false, project_id: project_id, resource_id: todolist_id) do
+        wrap_paginated(service: "todolistgroups", operation: "list", is_mutation: false, resource_id: todolist_id) do
           paginate("/todolists/#{todolist_id}/groups.json")
         end
       end
@@ -32,7 +32,7 @@ module Basecamp
       # @param name [String] name
       # @return [Hash] response data
       def create(todolist_id:, name:)
-        with_operation(service: "todolistgroups", operation: "create", is_mutation: true, project_id: project_id, resource_id: todolist_id) do
+        with_operation(service: "todolistgroups", operation: "create", is_mutation: true, resource_id: todolist_id) do
           http_post("/todolists/#{todolist_id}/groups.json", body: compact_params(name: name)).json
         end
       end

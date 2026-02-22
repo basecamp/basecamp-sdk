@@ -14,20 +14,19 @@ class TodosetsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a todoset (container for todolists in a project)
-     * @param projectId The project ID
      * @param todosetId The todoset ID
      */
-    suspend fun get(projectId: Long, todosetId: Long): Todoset {
+    suspend fun get(todosetId: Long): Todoset {
         val info = OperationInfo(
             service = "Todosets",
             operation = "GetTodoset",
             resourceType = "todoset",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = todosetId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/todosets/${todosetId}", operationName = info.operation)
+            httpGet("/todosets/${todosetId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<Todoset>(body)
         }

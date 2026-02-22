@@ -311,54 +311,48 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         }
 
         "ListTodos" -> {
-            val projectId = tc.pathParams.longParam("projectId")
             val todolistId = tc.pathParams.longParam("todolistId")
-            val result = account.todos.list(projectId, todolistId)
+            val result = account.todos.list(todolistId)
             DispatchResult(totalCount = result.meta.totalCount)
         }
 
         "CreateTodo" -> {
-            val projectId = tc.pathParams.longParam("projectId")
             val todolistId = tc.pathParams.longParam("todolistId")
             val content = tc.requestBody.stringParam("content")
-            account.todos.create(projectId, todolistId, CreateTodoBody(content = content))
+            account.todos.create(todolistId, CreateTodoBody(content = content))
             DispatchResult()
         }
 
         "GetTimesheetEntry" -> {
-            val projectId = tc.pathParams.longParam("projectId")
             val entryId = tc.pathParams.longParam("timesheetEntryId")
                 .let { if (it != 0L) it else tc.pathParams.longParam("entryId") }
-            account.timesheets.get(projectId, entryId)
+            account.timesheets.get(entryId)
             DispatchResult()
         }
 
         "CreateTimesheetEntry" -> {
-            val projectId = tc.pathParams.longParam("projectId")
             val recordingId = tc.pathParams.longParam("recordingId")
             val date = tc.requestBody.stringParam("date")
             val hours = tc.requestBody.stringParam("hours")
             val description = tc.requestBody?.get("description")?.jsonPrimitive?.contentOrNull
-            account.timesheets.create(projectId, recordingId,
+            account.timesheets.create(recordingId,
                 CreateTimesheetEntryBody(date = date, hours = hours, description = description))
             DispatchResult()
         }
 
         "UpdateTimesheetEntry" -> {
-            val projectId = tc.pathParams.longParam("projectId")
             val entryId = tc.pathParams.longParam("entryId")
                 .let { if (it != 0L) it else tc.pathParams.longParam("timesheetEntryId") }
             val date = tc.requestBody?.get("date")?.jsonPrimitive?.contentOrNull
             val hours = tc.requestBody?.get("hours")?.jsonPrimitive?.contentOrNull
             val description = tc.requestBody?.get("description")?.jsonPrimitive?.contentOrNull
-            account.timesheets.update(projectId, entryId,
+            account.timesheets.update(entryId,
                 UpdateTimesheetEntryBody(date = date, hours = hours, description = description))
             DispatchResult()
         }
 
         "GetProjectTimeline" -> {
-            val projectId = tc.pathParams.longParam("projectId")
-            account.timeline.projectTimeline(projectId)
+            account.timeline.projectTimeline()
             DispatchResult()
         }
 

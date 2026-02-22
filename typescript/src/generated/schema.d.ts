@@ -2203,66 +2203,66 @@ export interface components {
         };
         Boost: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             content?: string;
-            created_at?: string;
+            created_at: string;
             booster?: components["schemas"]["Person"];
             recording?: components["schemas"]["RecordingParent"];
         };
         Campfire: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
             position?: number;
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             topic?: string;
             lines_url?: string;
         };
         CampfireLine: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
-            content?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            content: string;
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
         };
         Card: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -2276,9 +2276,9 @@ export interface components {
             comments_count?: number;
             comments_url?: string;
             completion_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             completer?: components["schemas"]["Person"];
             assignees?: components["schemas"]["Person"][];
             completion_subscribers?: components["schemas"]["Person"][];
@@ -2289,16 +2289,16 @@ export interface components {
         };
         CardColumn: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
@@ -2309,61 +2309,61 @@ export interface components {
             /** Format: int32 */
             comments_count?: number;
             cards_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             subscribers?: components["schemas"]["Person"][];
         };
         CardStep: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
             due_on?: string;
             completed?: boolean;
             completed_at?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             completer?: components["schemas"]["Person"];
             assignees?: components["schemas"]["Person"][];
             completion_url?: string;
         };
         CardTable: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             subscribers?: components["schemas"]["Person"][];
             lists?: components["schemas"]["CardColumn"][];
         };
         Chatbot: {
             /** Format: int64 */
-            id?: number;
-            created_at?: string;
-            updated_at?: string;
-            service_name?: string;
+            id: number;
+            created_at: string;
+            updated_at: string;
+            service_name: string;
             command_url?: string;
             url?: string;
             app_url?: string;
@@ -2371,21 +2371,21 @@ export interface components {
         };
         ClientApproval: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["RecordingBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["RecordingBucket"];
+            creator: components["schemas"]["Person"];
             content?: string;
             subject?: string;
             due_on?: string;
@@ -2416,49 +2416,49 @@ export interface components {
         };
         ClientCompany: {
             /** Format: int64 */
-            id?: number;
-            name?: string;
+            id: number;
+            name: string;
         };
         ClientCorrespondence: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["RecordingBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["RecordingBucket"];
+            creator: components["schemas"]["Person"];
             content?: string;
-            subject?: string;
+            subject: string;
             /** Format: int32 */
             replies_count?: number;
             replies_url?: string;
         };
         ClientReply: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["RecordingBucket"];
-            creator?: components["schemas"]["Person"];
-            content?: string;
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["RecordingBucket"];
+            creator: components["schemas"]["Person"];
+            content: string;
         };
         /**
          * @deprecated
@@ -2475,21 +2475,21 @@ export interface components {
         CloneToolResponseContent: components["schemas"]["Tool"];
         Comment: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
-            content?: string;
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
+            content: string;
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
@@ -2654,27 +2654,27 @@ export interface components {
         DisableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         DockItem: {
             /** Format: int64 */
-            id?: number;
-            title?: string;
-            name?: string;
-            enabled?: boolean;
+            id: number;
+            title: string;
+            name: string;
+            enabled: boolean;
             /** Format: int32 */
             position?: number;
-            url?: string;
-            app_url?: string;
+            url: string;
+            app_url: string;
         };
         Document: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -2682,9 +2682,9 @@ export interface components {
             comments_url?: string;
             /** Format: int32 */
             position?: number;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             content?: string;
             /** Format: int32 */
             boosts_count?: number;
@@ -2693,13 +2693,13 @@ export interface components {
         EnableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         Event: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             /** Format: int64 */
-            recording_id?: number;
-            action?: string;
+            recording_id: number;
+            action: string;
             details?: components["schemas"]["EventDetails"];
-            created_at?: string;
-            creator?: components["schemas"]["Person"];
+            created_at: string;
+            creator: components["schemas"]["Person"];
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
@@ -2715,23 +2715,23 @@ export interface components {
         };
         Forward: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             content?: string;
-            subject?: string;
+            subject: string;
             from?: string;
             /** Format: int32 */
             replies_count?: number;
@@ -2739,21 +2739,21 @@ export interface components {
         };
         ForwardReply: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
-            content?: string;
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
+            content: string;
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
@@ -2827,21 +2827,21 @@ export interface components {
         GetWebhookResponseContent: components["schemas"]["Webhook"];
         Inbox: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             /** Format: int32 */
             forwards_count?: number;
             forwards_url?: string;
@@ -2886,26 +2886,26 @@ export interface components {
         ListWebhooksResponseContent: components["schemas"]["Webhook"][];
         Message: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
-            subject?: string;
-            content?: string;
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
+            subject: string;
+            content: string;
             category?: components["schemas"]["MessageType"];
             /** Format: int32 */
             boosts_count?: number;
@@ -2913,21 +2913,21 @@ export interface components {
         };
         MessageBoard: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             /** Format: int32 */
             messages_count?: number;
             messages_url?: string;
@@ -2935,11 +2935,11 @@ export interface components {
         };
         MessageType: {
             /** Format: int64 */
-            id?: number;
-            name?: string;
-            icon?: string;
-            created_at?: string;
-            updated_at?: string;
+            id: number;
+            name: string;
+            icon: string;
+            created_at: string;
+            updated_at: string;
         };
         MoveCardColumnRequestContent: {
             /** Format: int64 */
@@ -2962,10 +2962,10 @@ export interface components {
         };
         Person: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             attachable_sgid?: string;
             /** Format: password */
-            name?: string;
+            name: string;
             /** Format: password */
             email_address?: string;
             personable_type?: string;
@@ -2993,24 +2993,24 @@ export interface components {
         };
         PersonCompany: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             /** Format: password */
-            name?: string;
+            name: string;
         };
         Project: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             /** @description active|archived|trashed */
-            status?: string;
-            created_at?: string;
-            updated_at?: string;
-            name?: string;
+            status: string;
+            created_at: string;
+            updated_at: string;
+            name: string;
             description?: string;
             purpose?: string;
             clients_enabled?: boolean;
             bookmark_url?: string;
-            url?: string;
-            app_url?: string;
+            url: string;
+            app_url: string;
             dock?: components["schemas"]["DockItem"][];
             bookmarked?: boolean;
             client_company?: components["schemas"]["ClientCompany"];
@@ -3023,28 +3023,28 @@ export interface components {
         };
         ProjectConstruction: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
+            id: number;
+            status: string;
             url?: string;
             project?: components["schemas"]["Project"];
         };
         Question: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["RecordingBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["RecordingBucket"];
+            creator: components["schemas"]["Person"];
             paused?: boolean;
             schedule?: components["schemas"]["QuestionSchedule"];
             /** Format: int32 */
@@ -3053,26 +3053,26 @@ export interface components {
         };
         QuestionAnswer: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
-            content?: string;
+            content: string;
             group_on?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["RecordingBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["RecordingBucket"];
+            creator: components["schemas"]["Person"];
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
@@ -3109,23 +3109,23 @@ export interface components {
         };
         Questionnaire: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             questions_url?: string;
             /** Format: int32 */
             questions_count?: number;
-            name?: string;
-            bucket?: components["schemas"]["RecordingBucket"];
-            creator?: components["schemas"]["Person"];
+            name: string;
+            bucket: components["schemas"]["RecordingBucket"];
+            creator: components["schemas"]["Person"];
         };
         RateLimitErrorResponseContent: {
             error: string;
@@ -3135,39 +3135,39 @@ export interface components {
         };
         Recording: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             content?: string;
             /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
             subscription_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["RecordingBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["RecordingBucket"];
+            creator: components["schemas"]["Person"];
         };
         RecordingBucket: {
             /** Format: int64 */
-            id?: number;
-            name?: string;
-            type?: string;
+            id: number;
+            name: string;
+            type: string;
         };
         RecordingParent: {
             /** Format: int64 */
-            id?: number;
-            title?: string;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            title: string;
+            type: string;
+            url: string;
+            app_url: string;
         };
         RepositionCardStepRequestContent: {
             /** Format: int64 */
@@ -3200,21 +3200,21 @@ export interface components {
         };
         Schedule: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             include_due_assignments?: boolean;
             /** Format: int32 */
             entries_count?: number;
@@ -3226,25 +3226,25 @@ export interface components {
         };
         ScheduleEntry: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
-            summary?: string;
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
+            summary: string;
             description?: string;
             all_day?: boolean;
             starts_at?: string;
@@ -3265,16 +3265,16 @@ export interface components {
         SearchResponseContent: components["schemas"]["SearchResult"][];
         SearchResult: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             status?: string;
             visible_to_clients?: boolean;
             created_at?: string;
             updated_at?: string;
-            title?: string;
+            title: string;
             inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["RecordingBucket"];
@@ -3299,19 +3299,19 @@ export interface components {
         SetClientVisibilityResponseContent: components["schemas"]["Recording"];
         SubscribeResponseContent: components["schemas"]["Subscription"];
         Subscription: {
-            subscribed?: boolean;
+            subscribed: boolean;
             /** Format: int32 */
-            count?: number;
-            url?: string;
+            count: number;
+            url: string;
             subscribers?: components["schemas"]["Person"][];
         };
         Template: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             status?: string;
-            created_at?: string;
-            updated_at?: string;
-            name?: string;
+            created_at: string;
+            updated_at: string;
+            name: string;
             description?: string;
             url?: string;
             app_url?: string;
@@ -3335,20 +3335,20 @@ export interface components {
         };
         TimesheetEntry: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             date?: string;
             description?: string;
             hours?: string;
@@ -3356,17 +3356,17 @@ export interface components {
         };
         Todo: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             /** @description active|archived|trashed */
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -3374,12 +3374,12 @@ export interface components {
             comments_url?: string;
             /** Format: int32 */
             position?: number;
-            parent?: components["schemas"]["TodoParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["TodoParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             description?: string;
             completed?: boolean;
-            content?: string;
+            content: string;
             starts_on?: string;
             due_on?: string;
             assignees?: components["schemas"]["Person"][];
@@ -3391,31 +3391,31 @@ export interface components {
         };
         TodoBucket: {
             /** Format: int64 */
-            id?: number;
-            name?: string;
-            type?: string;
+            id: number;
+            name: string;
+            type: string;
         };
         TodoParent: {
             /** Format: int64 */
-            id?: number;
-            title?: string;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            title: string;
+            type: string;
+            url: string;
+            app_url: string;
         };
         Todolist: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             /** @description active|archived|trashed */
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -3423,13 +3423,13 @@ export interface components {
             comments_url?: string;
             /** Format: int32 */
             position?: number;
-            parent?: components["schemas"]["TodoParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["TodoParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             description?: string;
             completed?: boolean;
             completed_ratio?: string;
-            name?: string;
+            name: string;
             todos_url?: string;
             groups_url?: string;
             app_todos_url?: string;
@@ -3439,16 +3439,16 @@ export interface components {
         };
         TodolistGroup: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -3456,10 +3456,10 @@ export interface components {
             comments_url?: string;
             /** Format: int32 */
             position?: number;
-            parent?: components["schemas"]["TodoParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
-            name?: string;
+            parent: components["schemas"]["TodoParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
+            name: string;
             completed?: boolean;
             completed_ratio?: string;
             todos_url?: string;
@@ -3473,22 +3473,22 @@ export interface components {
         };
         Todoset: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
-            name?: string;
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
+            name: string;
             /** Format: int32 */
             todolists_count?: number;
             todolists_url?: string;
@@ -3504,13 +3504,13 @@ export interface components {
         };
         Tool: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             status?: string;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            name?: string;
-            enabled?: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            name: string;
+            enabled: boolean;
             /** Format: int32 */
             position?: number;
             url?: string;
@@ -3671,16 +3671,16 @@ export interface components {
         UpdateWebhookResponseContent: components["schemas"]["Webhook"];
         Upload: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
             /** Format: int32 */
@@ -3688,9 +3688,9 @@ export interface components {
             comments_url?: string;
             /** Format: int32 */
             position?: number;
-            parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             description?: string;
             content_type?: string;
             /** Format: int64 */
@@ -3711,22 +3711,22 @@ export interface components {
         };
         Vault: {
             /** Format: int64 */
-            id?: number;
-            status?: string;
-            visible_to_clients?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            title?: string;
-            inherits_status?: boolean;
-            type?: string;
-            url?: string;
-            app_url?: string;
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
             bookmark_url?: string;
             /** Format: int32 */
             position?: number;
             parent?: components["schemas"]["RecordingParent"];
-            bucket?: components["schemas"]["TodoBucket"];
-            creator?: components["schemas"]["Person"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
             /** Format: int32 */
             documents_count?: number;
             documents_url?: string;
@@ -3739,14 +3739,14 @@ export interface components {
         };
         Webhook: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             active?: boolean;
-            created_at?: string;
-            updated_at?: string;
-            payload_url?: string;
+            created_at: string;
+            updated_at: string;
+            payload_url: string;
             types?: string[];
-            url?: string;
-            app_url?: string;
+            url: string;
+            app_url: string;
             recent_deliveries?: components["schemas"]["WebhookDelivery"][];
         };
         /** @description Reference to a copied/moved recording in copy events. */

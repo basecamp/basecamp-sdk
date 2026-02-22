@@ -10,7 +10,7 @@ module Basecamp
       # List all client correspondences in a project
       # @return [Enumerator<Hash>] paginated results
       def list()
-        wrap_paginated(service: "clientcorrespondences", operation: "list", is_mutation: false, project_id: project_id) do
+        wrap_paginated(service: "clientcorrespondences", operation: "list", is_mutation: false) do
           paginate("/client/correspondences.json")
         end
       end
@@ -19,7 +19,7 @@ module Basecamp
       # @param correspondence_id [Integer] correspondence id ID
       # @return [Hash] response data
       def get(correspondence_id:)
-        with_operation(service: "clientcorrespondences", operation: "get", is_mutation: false, project_id: project_id, resource_id: correspondence_id) do
+        with_operation(service: "clientcorrespondences", operation: "get", is_mutation: false, resource_id: correspondence_id) do
           http_get("/client/correspondences/#{correspondence_id}").json
         end
       end

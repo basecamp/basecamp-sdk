@@ -14,20 +14,19 @@ class MessageBoardsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a message board
-     * @param projectId The project ID
      * @param boardId The board ID
      */
-    suspend fun get(projectId: Long, boardId: Long): MessageBoard {
+    suspend fun get(boardId: Long): MessageBoard {
         val info = OperationInfo(
             service = "MessageBoards",
             operation = "GetMessageBoard",
             resourceType = "message_board",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = boardId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/message_boards/${boardId}", operationName = info.operation)
+            httpGet("/message_boards/${boardId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<MessageBoard>(body)
         }

@@ -14,7 +14,6 @@ module Basecamp
       # @param sort [String, nil] created_at|updated_at
       # @param direction [String, nil] asc|desc
       # @return [Enumerator<Hash>] paginated results
-      
       def list(type:, bucket: nil, status: nil, sort: nil, direction: nil)
         wrap_paginated(service: "recordings", operation: "list", is_mutation: false) do
           params = compact_params(type: type, bucket: bucket, status: status, sort: sort, direction: direction)
@@ -26,7 +25,7 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [Hash] response data
       def get(recording_id:)
-        with_operation(service: "recordings", operation: "get", is_mutation: false, project_id: project_id, resource_id: recording_id) do
+        with_operation(service: "recordings", operation: "get", is_mutation: false, resource_id: recording_id) do
           http_get("/recordings/#{recording_id}").json
         end
       end
@@ -35,7 +34,7 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [void]
       def unarchive(recording_id:)
-        with_operation(service: "recordings", operation: "unarchive", is_mutation: true, project_id: project_id, resource_id: recording_id) do
+        with_operation(service: "recordings", operation: "unarchive", is_mutation: true, resource_id: recording_id) do
           http_put("/recordings/#{recording_id}/status/active.json")
           nil
         end
@@ -45,7 +44,7 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [void]
       def archive(recording_id:)
-        with_operation(service: "recordings", operation: "archive", is_mutation: true, project_id: project_id, resource_id: recording_id) do
+        with_operation(service: "recordings", operation: "archive", is_mutation: true, resource_id: recording_id) do
           http_put("/recordings/#{recording_id}/status/archived.json")
           nil
         end
@@ -55,7 +54,7 @@ module Basecamp
       # @param recording_id [Integer] recording id ID
       # @return [void]
       def trash(recording_id:)
-        with_operation(service: "recordings", operation: "trash", is_mutation: true, project_id: project_id, resource_id: recording_id) do
+        with_operation(service: "recordings", operation: "trash", is_mutation: true, resource_id: recording_id) do
           http_put("/recordings/#{recording_id}/status/trashed.json")
           nil
         end

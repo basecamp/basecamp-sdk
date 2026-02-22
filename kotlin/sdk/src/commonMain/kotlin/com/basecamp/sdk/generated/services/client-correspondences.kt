@@ -14,20 +14,19 @@ class ClientCorrespondencesService(client: AccountClient) : BaseService(client) 
 
     /**
      * List all client correspondences in a project
-     * @param projectId The project ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(projectId: Long, options: PaginationOptions? = null): ListResult<ClientCorrespondence> {
+    suspend fun list(options: PaginationOptions? = null): ListResult<ClientCorrespondence> {
         val info = OperationInfo(
             service = "ClientCorrespondences",
             operation = "ListClientCorrespondences",
             resourceType = "client_correspondence",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = null,
         )
         return requestPaginated(info, options, {
-            httpGet("/buckets/${projectId}/client/correspondences.json", operationName = info.operation)
+            httpGet("/client/correspondences.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<ClientCorrespondence>>(body)
         }
@@ -35,20 +34,19 @@ class ClientCorrespondencesService(client: AccountClient) : BaseService(client) 
 
     /**
      * Get a single client correspondence by id
-     * @param projectId The project ID
      * @param correspondenceId The correspondence ID
      */
-    suspend fun get(projectId: Long, correspondenceId: Long): ClientCorrespondence {
+    suspend fun get(correspondenceId: Long): ClientCorrespondence {
         val info = OperationInfo(
             service = "ClientCorrespondences",
             operation = "GetClientCorrespondence",
             resourceType = "client_correspondence",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = correspondenceId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/client/correspondences/${correspondenceId}", operationName = info.operation)
+            httpGet("/client/correspondences/${correspondenceId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<ClientCorrespondence>(body)
         }

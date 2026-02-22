@@ -11,7 +11,9 @@ module Basecamp
       # @param id [Integer] id ID
       # @return [Hash] response data
       def get(id:)
-        http_get("/todolists/#{id}").json
+        with_operation(service: "todolists", operation: "get", is_mutation: false, resource_id: id) do
+          http_get("/todolists/#{id}").json
+        end
       end
 
       # Update an existing todolist or todolist group
@@ -20,7 +22,9 @@ module Basecamp
       # @param description [String, nil] Description (Todolist only, ignored for groups)
       # @return [Hash] response data
       def update(id:, name: nil, description: nil)
-        http_put("/todolists/#{id}", body: compact_params(name: name, description: description)).json
+        with_operation(service: "todolists", operation: "update", is_mutation: true, resource_id: id) do
+          http_put("/todolists/#{id}", body: compact_params(name: name, description: description)).json
+        end
       end
 
       # List todolists in a todoset
@@ -28,8 +32,10 @@ module Basecamp
       # @param status [String, nil] active|archived|trashed
       # @return [Enumerator<Hash>] paginated results
       def list(todoset_id:, status: nil)
-        params = compact_params(status: status)
-        paginate("/todosets/#{todoset_id}/todolists.json", params: params)
+        wrap_paginated(service: "todolists", operation: "list", is_mutation: false, resource_id: todoset_id) do
+          params = compact_params(status: status)
+          paginate("/todosets/#{todoset_id}/todolists.json", params: params)
+        end
       end
 
       # Create a new todolist in a todoset
@@ -38,7 +44,9 @@ module Basecamp
       # @param description [String, nil] description
       # @return [Hash] response data
       def create(todoset_id:, name:, description: nil)
-        http_post("/todosets/#{todoset_id}/todolists.json", body: compact_params(name: name, description: description)).json
+        with_operation(service: "todolists", operation: "create", is_mutation: true, resource_id: todoset_id) do
+          http_post("/todosets/#{todoset_id}/todolists.json", body: compact_params(name: name, description: description)).json
+        end
       end
     end
   end

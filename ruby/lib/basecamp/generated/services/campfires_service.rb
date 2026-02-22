@@ -10,21 +10,27 @@ module Basecamp
       # List all campfires across the account
       # @return [Enumerator<Hash>] paginated results
       def list()
-        paginate("/chats.json")
+        wrap_paginated(service: "campfires", operation: "list", is_mutation: false) do
+          paginate("/chats.json")
+        end
       end
 
       # Get a campfire by ID
       # @param campfire_id [Integer] campfire id ID
       # @return [Hash] response data
       def get(campfire_id:)
-        http_get("/chats/#{campfire_id}").json
+        with_operation(service: "campfires", operation: "get", is_mutation: false, resource_id: campfire_id) do
+          http_get("/chats/#{campfire_id}").json
+        end
       end
 
       # List all chatbots for a campfire
       # @param campfire_id [Integer] campfire id ID
       # @return [Enumerator<Hash>] paginated results
       def list_chatbots(campfire_id:)
-        paginate("/chats/#{campfire_id}/integrations.json")
+        wrap_paginated(service: "campfires", operation: "list_chatbots", is_mutation: false, resource_id: campfire_id) do
+          paginate("/chats/#{campfire_id}/integrations.json")
+        end
       end
 
       # Create a new chatbot for a campfire
@@ -33,7 +39,9 @@ module Basecamp
       # @param command_url [String, nil] command url
       # @return [Hash] response data
       def create_chatbot(campfire_id:, service_name:, command_url: nil)
-        http_post("/chats/#{campfire_id}/integrations.json", body: compact_params(service_name: service_name, command_url: command_url)).json
+        with_operation(service: "campfires", operation: "create_chatbot", is_mutation: true, resource_id: campfire_id) do
+          http_post("/chats/#{campfire_id}/integrations.json", body: compact_params(service_name: service_name, command_url: command_url)).json
+        end
       end
 
       # Get a chatbot by ID
@@ -41,7 +49,9 @@ module Basecamp
       # @param chatbot_id [Integer] chatbot id ID
       # @return [Hash] response data
       def get_chatbot(campfire_id:, chatbot_id:)
-        http_get("/chats/#{campfire_id}/integrations/#{chatbot_id}").json
+        with_operation(service: "campfires", operation: "get_chatbot", is_mutation: false, resource_id: chatbot_id) do
+          http_get("/chats/#{campfire_id}/integrations/#{chatbot_id}").json
+        end
       end
 
       # Update an existing chatbot
@@ -51,7 +61,9 @@ module Basecamp
       # @param command_url [String, nil] command url
       # @return [Hash] response data
       def update_chatbot(campfire_id:, chatbot_id:, service_name:, command_url: nil)
-        http_put("/chats/#{campfire_id}/integrations/#{chatbot_id}", body: compact_params(service_name: service_name, command_url: command_url)).json
+        with_operation(service: "campfires", operation: "update_chatbot", is_mutation: true, resource_id: chatbot_id) do
+          http_put("/chats/#{campfire_id}/integrations/#{chatbot_id}", body: compact_params(service_name: service_name, command_url: command_url)).json
+        end
       end
 
       # Delete a chatbot
@@ -59,15 +71,19 @@ module Basecamp
       # @param chatbot_id [Integer] chatbot id ID
       # @return [void]
       def delete_chatbot(campfire_id:, chatbot_id:)
-        http_delete("/chats/#{campfire_id}/integrations/#{chatbot_id}")
-        nil
+        with_operation(service: "campfires", operation: "delete_chatbot", is_mutation: true, resource_id: chatbot_id) do
+          http_delete("/chats/#{campfire_id}/integrations/#{chatbot_id}")
+          nil
+        end
       end
 
       # List all lines (messages) in a campfire
       # @param campfire_id [Integer] campfire id ID
       # @return [Enumerator<Hash>] paginated results
       def list_lines(campfire_id:)
-        paginate("/chats/#{campfire_id}/lines.json")
+        wrap_paginated(service: "campfires", operation: "list_lines", is_mutation: false, resource_id: campfire_id) do
+          paginate("/chats/#{campfire_id}/lines.json")
+        end
       end
 
       # Create a new line (message) in a campfire
@@ -76,7 +92,9 @@ module Basecamp
       # @param content_type [String, nil] content type
       # @return [Hash] response data
       def create_line(campfire_id:, content:, content_type: nil)
-        http_post("/chats/#{campfire_id}/lines.json", body: compact_params(content: content, content_type: content_type)).json
+        with_operation(service: "campfires", operation: "create_line", is_mutation: true, resource_id: campfire_id) do
+          http_post("/chats/#{campfire_id}/lines.json", body: compact_params(content: content, content_type: content_type)).json
+        end
       end
 
       # Get a campfire line by ID
@@ -84,7 +102,9 @@ module Basecamp
       # @param line_id [Integer] line id ID
       # @return [Hash] response data
       def get_line(campfire_id:, line_id:)
-        http_get("/chats/#{campfire_id}/lines/#{line_id}").json
+        with_operation(service: "campfires", operation: "get_line", is_mutation: false, resource_id: line_id) do
+          http_get("/chats/#{campfire_id}/lines/#{line_id}").json
+        end
       end
 
       # Delete a campfire line
@@ -92,8 +112,10 @@ module Basecamp
       # @param line_id [Integer] line id ID
       # @return [void]
       def delete_line(campfire_id:, line_id:)
-        http_delete("/chats/#{campfire_id}/lines/#{line_id}")
-        nil
+        with_operation(service: "campfires", operation: "delete_line", is_mutation: true, resource_id: line_id) do
+          http_delete("/chats/#{campfire_id}/lines/#{line_id}")
+          nil
+        end
       end
     end
   end

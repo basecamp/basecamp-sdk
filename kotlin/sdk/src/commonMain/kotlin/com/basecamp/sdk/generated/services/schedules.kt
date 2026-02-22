@@ -14,20 +14,19 @@ class SchedulesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a single schedule entry by id.
-     * @param projectId The project ID
      * @param entryId The entry ID
      */
-    suspend fun getEntry(projectId: Long, entryId: Long): ScheduleEntry {
+    suspend fun getEntry(entryId: Long): ScheduleEntry {
         val info = OperationInfo(
             service = "Schedules",
             operation = "GetScheduleEntry",
             resourceType = "schedule_entry",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = entryId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/schedule_entries/${entryId}", operationName = info.operation)
+            httpGet("/schedule_entries/${entryId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<ScheduleEntry>(body)
         }
@@ -35,21 +34,20 @@ class SchedulesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Update an existing schedule entry
-     * @param projectId The project ID
      * @param entryId The entry ID
      * @param body Request body
      */
-    suspend fun updateEntry(projectId: Long, entryId: Long, body: UpdateScheduleEntryBody): ScheduleEntry {
+    suspend fun updateEntry(entryId: Long, body: UpdateScheduleEntryBody): ScheduleEntry {
         val info = OperationInfo(
             service = "Schedules",
             operation = "UpdateScheduleEntry",
             resourceType = "schedule_entry",
             isMutation = true,
-            projectId = projectId,
+            projectId = null,
             resourceId = entryId,
         )
         return request(info, {
-            httpPut("/buckets/${projectId}/schedule_entries/${entryId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPut("/schedule_entries/${entryId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 body.summary?.let { put("summary", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.startsAt?.let { put("starts_at", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.endsAt?.let { put("ends_at", kotlinx.serialization.json.JsonPrimitive(it)) }
@@ -65,21 +63,20 @@ class SchedulesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a specific occurrence of a recurring schedule entry
-     * @param projectId The project ID
      * @param entryId The entry ID
      * @param date The date
      */
-    suspend fun getEntryOccurrence(projectId: Long, entryId: Long, date: String): ScheduleEntry {
+    suspend fun getEntryOccurrence(entryId: Long, date: String): ScheduleEntry {
         val info = OperationInfo(
             service = "Schedules",
             operation = "GetScheduleEntryOccurrence",
             resourceType = "schedule_entry_occurrence",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = entryId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/schedule_entries/${entryId}/occurrences/${date}", operationName = info.operation)
+            httpGet("/schedule_entries/${entryId}/occurrences/${date}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<ScheduleEntry>(body)
         }
@@ -87,20 +84,19 @@ class SchedulesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a schedule
-     * @param projectId The project ID
      * @param scheduleId The schedule ID
      */
-    suspend fun get(projectId: Long, scheduleId: Long): Schedule {
+    suspend fun get(scheduleId: Long): Schedule {
         val info = OperationInfo(
             service = "Schedules",
             operation = "GetSchedule",
             resourceType = "schedule",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = scheduleId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/schedules/${scheduleId}", operationName = info.operation)
+            httpGet("/schedules/${scheduleId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<Schedule>(body)
         }
@@ -108,21 +104,20 @@ class SchedulesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Update schedule settings
-     * @param projectId The project ID
      * @param scheduleId The schedule ID
      * @param body Request body
      */
-    suspend fun updateSettings(projectId: Long, scheduleId: Long, body: UpdateScheduleSettingsBody): Schedule {
+    suspend fun updateSettings(scheduleId: Long, body: UpdateScheduleSettingsBody): Schedule {
         val info = OperationInfo(
             service = "Schedules",
             operation = "UpdateScheduleSettings",
             resourceType = "schedule_setting",
             isMutation = true,
-            projectId = projectId,
+            projectId = null,
             resourceId = scheduleId,
         )
         return request(info, {
-            httpPut("/buckets/${projectId}/schedules/${scheduleId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPut("/schedules/${scheduleId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("include_due_assignments", kotlinx.serialization.json.JsonPrimitive(body.includeDueAssignments))
             }), operationName = info.operation)
         }) { body ->
@@ -132,24 +127,23 @@ class SchedulesService(client: AccountClient) : BaseService(client) {
 
     /**
      * List entries on a schedule
-     * @param projectId The project ID
      * @param scheduleId The schedule ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listEntries(projectId: Long, scheduleId: Long, options: ListScheduleEntriesOptions? = null): ListResult<ScheduleEntry> {
+    suspend fun listEntries(scheduleId: Long, options: ListScheduleEntriesOptions? = null): ListResult<ScheduleEntry> {
         val info = OperationInfo(
             service = "Schedules",
             operation = "ListScheduleEntries",
             resourceType = "schedule_entry",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = scheduleId,
         )
         val qs = buildQueryString(
             "status" to options?.status,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
-            httpGet("/buckets/${projectId}/schedules/${scheduleId}/entries.json" + qs, operationName = info.operation)
+            httpGet("/schedules/${scheduleId}/entries.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<ScheduleEntry>>(body)
         }
@@ -157,21 +151,20 @@ class SchedulesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Create a new schedule entry
-     * @param projectId The project ID
      * @param scheduleId The schedule ID
      * @param body Request body
      */
-    suspend fun createEntry(projectId: Long, scheduleId: Long, body: CreateScheduleEntryBody): ScheduleEntry {
+    suspend fun createEntry(scheduleId: Long, body: CreateScheduleEntryBody): ScheduleEntry {
         val info = OperationInfo(
             service = "Schedules",
             operation = "CreateScheduleEntry",
             resourceType = "schedule_entry",
             isMutation = true,
-            projectId = projectId,
+            projectId = null,
             resourceId = scheduleId,
         )
         return request(info, {
-            httpPost("/buckets/${projectId}/schedules/${scheduleId}/entries.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPost("/schedules/${scheduleId}/entries.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("summary", kotlinx.serialization.json.JsonPrimitive(body.summary))
                 put("starts_at", kotlinx.serialization.json.JsonPrimitive(body.startsAt))
                 put("ends_at", kotlinx.serialization.json.JsonPrimitive(body.endsAt))

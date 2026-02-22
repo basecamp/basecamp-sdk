@@ -14,21 +14,20 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Reposition a todolist group
-     * @param projectId The project ID
      * @param groupId The group ID
      * @param body Request body
      */
-    suspend fun reposition(projectId: Long, groupId: Long, body: RepositionTodolistGroupBody): Unit {
+    suspend fun reposition(groupId: Long, body: RepositionTodolistGroupBody): Unit {
         val info = OperationInfo(
             service = "TodolistGroups",
             operation = "RepositionTodolistGroup",
             resourceType = "todolist_group",
             isMutation = true,
-            projectId = projectId,
+            projectId = null,
             resourceId = groupId,
         )
         request(info, {
-            httpPut("/buckets/${projectId}/todolists/${groupId}/position.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPut("/todolists/${groupId}/position.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("position", kotlinx.serialization.json.JsonPrimitive(body.position))
             }), operationName = info.operation)
         }) { Unit }
@@ -36,21 +35,20 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
 
     /**
      * List groups in a todolist
-     * @param projectId The project ID
      * @param todolistId The todolist ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(projectId: Long, todolistId: Long, options: PaginationOptions? = null): ListResult<TodolistGroup> {
+    suspend fun list(todolistId: Long, options: PaginationOptions? = null): ListResult<TodolistGroup> {
         val info = OperationInfo(
             service = "TodolistGroups",
             operation = "ListTodolistGroups",
             resourceType = "todolist_group",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = todolistId,
         )
         return requestPaginated(info, options, {
-            httpGet("/buckets/${projectId}/todolists/${todolistId}/groups.json", operationName = info.operation)
+            httpGet("/todolists/${todolistId}/groups.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<TodolistGroup>>(body)
         }
@@ -58,21 +56,20 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Create a new group in a todolist
-     * @param projectId The project ID
      * @param todolistId The todolist ID
      * @param body Request body
      */
-    suspend fun create(projectId: Long, todolistId: Long, body: CreateTodolistGroupBody): TodolistGroup {
+    suspend fun create(todolistId: Long, body: CreateTodolistGroupBody): TodolistGroup {
         val info = OperationInfo(
             service = "TodolistGroups",
             operation = "CreateTodolistGroup",
             resourceType = "todolist_group",
             isMutation = true,
-            projectId = projectId,
+            projectId = null,
             resourceId = todolistId,
         )
         return request(info, {
-            httpPost("/buckets/${projectId}/todolists/${todolistId}/groups.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPost("/todolists/${todolistId}/groups.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
             }), operationName = info.operation)
         }) { body ->

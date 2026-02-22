@@ -11,14 +11,18 @@ module Basecamp
       # @param source_recording_id [Integer] source recording id
       # @return [Hash] response data
       def clone(source_recording_id:)
-        http_post("/dock/tools.json", body: compact_params(source_recording_id: source_recording_id)).json
+        with_operation(service: "tools", operation: "clone", is_mutation: true) do
+          http_post("/dock/tools.json", body: compact_params(source_recording_id: source_recording_id)).json
+        end
       end
 
       # Get a dock tool by id
       # @param tool_id [Integer] tool id ID
       # @return [Hash] response data
       def get(tool_id:)
-        http_get("/dock/tools/#{tool_id}").json
+        with_operation(service: "tools", operation: "get", is_mutation: false, resource_id: tool_id) do
+          http_get("/dock/tools/#{tool_id}").json
+        end
       end
 
       # Update (rename) an existing tool
@@ -26,23 +30,29 @@ module Basecamp
       # @param title [String] title
       # @return [Hash] response data
       def update(tool_id:, title:)
-        http_put("/dock/tools/#{tool_id}", body: compact_params(title: title)).json
+        with_operation(service: "tools", operation: "update", is_mutation: true, resource_id: tool_id) do
+          http_put("/dock/tools/#{tool_id}", body: compact_params(title: title)).json
+        end
       end
 
       # Delete a tool (trash it)
       # @param tool_id [Integer] tool id ID
       # @return [void]
       def delete(tool_id:)
-        http_delete("/dock/tools/#{tool_id}")
-        nil
+        with_operation(service: "tools", operation: "delete", is_mutation: true, resource_id: tool_id) do
+          http_delete("/dock/tools/#{tool_id}")
+          nil
+        end
       end
 
       # Enable a tool (show it on the project dock)
       # @param tool_id [Integer] tool id ID
       # @return [void]
       def enable(tool_id:)
-        http_post("/recordings/#{tool_id}/position.json")
-        nil
+        with_operation(service: "tools", operation: "enable", is_mutation: true, resource_id: tool_id) do
+          http_post("/recordings/#{tool_id}/position.json")
+          nil
+        end
       end
 
       # Reposition a tool on the project dock
@@ -50,16 +60,20 @@ module Basecamp
       # @param position [Integer] position
       # @return [void]
       def reposition(tool_id:, position:)
-        http_put("/recordings/#{tool_id}/position.json", body: compact_params(position: position))
-        nil
+        with_operation(service: "tools", operation: "reposition", is_mutation: true, resource_id: tool_id) do
+          http_put("/recordings/#{tool_id}/position.json", body: compact_params(position: position))
+          nil
+        end
       end
 
       # Disable a tool (hide it from the project dock)
       # @param tool_id [Integer] tool id ID
       # @return [void]
       def disable(tool_id:)
-        http_delete("/recordings/#{tool_id}/position.json")
-        nil
+        with_operation(service: "tools", operation: "disable", is_mutation: true, resource_id: tool_id) do
+          http_delete("/recordings/#{tool_id}/position.json")
+          nil
+        end
       end
     end
   end

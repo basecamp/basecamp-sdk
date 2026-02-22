@@ -418,7 +418,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/go/bin
-          key: go-tools-${{ runner.os }}-apidiff-v0.9.0
+          key: go-tools-${{ runner.os }}-go${{ hashFiles('go/go.mod') }}-apidiff-v0.9.0
 
       - name: Install apidiff
         run: |
