@@ -538,21 +538,21 @@ func scheduleFromGenerated(gs generated.Schedule) Schedule {
 		EntriesURL:            gs.EntriesUrl,
 	}
 
-	if gs.Id != 0 {
-		s.ID = gs.Id
+	if derefInt64(gs.Id) != 0 {
+		s.ID = derefInt64(gs.Id)
 	}
 
-	if gs.Bucket.Id != 0 || gs.Bucket.Name != "" {
+	if derefInt64(gs.Bucket.Id) != 0 || gs.Bucket.Name != "" {
 		s.Bucket = &Bucket{
-			ID:   gs.Bucket.Id,
+			ID:   derefInt64(gs.Bucket.Id),
 			Name: gs.Bucket.Name,
 			Type: gs.Bucket.Type,
 		}
 	}
 
-	if gs.Creator.Id != 0 || gs.Creator.Name != "" {
+	if derefInt64(gs.Creator.Id) != 0 || gs.Creator.Name != "" {
 		s.Creator = &Person{
-			ID:           gs.Creator.Id,
+			ID:           derefInt64(gs.Creator.Id),
 			Name:         gs.Creator.Name,
 			EmailAddress: gs.Creator.EmailAddress,
 			AvatarURL:    gs.Creator.AvatarUrl,
@@ -587,13 +587,13 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 		Description:      ge.Description,
 	}
 
-	if ge.Id != 0 {
-		e.ID = ge.Id
+	if derefInt64(ge.Id) != 0 {
+		e.ID = derefInt64(ge.Id)
 	}
 
-	if ge.Parent.Id != 0 || ge.Parent.Title != "" {
+	if derefInt64(ge.Parent.Id) != 0 || ge.Parent.Title != "" {
 		e.Parent = &Parent{
-			ID:     ge.Parent.Id,
+			ID:     derefInt64(ge.Parent.Id),
 			Title:  ge.Parent.Title,
 			Type:   ge.Parent.Type,
 			URL:    ge.Parent.Url,
@@ -601,17 +601,17 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 		}
 	}
 
-	if ge.Bucket.Id != 0 || ge.Bucket.Name != "" {
+	if derefInt64(ge.Bucket.Id) != 0 || ge.Bucket.Name != "" {
 		e.Bucket = &Bucket{
-			ID:   ge.Bucket.Id,
+			ID:   derefInt64(ge.Bucket.Id),
 			Name: ge.Bucket.Name,
 			Type: ge.Bucket.Type,
 		}
 	}
 
-	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
+	if derefInt64(ge.Creator.Id) != 0 || ge.Creator.Name != "" {
 		e.Creator = &Person{
-			ID:           ge.Creator.Id,
+			ID:           derefInt64(ge.Creator.Id),
 			Name:         ge.Creator.Name,
 			EmailAddress: ge.Creator.EmailAddress,
 			AvatarURL:    ge.Creator.AvatarUrl,
@@ -631,8 +631,8 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 				Admin:        gp.Admin,
 				Owner:        gp.Owner,
 			}
-			if gp.Id != 0 {
-				p.ID = gp.Id
+			if derefInt64(gp.Id) != 0 {
+				p.ID = derefInt64(gp.Id)
 			}
 			e.Participants = append(e.Participants, p)
 		}

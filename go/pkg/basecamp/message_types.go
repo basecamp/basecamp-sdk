@@ -244,8 +244,8 @@ func messageTypeFromGenerated(gt generated.MessageType) MessageType {
 		UpdatedAt: gt.UpdatedAt,
 	}
 
-	if gt.Id != 0 {
-		mt.ID = gt.Id
+	if derefInt64(gt.Id) != 0 {
+		mt.ID = derefInt64(gt.Id)
 	}
 
 	return mt

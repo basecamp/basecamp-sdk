@@ -622,7 +622,7 @@ func TestTodoFromGenerated_FullPopulated(t *testing.T) {
 	assigneeID := int64(44444)
 
 	gt := generated.Todo{
-		Id:             id,
+		Id:             &id,
 		Status:         "active",
 		Title:          "Test Todo",
 		Type:           "Todo",
@@ -639,19 +639,19 @@ func TestTodoFromGenerated_FullPopulated(t *testing.T) {
 		UpdatedAt:      time.Date(2024, 1, 5, 15, 30, 0, 0, time.UTC),
 		InheritsStatus: true,
 		Parent: generated.TodoParent{
-			Id:     parentID,
+			Id:     &parentID,
 			Title:  "Parent Todolist",
 			Type:   "Todolist",
 			Url:    "https://example.com/parent",
 			AppUrl: "https://example.com/app/parent",
 		},
 		Bucket: generated.TodoBucket{
-			Id:   bucketID,
+			Id:   &bucketID,
 			Name: "Test Project",
 			Type: "Project",
 		},
 		Creator: generated.Person{
-			Id:           creatorID,
+			Id:           &creatorID,
 			Name:         "Test Creator",
 			EmailAddress: "creator@example.com",
 			AvatarUrl:    "https://example.com/avatar",
@@ -660,7 +660,7 @@ func TestTodoFromGenerated_FullPopulated(t *testing.T) {
 		},
 		Assignees: []generated.Person{
 			{
-				Id:           assigneeID,
+				Id:           &assigneeID,
 				Name:         "Test Assignee",
 				EmailAddress: "assignee@example.com",
 			},
@@ -768,7 +768,7 @@ func TestTodoFromGenerated_FullPopulated(t *testing.T) {
 func TestTodoFromGenerated_NilFields(t *testing.T) {
 	// Create a generated.Todo with zero ID and empty nested structs
 	gt := generated.Todo{
-		Id:      0, // zero ID
+		Id:      nil, // zero ID
 		Status:  "active",
 		Title:   "Minimal Todo",
 		Type:    "Todo",
@@ -802,7 +802,7 @@ func TestTodoFromGenerated_NilFields(t *testing.T) {
 func TestTodoFromGenerated_ZeroDates(t *testing.T) {
 	id := int64(12345)
 	gt := generated.Todo{
-		Id:       id,
+		Id:       &id,
 		Status:   "active",
 		Title:    "Todo without dates",
 		Type:     "Todo",
@@ -826,7 +826,7 @@ func TestTodoFromGenerated_ZeroDates(t *testing.T) {
 func TestTodoFromGenerated_EmptyAssignees(t *testing.T) {
 	id := int64(12345)
 	gt := generated.Todo{
-		Id:        id,
+		Id:        &id,
 		Status:    "active",
 		Title:     "Todo without assignees",
 		Type:      "Todo",
@@ -850,15 +850,15 @@ func TestTodoFromGenerated_MultipleAssignees(t *testing.T) {
 	id3 := int64(333)
 
 	gt := generated.Todo{
-		Id:      id,
+		Id:      &id,
 		Status:  "active",
 		Title:   "Todo with multiple assignees",
 		Type:    "Todo",
 		Content: "Content",
 		Assignees: []generated.Person{
-			{Id: id1, Name: "Alice"},
-			{Id: id2, Name: "Bob"},
-			{Id: id3, Name: "Charlie"},
+			{Id: &id1, Name: "Alice"},
+			{Id: &id2, Name: "Bob"},
+			{Id: &id3, Name: "Charlie"},
 		},
 	}
 
@@ -890,13 +890,13 @@ func TestTodoFromGenerated_PartialNestedFields(t *testing.T) {
 		Type:    "Todo",
 		Content: "Content",
 		Parent: generated.TodoParent{
-			Id: parentID, // Only ID, no title
+			Id: &parentID, // Only ID, no title
 		},
 		Bucket: generated.TodoBucket{
 			Name: "Project Name", // Only name, no ID
 		},
 		Creator: generated.Person{
-			Id: creatorID, // Only ID, no name
+			Id: &creatorID, // Only ID, no name
 		},
 	}
 

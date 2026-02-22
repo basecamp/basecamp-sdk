@@ -101,9 +101,9 @@ func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts
 		GroupedBy: resp.JSON200.GroupedBy,
 	}
 
-	if resp.JSON200.Person.Id != 0 || resp.JSON200.Person.Name != "" {
+	if derefInt64(resp.JSON200.Person.Id) != 0 || resp.JSON200.Person.Name != "" {
 		result.Person = &Person{
-			ID:           resp.JSON200.Person.Id,
+			ID:           derefInt64(resp.JSON200.Person.Id),
 			Name:         resp.JSON200.Person.Name,
 			EmailAddress: resp.JSON200.Person.EmailAddress,
 			AvatarURL:    resp.JSON200.Person.AvatarUrl,
@@ -277,17 +277,17 @@ func assignableFromGenerated(ga generated.Assignable) Assignable {
 		a.StartsOn = ga.StartsOn.String()
 	}
 
-	if ga.Bucket.Id != 0 || ga.Bucket.Name != "" {
+	if derefInt64(ga.Bucket.Id) != 0 || ga.Bucket.Name != "" {
 		a.Bucket = &Bucket{
-			ID:   ga.Bucket.Id,
+			ID:   derefInt64(ga.Bucket.Id),
 			Name: ga.Bucket.Name,
 			Type: ga.Bucket.Type,
 		}
 	}
 
-	if ga.Parent.Id != 0 || ga.Parent.Title != "" {
+	if derefInt64(ga.Parent.Id) != 0 || ga.Parent.Title != "" {
 		a.Parent = &Parent{
-			ID:     ga.Parent.Id,
+			ID:     derefInt64(ga.Parent.Id),
 			Title:  ga.Parent.Title,
 			Type:   ga.Parent.Type,
 			URL:    ga.Parent.Url,

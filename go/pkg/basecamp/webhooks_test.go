@@ -222,7 +222,7 @@ func TestWebhookPersonFromGenerated_AllFields(t *testing.T) {
 	updatedAt, _ := time.Parse(time.RFC3339, "2022-11-22T08:23:21Z")
 
 	gp := generated.Person{
-		Id:                  personID,
+		Id:                  &personID,
 		AttachableSgid:      "BAh7CEkiCGdpZAY6BkVU--abc123",
 		Name:                "Annie Bryan",
 		EmailAddress:        "annie@honcho.com",
@@ -238,7 +238,7 @@ func TestWebhookPersonFromGenerated_AllFields(t *testing.T) {
 		Employee:            false,
 		TimeZone:            "America/Chicago",
 		AvatarUrl:           "https://example.com/avatar.png",
-		Company:             generated.PersonCompany{Id: companyID, Name: "Honcho Design"},
+		Company:             generated.PersonCompany{Id: &companyID, Name: "Honcho Design"},
 		CanManageProjects:   true,
 		CanManagePeople:     false,
 		CanPing:             true,

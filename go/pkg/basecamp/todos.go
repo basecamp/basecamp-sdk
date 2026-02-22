@@ -520,8 +520,8 @@ func todoFromGenerated(gt generated.Todo) Todo {
 		BoostsCount: int(gt.BoostsCount),
 	}
 
-	if gt.Id != 0 {
-		t.ID = gt.Id
+	if derefInt64(gt.Id) != 0 {
+		t.ID = derefInt64(gt.Id)
 	}
 
 	// Convert date fields to strings
@@ -533,9 +533,9 @@ func todoFromGenerated(gt generated.Todo) Todo {
 	}
 
 	// Convert nested types
-	if gt.Parent.Id != 0 || gt.Parent.Title != "" {
+	if derefInt64(gt.Parent.Id) != 0 || gt.Parent.Title != "" {
 		t.Parent = &Parent{
-			ID:     gt.Parent.Id,
+			ID:     derefInt64(gt.Parent.Id),
 			Title:  gt.Parent.Title,
 			Type:   gt.Parent.Type,
 			URL:    gt.Parent.Url,
@@ -543,17 +543,17 @@ func todoFromGenerated(gt generated.Todo) Todo {
 		}
 	}
 
-	if gt.Bucket.Id != 0 || gt.Bucket.Name != "" {
+	if derefInt64(gt.Bucket.Id) != 0 || gt.Bucket.Name != "" {
 		t.Bucket = &Bucket{
-			ID:   gt.Bucket.Id,
+			ID:   derefInt64(gt.Bucket.Id),
 			Name: gt.Bucket.Name,
 			Type: gt.Bucket.Type,
 		}
 	}
 
-	if gt.Creator.Id != 0 || gt.Creator.Name != "" {
+	if derefInt64(gt.Creator.Id) != 0 || gt.Creator.Name != "" {
 		t.Creator = &Person{
-			ID:           gt.Creator.Id,
+			ID:           derefInt64(gt.Creator.Id),
 			Name:         gt.Creator.Name,
 			EmailAddress: gt.Creator.EmailAddress,
 			AvatarURL:    gt.Creator.AvatarUrl,

@@ -307,14 +307,14 @@ func commentFromGenerated(gc generated.Comment) Comment {
 		UpdatedAt: gc.UpdatedAt,
 	}
 
-	if gc.Id != 0 {
-		c.ID = gc.Id
+	if derefInt64(gc.Id) != 0 {
+		c.ID = derefInt64(gc.Id)
 	}
 
 	// Convert nested types
-	if gc.Parent.Id != 0 || gc.Parent.Title != "" {
+	if derefInt64(gc.Parent.Id) != 0 || gc.Parent.Title != "" {
 		c.Parent = &Parent{
-			ID:     gc.Parent.Id,
+			ID:     derefInt64(gc.Parent.Id),
 			Title:  gc.Parent.Title,
 			Type:   gc.Parent.Type,
 			URL:    gc.Parent.Url,
@@ -322,17 +322,17 @@ func commentFromGenerated(gc generated.Comment) Comment {
 		}
 	}
 
-	if gc.Bucket.Id != 0 || gc.Bucket.Name != "" {
+	if derefInt64(gc.Bucket.Id) != 0 || gc.Bucket.Name != "" {
 		c.Bucket = &Bucket{
-			ID:   gc.Bucket.Id,
+			ID:   derefInt64(gc.Bucket.Id),
 			Name: gc.Bucket.Name,
 			Type: gc.Bucket.Type,
 		}
 	}
 
-	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
+	if derefInt64(gc.Creator.Id) != 0 || gc.Creator.Name != "" {
 		c.Creator = &Person{
-			ID:           gc.Creator.Id,
+			ID:           derefInt64(gc.Creator.Id),
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,

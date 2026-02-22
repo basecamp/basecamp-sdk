@@ -546,19 +546,19 @@ func campfireFromGenerated(gc generated.Campfire) Campfire {
 		UpdatedAt:        gc.UpdatedAt,
 	}
 
-	c.ID = gc.Id
+	c.ID = derefInt64(gc.Id)
 
-	if gc.Bucket.Id != 0 || gc.Bucket.Name != "" {
+	if derefInt64(gc.Bucket.Id) != 0 || gc.Bucket.Name != "" {
 		c.Bucket = &Bucket{
-			ID:   gc.Bucket.Id,
+			ID:   derefInt64(gc.Bucket.Id),
 			Name: gc.Bucket.Name,
 			Type: gc.Bucket.Type,
 		}
 	}
 
-	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
+	if derefInt64(gc.Creator.Id) != 0 || gc.Creator.Name != "" {
 		c.Creator = &Person{
-			ID:           gc.Creator.Id,
+			ID:           derefInt64(gc.Creator.Id),
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -586,11 +586,11 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 		BoostsCount:      int(gl.BoostsCount),
 	}
 
-	l.ID = gl.Id
+	l.ID = derefInt64(gl.Id)
 
-	if gl.Parent.Id != 0 || gl.Parent.Title != "" {
+	if derefInt64(gl.Parent.Id) != 0 || gl.Parent.Title != "" {
 		l.Parent = &Parent{
-			ID:     gl.Parent.Id,
+			ID:     derefInt64(gl.Parent.Id),
 			Title:  gl.Parent.Title,
 			Type:   gl.Parent.Type,
 			URL:    gl.Parent.Url,
@@ -598,17 +598,17 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 		}
 	}
 
-	if gl.Bucket.Id != 0 || gl.Bucket.Name != "" {
+	if derefInt64(gl.Bucket.Id) != 0 || gl.Bucket.Name != "" {
 		l.Bucket = &Bucket{
-			ID:   gl.Bucket.Id,
+			ID:   derefInt64(gl.Bucket.Id),
 			Name: gl.Bucket.Name,
 			Type: gl.Bucket.Type,
 		}
 	}
 
-	if gl.Creator.Id != 0 || gl.Creator.Name != "" {
+	if derefInt64(gl.Creator.Id) != 0 || gl.Creator.Name != "" {
 		l.Creator = &Person{
-			ID:           gl.Creator.Id,
+			ID:           derefInt64(gl.Creator.Id),
 			Name:         gl.Creator.Name,
 			EmailAddress: gl.Creator.EmailAddress,
 			AvatarURL:    gl.Creator.AvatarUrl,
@@ -632,7 +632,7 @@ func chatbotFromGenerated(gc generated.Chatbot) Chatbot {
 		UpdatedAt:   gc.UpdatedAt,
 	}
 
-	c.ID = gc.Id
+	c.ID = derefInt64(gc.Id)
 
 	return c
 }

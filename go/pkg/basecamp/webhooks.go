@@ -291,8 +291,8 @@ func webhookFromGenerated(gw generated.Webhook) Webhook {
 		URL:        gw.Url,
 	}
 
-	if gw.Id != 0 {
-		w.ID = gw.Id
+	if derefInt64(gw.Id) != 0 {
+		w.ID = derefInt64(gw.Id)
 	}
 
 	if len(gw.RecentDeliveries) > 0 {
@@ -351,8 +351,8 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 		CommentsURL:      rec.CommentsUrl,
 		SubscriptionURL:  rec.SubscriptionUrl,
 	}
-	if rec.Id != 0 {
-		event.Recording.ID = rec.Id
+	if derefInt64(rec.Id) != 0 {
+		event.Recording.ID = derefInt64(rec.Id)
 	}
 	if !rec.CreatedAt.IsZero() {
 		event.Recording.CreatedAt = rec.CreatedAt.Format(time.RFC3339Nano)
@@ -360,29 +360,29 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 	if !rec.UpdatedAt.IsZero() {
 		event.Recording.UpdatedAt = rec.UpdatedAt.Format(time.RFC3339Nano)
 	}
-	if rec.Parent.Id != 0 {
+	if derefInt64(rec.Parent.Id) != 0 {
 		event.Recording.Parent = &WebhookEventParent{
 			Title:  rec.Parent.Title,
 			Type:   rec.Parent.Type,
 			URL:    rec.Parent.Url,
 			AppURL: rec.Parent.AppUrl,
 		}
-		event.Recording.Parent.ID = rec.Parent.Id
+		event.Recording.Parent.ID = derefInt64(rec.Parent.Id)
 	}
-	if rec.Bucket.Id != 0 {
+	if derefInt64(rec.Bucket.Id) != 0 {
 		event.Recording.Bucket = &WebhookEventBucket{
 			Name: rec.Bucket.Name,
 			Type: rec.Bucket.Type,
 		}
-		event.Recording.Bucket.ID = rec.Bucket.Id
+		event.Recording.Bucket.ID = derefInt64(rec.Bucket.Id)
 	}
-	if rec.Creator.Id != 0 {
+	if derefInt64(rec.Creator.Id) != 0 {
 		p := webhookPersonFromGenerated(rec.Creator)
 		event.Recording.Creator = &p
 	}
 
 	// Map top-level creator
-	if ge.Creator.Id != 0 {
+	if derefInt64(ge.Creator.Id) != 0 {
 		event.Creator = webhookPersonFromGenerated(ge.Creator)
 	}
 
@@ -425,8 +425,8 @@ func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 		CanAccessTimesheet:  gp.CanAccessTimesheet,
 		CanAccessHillCharts: gp.CanAccessHillCharts,
 	}
-	if gp.Id != 0 {
-		p.ID = gp.Id
+	if derefInt64(gp.Id) != 0 {
+		p.ID = derefInt64(gp.Id)
 	}
 	if gp.Bio != "" {
 		p.Bio = &gp.Bio
@@ -440,11 +440,11 @@ func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 	if !gp.UpdatedAt.IsZero() {
 		p.UpdatedAt = gp.UpdatedAt.Format(time.RFC3339Nano)
 	}
-	if gp.Company.Id != 0 {
+	if derefInt64(gp.Company.Id) != 0 {
 		p.Company = &WebhookEventCompany{
 			Name: gp.Company.Name,
 		}
-		p.Company.ID = gp.Company.Id
+		p.Company.ID = derefInt64(gp.Company.Id)
 	}
 	return p
 }

@@ -353,14 +353,14 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 		UpdatedAt:        gtl.UpdatedAt,
 	}
 
-	if gtl.Id != 0 {
-		tl.ID = gtl.Id
+	if derefInt64(gtl.Id) != 0 {
+		tl.ID = derefInt64(gtl.Id)
 	}
 
 	// Convert nested types
-	if gtl.Parent.Id != 0 || gtl.Parent.Title != "" {
+	if derefInt64(gtl.Parent.Id) != 0 || gtl.Parent.Title != "" {
 		tl.Parent = &Parent{
-			ID:     gtl.Parent.Id,
+			ID:     derefInt64(gtl.Parent.Id),
 			Title:  gtl.Parent.Title,
 			Type:   gtl.Parent.Type,
 			URL:    gtl.Parent.Url,
@@ -368,17 +368,17 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 		}
 	}
 
-	if gtl.Bucket.Id != 0 || gtl.Bucket.Name != "" {
+	if derefInt64(gtl.Bucket.Id) != 0 || gtl.Bucket.Name != "" {
 		tl.Bucket = &Bucket{
-			ID:   gtl.Bucket.Id,
+			ID:   derefInt64(gtl.Bucket.Id),
 			Name: gtl.Bucket.Name,
 			Type: gtl.Bucket.Type,
 		}
 	}
 
-	if gtl.Creator.Id != 0 || gtl.Creator.Name != "" {
+	if derefInt64(gtl.Creator.Id) != 0 || gtl.Creator.Name != "" {
 		tl.Creator = &Person{
-			ID:           gtl.Creator.Id,
+			ID:           derefInt64(gtl.Creator.Id),
 			Name:         gtl.Creator.Name,
 			EmailAddress: gtl.Creator.EmailAddress,
 			AvatarURL:    gtl.Creator.AvatarUrl,

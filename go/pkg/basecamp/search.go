@@ -164,14 +164,14 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 		Subject:          gsr.Subject,
 	}
 
-	if gsr.Id != 0 {
-		sr.ID = gsr.Id
+	if derefInt64(gsr.Id) != 0 {
+		sr.ID = derefInt64(gsr.Id)
 	}
 
 	// Convert nested types
-	if gsr.Parent.Id != 0 || gsr.Parent.Title != "" {
+	if derefInt64(gsr.Parent.Id) != 0 || gsr.Parent.Title != "" {
 		sr.Parent = &Parent{
-			ID:     gsr.Parent.Id,
+			ID:     derefInt64(gsr.Parent.Id),
 			Title:  gsr.Parent.Title,
 			Type:   gsr.Parent.Type,
 			URL:    gsr.Parent.Url,
@@ -179,17 +179,17 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 		}
 	}
 
-	if gsr.Bucket.Id != 0 || gsr.Bucket.Name != "" {
+	if derefInt64(gsr.Bucket.Id) != 0 || gsr.Bucket.Name != "" {
 		sr.Bucket = &Bucket{
-			ID:   gsr.Bucket.Id,
+			ID:   derefInt64(gsr.Bucket.Id),
 			Name: gsr.Bucket.Name,
 			Type: gsr.Bucket.Type,
 		}
 	}
 
-	if gsr.Creator.Id != 0 || gsr.Creator.Name != "" {
+	if derefInt64(gsr.Creator.Id) != 0 || gsr.Creator.Name != "" {
 		sr.Creator = &Person{
-			ID:           gsr.Creator.Id,
+			ID:           derefInt64(gsr.Creator.Id),
 			Name:         gsr.Creator.Name,
 			EmailAddress: gsr.Creator.EmailAddress,
 			AvatarURL:    gsr.Creator.AvatarUrl,
