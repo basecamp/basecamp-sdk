@@ -49,10 +49,10 @@
     "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
-    "@types/node": "^25.2.3",
+    "@types/node": "^25.3.0",
     "msw": "^2.12.10",
     "openapi-typescript": "^7.13.0",
-    "oxlint": "^1.47.0",
+    "oxlint": "^1.50.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^4.0.18"
