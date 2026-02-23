@@ -9,6 +9,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./oauth": {
+      "import": "./dist/oauth/index.js",
+      "types": "./dist/oauth/index.d.ts"
     }
   },
   "files": [
