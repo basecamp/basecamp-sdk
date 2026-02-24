@@ -13,6 +13,10 @@
     ".": {
       "import": "./typescript/dist/index.js",
       "types": "./typescript/dist/index.d.ts"
+    },
+    "./oauth": {
+      "import": "./typescript/dist/oauth/index.js",
+      "types": "./typescript/dist/oauth/index.d.ts"
     }
   },
   "files": [
