@@ -149,8 +149,13 @@ export class TokenManager {
       useLegacyFormat: this.useLegacyFormat,
     });
 
-    this.token = newToken;
-    await this.store.save(newToken);
-    return newToken;
+    // Preserve the previous refresh token when the server omits one
+    const merged: OAuthToken = newToken.refreshToken
+      ? newToken
+      : { ...newToken, refreshToken: refreshTokenValue };
+
+    this.token = merged;
+    await this.store.save(merged);
+    return merged;
   }
 }

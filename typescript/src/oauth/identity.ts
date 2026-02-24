@@ -25,7 +25,7 @@ interface RawAuthorizationResponse {
     name: string;
     product: string;
     href: string;
-    app_href: string;
+    app_href?: string;
     hidden?: boolean;
     expired?: boolean;
     featured?: boolean;
@@ -57,13 +57,18 @@ const AUTHORIZATION_ENDPOINT = "https://launchpad.37signals.com/authorization.js
 export async function discoverIdentity(accessToken: TokenProvider): Promise<AuthorizationInfo> {
   const token = typeof accessToken === "function" ? await accessToken() : accessToken;
 
-  const response = await fetch(AUTHORIZATION_ENDPOINT, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(AUTHORIZATION_ENDPOINT, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+  } catch (err) {
+    throw new BasecampError("network", `Identity discovery failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -77,7 +82,12 @@ export async function discoverIdentity(accessToken: TokenProvider): Promise<Auth
     });
   }
 
-  const raw = (await response.json()) as RawAuthorizationResponse;
+  let raw: RawAuthorizationResponse;
+  try {
+    raw = (await response.json()) as RawAuthorizationResponse;
+  } catch {
+    throw new BasecampError("api_error", "Identity discovery returned invalid JSON");
+  }
 
   return {
     expiresAt: new Date(raw.expires_at),
@@ -92,7 +102,7 @@ export async function discoverIdentity(accessToken: TokenProvider): Promise<Auth
       name: a.name,
       product: a.product,
       href: a.href,
-      appHref: a.app_href,
+      appHref: a.app_href ?? "",
       hidden: a.hidden,
       expired: a.expired,
       featured: a.featured,

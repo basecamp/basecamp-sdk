@@ -100,8 +100,15 @@ export async function startCallbackServer(
       return;
     }
 
-    const reqHost = req.headers.host ?? `${host}:${port}`;
-    const reqUrl = new URL(req.url ?? "/", `http://${reqHost}`);
+    let reqUrl: URL;
+    try {
+      const reqHost = req.headers.host ?? `${host}:${port}`;
+      reqUrl = new URL(req.url ?? "/", `http://${reqHost}`);
+    } catch {
+      res.writeHead(400, { "Content-Type": "text/html" });
+      res.end(ERROR_HTML);
+      return;
+    }
 
     if (reqUrl.pathname !== "/callback") {
       res.writeHead(404);

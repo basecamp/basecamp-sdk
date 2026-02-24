@@ -33,6 +33,8 @@ const mockAuthorizationResponse = {
       product: "bc3",
       href: "https://3.basecampapi.com/88888",
       app_href: "https://3.basecamp.com/88888",
+      hidden: false,
+      expired: false,
     },
   ],
 };
@@ -106,6 +108,22 @@ describe("discoverIdentity", () => {
       expect(err).toBeInstanceOf(BasecampError);
       expect((err as BasecampError).code).toBe("auth");
       expect((err as BasecampError).httpStatus).toBe(401);
+    }
+  });
+
+  it("wraps network errors in BasecampError", async () => {
+    server.use(
+      http.get("https://launchpad.37signals.com/authorization.json", () =>
+        HttpResponse.error()
+      )
+    );
+
+    try {
+      await discoverIdentity("test_token");
+      expect.fail("Should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(BasecampError);
+      expect((err as BasecampError).code).toBe("network");
     }
   });
 

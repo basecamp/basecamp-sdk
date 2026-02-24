@@ -112,6 +112,15 @@ export class FileTokenStore implements TokenStore {
     // Ensure directory exists
     await mkdir(dirname(this.filePath), { recursive: true });
 
+    // Remove stale tmp file so writeFile creates a fresh one with 0o600
+    try {
+      await unlink(tmpPath);
+    } catch (err: unknown) {
+      if (!(err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT")) {
+        throw err;
+      }
+    }
+
     // Atomic write: write to tmp, then rename
     await writeFile(tmpPath, json, { mode: 0o600 });
     await rename(tmpPath, this.filePath);

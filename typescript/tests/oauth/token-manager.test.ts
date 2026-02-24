@@ -193,6 +193,48 @@ describe("TokenManager", () => {
       expect(mockRefreshFn).toHaveBeenCalledOnce();
     });
 
+    it("preserves previous refresh token when server omits it", async () => {
+      const store = createMockStore(expiredToken({ refreshToken: "original_refresh" }));
+      mockRefreshFn.mockResolvedValue(freshToken({
+        accessToken: "new_access",
+        refreshToken: undefined,
+      }));
+
+      const manager = new TokenManager({
+        store,
+        refreshToken: mockRefreshFn,
+        tokenEndpoint: "https://example.com/token",
+      });
+
+      // getToken loads from store, then triggers refresh since token is expired
+      const result = await manager.getToken();
+      const current = manager.currentToken!;
+
+      expect(result).toBe("new_access");
+      expect(current.refreshToken).toBe("original_refresh");
+      expect(store.save).toHaveBeenCalledWith(
+        expect.objectContaining({ refreshToken: "original_refresh" }),
+      );
+    });
+
+    it("uses new refresh token when server provides one", async () => {
+      const store = createMockStore(expiredToken({ refreshToken: "old_refresh" }));
+      mockRefreshFn.mockResolvedValue(freshToken({
+        accessToken: "new_access",
+        refreshToken: "rotated_refresh",
+      }));
+
+      const manager = new TokenManager({
+        store,
+        refreshToken: mockRefreshFn,
+        tokenEndpoint: "https://example.com/token",
+      });
+
+      await manager.getToken();
+
+      expect(manager.currentToken!.refreshToken).toBe("rotated_refresh");
+    });
+
     it("throws when no refresh token available", async () => {
       const store = createMockStore(freshToken({ refreshToken: undefined }));
 
