@@ -1,0 +1,126 @@
+name: Release Swift SDK
+
+on:
+  push:
+    tags:
+      - 'swift/v*'
+  workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
+
+permissions:
+  contents: write
+
+jobs:
+  smithy:
+    name: Verify Smithy spec
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spec
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Smithy CLI
+        run: |
+          curl -L -o smithy-cli.zip https://github.com/smithy-lang/smithy/releases/download/1.66.0/smithy-cli-linux-x86_64.zip
+          unzip -q smithy-cli.zip
+          echo "$PWD/smithy-cli-1.66.0/bin" >> $GITHUB_PATH
+
+      - name: Validate Smithy spec
+        run: smithy validate
+
+      - name: Verify OpenAPI is up to date
+        run: |
+          smithy build
+          diff -q ../openapi.json build/smithy/openapi/openapi/Basecamp.openapi.json || \
+            (echo "::error::openapi.json is stale" && exit 1)
+
+  test:
+    name: Test Swift SDK
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: swift
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test
+
+  release:
+    name: Create Release
+    needs: [smithy, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="v0.0.0-dry-run"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Rehearsal for version: $VERSION"
+          else
+            VERSION="${GITHUB_REF#refs/tags/swift/}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Releasing version: $VERSION"
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag for this module
+          PREV_TAG=$(git describe --tags --match 'swift/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -z "$PREV_TAG" ]; then
+            # First release — include commits affecting swift/ and root Package.swift
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -- swift/ Package.swift)
+          else
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- swift/ Package.swift)
+          fi
+
+          echo "## Changes" > changelog.md
+          echo "" >> changelog.md
+          if [ -z "$COMMITS" ]; then
+            echo "- Initial release" >> changelog.md
+          else
+            echo "$COMMITS" >> changelog.md
+          fi
+          echo "" >> changelog.md
+          echo "## Installation" >> changelog.md
+          echo "" >> changelog.md
+          echo "Add the package dependency in your \`Package.swift\`:" >> changelog.md
+          echo "" >> changelog.md
+          VERSION="${{ steps.version.outputs.version }}"
+          SEMVER="${VERSION#v}"
+          echo '```swift' >> changelog.md
+          echo ".package(url: \"https://github.com/basecamp/basecamp-sdk.git\", from: \"${SEMVER}\")" >> changelog.md
+          echo '```' >> changelog.md
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Swift SDK ${{ steps.version.outputs.version }}
+          body_path: changelog.md
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create SPM version tag
+        if: github.event_name == 'push'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git tag "$VERSION"
+          git push origin "$VERSION"
