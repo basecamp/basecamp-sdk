@@ -77,6 +77,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify tag is on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
       - name: Install Smithy CLI
         run: |
           curl -L -o smithy-cli.zip https://github.com/smithy-lang/smithy/releases/download/1.66.0/smithy-cli-linux-x86_64.zip

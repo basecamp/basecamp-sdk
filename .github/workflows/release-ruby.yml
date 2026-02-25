@@ -68,6 +68,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify tag is on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
