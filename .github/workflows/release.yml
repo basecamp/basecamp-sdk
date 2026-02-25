@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'go/v*'
+  workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
 
 permissions:
   contents: write
@@ -64,18 +65,31 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify tag is on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: 'go/go.mod'
 
-      - name: Extract version from tag
+      - name: Extract version
         id: version
         run: |
-          # Tag is in format go/v1.2.3, extract just v1.2.3
-          VERSION="${GITHUB_REF#refs/tags/go/}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Releasing version: $VERSION"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger (dry-run): read from go.mod
+            VERSION="v0.0.0-dry-run"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Rehearsal for version: $VERSION"
+          else
+            # Tag trigger: extract from tag
+            VERSION="${GITHUB_REF#refs/tags/go/}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Releasing version: $VERSION"
+          fi
 
       - name: Verify module version
         working-directory: go
@@ -91,7 +105,7 @@ jobs:
         id: changelog
         run: |
           # Get the previous tag for this module
-          PREV_TAG=$(git tag -l 'go/v*' --sort=-v:refname | sed -n '2p')
+          PREV_TAG=$(git describe --tags --match 'go/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
             # First release, get all commits affecting go/
             COMMITS=$(git log --pretty=format:"- %s (%h)" -- go/)
@@ -116,6 +130,7 @@ jobs:
           echo '```' >> changelog.md
 
       - name: Create GitHub Release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           name: Go SDK ${{ steps.version.outputs.version }}
