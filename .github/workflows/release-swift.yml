@@ -124,5 +124,15 @@ jobs:
         if: github.event_name == 'push'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            EXISTING=$(git rev-parse "$VERSION")
+            if [ "$EXISTING" = "$(git rev-parse HEAD)" ]; then
+              echo "Tag $VERSION already exists on this commit; skipping."
+              exit 0
+            else
+              echo "::error::Tag $VERSION already exists on $EXISTING (HEAD is $(git rev-parse HEAD))"
+              exit 1
+            fi
+          fi
           git tag "$VERSION"
           git push origin "$VERSION"

@@ -237,6 +237,16 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Releasing version: $VERSION"
 
+      - name: Verify Gradle version matches tag
+        working-directory: kotlin/sdk
+        run: |
+          GRADLE_VERSION=$(grep '^version' build.gradle.kts | sed 's/version = "\(.*\)"/\1/')
+          if [ "$GRADLE_VERSION" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::Gradle version ($GRADLE_VERSION) does not match tag version (${{ steps.version.outputs.version }})"
+            exit 1
+          fi
+          echo "Version verification passed: $GRADLE_VERSION"
+
       - name: Publish to GitHub Packages
         shell: bash
         run: |
