@@ -77,6 +77,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify tag is on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
       - name: Install Smithy CLI
         run: |
           curl -L -o smithy-cli.zip https://github.com/smithy-lang/smithy/releases/download/1.66.0/smithy-cli-linux-x86_64.zip
@@ -157,10 +163,12 @@ jobs:
           # Write to file for multiline output
           echo "## Changes" > changelog.md
           echo "" >> changelog.md
-          if [ -z "$COMMITS" ]; then
+          if [ -n "$COMMITS" ]; then
+            echo "$COMMITS" >> changelog.md
+          elif [ -z "$PREV_TAG" ]; then
             echo "- Initial release" >> changelog.md
           else
-            echo "$COMMITS" >> changelog.md
+            echo "- No changes since $PREV_TAG" >> changelog.md
           fi
           echo "" >> changelog.md
           echo "## Installation" >> changelog.md

@@ -206,13 +206,20 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/kotlin/v') && !github.event.deleted
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
     defaults:
       run:
         working-directory: kotlin
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -222,6 +229,23 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/kotlin/v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Releasing version: $VERSION"
+
+      - name: Verify Gradle version matches tag
+        working-directory: kotlin/sdk
+        run: |
+          GRADLE_VERSION=$(grep '^version' build.gradle.kts | sed 's/version = "\(.*\)"/\1/')
+          if [ "$GRADLE_VERSION" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::Gradle version ($GRADLE_VERSION) does not match tag version (${{ steps.version.outputs.version }})"
+            exit 1
+          fi
+          echo "Version verification passed: $GRADLE_VERSION"
 
       - name: Publish to GitHub Packages
         shell: bash
@@ -241,6 +265,49 @@ jobs:
         env:
           GITHUB_USER: x-access-token
           GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          cd ..
+          # Get the previous tag for this module
+          PREV_TAG=$(git describe --tags --match 'kotlin/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -z "$PREV_TAG" ]; then
+            # First release, get all commits affecting kotlin/
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -- kotlin/)
+          else
+            # Get commits since previous tag
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- kotlin/)
+          fi
+
+          # Write to file for multiline output
+          echo "## Changes" > changelog.md
+          echo "" >> changelog.md
+          if [ -n "$COMMITS" ]; then
+            echo "$COMMITS" >> changelog.md
+          elif [ -z "$PREV_TAG" ]; then
+            echo "- Initial release" >> changelog.md
+          else
+            echo "- No changes since $PREV_TAG" >> changelog.md
+          fi
+          echo "" >> changelog.md
+          echo "## Installation" >> changelog.md
+          echo "" >> changelog.md
+          echo "Add the GitHub Packages Maven repository and dependency:" >> changelog.md
+          echo "" >> changelog.md
+          echo '```kotlin' >> changelog.md
+          echo 'implementation("com.basecamp:basecamp-sdk:${{ steps.version.outputs.version }}")' >> changelog.md
+          echo '```' >> changelog.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Kotlin SDK v${{ steps.version.outputs.version }}
+          body_path: changelog.md
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   conformance:
     name: Conformance Tests

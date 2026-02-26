@@ -1,9 +1,9 @@
-name: Release Ruby SDK
+name: Release Swift SDK
 
 on:
   push:
     tags:
-      - 'ruby/v*'
+      - 'swift/v*'
   workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
 
 permissions:
@@ -35,34 +35,24 @@ jobs:
             (echo "::error::openapi.json is stale" && exit 1)
 
   test:
-    name: Test Ruby SDK
-    runs-on: ubuntu-latest
+    name: Test Swift SDK
+    runs-on: macos-15
     defaults:
       run:
-        working-directory: ruby
+        working-directory: swift
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
-          working-directory: ruby
+      - name: Build
+        run: swift build
 
-      - name: Lint
-        run: bundle exec rubocop
+      - name: Test
+        run: swift test
 
-      - name: Run tests
-        run: bundle exec rake test
-
-  publish:
-    name: Publish to RubyGems
+  release:
+    name: Create Release
     needs: [smithy, test]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ruby
     steps:
       - uses: actions/checkout@v6
         with:
@@ -74,64 +64,31 @@ jobs:
           git fetch origin main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
-          working-directory: ruby
-
       - name: Extract version
         id: version
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Manual trigger (dry-run): read from version.rb
-            VERSION=$(ruby -e "require_relative 'lib/basecamp/version'; puts Basecamp::VERSION")
+            VERSION="v0.0.0-dry-run"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Rehearsal for version: $VERSION"
           else
-            # Tag trigger: extract from tag and verify match
-            VERSION="${GITHUB_REF#refs/tags/ruby/v}"
-            GEM_VERSION=$(ruby -e "require_relative 'lib/basecamp/version'; puts Basecamp::VERSION")
-            if [ "$GEM_VERSION" != "$VERSION" ]; then
-              echo "::error::Gem version ($GEM_VERSION) does not match tag version ($VERSION)"
-              exit 1
-            fi
+            VERSION="${GITHUB_REF#refs/tags/swift/}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Releasing version: $VERSION"
           fi
 
-      - name: Build gem
-        run: gem build basecamp-sdk.gemspec
-
-      - name: Publish to RubyGems
-        run: |
-          mkdir -p ~/.gem
-          echo -e "---\n:rubygems_api_key: ${{ secrets.RUBYGEMS_API_KEY }}" > ~/.gem/credentials
-          chmod 0600 ~/.gem/credentials
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            gem push basecamp-sdk-${{ steps.version.outputs.version }}.gem
-          else
-            echo "::notice::Dry run mode - not actually publishing"
-            echo "Would publish: basecamp-sdk-${{ steps.version.outputs.version }}.gem"
-          fi
-
       - name: Generate changelog
-        if: github.event_name == 'push'
         id: changelog
         run: |
-          cd ..
           # Get the previous tag for this module
-          PREV_TAG=$(git describe --tags --match 'ruby/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
+          PREV_TAG=$(git describe --tags --match 'swift/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
-            # First release, get all commits affecting ruby/
-            COMMITS=$(git log --pretty=format:"- %s (%h)" -- ruby/)
+            # First release — include commits affecting swift/ and root Package.swift
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -- swift/ Package.swift)
           else
-            # Get commits since previous tag
-            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- ruby/)
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- swift/ Package.swift)
           fi
 
-          # Write to file for multiline output
           echo "## Changes" > changelog.md
           echo "" >> changelog.md
           if [ -n "$COMMITS" ]; then
@@ -144,17 +101,38 @@ jobs:
           echo "" >> changelog.md
           echo "## Installation" >> changelog.md
           echo "" >> changelog.md
-          echo '```' >> changelog.md
-          echo "gem install basecamp-sdk -v ${{ steps.version.outputs.version }}" >> changelog.md
+          echo "Add the package dependency in your \`Package.swift\`:" >> changelog.md
+          echo "" >> changelog.md
+          VERSION="${{ steps.version.outputs.version }}"
+          SEMVER="${VERSION#v}"
+          echo '```swift' >> changelog.md
+          echo ".package(url: \"https://github.com/basecamp/basecamp-sdk.git\", from: \"${SEMVER}\")" >> changelog.md
           echo '```' >> changelog.md
 
       - name: Create GitHub Release
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          name: Ruby SDK v${{ steps.version.outputs.version }}
+          name: Swift SDK ${{ steps.version.outputs.version }}
           body_path: changelog.md
           draft: false
           prerelease: ${{ contains(steps.version.outputs.version, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create SPM version tag
+        if: github.event_name == 'push'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            EXISTING=$(git rev-parse "$VERSION")
+            if [ "$EXISTING" = "$(git rev-parse HEAD)" ]; then
+              echo "Tag $VERSION already exists on this commit; skipping."
+              exit 0
+            else
+              echo "::error::Tag $VERSION already exists on $EXISTING (HEAD is $(git rev-parse HEAD))"
+              exit 1
+            fi
+          fi
+          git tag "$VERSION"
+          git push origin "$VERSION"
