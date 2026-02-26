@@ -3160,10 +3160,10 @@ type ClientInterface interface {
 	GetProjectConstruction(ctx context.Context, accountId string, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectTimeline request
-	GetProjectTimeline(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectTimesheet request
-	GetProjectTimesheet(ctx context.Context, accountId string, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTimesheetEntry request
 	GetTimesheetEntry(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3279,12 +3279,12 @@ type ClientInterface interface {
 	CreateVault(ctx context.Context, accountId string, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListWebhooks request
-	ListWebhooks(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateWebhookWithBody request with any body
-	CreateWebhookWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateWebhookWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateWebhook(ctx context.Context, accountId string, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateWebhook(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteWebhook request
 	DeleteWebhook(ctx context.Context, accountId string, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5364,20 +5364,20 @@ func (c *Client) GetProjectConstruction(ctx context.Context, accountId string, t
 
 // GetProjectTimeline is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProjectTimeline(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProjectTimelineRequest(c.Server, accountId)
+		return NewGetProjectTimelineRequest(c.Server, accountId, projectId)
 	}, true, "GetProjectTimeline", reqEditors...)
 
 }
 
 // GetProjectTimesheet is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProjectTimesheet(ctx context.Context, accountId string, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProjectTimesheetRequest(c.Server, accountId, params)
+		return NewGetProjectTimesheetRequest(c.Server, accountId, projectId, params)
 	}, true, "GetProjectTimesheet", reqEditors...)
 
 }
@@ -5850,19 +5850,19 @@ func (c *Client) CreateVault(ctx context.Context, accountId string, vaultId int6
 
 // ListWebhooks is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListWebhooks(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListWebhooksRequest(c.Server, accountId)
+		return NewListWebhooksRequest(c.Server, accountId, bucketId)
 	}, true, "ListWebhooks", reqEditors...)
 
 }
 
 // CreateWebhookWithBody executes the CreateWebhook operation.
 
-func (c *Client) CreateWebhookWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateWebhookWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateWebhookRequestWithBody(c.Server, accountId, contentType, body)
+	req, err := NewCreateWebhookRequestWithBody(c.Server, accountId, bucketId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5874,9 +5874,9 @@ func (c *Client) CreateWebhookWithBody(ctx context.Context, accountId string, co
 
 }
 
-func (c *Client) CreateWebhook(ctx context.Context, accountId string, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateWebhook(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCreateWebhookRequest(c.Server, accountId, body)
+	req, err := NewCreateWebhookRequest(c.Server, accountId, bucketId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -12454,7 +12454,7 @@ func NewGetProjectConstructionRequest(server string, accountId string, templateI
 }
 
 // NewGetProjectTimelineRequest generates requests for GetProjectTimeline
-func NewGetProjectTimelineRequest(server string, accountId string) (*http.Request, error) {
+func NewGetProjectTimelineRequest(server string, accountId string, projectId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12464,12 +12464,19 @@ func NewGetProjectTimelineRequest(server string, accountId string) (*http.Reques
 		return nil, err
 	}
 
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/timeline.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/timeline.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12488,7 +12495,7 @@ func NewGetProjectTimelineRequest(server string, accountId string) (*http.Reques
 }
 
 // NewGetProjectTimesheetRequest generates requests for GetProjectTimesheet
-func NewGetProjectTimesheetRequest(server string, accountId string, params *GetProjectTimesheetParams) (*http.Request, error) {
+func NewGetProjectTimesheetRequest(server string, accountId string, projectId int64, params *GetProjectTimesheetParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12498,12 +12505,19 @@ func NewGetProjectTimesheetRequest(server string, accountId string, params *GetP
 		return nil, err
 	}
 
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/timesheet.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/timesheet.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12586,7 +12600,7 @@ func NewGetTimesheetEntryRequest(server string, accountId string, entryId int64)
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/timesheet/entries/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/timesheet_entries/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12638,7 +12652,7 @@ func NewUpdateTimesheetEntryRequestWithBody(server string, accountId string, ent
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/timesheet/entries/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/timesheet_entries/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -13970,7 +13984,7 @@ func NewCreateVaultRequestWithBody(server string, accountId string, vaultId int6
 }
 
 // NewListWebhooksRequest generates requests for ListWebhooks
-func NewListWebhooksRequest(server string, accountId string) (*http.Request, error) {
+func NewListWebhooksRequest(server string, accountId string, bucketId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13980,12 +13994,19 @@ func NewListWebhooksRequest(server string, accountId string) (*http.Request, err
 		return nil, err
 	}
 
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/webhooks.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/webhooks.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -14004,18 +14025,18 @@ func NewListWebhooksRequest(server string, accountId string) (*http.Request, err
 }
 
 // NewCreateWebhookRequest calls the generic CreateWebhook builder with application/json body
-func NewCreateWebhookRequest(server string, accountId string, body CreateWebhookJSONRequestBody) (*http.Request, error) {
+func NewCreateWebhookRequest(server string, accountId string, bucketId int64, body CreateWebhookJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateWebhookRequestWithBody(server, accountId, "application/json", bodyReader)
+	return NewCreateWebhookRequestWithBody(server, accountId, bucketId, "application/json", bodyReader)
 }
 
 // NewCreateWebhookRequestWithBody generates requests for CreateWebhook with any type of body
-func NewCreateWebhookRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateWebhookRequestWithBody(server string, accountId string, bucketId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14025,12 +14046,19 @@ func NewCreateWebhookRequestWithBody(server string, accountId string, contentTyp
 		return nil, err
 	}
 
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/webhooks.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/buckets/%s/webhooks.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -15266,16 +15294,16 @@ func (s *VaultsService) Create(ctx context.Context, accountId string, vaultId in
 	return s.client.CreateVault(ctx, accountId, vaultId, body, reqEditors...)
 }
 
-func (s *WebhooksService) List(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListWebhooks(ctx, accountId, reqEditors...)
+func (s *WebhooksService) List(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListWebhooks(ctx, accountId, bucketId, reqEditors...)
 }
 
-func (s *WebhooksService) CreateWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateWebhookWithBody(ctx, accountId, contentType, body, reqEditors...)
+func (s *WebhooksService) CreateWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateWebhookWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
 }
 
-func (s *WebhooksService) Create(ctx context.Context, accountId string, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateWebhook(ctx, accountId, body, reqEditors...)
+func (s *WebhooksService) Create(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateWebhook(ctx, accountId, bucketId, body, reqEditors...)
 }
 
 func (s *WebhooksService) Delete(ctx context.Context, accountId string, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -15833,10 +15861,10 @@ type ClientWithResponsesInterface interface {
 	GetProjectConstructionWithResponse(ctx context.Context, accountId string, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*GetProjectConstructionResponse, error)
 
 	// GetProjectTimelineWithResponse request
-	GetProjectTimelineWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
+	GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
 
 	// GetProjectTimesheetWithResponse request
-	GetProjectTimesheetWithResponse(ctx context.Context, accountId string, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
+	GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
 
 	// GetTimesheetEntryWithResponse request
 	GetTimesheetEntryWithResponse(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*GetTimesheetEntryResponse, error)
@@ -15952,12 +15980,12 @@ type ClientWithResponsesInterface interface {
 	CreateVaultWithResponse(ctx context.Context, accountId string, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error)
 
 	// ListWebhooksWithResponse request
-	ListWebhooksWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
+	ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
 
 	// CreateWebhookWithBodyWithResponse request with any body
-	CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
+	CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
 
-	CreateWebhookWithResponse(ctx context.Context, accountId string, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
+	CreateWebhookWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
 
 	// DeleteWebhookWithResponse request
 	DeleteWebhookWithResponse(ctx context.Context, accountId string, webhookId int64, reqEditors ...RequestEditorFn) (*DeleteWebhookResponse, error)
@@ -22190,8 +22218,8 @@ func (c *ClientWithResponses) GetProjectConstructionWithResponse(ctx context.Con
 }
 
 // GetProjectTimelineWithResponse request returning *GetProjectTimelineResponse
-func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error) {
-	rsp, err := c.GetProjectTimeline(ctx, accountId, reqEditors...)
+func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error) {
+	rsp, err := c.GetProjectTimeline(ctx, accountId, projectId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -22199,8 +22227,8 @@ func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context
 }
 
 // GetProjectTimesheetWithResponse request returning *GetProjectTimesheetResponse
-func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Context, accountId string, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error) {
-	rsp, err := c.GetProjectTimesheet(ctx, accountId, params, reqEditors...)
+func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error) {
+	rsp, err := c.GetProjectTimesheet(ctx, accountId, projectId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -22573,8 +22601,8 @@ func (c *ClientWithResponses) CreateVaultWithResponse(ctx context.Context, accou
 }
 
 // ListWebhooksWithResponse request returning *ListWebhooksResponse
-func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
-	rsp, err := c.ListWebhooks(ctx, accountId, reqEditors...)
+func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
+	rsp, err := c.ListWebhooks(ctx, accountId, bucketId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -22582,16 +22610,16 @@ func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, acco
 }
 
 // CreateWebhookWithBodyWithResponse request with arbitrary body returning *CreateWebhookResponse
-func (c *ClientWithResponses) CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
-	rsp, err := c.CreateWebhookWithBody(ctx, accountId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
+	rsp, err := c.CreateWebhookWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateWebhookResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, accountId string, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
-	rsp, err := c.CreateWebhook(ctx, accountId, body, reqEditors...)
+func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
+	rsp, err := c.CreateWebhook(ctx, accountId, bucketId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

@@ -14,6 +14,18 @@ import { Errors } from "../../errors.js";
 
 
 /**
+ * Options for forProject.
+ */
+export interface ForProjectTimesheetOptions {
+  /** From */
+  from?: string;
+  /** To */
+  to?: string;
+  /** Person id */
+  personId?: number;
+}
+
+/**
  * Options for forRecording.
  */
 export interface ForRecordingTimesheetOptions {
@@ -52,18 +64,6 @@ export interface ReportTimesheetOptions {
 }
 
 /**
- * Options for forProject.
- */
-export interface ForProjectTimesheetOptions {
-  /** From */
-  from?: string;
-  /** To */
-  to?: string;
-  /** Person id */
-  personId?: number;
-}
-
-/**
  * Request parameters for update.
  */
 export interface UpdateTimesheetRequest {
@@ -86,6 +86,37 @@ export interface UpdateTimesheetRequest {
  * Service for Timesheets operations.
  */
 export class TimesheetsService extends BaseService {
+
+  /**
+   * Get timesheet for a specific project
+   * @param projectId - The project ID
+   * @param options - Optional query parameters
+   * @returns Array of results
+   *
+   * @example
+   * ```ts
+   * const result = await client.timesheets.forProject(123);
+   * ```
+   */
+  async forProject(projectId: number, options?: ForProjectTimesheetOptions): Promise<components["schemas"]["GetProjectTimesheetResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Timesheets",
+        operation: "GetProjectTimesheet",
+        resourceType: "project_timesheet",
+        isMutation: false,
+        projectId,
+      },
+      () =>
+        this.client.GET("/buckets/{projectId}/timesheet.json", {
+          params: {
+            path: { projectId },
+            query: { from: options?.from, to: options?.to, "person_id": options?.personId },
+          },
+        })
+    );
+    return response ?? [];
+  }
 
   /**
    * Get timesheet for a specific recording
@@ -190,34 +221,6 @@ export class TimesheetsService extends BaseService {
   }
 
   /**
-   * Get timesheet for a specific project
-   * @param options - Optional query parameters
-   * @returns Array of results
-   *
-   * @example
-   * ```ts
-   * const result = await client.timesheets.forProject();
-   * ```
-   */
-  async forProject(options?: ForProjectTimesheetOptions): Promise<components["schemas"]["GetProjectTimesheetResponseContent"]> {
-    const response = await this.request(
-      {
-        service: "Timesheets",
-        operation: "GetProjectTimesheet",
-        resourceType: "project_timesheet",
-        isMutation: false,
-      },
-      () =>
-        this.client.GET("/timesheet.json", {
-          params: {
-            query: { from: options?.from, to: options?.to, "person_id": options?.personId },
-          },
-        })
-    );
-    return response ?? [];
-  }
-
-  /**
    * Get a single timesheet entry
    * @param entryId - The entry ID
    * @returns The timesheet_entry
@@ -238,7 +241,7 @@ export class TimesheetsService extends BaseService {
         resourceId: entryId,
       },
       () =>
-        this.client.GET("/timesheet/entries/{entryId}", {
+        this.client.GET("/timesheet_entries/{entryId}", {
           params: {
             path: { entryId },
           },
@@ -269,7 +272,7 @@ export class TimesheetsService extends BaseService {
         resourceId: entryId,
       },
       () =>
-        this.client.PUT("/timesheet/entries/{entryId}", {
+        this.client.PUT("/timesheet_entries/{entryId}", {
           params: {
             path: { entryId },
           },

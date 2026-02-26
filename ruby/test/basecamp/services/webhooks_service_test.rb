@@ -12,10 +12,10 @@ class WebhooksServiceTest < Minitest::Test
   def test_list
     response = [ { "id" => 1, "payload_url" => "https://example.com/webhook", "active" => true } ]
 
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/webhooks\.json})
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.webhooks.list.to_a
+    result = @account.webhooks.list(bucket_id: 1).to_a
     assert_kind_of Array, result
     assert_equal "https://example.com/webhook", result.first["payload_url"]
   end
@@ -33,10 +33,11 @@ class WebhooksServiceTest < Minitest::Test
   def test_create
     response = { "id" => 1, "payload_url" => "https://example.com/webhook", "types" => [ "Todo" ] }
 
-    stub_request(:post, %r{https://3\.basecampapi\.com/12345/webhooks\.json})
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks\.json})
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
     result = @account.webhooks.create(
+      bucket_id: 1,
       payload_url: "https://example.com/webhook",
       types: [ "Todo" ]
     )

@@ -14,19 +14,20 @@ class TimelineService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get project timeline
+     * @param projectId The project ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun projectTimeline(options: PaginationOptions? = null): ListResult<JsonElement> {
+    suspend fun projectTimeline(projectId: Long, options: PaginationOptions? = null): ListResult<JsonElement> {
         val info = OperationInfo(
             service = "Timeline",
             operation = "GetProjectTimeline",
             resourceType = "project_timeline",
             isMutation = false,
-            projectId = null,
+            projectId = projectId,
             resourceId = null,
         )
         return requestPaginated(info, options, {
-            httpGet("/timeline.json", operationName = info.operation)
+            httpGet("/buckets/${projectId}/timeline.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<JsonElement>>(body)
         }

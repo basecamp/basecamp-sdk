@@ -534,14 +534,16 @@ const lines = await client.campfires.listLines(campfireId);
 ### Working with Webhooks
 
 ```ts
+const bucketId = 12345; // project/bucket ID
+
 // Create a webhook
-const webhook = await client.webhooks.create({
+const webhook = await client.webhooks.create(bucketId, {
   payloadUrl: "https://example.com/webhook",
   types: ["Todo", "Comment"],
 });
 
 // List webhooks
-const webhooks = await client.webhooks.list();
+const webhooks = await client.webhooks.list(bucketId);
 
 // Delete a webhook
 await client.webhooks.delete(webhook.id);

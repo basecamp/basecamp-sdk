@@ -342,13 +342,13 @@ describe("Webhook URL validation", () => {
 
   it("sends HTTP payload URL to API (server validates)", async () => {
     server.use(
-      http.post(`${BASE_URL}/webhooks.json`, () => {
+      http.post(`${BASE_URL}/buckets/1/webhooks.json`, () => {
         return HttpResponse.json({ error: "payload_url must use HTTPS" }, { status: 422 });
       })
     );
 
     await expect(
-      client.webhooks.create({
+      client.webhooks.create(1, {
         payloadUrl: "http://example.com/webhook",
         types: ["Todo"],
       })
@@ -357,13 +357,13 @@ describe("Webhook URL validation", () => {
 
   it("sends empty payload URL to API (server validates)", async () => {
     server.use(
-      http.post(`${BASE_URL}/webhooks.json`, () => {
+      http.post(`${BASE_URL}/buckets/1/webhooks.json`, () => {
         return HttpResponse.json({ error: "payload_url is required" }, { status: 422 });
       })
     );
 
     await expect(
-      client.webhooks.create({
+      client.webhooks.create(1, {
         payloadUrl: "",
         types: ["Todo"],
       })
@@ -372,7 +372,7 @@ describe("Webhook URL validation", () => {
 
   it("accepts HTTPS payload URL", async () => {
     server.use(
-      http.post(`${BASE_URL}/webhooks.json`, () => {
+      http.post(`${BASE_URL}/buckets/1/webhooks.json`, () => {
         return HttpResponse.json({
           id: 1,
           active: true,
@@ -384,7 +384,7 @@ describe("Webhook URL validation", () => {
       })
     );
 
-    const webhook = await client.webhooks.create({
+    const webhook = await client.webhooks.create(1, {
       payloadUrl: "https://example.com/webhook",
       types: ["Todo"],
     });

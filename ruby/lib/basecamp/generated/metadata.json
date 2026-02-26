@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-02-22T08:10:37Z",
+  "generated": "2026-02-26T01:51:13Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -37,6 +37,60 @@
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "ListWebhooks": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "CreateWebhook": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetProjectTimeline": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "GetProjectTimesheet": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "GetCard": {
@@ -1800,33 +1854,6 @@
         ]
       }
     },
-    "GetProjectTimeline": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "pagination": {
-        "style": "link",
-        "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
-      }
-    },
-    "GetProjectTimesheet": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
     "GetTimesheetEntry": {
       "retry": {
         "maxAttempts": 3,
@@ -2201,33 +2228,6 @@
       }
     },
     "CreateVault": {
-      "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
-    "ListWebhooks": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "pagination": {
-        "style": "link",
-        "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
-      }
-    },
-    "CreateWebhook": {
       "retry": {
         "maxAttempts": 2,
         "baseDelayMs": 1000,

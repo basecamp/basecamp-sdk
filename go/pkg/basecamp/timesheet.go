@@ -117,7 +117,7 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 
 // ProjectReport returns the timesheet report for a specific project.
 // projectID is the project (bucket) ID.
-func (s *TimesheetService) ProjectReport(ctx context.Context, opts *TimesheetReportOptions) (result []TimesheetEntry, err error) {
+func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, opts *TimesheetReportOptions) (result []TimesheetEntry, err error) {
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "ProjectReport",
 		ResourceType: "timesheet_entry", IsMutation: false,
@@ -140,7 +140,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, opts *TimesheetRep
 		}
 	}
 
-	resp, err := s.client.parent.gen.GetProjectTimesheetWithResponse(ctx, s.client.accountID, params)
+	resp, err := s.client.parent.gen.GetProjectTimesheetWithResponse(ctx, s.client.accountID, projectID, params)
 	if err != nil {
 		return nil, err
 	}

@@ -352,7 +352,8 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         }
 
         "GetProjectTimeline" -> {
-            account.timeline.projectTimeline()
+            val projectId = tc.pathParams.longParam("projectId")
+            account.timeline.projectTimeline(projectId)
             DispatchResult()
         }
 
@@ -364,6 +365,27 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         "GetPersonProgress" -> {
             val personId = tc.pathParams.longParam("personId")
             account.reports.personProgress(personId)
+            DispatchResult()
+        }
+
+        "GetProjectTimesheet" -> {
+            val projectId = tc.pathParams.longParam("projectId")
+            account.timesheets.forProject(projectId)
+            DispatchResult()
+        }
+
+        "ListWebhooks" -> {
+            val bucketId = tc.pathParams.longParam("bucketId")
+            account.webhooks.list(bucketId)
+            DispatchResult()
+        }
+
+        "CreateWebhook" -> {
+            val bucketId = tc.pathParams.longParam("bucketId")
+            val payloadUrl = tc.requestBody!!["payload_url"]!!.jsonPrimitive.content
+            val types = tc.requestBody!!["types"]!!.jsonArray.map { it.jsonPrimitive.content }
+            account.webhooks.create(bucketId,
+                CreateWebhookBody(payloadUrl = payloadUrl, types = types))
             DispatchResult()
         }
 

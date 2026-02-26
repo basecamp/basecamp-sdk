@@ -48,7 +48,7 @@ describe("WebhooksService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/webhooks.json`, () => {
+        http.get(`${BASE_URL}/buckets/1/webhooks.json`, () => {
           return HttpResponse.json(mockWebhooks);
         })
       );
@@ -64,7 +64,7 @@ describe("WebhooksService", () => {
 
     it("should return empty array when no webhooks exist", async () => {
       server.use(
-        http.get(`${BASE_URL}/webhooks.json`, () => {
+        http.get(`${BASE_URL}/buckets/1/webhooks.json`, () => {
           return HttpResponse.json([]);
         })
       );
@@ -156,7 +156,7 @@ describe("WebhooksService", () => {
       };
 
       server.use(
-        http.post(`${BASE_URL}/webhooks.json`, async ({ request }) => {
+        http.post(`${BASE_URL}/buckets/1/webhooks.json`, async ({ request }) => {
           const body = (await request.json()) as {
             payload_url: string;
             types: string[];
@@ -169,7 +169,7 @@ describe("WebhooksService", () => {
         })
       );
 
-      const webhook = await client.webhooks.create({
+      const webhook = await client.webhooks.create(1, {
         payloadUrl: "https://example.com/new-webhook",
         types: ["Todo", "Message"],
         active: true,

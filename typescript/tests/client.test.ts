@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "./setup.js";
-import { createBasecampClient } from "../src/client.js";
+import { createBasecampClient, normalizeUrlPath } from "../src/client.js";
 import type { BasecampHooks } from "../src/hooks.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -144,6 +144,24 @@ describe("BasecampClient", () => {
       // CreateTodo has maxAttempts: 3 in metadata, so we expect retries
       expect(attempts).toBe(2); // Initial request + 1 retry before giving up
       expect(error).toBeDefined();
+    });
+
+    it("should resolve retry config for timesheet_entries paths", () => {
+      // Regression test: normalizeUrlPath must map timesheet_entries/{id} → {entryId}
+      // so PATH_TO_OPERATION lookup finds GetTimesheetEntry/UpdateTimesheetEntry.
+      // Without timesheet_entries in idMapping, the ID falls back to {id} and lookup misses.
+      const getPath = normalizeUrlPath(`${BASE_URL}/timesheet_entries/789`);
+      expect(getPath).toBe("/{accountId}/timesheet_entries/{entryId}");
+
+      const putPath = normalizeUrlPath(`${BASE_URL}/timesheet_entries/456`);
+      expect(putPath).toBe("/{accountId}/timesheet_entries/{entryId}");
+    });
+
+    it("should resolve webhook paths with bucketId not projectId", () => {
+      // Regression test: normalizeUrlPath must produce {bucketId} for /buckets/{id}/webhooks
+      // because PATH_TO_OPERATION uses {bucketId} for webhook routes.
+      const path = normalizeUrlPath(`${BASE_URL}/buckets/123/webhooks.json`);
+      expect(path).toBe("/{accountId}/buckets/{bucketId}/webhooks.json");
     });
   });
 

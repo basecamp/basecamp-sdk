@@ -2426,7 +2426,7 @@ structure GetTimesheetReportOutput {
 /// Get timesheet for a specific project
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/timesheet.json")
+@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/timesheet.json")
 operation GetProjectTimesheet {
   input: GetProjectTimesheetInput
   output: GetProjectTimesheetOutput
@@ -2437,6 +2437,10 @@ structure GetProjectTimesheetInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
 
   @httpQuery("from")
   from: ISO8601Date
@@ -2490,7 +2494,7 @@ structure GetRecordingTimesheetOutput {
 /// Get a single timesheet entry
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/timesheet/entries/{entryId}")
+@http(method: "GET", uri: "/{accountId}/timesheet_entries/{entryId}")
 operation GetTimesheetEntry {
   input: GetTimesheetEntryInput
   output: GetTimesheetEntryOutput
@@ -2548,7 +2552,7 @@ structure CreateTimesheetEntryOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/timesheet/entries/{entryId}")
+@http(method: "PUT", uri: "/{accountId}/timesheet_entries/{entryId}")
 operation UpdateTimesheetEntry {
   input: UpdateTimesheetEntryInput
   output: UpdateTimesheetEntryOutput
@@ -5063,7 +5067,7 @@ structure RecordingBucket {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/webhooks.json")
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/webhooks.json")
 operation ListWebhooks {
   input: ListWebhooksInput
   output: ListWebhooksOutput
@@ -5075,6 +5079,9 @@ structure ListWebhooksInput {
   @httpLabel
   accountId: AccountId
 
+  @required
+  @httpLabel
+  bucketId: ProjectId
 }
 
 structure ListWebhooksOutput {
@@ -5109,7 +5116,7 @@ structure GetWebhookOutput {
 
 /// Create a new webhook for a project
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/webhooks.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/webhooks.json", code: 201)
 operation CreateWebhook {
   input: CreateWebhookInput
   output: CreateWebhookOutput
@@ -5120,6 +5127,10 @@ structure CreateWebhookInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   payload_url: String
@@ -6666,7 +6677,7 @@ structure GetProgressReportOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/timeline.json")
+@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/timeline.json")
 operation GetProjectTimeline {
   input: GetProjectTimelineInput
   output: GetProjectTimelineOutput
@@ -6678,6 +6689,9 @@ structure GetProjectTimelineInput {
   @httpLabel
   accountId: AccountId
 
+  @required
+  @httpLabel
+  projectId: ProjectId
 }
 
 structure GetProjectTimelineOutput {

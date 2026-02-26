@@ -1,15 +1,16 @@
 [
   {
-    "name": "Project timeline uses flat /timeline.json path",
-    "description": "Verifies that GetProjectTimeline constructs the flat URL path /timeline.json",
+    "name": "Project timeline uses bucket-scoped /buckets/{projectId}/timeline.json path",
+    "description": "Verifies that GetProjectTimeline constructs the bucket-scoped URL path /buckets/{projectId}/timeline.json",
     "operation": "GetProjectTimeline",
     "method": "GET",
-    "path": "/timeline.json",
+    "path": "/buckets/{projectId}/timeline.json",
+    "pathParams": {"projectId": 12345},
     "mockResponses": [
       {"status": 200, "body": []}
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/timeline.json"},
+      {"type": "requestPath", "expected": "/999/buckets/12345/timeline.json"},
       {"type": "noError"}
     ],
     "tags": ["path", "timeline"]
@@ -44,5 +45,87 @@
       {"type": "noError"}
     ],
     "tags": ["path", "reports"]
+  },
+  {
+    "name": "Project timesheet uses bucket-scoped /buckets/{projectId}/timesheet.json path",
+    "description": "Verifies that GetProjectTimesheet constructs the bucket-scoped URL path /buckets/{projectId}/timesheet.json",
+    "operation": "GetProjectTimesheet",
+    "method": "GET",
+    "path": "/buckets/{projectId}/timesheet.json",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 200, "body": []}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/buckets/12345/timesheet.json"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "timesheets"]
+  },
+  {
+    "name": "Timesheet entry get uses /timesheet_entries/{entryId} path",
+    "description": "Verifies that GetTimesheetEntry uses timesheet_entries (underscore) not timesheet/entries",
+    "operation": "GetTimesheetEntry",
+    "method": "GET",
+    "path": "/timesheet_entries/{entryId}",
+    "pathParams": {"entryId": 999},
+    "mockResponses": [
+      {"status": 200, "body": {"id": 999}}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/timesheet_entries/999"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "timesheets"]
+  },
+  {
+    "name": "Timesheet entry update uses /timesheet_entries/{entryId} path",
+    "description": "Verifies that UpdateTimesheetEntry uses timesheet_entries (underscore) not timesheet/entries",
+    "operation": "UpdateTimesheetEntry",
+    "method": "PUT",
+    "path": "/timesheet_entries/{entryId}",
+    "pathParams": {"entryId": 999},
+    "requestBody": {"hours": "4.0"},
+    "mockResponses": [
+      {"status": 200, "body": {"id": 999, "hours": "4.0"}}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/timesheet_entries/999"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "timesheets"]
+  },
+  {
+    "name": "List webhooks uses bucket-scoped /buckets/{bucketId}/webhooks.json path",
+    "description": "Verifies that ListWebhooks constructs the bucket-scoped URL path /buckets/{bucketId}/webhooks.json",
+    "operation": "ListWebhooks",
+    "method": "GET",
+    "path": "/buckets/{bucketId}/webhooks.json",
+    "pathParams": {"bucketId": 456},
+    "mockResponses": [
+      {"status": 200, "body": []}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/buckets/456/webhooks.json"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "webhooks"]
+  },
+  {
+    "name": "Create webhook uses bucket-scoped /buckets/{bucketId}/webhooks.json path",
+    "description": "Verifies that CreateWebhook constructs the bucket-scoped URL path /buckets/{bucketId}/webhooks.json",
+    "operation": "CreateWebhook",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/webhooks.json",
+    "pathParams": {"bucketId": 456},
+    "requestBody": {"payload_url": "https://example.com/hook", "types": ["Todo"]},
+    "mockResponses": [
+      {"status": 201, "body": {"id": 1, "payload_url": "https://example.com/hook", "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/webhooks/1.json", "app_url": "https://3.basecamp.com/999/buckets/456/webhooks/1", "active": true, "types": ["Todo"]}}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/buckets/456/webhooks.json"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "webhooks"]
   }
 ]

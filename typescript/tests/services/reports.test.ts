@@ -100,12 +100,12 @@ describe("TimesheetsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/timesheet.json`, () => {
+        http.get(`${BASE_URL}/buckets/456/timesheet.json`, () => {
           return HttpResponse.json(mockEntries);
         })
       );
 
-      const entries = await client.timesheets.forProject();
+      const entries = await client.timesheets.forProject(456);
       expect(entries).toHaveLength(1);
       expect(entries[0]!.hours).toBe("2.0");
     });
@@ -113,7 +113,7 @@ describe("TimesheetsService", () => {
     it("should support filtering options", async () => {
 
       server.use(
-        http.get(`${BASE_URL}/timesheet.json`, ({ request }) => {
+        http.get(`${BASE_URL}/buckets/456/timesheet.json`, ({ request }) => {
           const url = new URL(request.url);
           expect(url.searchParams.get("from")).toBe("2024-02-01");
           expect(url.searchParams.get("person_id")).toBe("999");
@@ -121,7 +121,7 @@ describe("TimesheetsService", () => {
         })
       );
 
-      const entries = await client.timesheets.forProject({
+      const entries = await client.timesheets.forProject(456, {
         from: "2024-02-01",
         personId: 999,
       });

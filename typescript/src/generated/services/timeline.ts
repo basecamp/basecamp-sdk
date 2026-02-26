@@ -32,24 +32,29 @@ export class TimelineService extends BaseService {
 
   /**
    * Get project timeline
+   * @param projectId - The project ID
    * @param options - Optional query parameters
    * @returns All results across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.timeline.projectTimeline();
+   * const result = await client.timeline.projectTimeline(123);
    * ```
    */
-  async projectTimeline(options?: ProjectTimelineTimelineOptions): Promise<components["schemas"]["GetProjectTimelineResponseContent"]> {
+  async projectTimeline(projectId: number, options?: ProjectTimelineTimelineOptions): Promise<components["schemas"]["GetProjectTimelineResponseContent"]> {
     return this.requestPaginated(
       {
         service: "Timeline",
         operation: "GetProjectTimeline",
         resourceType: "project_timeline",
         isMutation: false,
+        projectId,
       },
       () =>
-        this.client.GET("/timeline.json", {
+        this.client.GET("/buckets/{projectId}/timeline.json", {
+          params: {
+            path: { projectId },
+          },
         })
       , options
     );

@@ -630,7 +630,7 @@ const MAX_JITTER_MS = 100;
  * Normalizes a URL path by replacing numeric IDs with placeholder tokens.
  * For example: /12345/todos/456 → /{accountId}/todos/{todoId}
  */
-function normalizeUrlPath(url: string): string {
+export function normalizeUrlPath(url: string): string {
   // Parse the URL and extract the pathname
   const urlObj = new URL(url);
   let path = urlObj.pathname;
@@ -685,12 +685,20 @@ function normalizeUrlPath(url: string): string {
     uploads: "{uploadId}",
     vaults: "{vaultId}",
     webhooks: "{webhookId}",
+    timesheet_entries: "{entryId}",
     people: "{personId}",
     markers: "{markerId}",  // lineup/markers/{markerId}
     project_constructions: "{constructionId}",
     assigned: "{personId}",  // reports/todos/assigned/{personId}
     progress: "{personId}",  // reports/users/progress/{personId}
     users: "{personId}",  // Alternative for users/progress
+  };
+
+  // Context-dependent overrides: when the segment following the ID matches a key,
+  // override the placeholder from the default idMapping. This handles cases like
+  // /buckets/{id}/webhooks → {bucketId} vs /buckets/{id}/timeline → {projectId}.
+  const contextOverrides: Record<string, Record<string, string>> = {
+    buckets: { webhooks: "{bucketId}" },
   };
 
   // Build normalized path by replacing IDs and dates based on context
@@ -701,15 +709,20 @@ function normalizeUrlPath(url: string): string {
   // Pattern for ISO-8601 date (YYYY-MM-DD)
   const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
-  for (const segment of segments) {
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i]!;
+    const nextSegment = i + 1 < segments.length ? segments[i + 1] : undefined;
     // Check if this segment is a numeric ID
     if (/^\d+$/.test(segment)) {
       // First numeric segment is always the accountId
       if (isFirstSegment) {
         normalized.push("{accountId}");
       } else {
-        // Map based on preceding segment
-        const placeholder = prevSegment ? idMapping[prevSegment] : undefined;
+        // Check context-dependent overrides first (look ahead to next segment)
+        const overrides = prevSegment ? contextOverrides[prevSegment] : undefined;
+        const override = overrides && nextSegment ? overrides[nextSegment] : undefined;
+        // Fall back to default idMapping
+        const placeholder = override ?? (prevSegment ? idMapping[prevSegment] : undefined);
         normalized.push(placeholder ?? "{id}");
       }
     } else if (datePattern.test(segment)) {

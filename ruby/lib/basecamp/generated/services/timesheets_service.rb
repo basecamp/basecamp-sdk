@@ -7,6 +7,18 @@ module Basecamp
     # @generated from OpenAPI spec
     class TimesheetsService < BaseService
 
+      # Get timesheet for a specific project
+      # @param project_id [Integer] project id ID
+      # @param from [String, nil] from
+      # @param to [String, nil] to
+      # @param person_id [Integer, nil] person id
+      # @return [Hash] response data
+      def for_project(project_id:, from: nil, to: nil, person_id: nil)
+        with_operation(service: "timesheets", operation: "for_project", is_mutation: false, project_id: project_id) do
+          http_get("/buckets/#{project_id}/timesheet.json", params: compact_params(from: from, to: to, person_id: person_id)).json
+        end
+      end
+
       # Get timesheet for a specific recording
       # @param recording_id [Integer] recording id ID
       # @param from [String, nil] from
@@ -43,23 +55,12 @@ module Basecamp
         end
       end
 
-      # Get timesheet for a specific project
-      # @param from [String, nil] from
-      # @param to [String, nil] to
-      # @param person_id [Integer, nil] person id
-      # @return [Hash] response data
-      def for_project(from: nil, to: nil, person_id: nil)
-        with_operation(service: "timesheets", operation: "for_project", is_mutation: false) do
-          http_get("/timesheet.json", params: compact_params(from: from, to: to, person_id: person_id)).json
-        end
-      end
-
       # Get a single timesheet entry
       # @param entry_id [Integer] entry id ID
       # @return [Hash] response data
       def get(entry_id:)
         with_operation(service: "timesheets", operation: "get", is_mutation: false, resource_id: entry_id) do
-          http_get("/timesheet/entries/#{entry_id}").json
+          http_get("/timesheet_entries/#{entry_id}").json
         end
       end
 
@@ -72,7 +73,7 @@ module Basecamp
       # @return [Hash] response data
       def update(entry_id:, date: nil, hours: nil, description: nil, person_id: nil)
         with_operation(service: "timesheets", operation: "update", is_mutation: true, resource_id: entry_id) do
-          http_put("/timesheet/entries/#{entry_id}", body: compact_params(date: date, hours: hours, description: description, person_id: person_id)).json
+          http_put("/timesheet_entries/#{entry_id}", body: compact_params(date: date, hours: hours, description: description, person_id: person_id)).json
         end
       end
     end

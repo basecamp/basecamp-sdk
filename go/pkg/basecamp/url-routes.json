@@ -35,6 +35,58 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{bucketId}/webhooks",
+      "resource": "Automation",
+      "operations": {
+        "GET": "ListWebhooks",
+        "POST": "CreateWebhook"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{projectId}/timeline",
+      "resource": null,
+      "operations": {
+        "GET": "GetProjectTimeline"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{projectId}/timesheet",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "GetProjectTimesheet"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/card_tables/cards/{cardId}",
       "resource": "Card Tables",
       "operations": {
@@ -1595,33 +1647,7 @@
       }
     },
     {
-      "pattern": "/{accountId}/timeline",
-      "resource": null,
-      "operations": {
-        "GET": "GetProjectTimeline"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/timesheet",
-      "resource": "Schedule",
-      "operations": {
-        "GET": "GetProjectTimesheet"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/timesheet/entries/{entryId}",
+      "pattern": "/{accountId}/timesheet_entries/{entryId}",
       "resource": "Schedule",
       "operations": {
         "GET": "GetTimesheetEntry",
@@ -1902,20 +1928,6 @@
         "vaultId": {
           "role": "parent",
           "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/webhooks",
-      "resource": "Automation",
-      "operations": {
-        "GET": "ListWebhooks",
-        "POST": "CreateWebhook"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
         }
       }
     },

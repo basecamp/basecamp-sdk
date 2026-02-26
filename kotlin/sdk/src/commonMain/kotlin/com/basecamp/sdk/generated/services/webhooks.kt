@@ -14,19 +14,20 @@ class WebhooksService(client: AccountClient) : BaseService(client) {
 
     /**
      * List all webhooks for a project
+     * @param bucketId The bucket ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(options: PaginationOptions? = null): ListResult<Webhook> {
+    suspend fun list(bucketId: Long, options: PaginationOptions? = null): ListResult<Webhook> {
         val info = OperationInfo(
             service = "Webhooks",
             operation = "ListWebhooks",
             resourceType = "webhook",
             isMutation = false,
             projectId = null,
-            resourceId = null,
+            resourceId = bucketId,
         )
         return requestPaginated(info, options, {
-            httpGet("/webhooks.json", operationName = info.operation)
+            httpGet("/buckets/${bucketId}/webhooks.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Webhook>>(body)
         }
@@ -34,19 +35,20 @@ class WebhooksService(client: AccountClient) : BaseService(client) {
 
     /**
      * Create a new webhook for a project
+     * @param bucketId The bucket ID
      * @param body Request body
      */
-    suspend fun create(body: CreateWebhookBody): Webhook {
+    suspend fun create(bucketId: Long, body: CreateWebhookBody): Webhook {
         val info = OperationInfo(
             service = "Webhooks",
             operation = "CreateWebhook",
             resourceType = "webhook",
             isMutation = true,
             projectId = null,
-            resourceId = null,
+            resourceId = bucketId,
         )
         return request(info, {
-            httpPost("/webhooks.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPost("/buckets/${bucketId}/webhooks.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("payload_url", kotlinx.serialization.json.JsonPrimitive(body.payloadUrl))
                 put("types", kotlinx.serialization.json.JsonArray(body.types.map { kotlinx.serialization.json.JsonPrimitive(it) }))
                 body.active?.let { put("active", kotlinx.serialization.json.JsonPrimitive(it)) }

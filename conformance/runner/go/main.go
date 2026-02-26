@@ -256,7 +256,8 @@ func runTest(tc TestCase) TestResult {
 		sdkResp, sdkErr = client.UpdateTimesheetEntry(ctx, testAccountID, entryId, body)
 
 	case "GetProjectTimeline":
-		sdkResp, sdkErr = client.GetProjectTimeline(ctx, testAccountID)
+		projectId := getInt64Param(tc.PathParams, "projectId")
+		sdkResp, sdkErr = client.GetProjectTimeline(ctx, testAccountID, projectId)
 
 	case "GetProgressReport":
 		sdkResp, sdkErr = client.GetProgressReport(ctx, testAccountID)
@@ -264,6 +265,22 @@ func runTest(tc TestCase) TestResult {
 	case "GetPersonProgress":
 		personId := getInt64Param(tc.PathParams, "personId")
 		sdkResp, sdkErr = client.GetPersonProgress(ctx, testAccountID, personId)
+
+	case "GetProjectTimesheet":
+		projectId := getInt64Param(tc.PathParams, "projectId")
+		sdkResp, sdkErr = client.GetProjectTimesheet(ctx, testAccountID, projectId, nil)
+
+	case "ListWebhooks":
+		bucketId := getInt64Param(tc.PathParams, "bucketId")
+		sdkResp, sdkErr = client.ListWebhooks(ctx, testAccountID, bucketId)
+
+	case "CreateWebhook":
+		bucketId := getInt64Param(tc.PathParams, "bucketId")
+		body := generated.CreateWebhookJSONRequestBody{
+			PayloadUrl: getStringParam(tc.RequestBody, "payload_url"),
+			Types:      getStringSliceParam(tc.RequestBody, "types"),
+		}
+		sdkResp, sdkErr = client.CreateWebhook(ctx, testAccountID, bucketId, body)
 
 	default:
 		return TestResult{
@@ -379,4 +396,20 @@ func getStringParam(params map[string]interface{}, key string) string {
 		}
 	}
 	return ""
+}
+
+// getStringSliceParam extracts a []string parameter from a map (JSON arrays of strings)
+func getStringSliceParam(params map[string]interface{}, key string) []string {
+	if val, ok := params[key]; ok {
+		if arr, ok := val.([]interface{}); ok {
+			result := make([]string, 0, len(arr))
+			for _, item := range arr {
+				if s, ok := item.(string); ok {
+					result = append(result, s)
+				}
+			}
+			return result
+		}
+	}
+	return nil
 }

@@ -8,10 +8,11 @@ module Basecamp
     class TimelineService < BaseService
 
       # Get project timeline
+      # @param project_id [Integer] project id ID
       # @return [Enumerator<Hash>] paginated results
-      def get_project_timeline()
-        wrap_paginated(service: "timeline", operation: "get_project_timeline", is_mutation: false) do
-          paginate("/timeline.json")
+      def get_project_timeline(project_id:)
+        wrap_paginated(service: "timeline", operation: "get_project_timeline", is_mutation: false, project_id: project_id) do
+          paginate("/buckets/#{project_id}/timeline.json")
         end
       end
     end

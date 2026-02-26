@@ -13,6 +13,32 @@ import kotlinx.serialization.json.JsonElement
 class TimesheetsService(client: AccountClient) : BaseService(client) {
 
     /**
+     * Get timesheet for a specific project
+     * @param projectId The project ID
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun forProject(projectId: Long, options: GetProjectTimesheetOptions? = null): JsonElement {
+        val info = OperationInfo(
+            service = "Timesheets",
+            operation = "GetProjectTimesheet",
+            resourceType = "project_timesheet",
+            isMutation = false,
+            projectId = projectId,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "from" to options?.from,
+            "to" to options?.to,
+            "person_id" to options?.personId,
+        )
+        return request(info, {
+            httpGet("/buckets/${projectId}/timesheet.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
      * Get timesheet for a specific recording
      * @param recordingId The recording ID
      * @param options Optional query parameters and pagination control
@@ -90,31 +116,6 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Get timesheet for a specific project
-     * @param options Optional query parameters and pagination control
-     */
-    suspend fun forProject(options: GetProjectTimesheetOptions? = null): JsonElement {
-        val info = OperationInfo(
-            service = "Timesheets",
-            operation = "GetProjectTimesheet",
-            resourceType = "project_timesheet",
-            isMutation = false,
-            projectId = null,
-            resourceId = null,
-        )
-        val qs = buildQueryString(
-            "from" to options?.from,
-            "to" to options?.to,
-            "person_id" to options?.personId,
-        )
-        return request(info, {
-            httpGet("/timesheet.json" + qs, operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<JsonElement>(body)
-        }
-    }
-
-    /**
      * Get a single timesheet entry
      * @param entryId The entry ID
      */
@@ -128,7 +129,7 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
             resourceId = entryId,
         )
         return request(info, {
-            httpGet("/timesheet/entries/${entryId}", operationName = info.operation)
+            httpGet("/timesheet_entries/${entryId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<JsonElement>(body)
         }
@@ -149,7 +150,7 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
             resourceId = entryId,
         )
         return request(info, {
-            httpPut("/timesheet/entries/${entryId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPut("/timesheet_entries/${entryId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 body.date?.let { put("date", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.hours?.let { put("hours", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }

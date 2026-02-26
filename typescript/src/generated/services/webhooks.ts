@@ -59,24 +59,29 @@ export class WebhooksService extends BaseService {
 
   /**
    * List all webhooks for a project
+   * @param bucketId - The bucket ID
    * @param options - Optional query parameters
    * @returns All Webhook across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.webhooks.list();
+   * const result = await client.webhooks.list(123);
    * ```
    */
-  async list(options?: ListWebhookOptions): Promise<ListResult<Webhook>> {
+  async list(bucketId: number, options?: ListWebhookOptions): Promise<ListResult<Webhook>> {
     return this.requestPaginated(
       {
         service: "Webhooks",
         operation: "ListWebhooks",
         resourceType: "webhook",
         isMutation: false,
+        resourceId: bucketId,
       },
       () =>
-        this.client.GET("/webhooks.json", {
+        this.client.GET("/buckets/{bucketId}/webhooks.json", {
+          params: {
+            path: { bucketId },
+          },
         })
       , options
     );
@@ -84,16 +89,17 @@ export class WebhooksService extends BaseService {
 
   /**
    * Create a new webhook for a project
+   * @param bucketId - The bucket ID
    * @param req - Webhook creation parameters
    * @returns The Webhook
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.webhooks.create({ payloadUrl: "example", types: [1234] });
+   * const result = await client.webhooks.create(123, { payloadUrl: "example", types: [1234] });
    * ```
    */
-  async create(req: CreateWebhookRequest): Promise<Webhook> {
+  async create(bucketId: number, req: CreateWebhookRequest): Promise<Webhook> {
     if (!req.payloadUrl) {
       throw Errors.validation("Payload url is required");
     }
@@ -106,9 +112,13 @@ export class WebhooksService extends BaseService {
         operation: "CreateWebhook",
         resourceType: "webhook",
         isMutation: true,
+        resourceId: bucketId,
       },
       () =>
-        this.client.POST("/webhooks.json", {
+        this.client.POST("/buckets/{bucketId}/webhooks.json", {
+          params: {
+            path: { bucketId },
+          },
           body: {
             payload_url: req.payloadUrl,
             types: req.types,

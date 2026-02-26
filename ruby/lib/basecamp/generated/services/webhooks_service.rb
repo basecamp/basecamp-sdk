@@ -8,21 +8,23 @@ module Basecamp
     class WebhooksService < BaseService
 
       # List all webhooks for a project
+      # @param bucket_id [Integer] bucket id ID
       # @return [Enumerator<Hash>] paginated results
-      def list()
-        wrap_paginated(service: "webhooks", operation: "list", is_mutation: false) do
-          paginate("/webhooks.json")
+      def list(bucket_id:)
+        wrap_paginated(service: "webhooks", operation: "list", is_mutation: false, resource_id: bucket_id) do
+          paginate("/buckets/#{bucket_id}/webhooks.json")
         end
       end
 
       # Create a new webhook for a project
+      # @param bucket_id [Integer] bucket id ID
       # @param payload_url [String] payload url
       # @param types [Array] types
       # @param active [Boolean, nil] active
       # @return [Hash] response data
-      def create(payload_url:, types:, active: nil)
-        with_operation(service: "webhooks", operation: "create", is_mutation: true) do
-          http_post("/webhooks.json", body: compact_params(payload_url: payload_url, types: types, active: active)).json
+      def create(bucket_id:, payload_url:, types:, active: nil)
+        with_operation(service: "webhooks", operation: "create", is_mutation: true, resource_id: bucket_id) do
+          http_post("/buckets/#{bucket_id}/webhooks.json", body: compact_params(payload_url: payload_url, types: types, active: active)).json
         end
       end
 

@@ -284,14 +284,28 @@ func flattenPath(path string) (string, string) {
 	return m[1] + rest, m[2]
 }
 
+// reProjectsSegment matches /projects/ in web URLs so they can be normalized
+// to /buckets/ for matching against bucket-scoped API routes.
+var reProjectsSegment = regexp.MustCompile(`/projects/`)
+
 // matchAPIRoute tries to match the path against the spec-derived route table.
-// Web URLs may contain /buckets/{projectId} segments that don't exist in the
-// flat route table, so we try matching the raw path first, then a flattened version.
+// Web URLs may contain /buckets/{projectId} or /projects/{projectId} segments.
+// We try matching in order: raw path, /projects/ normalized to /buckets/,
+// then with the bucket segment stripped entirely (for account-level routes).
 // Note: .json suffixes are already stripped by extractPath during preprocessing.
 func (r *Router) matchAPIRoute(path, fragment string) *Match {
 	m := r.tryMatchRoute(path, fragment)
 	if m != nil {
 		return m
+	}
+
+	// Try normalizing /projects/ to /buckets/ so web URLs match bucket-scoped
+	// routes (e.g. /123/projects/456/timeline -> /123/buckets/456/timeline).
+	if normalized := reProjectsSegment.ReplaceAllString(path, "/buckets/"); normalized != path {
+		m = r.tryMatchRoute(normalized, fragment)
+		if m != nil {
+			return m
+		}
 	}
 
 	// Try with /buckets/{projectId} stripped for web URL compatibility.
@@ -340,7 +354,7 @@ func (r *Router) tryMatchRoute(path, fragment string) *Match {
 			switch paramName {
 			case "accountId":
 				m.AccountID = val
-			case "projectId":
+			case "projectId", "bucketId":
 				m.ProjectID = val
 			default:
 				m.resourceID = val

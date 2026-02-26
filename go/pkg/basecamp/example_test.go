@@ -325,7 +325,8 @@ func ExampleWebhooksService_Create() {
 	ctx := context.Background()
 
 	// Create a webhook to receive notifications
-	webhook, err := client.ForAccount("12345").Webhooks().Create(ctx, &basecamp.CreateWebhookRequest{
+	var bucketID int64 = 67890
+	webhook, err := client.ForAccount("12345").Webhooks().Create(ctx, bucketID, &basecamp.CreateWebhookRequest{
 		PayloadURL: "https://example.com/webhooks/basecamp",
 		Types:      []string{"Todo", "Comment"},
 	})

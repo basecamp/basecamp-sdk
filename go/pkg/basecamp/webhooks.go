@@ -85,7 +85,7 @@ func NewWebhooksService(client *AccountClient) *WebhooksService {
 //
 // The returned WebhookListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *WebhooksService) List(ctx context.Context) (result *WebhookListResult, err error) {
+func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result *WebhookListResult, err error) {
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "List",
 		ResourceType: "webhook", IsMutation: false,
@@ -99,7 +99,7 @@ func (s *WebhooksService) List(ctx context.Context) (result *WebhookListResult, 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListWebhooksWithResponse(ctx, s.client.accountID)
+	resp, err := s.client.parent.gen.ListWebhooksWithResponse(ctx, s.client.accountID, bucketID)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (s *WebhooksService) Get(ctx context.Context, webhookID int64) (result *Web
 
 // Create creates a new webhook for a project (bucket).
 // Returns the created webhook.
-func (s *WebhooksService) Create(ctx context.Context, req *CreateWebhookRequest) (result *Webhook, err error) {
+func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *CreateWebhookRequest) (result *Webhook, err error) {
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "Create",
 		ResourceType: "webhook", IsMutation: true,
@@ -194,7 +194,7 @@ func (s *WebhooksService) Create(ctx context.Context, req *CreateWebhookRequest)
 		Active:     req.Active,
 	}
 
-	resp, err := s.client.parent.gen.CreateWebhookWithResponse(ctx, s.client.accountID, body)
+	resp, err := s.client.parent.gen.CreateWebhookWithResponse(ctx, s.client.accountID, bucketID, body)
 	if err != nil {
 		return nil, err
 	}
