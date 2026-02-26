@@ -80,7 +80,7 @@ jobs:
         id: version
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Manual trigger (dry-run): read from go.mod
+            # Manual trigger (dry-run): use a fixed rehearsal version
             VERSION="v0.0.0-dry-run"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Rehearsal for version: $VERSION"
@@ -117,10 +117,12 @@ jobs:
           # Write to file for multiline output
           echo "## Changes" > changelog.md
           echo "" >> changelog.md
-          if [ -z "$COMMITS" ]; then
+          if [ -n "$COMMITS" ]; then
+            echo "$COMMITS" >> changelog.md
+          elif [ -z "$PREV_TAG" ]; then
             echo "- Initial release" >> changelog.md
           else
-            echo "$COMMITS" >> changelog.md
+            echo "- No changes since $PREV_TAG" >> changelog.md
           fi
           echo "" >> changelog.md
           echo "## Installation" >> changelog.md

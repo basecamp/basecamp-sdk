@@ -163,10 +163,12 @@ jobs:
           # Write to file for multiline output
           echo "## Changes" > changelog.md
           echo "" >> changelog.md
-          if [ -z "$COMMITS" ]; then
+          if [ -n "$COMMITS" ]; then
+            echo "$COMMITS" >> changelog.md
+          elif [ -z "$PREV_TAG" ]; then
             echo "- Initial release" >> changelog.md
           else
-            echo "$COMMITS" >> changelog.md
+            echo "- No changes since $PREV_TAG" >> changelog.md
           fi
           echo "" >> changelog.md
           echo "## Installation" >> changelog.md
