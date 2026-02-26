@@ -254,7 +254,8 @@ err = account.Todos().Reposition(ctx, todoID, 1) // Move to first position
 ```go
 ctx := context.Background()
 
-// Get the message board
+// Get the message board (boardID from project dock/tools)
+var boardID int64 = 12345
 board, err := account.MessageBoards().Get(ctx, boardID)
 
 // List messages
@@ -286,15 +287,16 @@ lines, err := account.Campfires().ListLines(ctx, campfireID)
 
 ```go
 ctx := context.Background()
+var bucketID int64 = 12345 // project/bucket ID
 
 // Create a webhook
-webhook, err := account.Webhooks().Create(ctx, &basecamp.CreateWebhookRequest{
+webhook, err := account.Webhooks().Create(ctx, bucketID, &basecamp.CreateWebhookRequest{
     PayloadURL: "https://example.com/webhook",
     Types:      []string{"Todo", "Comment"},
 })
 
 // List webhooks
-webhooks, err := account.Webhooks().List(ctx)
+webhooks, err := account.Webhooks().List(ctx, bucketID)
 
 // Delete a webhook
 err = account.Webhooks().Delete(ctx, webhookID)

@@ -159,8 +159,8 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 	return entries, nil
 }
 
-// RecordingReport returns the timesheet report for a specific recording within a project.
-// projectID is the project (bucket) ID, recordingID is the recording ID (e.g., a todo).
+// RecordingReport returns the timesheet report for a specific recording.
+// recordingID is the recording ID (e.g., a todo).
 func (s *TimesheetService) RecordingReport(ctx context.Context, recordingID int64, opts *TimesheetReportOptions) (result []TimesheetEntry, err error) {
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "RecordingReport",

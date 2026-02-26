@@ -51,7 +51,7 @@ func NewMessageTypesService(client *AccountClient) *MessageTypesService {
 	return &MessageTypesService{client: client}
 }
 
-// List returns all message types in a project.
+// List returns all message types for the account.
 //
 // The returned MessageTypeListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
