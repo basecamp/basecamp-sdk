@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-02-26T01:51:15.379Z",
+  "generated": "2026-02-27T01:07:45.427Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -58,33 +58,6 @@
     "CreateWebhook": {
       "retry": {
         "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
-    "GetProjectTimeline": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "pagination": {
-        "style": "link",
-        "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
-      }
-    },
-    "GetProjectTimesheet": {
-      "retry": {
-        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1080,6 +1053,33 @@
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "GetProjectTimeline": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "GetProjectTimesheet": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "GetAnswer": {

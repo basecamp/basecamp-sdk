@@ -15,7 +15,7 @@ module Basecamp
       # @return [Hash] response data
       def for_project(project_id:, from: nil, to: nil, person_id: nil)
         with_operation(service: "timesheets", operation: "for_project", is_mutation: false, project_id: project_id) do
-          http_get("/buckets/#{project_id}/timesheet.json", params: compact_params(from: from, to: to, person_id: person_id)).json
+          http_get("/projects/#{project_id}/timesheet.json", params: compact_params(from: from, to: to, person_id: person_id)).json
         end
       end
 

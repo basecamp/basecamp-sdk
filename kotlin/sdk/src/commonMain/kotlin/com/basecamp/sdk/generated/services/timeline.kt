@@ -27,7 +27,7 @@ class TimelineService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         return requestPaginated(info, options, {
-            httpGet("/buckets/${projectId}/timeline.json", operationName = info.operation)
+            httpGet("/projects/${projectId}/timeline.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<JsonElement>>(body)
         }

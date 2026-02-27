@@ -32,7 +32,7 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
             "person_id" to options?.personId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/timesheet.json" + qs, operationName = info.operation)
+            httpGet("/projects/${projectId}/timesheet.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<JsonElement>(body)
         }

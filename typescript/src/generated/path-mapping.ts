@@ -14,8 +14,6 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/boosts/{boostId}": "GetBoost",
   "GET:/{accountId}/buckets/{bucketId}/webhooks.json": "ListWebhooks",
   "POST:/{accountId}/buckets/{bucketId}/webhooks.json": "CreateWebhook",
-  "GET:/{accountId}/buckets/{projectId}/timeline.json": "GetProjectTimeline",
-  "GET:/{accountId}/buckets/{projectId}/timesheet.json": "GetProjectTimesheet",
   "GET:/{accountId}/card_tables/{cardTableId}": "GetCardTable",
   "POST:/{accountId}/card_tables/{cardTableId}/columns.json": "CreateCardColumn",
   "POST:/{accountId}/card_tables/{cardTableId}/moves.json": "MoveCardColumn",
@@ -177,6 +175,8 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/{accountId}/projects/{projectId}": "UpdateProject",
   "GET:/{accountId}/projects/{projectId}/people.json": "ListProjectPeople",
   "PUT:/{accountId}/projects/{projectId}/people/users.json": "UpdateProjectAccess",
+  "GET:/{accountId}/projects/{projectId}/timeline.json": "GetProjectTimeline",
+  "GET:/{accountId}/projects/{projectId}/timesheet.json": "GetProjectTimesheet",
   "GET:/{accountId}/projects/recordings.json": "ListRecordings",
 
   // Events

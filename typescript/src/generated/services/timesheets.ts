@@ -108,7 +108,7 @@ export class TimesheetsService extends BaseService {
         projectId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/timesheet.json", {
+        this.client.GET("/projects/{projectId}/timesheet.json", {
           params: {
             path: { projectId },
             query: { from: options?.from, to: options?.to, "person_id": options?.personId },

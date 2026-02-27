@@ -1,8 +1,6 @@
 export { AttachmentsService } from "./attachments.js";
 export { BoostsService } from "./boosts.js";
 export { WebhooksService } from "./webhooks.js";
-export { TimelineService } from "./timeline.js";
-export { TimesheetsService } from "./timesheets.js";
 export { CardsService } from "./cards.js";
 export { CardStepsService } from "./card-steps.js";
 export { CardColumnsService } from "./card-columns.js";
@@ -23,6 +21,8 @@ export { MessagesService } from "./messages.js";
 export { CheckinsService } from "./checkins.js";
 export { ProjectsService } from "./projects.js";
 export { RecordingsService } from "./recordings.js";
+export { TimelineService } from "./timeline.js";
+export { TimesheetsService } from "./timesheets.js";
 export { ClientVisibilityService } from "./client-visibility.js";
 export { EventsService } from "./events.js";
 export { SubscriptionsService } from "./subscriptions.js";

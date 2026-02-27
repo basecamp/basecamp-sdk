@@ -53,40 +53,6 @@
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/timeline",
-      "resource": null,
-      "operations": {
-        "GET": "GetProjectTimeline"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{projectId}/timesheet",
-      "resource": "Schedule",
-      "operations": {
-        "GET": "GetProjectTimesheet"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
       "pattern": "/{accountId}/card_tables/cards/{cardId}",
       "resource": "Card Tables",
       "operations": {
@@ -950,6 +916,40 @@
       "resource": "People",
       "operations": {
         "PUT": "UpdateProjectAccess"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/projects/{projectId}/timeline",
+      "resource": null,
+      "operations": {
+        "GET": "GetProjectTimeline"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/projects/{projectId}/timesheet",
+      "resource": "Schedule",
+      "operations": {
+        "GET": "GetProjectTimesheet"
       },
       "params": {
         "accountId": {

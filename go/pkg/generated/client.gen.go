@@ -12476,7 +12476,7 @@ func NewGetProjectTimelineRequest(server string, accountId string, projectId int
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/buckets/%s/timeline.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/projects/%s/timeline.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -12517,7 +12517,7 @@ func NewGetProjectTimesheetRequest(server string, accountId string, projectId in
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/buckets/%s/timesheet.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/projects/%s/timesheet.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
