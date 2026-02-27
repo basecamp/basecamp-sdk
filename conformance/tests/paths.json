@@ -1,16 +1,16 @@
 [
   {
-    "name": "Project timeline uses bucket-scoped /buckets/{projectId}/timeline.json path",
-    "description": "Verifies that GetProjectTimeline constructs the bucket-scoped URL path /buckets/{projectId}/timeline.json",
+    "name": "Project timeline uses project-scoped /projects/{projectId}/timeline.json path",
+    "description": "Verifies that GetProjectTimeline constructs the project-scoped URL path /projects/{projectId}/timeline.json",
     "operation": "GetProjectTimeline",
     "method": "GET",
-    "path": "/buckets/{projectId}/timeline.json",
+    "path": "/projects/{projectId}/timeline.json",
     "pathParams": {"projectId": 12345},
     "mockResponses": [
       {"status": 200, "body": []}
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/buckets/12345/timeline.json"},
+      {"type": "requestPath", "expected": "/999/projects/12345/timeline.json"},
       {"type": "noError"}
     ],
     "tags": ["path", "timeline"]
@@ -47,17 +47,17 @@
     "tags": ["path", "reports"]
   },
   {
-    "name": "Project timesheet uses bucket-scoped /buckets/{projectId}/timesheet.json path",
-    "description": "Verifies that GetProjectTimesheet constructs the bucket-scoped URL path /buckets/{projectId}/timesheet.json",
+    "name": "Project timesheet uses project-scoped /projects/{projectId}/timesheet.json path",
+    "description": "Verifies that GetProjectTimesheet constructs the project-scoped URL path /projects/{projectId}/timesheet.json",
     "operation": "GetProjectTimesheet",
     "method": "GET",
-    "path": "/buckets/{projectId}/timesheet.json",
+    "path": "/projects/{projectId}/timesheet.json",
     "pathParams": {"projectId": 12345},
     "mockResponses": [
       {"status": 200, "body": []}
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/buckets/12345/timesheet.json"},
+      {"type": "requestPath", "expected": "/999/projects/12345/timesheet.json"},
       {"type": "noError"}
     ],
     "tags": ["path", "timesheets"]

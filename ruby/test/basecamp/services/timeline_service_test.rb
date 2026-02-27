@@ -27,7 +27,7 @@ class TimelineServiceTest < Minitest::Test
   def test_get_project_timeline
     events = [ sample_event(id: 1, action: "updated"), sample_event(id: 2, action: "completed") ]
 
-    stub_get("/12345/buckets/456/timeline.json", response_body: events)
+    stub_get("/12345/projects/456/timeline.json", response_body: events)
 
     result = @account.timeline.get_project_timeline(project_id: 456).to_a
 

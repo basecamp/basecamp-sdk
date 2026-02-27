@@ -44,7 +44,7 @@ class TimesheetServiceTest < Minitest::Test
   def test_for_project
     response = { "entries" => [ { "id" => 1, "hours" => 6.0 } ] }
 
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/timesheet\.json})
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/projects/\d+/timesheet\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
     result = @account.timesheets.for_project(project_id: 456)
