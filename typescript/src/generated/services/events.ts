@@ -34,30 +34,28 @@ export class EventsService extends BaseService {
 
   /**
    * List all events for a recording
-   * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
    * @returns All Event across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.events.list(123, 123);
+   * const result = await client.events.list(123);
    * ```
    */
-  async list(projectId: number, recordingId: number, options?: ListEventOptions): Promise<ListResult<Event>> {
+  async list(recordingId: number, options?: ListEventOptions): Promise<ListResult<Event>> {
     return this.requestPaginated(
       {
         service: "Events",
         operation: "ListEvents",
         resourceType: "event",
         isMutation: false,
-        projectId,
         resourceId: recordingId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/recordings/{recordingId}/events.json", {
+        this.client.GET("/recordings/{recordingId}/events.json", {
           params: {
-            path: { projectId, recordingId },
+            path: { recordingId },
           },
         })
       , options

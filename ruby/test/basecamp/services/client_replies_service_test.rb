@@ -24,10 +24,10 @@ class ClientRepliesServiceTest < Minitest::Test
   end
 
   def test_list_replies
-    stub_get("/12345/buckets/100/client/recordings/200/replies.json",
+    stub_get("/12345/client/recordings/200/replies.json",
              response_body: [ sample_reply, sample_reply(id: 2, content: "<p>Looking forward to it!</p>") ])
 
-    replies = @account.client_replies.list(project_id: 100, recording_id: 200).to_a
+    replies = @account.client_replies.list(recording_id: 200).to_a
 
     assert_equal 2, replies.length
     assert_equal "<p>Thank you for the update!</p>", replies[0]["content"]
@@ -36,9 +36,9 @@ class ClientRepliesServiceTest < Minitest::Test
 
   def test_get_reply
     # Generated service: /replies/{id} without .json
-    stub_get("/12345/buckets/100/client/recordings/200/replies/300", response_body: sample_reply(id: 300))
+    stub_get("/12345/client/recordings/200/replies/300", response_body: sample_reply(id: 300))
 
-    reply = @account.client_replies.get(project_id: 100, recording_id: 200, reply_id: 300)
+    reply = @account.client_replies.get(recording_id: 200, reply_id: 300)
 
     assert_equal 300, reply["id"]
     assert_equal "<p>Thank you for the update!</p>", reply["content"]

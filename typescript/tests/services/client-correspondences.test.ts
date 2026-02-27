@@ -31,14 +31,14 @@ describe("ClientCorrespondencesService", () => {
           title: "Project Kickoff",
           inherits_status: true,
           type: "Client::Correspondence",
-          url: "https://3.basecampapi.com/12345/buckets/1/client/correspondences/1.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/client/correspondences/1",
+          url: "https://3.basecampapi.com/12345/client/correspondences/1.json",
+          app_url: "https://3.basecamp.com/12345/client/correspondences/1",
           bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-          subscription_url: "https://3.basecampapi.com/12345/buckets/1/recordings/1/subscription.json",
+          subscription_url: "https://3.basecampapi.com/12345/recordings/1/subscription.json",
           content: "<p>Welcome to the project!</p>",
           subject: "Project Kickoff",
           replies_count: 3,
-          replies_url: "https://3.basecampapi.com/12345/buckets/1/client/recordings/1/replies.json",
+          replies_url: "https://3.basecampapi.com/12345/client/recordings/1/replies.json",
           bucket: { id: 1, name: "Test Project", type: "Project" },
           creator: { id: 999, name: "Test User" },
         },
@@ -51,21 +51,21 @@ describe("ClientCorrespondencesService", () => {
           title: "Weekly Update",
           inherits_status: true,
           type: "Client::Correspondence",
-          url: "https://3.basecampapi.com/12345/buckets/1/client/correspondences/2.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/client/correspondences/2",
+          url: "https://3.basecampapi.com/12345/client/correspondences/2.json",
+          app_url: "https://3.basecamp.com/12345/client/correspondences/2",
           bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-          subscription_url: "https://3.basecampapi.com/12345/buckets/1/recordings/2/subscription.json",
+          subscription_url: "https://3.basecampapi.com/12345/recordings/2/subscription.json",
           content: "<p>Here's the weekly progress update</p>",
           subject: "Weekly Update",
           replies_count: 1,
-          replies_url: "https://3.basecampapi.com/12345/buckets/1/client/recordings/2/replies.json",
+          replies_url: "https://3.basecampapi.com/12345/client/recordings/2/replies.json",
           bucket: { id: 1, name: "Test Project", type: "Project" },
           creator: { id: 999, name: "Test User" },
         },
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/client/correspondences.json`, () => {
+        http.get(`${BASE_URL}/client/correspondences.json`, () => {
           return HttpResponse.json(mockCorrespondences);
         })
       );
@@ -80,7 +80,7 @@ describe("ClientCorrespondencesService", () => {
 
     it("should return empty array when no correspondences exist", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/1/client/correspondences.json`, () => {
+        http.get(`${BASE_URL}/client/correspondences.json`, () => {
           return HttpResponse.json([]);
         })
       );
@@ -101,25 +101,25 @@ describe("ClientCorrespondencesService", () => {
         title: "Project Kickoff",
         inherits_status: true,
         type: "Client::Correspondence",
-        url: "https://3.basecampapi.com/12345/buckets/1/client/correspondences/1.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/client/correspondences/1",
+        url: "https://3.basecampapi.com/12345/client/correspondences/1.json",
+        app_url: "https://3.basecamp.com/12345/client/correspondences/1",
         bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-        subscription_url: "https://3.basecampapi.com/12345/buckets/1/recordings/1/subscription.json",
+        subscription_url: "https://3.basecampapi.com/12345/recordings/1/subscription.json",
         content: "<p>Welcome to the project! We're excited to get started.</p>",
         subject: "Project Kickoff",
         replies_count: 3,
-        replies_url: "https://3.basecampapi.com/12345/buckets/1/client/recordings/1/replies.json",
+        replies_url: "https://3.basecampapi.com/12345/client/recordings/1/replies.json",
         bucket: { id: 1, name: "Test Project", type: "Project" },
         creator: { id: 999, name: "Test User", email_address: "test@example.com" },
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/client/correspondences/1`, () => {
+        http.get(`${BASE_URL}/client/correspondences/1`, () => {
           return HttpResponse.json(mockCorrespondence);
         })
       );
 
-      const correspondence = await client.clientCorrespondences.get(1, 1);
+      const correspondence = await client.clientCorrespondences.get(1);
 
       expect(correspondence.id).toBe(1);
       expect(correspondence.subject).toBe("Project Kickoff");
@@ -129,13 +129,13 @@ describe("ClientCorrespondencesService", () => {
 
     it("should throw not_found for non-existent correspondence", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/1/client/correspondences/999`, () => {
+        http.get(`${BASE_URL}/client/correspondences/999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
       try {
-        await client.clientCorrespondences.get(1, 999);
+        await client.clientCorrespondences.get(999);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).toBeInstanceOf(BasecampError);

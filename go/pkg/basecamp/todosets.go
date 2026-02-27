@@ -47,12 +47,11 @@ func NewTodosetsService(client *AccountClient) *TodosetsService {
 }
 
 // Get returns a todoset by ID.
-// bucketID is the project ID, todosetID is the todoset ID.
-func (s *TodosetsService) Get(ctx context.Context, bucketID, todosetID int64) (result *Todoset, err error) {
+func (s *TodosetsService) Get(ctx context.Context, todosetID int64) (result *Todoset, err error) {
 	op := OperationInfo{
 		Service: "Todosets", Operation: "Get",
 		ResourceType: "todoset", IsMutation: false,
-		BucketID: bucketID, ResourceID: todosetID,
+		ResourceID: todosetID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -63,7 +62,7 @@ func (s *TodosetsService) Get(ctx context.Context, bucketID, todosetID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetTodosetWithResponse(ctx, s.client.accountID, bucketID, todosetID)
+	resp, err := s.client.parent.gen.GetTodosetWithResponse(ctx, s.client.accountID, todosetID)
 	if err != nil {
 		return nil, err
 	}
@@ -103,8 +102,8 @@ func todosetFromGenerated(gts generated.Todoset) Todoset {
 		UpdatedAt:         gts.UpdatedAt,
 	}
 
-	if gts.Id != 0 {
-		ts.ID = gts.Id
+	if derefInt64(gts.Id) != 0 {
+		ts.ID = derefInt64(gts.Id)
 	}
 
 	if gts.Position != 0 {
@@ -113,17 +112,17 @@ func todosetFromGenerated(gts generated.Todoset) Todoset {
 	}
 
 	// Convert nested types
-	if gts.Bucket.Id != 0 || gts.Bucket.Name != "" {
+	if derefInt64(gts.Bucket.Id) != 0 || gts.Bucket.Name != "" {
 		ts.Bucket = &Bucket{
-			ID:   gts.Bucket.Id,
+			ID:   derefInt64(gts.Bucket.Id),
 			Name: gts.Bucket.Name,
 			Type: gts.Bucket.Type,
 		}
 	}
 
-	if gts.Creator.Id != 0 || gts.Creator.Name != "" {
+	if derefInt64(gts.Creator.Id) != 0 || gts.Creator.Name != "" {
 		ts.Creator = &Person{
-			ID:           gts.Creator.Id,
+			ID:           derefInt64(gts.Creator.Id),
 			Name:         gts.Creator.Name,
 			EmailAddress: gts.Creator.EmailAddress,
 			AvatarURL:    gts.Creator.AvatarUrl,

@@ -29,7 +29,6 @@ describe("TodolistGroupsService", () => {
 
   describe("list", () => {
     it("should list all groups in a todolist", async () => {
-      const projectId = 111;
       const todolistId = 222;
       const mockGroups = [
         { id: 1, name: "Phase 1", completed: false, completed_ratio: "3/10" },
@@ -38,33 +37,32 @@ describe("TodolistGroupsService", () => {
 
       server.use(
         http.get(
-          `${BASE_URL}/buckets/${projectId}/todolists/${todolistId}/groups.json`,
+          `${BASE_URL}/todolists/${todolistId}/groups.json`,
           () => {
             return HttpResponse.json(mockGroups);
           }
         )
       );
 
-      const groups = await client.todolistGroups.list(projectId, todolistId);
+      const groups = await client.todolistGroups.list(todolistId);
       expect(groups).toHaveLength(2);
       expect(groups[0]!.name).toBe("Phase 1");
       expect(groups[1]!.completed_ratio).toBe("0/5");
     });
 
     it("should return empty array when no groups exist", async () => {
-      const projectId = 111;
       const todolistId = 222;
 
       server.use(
         http.get(
-          `${BASE_URL}/buckets/${projectId}/todolists/${todolistId}/groups.json`,
+          `${BASE_URL}/todolists/${todolistId}/groups.json`,
           () => {
             return HttpResponse.json([]);
           }
         )
       );
 
-      const groups = await client.todolistGroups.list(projectId, todolistId);
+      const groups = await client.todolistGroups.list(todolistId);
       expect(groups).toHaveLength(0);
     });
   });
@@ -73,7 +71,6 @@ describe("TodolistGroupsService", () => {
 
   describe("create", () => {
     it("should create a new group in a todolist", async () => {
-      const projectId = 111;
       const todolistId = 222;
       const mockGroup = {
         id: 444,
@@ -84,7 +81,7 @@ describe("TodolistGroupsService", () => {
 
       server.use(
         http.post(
-          `${BASE_URL}/buckets/${projectId}/todolists/${todolistId}/groups.json`,
+          `${BASE_URL}/todolists/${todolistId}/groups.json`,
           async ({ request }) => {
             const body = await request.json() as { name: string };
             expect(body.name).toBe("New Phase");
@@ -93,7 +90,7 @@ describe("TodolistGroupsService", () => {
         )
       );
 
-      const group = await client.todolistGroups.create(projectId, todolistId, {
+      const group = await client.todolistGroups.create(todolistId, {
         name: "New Phase",
       });
       expect(group.id).toBe(444);
@@ -107,12 +104,11 @@ describe("TodolistGroupsService", () => {
 
   describe("reposition", () => {
     it("should change the position of a group", async () => {
-      const projectId = 111;
       const groupId = 333;
 
       server.use(
         http.put(
-          `${BASE_URL}/buckets/${projectId}/todolists/${groupId}/position.json`,
+          `${BASE_URL}/todolists/${groupId}/position.json`,
           async ({ request }) => {
             const body = await request.json() as { position: number };
             expect(body.position).toBe(1);
@@ -123,7 +119,7 @@ describe("TodolistGroupsService", () => {
 
       // Generated service takes a request object, not bare number
       await expect(
-        client.todolistGroups.reposition(projectId, groupId, { position: 1 })
+        client.todolistGroups.reposition(groupId, { position: 1 })
       ).resolves.toBeUndefined();
     });
 
@@ -131,5 +127,5 @@ describe("TodolistGroupsService", () => {
   });
 
   // Note: trash() is on RecordingsService, not TodolistGroupsService (spec-conformant)
-  // Use client.recordings.trash(projectId, groupId) instead
+  // Use client.recordings.trash(groupId) instead
 });

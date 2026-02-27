@@ -28,21 +28,21 @@ describe("MessageBoardsService", () => {
         created_at: "2024-01-01T00:00:00Z",
         updated_at: "2024-01-02T00:00:00Z",
         type: "Message::Board",
-        url: "https://3.basecampapi.com/12345/buckets/1/message_boards/123.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/message_boards/123",
+        url: "https://3.basecampapi.com/12345/message_boards/123.json",
+        app_url: "https://3.basecamp.com/12345/message_boards/123",
         messages_count: 5,
-        messages_url: "https://3.basecampapi.com/12345/buckets/1/message_boards/123/messages.json",
+        messages_url: "https://3.basecampapi.com/12345/message_boards/123/messages.json",
         bucket: { id: 1, name: "Test Project", type: "Project" },
         creator: { id: 999, name: "Test User", email_address: "test@example.com" },
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/message_boards/123`, () => {
+        http.get(`${BASE_URL}/message_boards/123`, () => {
           return HttpResponse.json(mockBoard);
         })
       );
 
-      const board = await client.messageBoards.get(1, 123);
+      const board = await client.messageBoards.get(123);
 
       expect(board.id).toBe(123);
       expect(board.title).toBe("Message Board");
@@ -53,13 +53,13 @@ describe("MessageBoardsService", () => {
 
     it("should throw not_found for non-existent board", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/1/message_boards/999`, () => {
+        http.get(`${BASE_URL}/message_boards/999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
       try {
-        await client.messageBoards.get(1, 999);
+        await client.messageBoards.get(999);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).toBeInstanceOf(BasecampError);

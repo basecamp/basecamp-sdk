@@ -85,7 +85,6 @@ func NewMessagesService(client *AccountClient) *MessagesService {
 }
 
 // List returns messages on a message board.
-// bucketID is the project ID, boardID is the message board ID.
 //
 // By default, returns up to 100 messages. Use Limit: -1 for unlimited.
 //
@@ -95,11 +94,11 @@ func NewMessagesService(client *AccountClient) *MessagesService {
 //
 // The returned MessageListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opts *MessageListOptions) (result *MessageListResult, err error) {
+func (s *MessagesService) List(ctx context.Context, boardID int64, opts *MessageListOptions) (result *MessageListResult, err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "List",
 		ResourceType: "message", IsMutation: false,
-		BucketID: bucketID, ResourceID: boardID,
+		ResourceID: boardID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -111,7 +110,7 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opt
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListMessagesWithResponse(ctx, s.client.accountID, bucketID, boardID)
+	resp, err := s.client.parent.gen.ListMessagesWithResponse(ctx, s.client.accountID, boardID)
 	if err != nil {
 		return nil, err
 	}
@@ -169,12 +168,11 @@ func (s *MessagesService) List(ctx context.Context, bucketID, boardID int64, opt
 }
 
 // Get returns a message by ID.
-// bucketID is the project ID, messageID is the message ID.
-func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (result *Message, err error) {
+func (s *MessagesService) Get(ctx context.Context, messageID int64) (result *Message, err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Get",
 		ResourceType: "message", IsMutation: false,
-		BucketID: bucketID, ResourceID: messageID,
+		ResourceID: messageID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -185,7 +183,7 @@ func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.GetMessageWithResponse(ctx, s.client.accountID, messageID)
 	if err != nil {
 		return nil, err
 	}
@@ -202,13 +200,12 @@ func (s *MessagesService) Get(ctx context.Context, bucketID, messageID int64) (r
 }
 
 // Create creates a new message on a message board.
-// bucketID is the project ID, boardID is the message board ID.
 // Returns the created message.
-func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, req *CreateMessageRequest) (result *Message, err error) {
+func (s *MessagesService) Create(ctx context.Context, boardID int64, req *CreateMessageRequest) (result *Message, err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Create",
 		ResourceType: "message", IsMutation: true,
-		BucketID: bucketID, ResourceID: boardID,
+		ResourceID: boardID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -233,7 +230,7 @@ func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, r
 		body.CategoryId = &req.CategoryID
 	}
 
-	resp, err := s.client.parent.gen.CreateMessageWithResponse(ctx, s.client.accountID, bucketID, boardID, body)
+	resp, err := s.client.parent.gen.CreateMessageWithResponse(ctx, s.client.accountID, boardID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -251,13 +248,12 @@ func (s *MessagesService) Create(ctx context.Context, bucketID, boardID int64, r
 }
 
 // Update updates an existing message.
-// bucketID is the project ID, messageID is the message ID.
 // Returns the updated message.
-func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64, req *UpdateMessageRequest) (result *Message, err error) {
+func (s *MessagesService) Update(ctx context.Context, messageID int64, req *UpdateMessageRequest) (result *Message, err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Update",
 		ResourceType: "message", IsMutation: true,
-		BucketID: bucketID, ResourceID: messageID,
+		ResourceID: messageID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -282,7 +278,7 @@ func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64,
 		body.CategoryId = &req.CategoryID
 	}
 
-	resp, err := s.client.parent.gen.UpdateMessageWithResponse(ctx, s.client.accountID, bucketID, messageID, body)
+	resp, err := s.client.parent.gen.UpdateMessageWithResponse(ctx, s.client.accountID, messageID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -299,12 +295,11 @@ func (s *MessagesService) Update(ctx context.Context, bucketID, messageID int64,
 }
 
 // Pin pins a message to the top of the message board.
-// bucketID is the project ID, messageID is the message ID.
-func (s *MessagesService) Pin(ctx context.Context, bucketID, messageID int64) (err error) {
+func (s *MessagesService) Pin(ctx context.Context, messageID int64) (err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Pin",
 		ResourceType: "message", IsMutation: true,
-		BucketID: bucketID, ResourceID: messageID,
+		ResourceID: messageID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -315,7 +310,7 @@ func (s *MessagesService) Pin(ctx context.Context, bucketID, messageID int64) (e
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.PinMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.PinMessageWithResponse(ctx, s.client.accountID, messageID)
 	if err != nil {
 		return err
 	}
@@ -323,12 +318,11 @@ func (s *MessagesService) Pin(ctx context.Context, bucketID, messageID int64) (e
 }
 
 // Unpin unpins a message from the top of the message board.
-// bucketID is the project ID, messageID is the message ID.
-func (s *MessagesService) Unpin(ctx context.Context, bucketID, messageID int64) (err error) {
+func (s *MessagesService) Unpin(ctx context.Context, messageID int64) (err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Unpin",
 		ResourceType: "message", IsMutation: true,
-		BucketID: bucketID, ResourceID: messageID,
+		ResourceID: messageID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -339,7 +333,7 @@ func (s *MessagesService) Unpin(ctx context.Context, bucketID, messageID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.UnpinMessageWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.UnpinMessageWithResponse(ctx, s.client.accountID, messageID)
 	if err != nil {
 		return err
 	}
@@ -347,13 +341,12 @@ func (s *MessagesService) Unpin(ctx context.Context, bucketID, messageID int64) 
 }
 
 // Trash moves a message to the trash.
-// bucketID is the project ID, messageID is the message ID.
 // Trashed messages can be recovered from the trash.
-func (s *MessagesService) Trash(ctx context.Context, bucketID, messageID int64) (err error) {
+func (s *MessagesService) Trash(ctx context.Context, messageID int64) (err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Trash",
 		ResourceType: "message", IsMutation: true,
-		BucketID: bucketID, ResourceID: messageID,
+		ResourceID: messageID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -364,7 +357,7 @@ func (s *MessagesService) Trash(ctx context.Context, bucketID, messageID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, messageID)
 	if err != nil {
 		return err
 	}
@@ -372,13 +365,12 @@ func (s *MessagesService) Trash(ctx context.Context, bucketID, messageID int64) 
 }
 
 // Archive moves a message to the archive.
-// bucketID is the project ID, messageID is the message ID.
 // Archived messages can be unarchived.
-func (s *MessagesService) Archive(ctx context.Context, bucketID, messageID int64) (err error) {
+func (s *MessagesService) Archive(ctx context.Context, messageID int64) (err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Archive",
 		ResourceType: "message", IsMutation: true,
-		BucketID: bucketID, ResourceID: messageID,
+		ResourceID: messageID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -389,7 +381,7 @@ func (s *MessagesService) Archive(ctx context.Context, bucketID, messageID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ArchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.ArchiveRecordingWithResponse(ctx, s.client.accountID, messageID)
 	if err != nil {
 		return err
 	}
@@ -397,12 +389,11 @@ func (s *MessagesService) Archive(ctx context.Context, bucketID, messageID int64
 }
 
 // Unarchive restores an archived message to active status.
-// bucketID is the project ID, messageID is the message ID.
-func (s *MessagesService) Unarchive(ctx context.Context, bucketID, messageID int64) (err error) {
+func (s *MessagesService) Unarchive(ctx context.Context, messageID int64) (err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Unarchive",
 		ResourceType: "message", IsMutation: true,
-		BucketID: bucketID, ResourceID: messageID,
+		ResourceID: messageID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -413,7 +404,7 @@ func (s *MessagesService) Unarchive(ctx context.Context, bucketID, messageID int
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.UnarchiveRecordingWithResponse(ctx, s.client.accountID, bucketID, messageID)
+	resp, err := s.client.parent.gen.UnarchiveRecordingWithResponse(ctx, s.client.accountID, messageID)
 	if err != nil {
 		return err
 	}
@@ -434,14 +425,14 @@ func messageFromGenerated(gm generated.Message) Message {
 		BoostsCount: int(gm.BoostsCount),
 	}
 
-	if gm.Id != 0 {
-		m.ID = gm.Id
+	if derefInt64(gm.Id) != 0 {
+		m.ID = derefInt64(gm.Id)
 	}
 
 	// Convert nested types
-	if gm.Parent.Id != 0 || gm.Parent.Title != "" {
+	if derefInt64(gm.Parent.Id) != 0 || gm.Parent.Title != "" {
 		m.Parent = &Parent{
-			ID:     gm.Parent.Id,
+			ID:     derefInt64(gm.Parent.Id),
 			Title:  gm.Parent.Title,
 			Type:   gm.Parent.Type,
 			URL:    gm.Parent.Url,
@@ -449,17 +440,17 @@ func messageFromGenerated(gm generated.Message) Message {
 		}
 	}
 
-	if gm.Bucket.Id != 0 || gm.Bucket.Name != "" {
+	if derefInt64(gm.Bucket.Id) != 0 || gm.Bucket.Name != "" {
 		m.Bucket = &Bucket{
-			ID:   gm.Bucket.Id,
+			ID:   derefInt64(gm.Bucket.Id),
 			Name: gm.Bucket.Name,
 			Type: gm.Bucket.Type,
 		}
 	}
 
-	if gm.Creator.Id != 0 || gm.Creator.Name != "" {
+	if derefInt64(gm.Creator.Id) != 0 || gm.Creator.Name != "" {
 		m.Creator = &Person{
-			ID:           gm.Creator.Id,
+			ID:           derefInt64(gm.Creator.Id),
 			Name:         gm.Creator.Name,
 			EmailAddress: gm.Creator.EmailAddress,
 			AvatarURL:    gm.Creator.AvatarUrl,
@@ -468,9 +459,9 @@ func messageFromGenerated(gm generated.Message) Message {
 		}
 	}
 
-	if gm.Category.Id != 0 || gm.Category.Name != "" {
+	if derefInt64(gm.Category.Id) != 0 || gm.Category.Name != "" {
 		m.Category = &MessageType{
-			ID:        gm.Category.Id,
+			ID:        derefInt64(gm.Category.Id),
 			Name:      gm.Category.Name,
 			Icon:      gm.Category.Icon,
 			CreatedAt: gm.Category.CreatedAt,

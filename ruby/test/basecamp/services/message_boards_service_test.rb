@@ -16,9 +16,9 @@ class MessageBoardsServiceTest < Minitest::Test
       "messages_count" => 10,
       "created_at" => "2024-01-01T00:00:00Z"
     }
-    stub_get("/12345/buckets/100/message_boards/456", response_body: board)
+    stub_get("/12345/message_boards/456", response_body: board)
 
-    result = @account.message_boards.get(project_id: 100, board_id: 456)
+    result = @account.message_boards.get(board_id: 456)
 
     assert_equal 456, result["id"]
     assert_equal "Message Board", result["title"]

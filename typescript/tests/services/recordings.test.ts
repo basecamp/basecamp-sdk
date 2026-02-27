@@ -119,12 +119,12 @@ describe("RecordingsService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/recordings/3001`, () => {
+        http.get(`${BASE_URL}/recordings/3001`, () => {
           return HttpResponse.json(recording);
         })
       );
 
-      const result = await service.get(123, 3001);
+      const result = await service.get(3001);
 
       expect(result.id).toBe(3001);
       expect(result.type).toBe("Message");
@@ -133,15 +133,15 @@ describe("RecordingsService", () => {
 
     it("should throw not_found error for 404 response", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/recordings/9999`, () => {
+        http.get(`${BASE_URL}/recordings/9999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
-      await expect(service.get(123, 9999)).rejects.toThrow(BasecampError);
+      await expect(service.get(9999)).rejects.toThrow(BasecampError);
 
       try {
-        await service.get(123, 9999);
+        await service.get(9999);
       } catch (err) {
         expect((err as BasecampError).code).toBe("not_found");
       }
@@ -151,66 +151,69 @@ describe("RecordingsService", () => {
   describe("trash", () => {
     it("should move a recording to trash", async () => {
       server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/3001/status/trashed.json`, () => {
+        http.put(`${BASE_URL}/recordings/3001/status/trashed.json`, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
 
-      await expect(service.trash(123, 3001)).resolves.toBeUndefined();
+      await expect(service.trash(3001)).resolves.toBeUndefined();
     });
 
     it("should throw error for non-existent recording", async () => {
       server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/9999/status/trashed.json`, () => {
+        http.put(`${BASE_URL}/recordings/9999/status/trashed.json`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
-      await expect(service.trash(123, 9999)).rejects.toThrow(BasecampError);
+      await expect(service.trash(9999)).rejects.toThrow(BasecampError);
     });
   });
 
   describe("archive", () => {
     it("should archive a recording", async () => {
       server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/3001/status/archived.json`, () => {
+        http.put(`${BASE_URL}/recordings/3001/status/archived.json`, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
 
-      await expect(service.archive(123, 3001)).resolves.toBeUndefined();
+      await expect(service.archive(3001)).resolves.toBeUndefined();
     });
 
     it("should throw error for non-existent recording", async () => {
       server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/9999/status/archived.json`, () => {
+        http.put(`${BASE_URL}/recordings/9999/status/archived.json`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
-      await expect(service.archive(123, 9999)).rejects.toThrow(BasecampError);
+      await expect(service.archive(9999)).rejects.toThrow(BasecampError);
     });
   });
 
   describe("unarchive", () => {
     it("should unarchive a recording", async () => {
       server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/3001/status/active.json`, () => {
+        http.put(`${BASE_URL}/recordings/3001/status/active.json`, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
 
-      await expect(service.unarchive(123, 3001)).resolves.toBeUndefined();
+      await expect(service.unarchive(3001)).resolves.toBeUndefined();
     });
 
     it("should throw error for non-existent recording", async () => {
       server.use(
-        http.put(`${BASE_URL}/buckets/123/recordings/9999/status/active.json`, () => {
+        http.put(`${BASE_URL}/recordings/9999/status/active.json`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
-      await expect(service.unarchive(123, 9999)).rejects.toThrow(BasecampError);
+      await expect(service.unarchive(9999)).rejects.toThrow(BasecampError);
     });
   });
+
+  // Note: setClientVisibility() is on ClientVisibilityService in generated services
+  // Use client.clientVisibility.setVisibility(recordingId, { visibleToClients: true })
 });

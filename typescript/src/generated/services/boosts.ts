@@ -55,30 +55,28 @@ export class BoostsService extends BaseService {
 
   /**
    * Get a single boost
-   * @param projectId - The project ID
    * @param boostId - The boost ID
    * @returns The boost
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.boosts.get(123, 123);
+   * const result = await client.boosts.get(123);
    * ```
    */
-  async get(projectId: number, boostId: number): Promise<components["schemas"]["GetBoostResponseContent"]> {
+  async get(boostId: number): Promise<components["schemas"]["GetBoostResponseContent"]> {
     const response = await this.request(
       {
         service: "Boosts",
         operation: "GetBoost",
         resourceType: "boost",
         isMutation: false,
-        projectId,
         resourceId: boostId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/boosts/{boostId}", {
+        this.client.GET("/boosts/{boostId}", {
           params: {
-            path: { projectId, boostId },
+            path: { boostId },
           },
         })
     );
@@ -87,30 +85,28 @@ export class BoostsService extends BaseService {
 
   /**
    * Delete a boost
-   * @param projectId - The project ID
    * @param boostId - The boost ID
    * @returns void
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * await client.boosts.delete(123, 123);
+   * await client.boosts.delete(123);
    * ```
    */
-  async delete(projectId: number, boostId: number): Promise<void> {
+  async delete(boostId: number): Promise<void> {
     await this.request(
       {
         service: "Boosts",
         operation: "DeleteBoost",
         resourceType: "boost",
         isMutation: true,
-        projectId,
         resourceId: boostId,
       },
       () =>
-        this.client.DELETE("/buckets/{projectId}/boosts/{boostId}", {
+        this.client.DELETE("/boosts/{boostId}", {
           params: {
-            path: { projectId, boostId },
+            path: { boostId },
           },
         })
     );
@@ -118,30 +114,28 @@ export class BoostsService extends BaseService {
 
   /**
    * List boosts on a recording
-   * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
    * @returns All results across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.boosts.listForRecording(123, 123);
+   * const result = await client.boosts.listForRecording(123);
    * ```
    */
-  async listForRecording(projectId: number, recordingId: number, options?: ListForRecordingBoostOptions): Promise<components["schemas"]["ListRecordingBoostsResponseContent"]> {
+  async listForRecording(recordingId: number, options?: ListForRecordingBoostOptions): Promise<components["schemas"]["ListRecordingBoostsResponseContent"]> {
     return this.requestPaginated(
       {
         service: "Boosts",
         operation: "ListRecordingBoosts",
         resourceType: "recording_boost",
         isMutation: false,
-        projectId,
         resourceId: recordingId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/recordings/{recordingId}/boosts.json", {
+        this.client.GET("/recordings/{recordingId}/boosts.json", {
           params: {
-            path: { projectId, recordingId },
+            path: { recordingId },
           },
         })
       , options
@@ -150,7 +144,6 @@ export class BoostsService extends BaseService {
 
   /**
    * Create a boost on a recording
-   * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @param req - Recording_boost creation parameters
    * @returns The recording_boost
@@ -158,10 +151,10 @@ export class BoostsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.boosts.createForRecording(123, 123, { content: "Hello world" });
+   * const result = await client.boosts.createForRecording(123, { content: "Hello world" });
    * ```
    */
-  async createForRecording(projectId: number, recordingId: number, req: CreateForRecordingBoostRequest): Promise<components["schemas"]["CreateRecordingBoostResponseContent"]> {
+  async createForRecording(recordingId: number, req: CreateForRecordingBoostRequest): Promise<components["schemas"]["CreateRecordingBoostResponseContent"]> {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }
@@ -171,13 +164,12 @@ export class BoostsService extends BaseService {
         operation: "CreateRecordingBoost",
         resourceType: "recording_boost",
         isMutation: true,
-        projectId,
         resourceId: recordingId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/recordings/{recordingId}/boosts.json", {
+        this.client.POST("/recordings/{recordingId}/boosts.json", {
           params: {
-            path: { projectId, recordingId },
+            path: { recordingId },
           },
           body: {
             content: req.content,
@@ -189,7 +181,6 @@ export class BoostsService extends BaseService {
 
   /**
    * List boosts on a specific event within a recording
-   * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @param eventId - The event ID
    * @param options - Optional query parameters
@@ -197,23 +188,22 @@ export class BoostsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.boosts.listForEvent(123, 123, 123);
+   * const result = await client.boosts.listForEvent(123, 123);
    * ```
    */
-  async listForEvent(projectId: number, recordingId: number, eventId: number, options?: ListForEventBoostOptions): Promise<components["schemas"]["ListEventBoostsResponseContent"]> {
+  async listForEvent(recordingId: number, eventId: number, options?: ListForEventBoostOptions): Promise<components["schemas"]["ListEventBoostsResponseContent"]> {
     return this.requestPaginated(
       {
         service: "Boosts",
         operation: "ListEventBoosts",
         resourceType: "event_boost",
         isMutation: false,
-        projectId,
         resourceId: recordingId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/recordings/{recordingId}/events/{eventId}/boosts.json", {
+        this.client.GET("/recordings/{recordingId}/events/{eventId}/boosts.json", {
           params: {
-            path: { projectId, recordingId, eventId },
+            path: { recordingId, eventId },
           },
         })
       , options
@@ -222,7 +212,6 @@ export class BoostsService extends BaseService {
 
   /**
    * Create a boost on a specific event within a recording
-   * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @param eventId - The event ID
    * @param req - Event_boost creation parameters
@@ -231,10 +220,10 @@ export class BoostsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.boosts.createForEvent(123, 123, 123, { content: "Hello world" });
+   * const result = await client.boosts.createForEvent(123, 123, { content: "Hello world" });
    * ```
    */
-  async createForEvent(projectId: number, recordingId: number, eventId: number, req: CreateForEventBoostRequest): Promise<components["schemas"]["CreateEventBoostResponseContent"]> {
+  async createForEvent(recordingId: number, eventId: number, req: CreateForEventBoostRequest): Promise<components["schemas"]["CreateEventBoostResponseContent"]> {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }
@@ -244,13 +233,12 @@ export class BoostsService extends BaseService {
         operation: "CreateEventBoost",
         resourceType: "event_boost",
         isMutation: true,
-        projectId,
         resourceId: recordingId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/recordings/{recordingId}/events/{eventId}/boosts.json", {
+        this.client.POST("/recordings/{recordingId}/events/{eventId}/boosts.json", {
           params: {
-            path: { projectId, recordingId, eventId },
+            path: { recordingId, eventId },
           },
           body: {
             content: req.content,

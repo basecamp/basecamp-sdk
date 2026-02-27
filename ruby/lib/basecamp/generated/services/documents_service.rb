@@ -8,47 +8,43 @@ module Basecamp
     class DocumentsService < BaseService
 
       # Get a single document by id
-      # @param project_id [Integer] project id ID
       # @param document_id [Integer] document id ID
       # @return [Hash] response data
-      def get(project_id:, document_id:)
-        with_operation(service: "documents", operation: "get", is_mutation: false, project_id: project_id, resource_id: document_id) do
-          http_get(bucket_path(project_id, "/documents/#{document_id}")).json
+      def get(document_id:)
+        with_operation(service: "documents", operation: "get", is_mutation: false, resource_id: document_id) do
+          http_get("/documents/#{document_id}").json
         end
       end
 
       # Update an existing document
-      # @param project_id [Integer] project id ID
       # @param document_id [Integer] document id ID
       # @param title [String, nil] title
       # @param content [String, nil] content
       # @return [Hash] response data
-      def update(project_id:, document_id:, title: nil, content: nil)
-        with_operation(service: "documents", operation: "update", is_mutation: true, project_id: project_id, resource_id: document_id) do
-          http_put(bucket_path(project_id, "/documents/#{document_id}"), body: compact_params(title: title, content: content)).json
+      def update(document_id:, title: nil, content: nil)
+        with_operation(service: "documents", operation: "update", is_mutation: true, resource_id: document_id) do
+          http_put("/documents/#{document_id}", body: compact_params(title: title, content: content)).json
         end
       end
 
       # List documents in a vault
-      # @param project_id [Integer] project id ID
       # @param vault_id [Integer] vault id ID
       # @return [Enumerator<Hash>] paginated results
-      def list(project_id:, vault_id:)
-        wrap_paginated(service: "documents", operation: "list", is_mutation: false, project_id: project_id, resource_id: vault_id) do
-          paginate(bucket_path(project_id, "/vaults/#{vault_id}/documents.json"))
+      def list(vault_id:)
+        wrap_paginated(service: "documents", operation: "list", is_mutation: false, resource_id: vault_id) do
+          paginate("/vaults/#{vault_id}/documents.json")
         end
       end
 
       # Create a new document in a vault
-      # @param project_id [Integer] project id ID
       # @param vault_id [Integer] vault id ID
       # @param title [String] title
       # @param content [String, nil] content
       # @param status [String, nil] active|drafted
       # @return [Hash] response data
-      def create(project_id:, vault_id:, title:, content: nil, status: nil)
-        with_operation(service: "documents", operation: "create", is_mutation: true, project_id: project_id, resource_id: vault_id) do
-          http_post(bucket_path(project_id, "/vaults/#{vault_id}/documents.json"), body: compact_params(title: title, content: content, status: status)).json
+      def create(vault_id:, title:, content: nil, status: nil)
+        with_operation(service: "documents", operation: "create", is_mutation: true, resource_id: vault_id) do
+          http_post("/vaults/#{vault_id}/documents.json", body: compact_params(title: title, content: content, status: status)).json
         end
       end
     end

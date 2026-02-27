@@ -232,10 +232,10 @@ cfg, err := basecamp.LoadConfig("/path/to/config.json")
 ctx := context.Background()
 
 // List todos in a todolist
-todos, err := account.Todos().List(ctx, projectID, todolistID, nil)
+todos, err := account.Todos().List(ctx, todolistID, nil)
 
 // Create a todo
-todo, err := account.Todos().Create(ctx, projectID, todolistID, &basecamp.CreateTodoRequest{
+todo, err := account.Todos().Create(ctx, todolistID, &basecamp.CreateTodoRequest{
     Content:     "Review pull request",
     Description: "Check the new authentication flow",
     DueOn:       "2026-02-01",
@@ -243,10 +243,10 @@ todo, err := account.Todos().Create(ctx, projectID, todolistID, &basecamp.Create
 })
 
 // Complete a todo
-err = account.Todos().Complete(ctx, projectID, todoID)
+err = account.Todos().Complete(ctx, todoID)
 
 // Reposition a todo
-err = account.Todos().Reposition(ctx, projectID, todoID, 1) // Move to first position
+err = account.Todos().Reposition(ctx, todoID, 1) // Move to first position
 ```
 
 ## Working with Messages
@@ -254,14 +254,15 @@ err = account.Todos().Reposition(ctx, projectID, todoID, 1) // Move to first pos
 ```go
 ctx := context.Background()
 
-// Get the message board for a project
-board, err := account.MessageBoards().Get(ctx, projectID)
+// Get the message board (boardID from project dock/tools)
+var boardID int64 = 12345
+board, err := account.MessageBoards().Get(ctx, boardID)
 
 // List messages
-messages, err := account.Messages().List(ctx, projectID, board.ID, nil)
+messages, err := account.Messages().List(ctx, board.ID, nil)
 
 // Create a message
-msg, err := account.Messages().Create(ctx, projectID, board.ID, &basecamp.CreateMessageRequest{
+msg, err := account.Messages().Create(ctx, board.ID, &basecamp.CreateMessageRequest{
     Subject: "Weekly Update",
     Content: "<p>Here's what we accomplished this week...</p>",
 })
@@ -276,28 +277,29 @@ ctx := context.Background()
 campfires, err := account.Campfires().List(ctx)
 
 // Send a message
-line, err := account.Campfires().CreateLine(ctx, projectID, campfireID, "Hello, team!")
+line, err := account.Campfires().CreateLine(ctx, campfireID, "Hello, team!")
 
 // List recent messages
-lines, err := account.Campfires().ListLines(ctx, projectID, campfireID)
+lines, err := account.Campfires().ListLines(ctx, campfireID)
 ```
 
 ## Working with Webhooks
 
 ```go
 ctx := context.Background()
+var bucketID int64 = 12345 // project/bucket ID
 
 // Create a webhook
-webhook, err := account.Webhooks().Create(ctx, projectID, &basecamp.CreateWebhookRequest{
+webhook, err := account.Webhooks().Create(ctx, bucketID, &basecamp.CreateWebhookRequest{
     PayloadURL: "https://example.com/webhook",
     Types:      []string{"Todo", "Comment"},
 })
 
 // List webhooks
-webhooks, err := account.Webhooks().List(ctx, projectID)
+webhooks, err := account.Webhooks().List(ctx, bucketID)
 
 // Delete a webhook
-err = account.Webhooks().Delete(ctx, projectID, webhookID)
+err = account.Webhooks().Delete(ctx, webhookID)
 ```
 
 ## Error Handling
@@ -411,7 +413,7 @@ client := basecamp.NewClient(cfg, token, basecamp.WithHooks(hooks))
 Output:
 ```
 level=DEBUG msg="basecamp operation start" service=Todos operation=Complete resource_type=todo is_mutation=true
-level=DEBUG msg="basecamp request start" method=POST url=https://3.basecampapi.com/123/buckets/456/todos/789/completion.json attempt=1
+level=DEBUG msg="basecamp request start" method=POST url=https://3.basecampapi.com/123/todos/789/completion.json attempt=1
 level=DEBUG msg="basecamp request complete" method=POST url=... duration=145ms status=204 from_cache=false
 level=DEBUG msg="basecamp operation complete" service=Todos operation=Complete duration=147ms
 ```

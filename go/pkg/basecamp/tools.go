@@ -40,12 +40,11 @@ func NewToolsService(client *AccountClient) *ToolsService {
 }
 
 // Get returns a tool by ID.
-// bucketID is the project ID, toolID is the tool ID.
-func (s *ToolsService) Get(ctx context.Context, bucketID, toolID int64) (result *Tool, err error) {
+func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Get",
 		ResourceType: "tool", IsMutation: false,
-		BucketID: bucketID, ResourceID: toolID,
+		ResourceID: toolID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -56,7 +55,7 @@ func (s *ToolsService) Get(ctx context.Context, bucketID, toolID int64) (result 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
+	resp, err := s.client.parent.gen.GetToolWithResponse(ctx, s.client.accountID, toolID)
 	if err != nil {
 		return nil, err
 	}
@@ -73,13 +72,12 @@ func (s *ToolsService) Get(ctx context.Context, bucketID, toolID int64) (result 
 }
 
 // Create clones an existing tool to create a new one.
-// bucketID is the project ID, sourceToolID is the ID of the tool to clone.
 // Returns the newly created tool.
-func (s *ToolsService) Create(ctx context.Context, bucketID, sourceToolID int64) (result *Tool, err error) {
+func (s *ToolsService) Create(ctx context.Context, sourceToolID int64) (result *Tool, err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Create",
 		ResourceType: "tool", IsMutation: true,
-		BucketID: bucketID, ResourceID: sourceToolID,
+		ResourceID: sourceToolID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -94,7 +92,7 @@ func (s *ToolsService) Create(ctx context.Context, bucketID, sourceToolID int64)
 		SourceRecordingId: sourceToolID,
 	}
 
-	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, bucketID, body)
+	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -111,13 +109,12 @@ func (s *ToolsService) Create(ctx context.Context, bucketID, sourceToolID int64)
 }
 
 // Update updates (renames) an existing tool.
-// bucketID is the project ID, toolID is the tool ID.
 // Returns the updated tool.
-func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, title string) (result *Tool, err error) {
+func (s *ToolsService) Update(ctx context.Context, toolID int64, title string) (result *Tool, err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Update",
 		ResourceType: "tool", IsMutation: true,
-		BucketID: bucketID, ResourceID: toolID,
+		ResourceID: toolID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -137,7 +134,7 @@ func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, title
 		Title: title,
 	}
 
-	resp, err := s.client.parent.gen.UpdateToolWithResponse(ctx, s.client.accountID, bucketID, toolID, body)
+	resp, err := s.client.parent.gen.UpdateToolWithResponse(ctx, s.client.accountID, toolID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -154,13 +151,12 @@ func (s *ToolsService) Update(ctx context.Context, bucketID, toolID int64, title
 }
 
 // Delete moves a tool to the trash.
-// bucketID is the project ID, toolID is the tool ID.
 // Trashed tools can be recovered from the trash.
-func (s *ToolsService) Delete(ctx context.Context, bucketID, toolID int64) (err error) {
+func (s *ToolsService) Delete(ctx context.Context, toolID int64) (err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Delete",
 		ResourceType: "tool", IsMutation: true,
-		BucketID: bucketID, ResourceID: toolID,
+		ResourceID: toolID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -171,7 +167,7 @@ func (s *ToolsService) Delete(ctx context.Context, bucketID, toolID int64) (err 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DeleteToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
+	resp, err := s.client.parent.gen.DeleteToolWithResponse(ctx, s.client.accountID, toolID)
 	if err != nil {
 		return err
 	}
@@ -179,13 +175,12 @@ func (s *ToolsService) Delete(ctx context.Context, bucketID, toolID int64) (err 
 }
 
 // Enable enables (shows) a tool on the project dock.
-// bucketID is the project ID, toolID is the tool ID.
 // The tool will be placed at the end of the dock.
-func (s *ToolsService) Enable(ctx context.Context, bucketID, toolID int64) (err error) {
+func (s *ToolsService) Enable(ctx context.Context, toolID int64) (err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Enable",
 		ResourceType: "tool", IsMutation: true,
-		BucketID: bucketID, ResourceID: toolID,
+		ResourceID: toolID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -196,7 +191,7 @@ func (s *ToolsService) Enable(ctx context.Context, bucketID, toolID int64) (err 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.EnableToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
+	resp, err := s.client.parent.gen.EnableToolWithResponse(ctx, s.client.accountID, toolID)
 	if err != nil {
 		return err
 	}
@@ -204,13 +199,12 @@ func (s *ToolsService) Enable(ctx context.Context, bucketID, toolID int64) (err 
 }
 
 // Disable disables (hides) a tool from the project dock.
-// bucketID is the project ID, toolID is the tool ID.
 // The tool is not deleted, just hidden from the dock.
-func (s *ToolsService) Disable(ctx context.Context, bucketID, toolID int64) (err error) {
+func (s *ToolsService) Disable(ctx context.Context, toolID int64) (err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Disable",
 		ResourceType: "tool", IsMutation: true,
-		BucketID: bucketID, ResourceID: toolID,
+		ResourceID: toolID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -221,7 +215,7 @@ func (s *ToolsService) Disable(ctx context.Context, bucketID, toolID int64) (err
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DisableToolWithResponse(ctx, s.client.accountID, bucketID, toolID)
+	resp, err := s.client.parent.gen.DisableToolWithResponse(ctx, s.client.accountID, toolID)
 	if err != nil {
 		return err
 	}
@@ -229,13 +223,12 @@ func (s *ToolsService) Disable(ctx context.Context, bucketID, toolID int64) (err
 }
 
 // Reposition changes the position of a tool on the project dock.
-// bucketID is the project ID, toolID is the tool ID.
 // position is 1-based (1 = first position on dock).
-func (s *ToolsService) Reposition(ctx context.Context, bucketID, toolID int64, position int) (err error) {
+func (s *ToolsService) Reposition(ctx context.Context, toolID int64, position int) (err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Reposition",
 		ResourceType: "tool", IsMutation: true,
-		BucketID: bucketID, ResourceID: toolID,
+		ResourceID: toolID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -255,7 +248,7 @@ func (s *ToolsService) Reposition(ctx context.Context, bucketID, toolID int64, p
 		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
 	}
 
-	resp, err := s.client.parent.gen.RepositionToolWithResponse(ctx, s.client.accountID, bucketID, toolID, body)
+	resp, err := s.client.parent.gen.RepositionToolWithResponse(ctx, s.client.accountID, toolID, body)
 	if err != nil {
 		return err
 	}
@@ -275,8 +268,8 @@ func toolFromGenerated(gt generated.Tool) Tool {
 		AppURL:    gt.AppUrl,
 	}
 
-	if gt.Id != 0 {
-		t.ID = gt.Id
+	if derefInt64(gt.Id) != 0 {
+		t.ID = derefInt64(gt.Id)
 	}
 
 	if gt.Position != 0 {
@@ -284,9 +277,9 @@ func toolFromGenerated(gt generated.Tool) Tool {
 		t.Position = &pos
 	}
 
-	if gt.Bucket.Id != 0 || gt.Bucket.Name != "" {
+	if derefInt64(gt.Bucket.Id) != 0 || gt.Bucket.Name != "" {
 		t.Bucket = &Bucket{
-			ID:   gt.Bucket.Id,
+			ID:   derefInt64(gt.Bucket.Id),
 			Name: gt.Bucket.Name,
 			Type: gt.Bucket.Type,
 		}

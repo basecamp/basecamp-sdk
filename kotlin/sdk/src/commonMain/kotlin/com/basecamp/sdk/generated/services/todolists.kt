@@ -14,20 +14,19 @@ class TodolistsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a single todolist or todolist group by id
-     * @param projectId The project ID
      * @param id The id
      */
-    suspend fun get(projectId: Long, id: Long): JsonElement {
+    suspend fun get(id: Long): JsonElement {
         val info = OperationInfo(
             service = "Todolists",
             operation = "GetTodolistOrGroup",
             resourceType = "todolist_or_group",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = null,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/todolists/${id}", operationName = info.operation)
+            httpGet("/todolists/${id}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<JsonElement>(body)
         }
@@ -35,21 +34,20 @@ class TodolistsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Update an existing todolist or todolist group
-     * @param projectId The project ID
      * @param id The id
      * @param body Request body
      */
-    suspend fun update(projectId: Long, id: Long, body: UpdateTodolistOrGroupBody): JsonElement {
+    suspend fun update(id: Long, body: UpdateTodolistOrGroupBody): JsonElement {
         val info = OperationInfo(
             service = "Todolists",
             operation = "UpdateTodolistOrGroup",
             resourceType = "todolist_or_group",
             isMutation = true,
-            projectId = projectId,
+            projectId = null,
             resourceId = null,
         )
         return request(info, {
-            httpPut("/buckets/${projectId}/todolists/${id}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPut("/todolists/${id}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 body.name?.let { put("name", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
@@ -60,24 +58,23 @@ class TodolistsService(client: AccountClient) : BaseService(client) {
 
     /**
      * List todolists in a todoset
-     * @param projectId The project ID
      * @param todosetId The todoset ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(projectId: Long, todosetId: Long, options: ListTodolistsOptions? = null): ListResult<Todolist> {
+    suspend fun list(todosetId: Long, options: ListTodolistsOptions? = null): ListResult<Todolist> {
         val info = OperationInfo(
             service = "Todolists",
             operation = "ListTodolists",
             resourceType = "todolist",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = todosetId,
         )
         val qs = buildQueryString(
             "status" to options?.status,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
-            httpGet("/buckets/${projectId}/todosets/${todosetId}/todolists.json" + qs, operationName = info.operation)
+            httpGet("/todosets/${todosetId}/todolists.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Todolist>>(body)
         }
@@ -85,21 +82,20 @@ class TodolistsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Create a new todolist in a todoset
-     * @param projectId The project ID
      * @param todosetId The todoset ID
      * @param body Request body
      */
-    suspend fun create(projectId: Long, todosetId: Long, body: CreateTodolistBody): Todolist {
+    suspend fun create(todosetId: Long, body: CreateTodolistBody): Todolist {
         val info = OperationInfo(
             service = "Todolists",
             operation = "CreateTodolist",
             resourceType = "todolist",
             isMutation = true,
-            projectId = projectId,
+            projectId = null,
             resourceId = todosetId,
         )
         return request(info, {
-            httpPost("/buckets/${projectId}/todosets/${todosetId}/todolists.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPost("/todosets/${todosetId}/todolists.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)

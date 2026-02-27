@@ -37,12 +37,12 @@ describe("SchedulesService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/schedules/4001`, () => {
+        http.get(`${BASE_URL}/schedules/4001`, () => {
           return HttpResponse.json(schedule);
         })
       );
 
-      const result = await service.get(123, 4001);
+      const result = await service.get(4001);
 
       expect(result.id).toBe(4001);
       expect(result.title).toBe("Schedule");
@@ -51,15 +51,15 @@ describe("SchedulesService", () => {
 
     it("should throw not_found error for 404 response", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/schedules/9999`, () => {
+        http.get(`${BASE_URL}/schedules/9999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
-      await expect(service.get(123, 9999)).rejects.toThrow(BasecampError);
+      await expect(service.get(9999)).rejects.toThrow(BasecampError);
 
       try {
-        await service.get(123, 9999);
+        await service.get(9999);
       } catch (err) {
         expect((err as BasecampError).code).toBe("not_found");
       }
@@ -74,12 +74,12 @@ describe("SchedulesService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, () => {
+        http.get(`${BASE_URL}/schedules/4001/entries.json`, () => {
           return HttpResponse.json(entries);
         })
       );
 
-      const result = await service.listEntries(123, 4001);
+      const result = await service.listEntries(4001);
 
       expect(result).toHaveLength(2);
       expect(result[0].summary).toBe("Team Meeting");
@@ -88,12 +88,12 @@ describe("SchedulesService", () => {
 
     it("should return empty array when no entries", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, () => {
+        http.get(`${BASE_URL}/schedules/4001/entries.json`, () => {
           return HttpResponse.json([]);
         })
       );
 
-      const result = await service.listEntries(123, 4001);
+      const result = await service.listEntries(4001);
 
       expect(result).toHaveLength(0);
     });
@@ -111,12 +111,12 @@ describe("SchedulesService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/schedule_entries/4101`, () => {
+        http.get(`${BASE_URL}/schedule_entries/4101`, () => {
           return HttpResponse.json(entry);
         })
       );
 
-      const result = await service.getEntry(123, 4101);
+      const result = await service.getEntry(4101);
 
       expect(result.id).toBe(4101);
       expect(result.summary).toBe("Team Meeting");
@@ -135,12 +135,12 @@ describe("SchedulesService", () => {
       };
 
       server.use(
-        http.post(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, () => {
+        http.post(`${BASE_URL}/schedules/4001/entries.json`, () => {
           return HttpResponse.json(newEntry);
         })
       );
 
-      const result = await service.createEntry(123, 4001, {
+      const result = await service.createEntry(4001, {
         summary: "New Event",
         startsAt: "2024-12-20T14:00:00Z",
         endsAt: "2024-12-20T15:00:00Z",
@@ -154,13 +154,13 @@ describe("SchedulesService", () => {
       let capturedBody: Record<string, unknown> | null = null;
 
       server.use(
-        http.post(`${BASE_URL}/buckets/123/schedules/4001/entries.json`, async ({ request }) => {
+        http.post(`${BASE_URL}/schedules/4001/entries.json`, async ({ request }) => {
           capturedBody = (await request.json()) as Record<string, unknown>;
           return HttpResponse.json({ id: 1, summary: "Test" });
         })
       );
 
-      await service.createEntry(123, 4001, {
+      await service.createEntry(4001, {
         summary: "Test Event",
         startsAt: "2024-12-20T14:00:00Z",
         endsAt: "2024-12-20T15:00:00Z",
@@ -192,12 +192,12 @@ describe("SchedulesService", () => {
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/123/schedule_entries/4101`, () => {
+        http.put(`${BASE_URL}/schedule_entries/4101`, () => {
           return HttpResponse.json(updatedEntry);
         })
       );
 
-      const result = await service.updateEntry(123, 4101, {
+      const result = await service.updateEntry(4101, {
         summary: "Updated Meeting",
         startsAt: "2024-12-15T10:00:00Z",
         endsAt: "2024-12-15T11:00:00Z",
@@ -219,12 +219,12 @@ describe("SchedulesService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/schedule_entries/4101/occurrences/2024-12-22`, () => {
+        http.get(`${BASE_URL}/schedule_entries/4101/occurrences/2024-12-22`, () => {
           return HttpResponse.json(entry);
         })
       );
 
-      const result = await service.getEntryOccurrence(123, 4101, "2024-12-22");
+      const result = await service.getEntryOccurrence(4101, "2024-12-22");
 
       expect(result.starts_at).toBe("2024-12-22T09:00:00Z");
     });
@@ -241,12 +241,12 @@ describe("SchedulesService", () => {
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/123/schedules/4001`, () => {
+        http.put(`${BASE_URL}/schedules/4001`, () => {
           return HttpResponse.json(schedule);
         })
       );
 
-      const result = await service.updateSettings(123, 4001, {
+      const result = await service.updateSettings(4001, {
         includeDueAssignments: false,
       });
 
@@ -257,18 +257,18 @@ describe("SchedulesService", () => {
       let capturedBody: { include_due_assignments?: boolean } | null = null;
 
       server.use(
-        http.put(`${BASE_URL}/buckets/123/schedules/4001`, async ({ request }) => {
+        http.put(`${BASE_URL}/schedules/4001`, async ({ request }) => {
           capturedBody = (await request.json()) as { include_due_assignments?: boolean };
           return HttpResponse.json({ id: 4001, title: "Schedule" });
         })
       );
 
-      await service.updateSettings(123, 4001, { includeDueAssignments: true });
+      await service.updateSettings(4001, { includeDueAssignments: true });
 
       expect(capturedBody?.include_due_assignments).toBe(true);
     });
   });
 
   // Note: trashEntry() is on RecordingsService, not SchedulesService (spec-conformant)
-  // Use client.recordings.trash(projectId, entryId) instead
+  // Use client.recordings.trash(entryId) instead
 });

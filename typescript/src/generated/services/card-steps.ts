@@ -69,7 +69,6 @@ export class CardStepsService extends BaseService {
 
   /**
    * Reposition a step within a card
-   * @param projectId - The project ID
    * @param cardId - The card ID
    * @param req - Card_step request parameters
    * @returns void
@@ -77,23 +76,22 @@ export class CardStepsService extends BaseService {
    *
    * @example
    * ```ts
-   * await client.cardSteps.reposition(123, 123, { sourceId: 1, position: 1 });
+   * await client.cardSteps.reposition(123, { sourceId: 1, position: 1 });
    * ```
    */
-  async reposition(projectId: number, cardId: number, req: RepositionCardStepRequest): Promise<void> {
+  async reposition(cardId: number, req: RepositionCardStepRequest): Promise<void> {
     await this.request(
       {
         service: "CardSteps",
         operation: "RepositionCardStep",
         resourceType: "card_step",
         isMutation: true,
-        projectId,
         resourceId: cardId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/card_tables/cards/{cardId}/positions.json", {
+        this.client.POST("/card_tables/cards/{cardId}/positions.json", {
           params: {
-            path: { projectId, cardId },
+            path: { cardId },
           },
           body: {
             source_id: req.sourceId,
@@ -105,7 +103,6 @@ export class CardStepsService extends BaseService {
 
   /**
    * Create a step on a card
-   * @param projectId - The project ID
    * @param cardId - The card ID
    * @param req - Card_step creation parameters
    * @returns The CardStep
@@ -113,10 +110,10 @@ export class CardStepsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.cardSteps.create(123, 123, { title: "example" });
+   * const result = await client.cardSteps.create(123, { title: "example" });
    * ```
    */
-  async create(projectId: number, cardId: number, req: CreateCardStepRequest): Promise<CardStep> {
+  async create(cardId: number, req: CreateCardStepRequest): Promise<CardStep> {
     if (!req.title) {
       throw Errors.validation("Title is required");
     }
@@ -129,13 +126,12 @@ export class CardStepsService extends BaseService {
         operation: "CreateCardStep",
         resourceType: "card_step",
         isMutation: true,
-        projectId,
         resourceId: cardId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/card_tables/cards/{cardId}/steps.json", {
+        this.client.POST("/card_tables/cards/{cardId}/steps.json", {
           params: {
-            path: { projectId, cardId },
+            path: { cardId },
           },
           body: {
             title: req.title,
@@ -149,7 +145,6 @@ export class CardStepsService extends BaseService {
 
   /**
    * Update an existing step
-   * @param projectId - The project ID
    * @param stepId - The step ID
    * @param req - Card_step update parameters
    * @returns The CardStep
@@ -157,10 +152,10 @@ export class CardStepsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.cardSteps.update(123, 123, { });
+   * const result = await client.cardSteps.update(123, { });
    * ```
    */
-  async update(projectId: number, stepId: number, req: UpdateCardStepRequest): Promise<CardStep> {
+  async update(stepId: number, req: UpdateCardStepRequest): Promise<CardStep> {
     if (req.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.dueOn)) {
       throw Errors.validation("Due on must be in YYYY-MM-DD format");
     }
@@ -170,13 +165,12 @@ export class CardStepsService extends BaseService {
         operation: "UpdateCardStep",
         resourceType: "card_step",
         isMutation: true,
-        projectId,
         resourceId: stepId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/card_tables/steps/{stepId}", {
+        this.client.PUT("/card_tables/steps/{stepId}", {
           params: {
-            path: { projectId, stepId },
+            path: { stepId },
           },
           body: {
             title: req.title,
@@ -190,7 +184,6 @@ export class CardStepsService extends BaseService {
 
   /**
    * Set card step completion status (PUT with completion: "on" to complete, "" to uncomplete)
-   * @param projectId - The project ID
    * @param stepId - The step ID
    * @param req - Card_step_completion request parameters
    * @returns The CardStep
@@ -198,10 +191,10 @@ export class CardStepsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.cardSteps.setCompletion(123, 123, { completion: "example" });
+   * const result = await client.cardSteps.setCompletion(123, { completion: "example" });
    * ```
    */
-  async setCompletion(projectId: number, stepId: number, req: SetCompletionCardStepRequest): Promise<CardStep> {
+  async setCompletion(stepId: number, req: SetCompletionCardStepRequest): Promise<CardStep> {
     if (!req.completion) {
       throw Errors.validation("Completion is required");
     }
@@ -211,13 +204,12 @@ export class CardStepsService extends BaseService {
         operation: "SetCardStepCompletion",
         resourceType: "card_step_completion",
         isMutation: true,
-        projectId,
         resourceId: stepId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/card_tables/steps/{stepId}/completions.json", {
+        this.client.PUT("/card_tables/steps/{stepId}/completions.json", {
           params: {
-            path: { projectId, stepId },
+            path: { stepId },
           },
           body: {
             completion: req.completion,

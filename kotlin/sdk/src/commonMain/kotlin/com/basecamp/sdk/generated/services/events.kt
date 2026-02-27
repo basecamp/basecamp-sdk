@@ -14,21 +14,20 @@ class EventsService(client: AccountClient) : BaseService(client) {
 
     /**
      * List all events for a recording
-     * @param projectId The project ID
      * @param recordingId The recording ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(projectId: Long, recordingId: Long, options: PaginationOptions? = null): ListResult<Event> {
+    suspend fun list(recordingId: Long, options: PaginationOptions? = null): ListResult<Event> {
         val info = OperationInfo(
             service = "Events",
             operation = "ListEvents",
             resourceType = "event",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = recordingId,
         )
         return requestPaginated(info, options, {
-            httpGet("/buckets/${projectId}/recordings/${recordingId}/events.json", operationName = info.operation)
+            httpGet("/recordings/${recordingId}/events.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Event>>(body)
         }

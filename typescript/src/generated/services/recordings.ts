@@ -41,131 +41,6 @@ export interface ListRecordingOptions extends PaginationOptions {
 export class RecordingsService extends BaseService {
 
   /**
-   * Get a single recording by id
-   * @param projectId - The project ID
-   * @param recordingId - The recording ID
-   * @returns The Recording
-   * @throws {BasecampError} If the resource is not found
-   *
-   * @example
-   * ```ts
-   * const result = await client.recordings.get(123, 123);
-   * ```
-   */
-  async get(projectId: number, recordingId: number): Promise<Recording> {
-    const response = await this.request(
-      {
-        service: "Recordings",
-        operation: "GetRecording",
-        resourceType: "recording",
-        isMutation: false,
-        projectId,
-        resourceId: recordingId,
-      },
-      () =>
-        this.client.GET("/buckets/{projectId}/recordings/{recordingId}", {
-          params: {
-            path: { projectId, recordingId },
-          },
-        })
-    );
-    return response;
-  }
-
-  /**
-   * Unarchive a recording (restore to active status)
-   * @param projectId - The project ID
-   * @param recordingId - The recording ID
-   * @returns void
-   * @throws {BasecampError} If the request fails
-   *
-   * @example
-   * ```ts
-   * await client.recordings.unarchive(123, 123);
-   * ```
-   */
-  async unarchive(projectId: number, recordingId: number): Promise<void> {
-    await this.request(
-      {
-        service: "Recordings",
-        operation: "UnarchiveRecording",
-        resourceType: "recording",
-        isMutation: true,
-        projectId,
-        resourceId: recordingId,
-      },
-      () =>
-        this.client.PUT("/buckets/{projectId}/recordings/{recordingId}/status/active.json", {
-          params: {
-            path: { projectId, recordingId },
-          },
-        })
-    );
-  }
-
-  /**
-   * Archive a recording
-   * @param projectId - The project ID
-   * @param recordingId - The recording ID
-   * @returns void
-   * @throws {BasecampError} If the request fails
-   *
-   * @example
-   * ```ts
-   * await client.recordings.archive(123, 123);
-   * ```
-   */
-  async archive(projectId: number, recordingId: number): Promise<void> {
-    await this.request(
-      {
-        service: "Recordings",
-        operation: "ArchiveRecording",
-        resourceType: "recording",
-        isMutation: true,
-        projectId,
-        resourceId: recordingId,
-      },
-      () =>
-        this.client.PUT("/buckets/{projectId}/recordings/{recordingId}/status/archived.json", {
-          params: {
-            path: { projectId, recordingId },
-          },
-        })
-    );
-  }
-
-  /**
-   * Trash a recording. Trashed items can be recovered.
-   * @param projectId - The project ID
-   * @param recordingId - The recording ID
-   * @returns void
-   * @throws {BasecampError} If the request fails
-   *
-   * @example
-   * ```ts
-   * await client.recordings.trash(123, 123);
-   * ```
-   */
-  async trash(projectId: number, recordingId: number): Promise<void> {
-    await this.request(
-      {
-        service: "Recordings",
-        operation: "TrashRecording",
-        resourceType: "recording",
-        isMutation: true,
-        projectId,
-        resourceId: recordingId,
-      },
-      () =>
-        this.client.PUT("/buckets/{projectId}/recordings/{recordingId}/status/trashed.json", {
-          params: {
-            path: { projectId, recordingId },
-          },
-        })
-    );
-  }
-
-  /**
    * List recordings of a given type across projects
    * @param type - Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
    * @param options - Optional query parameters
@@ -194,6 +69,123 @@ export class RecordingsService extends BaseService {
           },
         })
       , options
+    );
+  }
+
+  /**
+   * Get a single recording by id
+   * @param recordingId - The recording ID
+   * @returns The Recording
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.recordings.get(123);
+   * ```
+   */
+  async get(recordingId: number): Promise<Recording> {
+    const response = await this.request(
+      {
+        service: "Recordings",
+        operation: "GetRecording",
+        resourceType: "recording",
+        isMutation: false,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.GET("/recordings/{recordingId}", {
+          params: {
+            path: { recordingId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Unarchive a recording (restore to active status)
+   * @param recordingId - The recording ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.recordings.unarchive(123);
+   * ```
+   */
+  async unarchive(recordingId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Recordings",
+        operation: "UnarchiveRecording",
+        resourceType: "recording",
+        isMutation: true,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.PUT("/recordings/{recordingId}/status/active.json", {
+          params: {
+            path: { recordingId },
+          },
+        })
+    );
+  }
+
+  /**
+   * Archive a recording
+   * @param recordingId - The recording ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.recordings.archive(123);
+   * ```
+   */
+  async archive(recordingId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Recordings",
+        operation: "ArchiveRecording",
+        resourceType: "recording",
+        isMutation: true,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.PUT("/recordings/{recordingId}/status/archived.json", {
+          params: {
+            path: { recordingId },
+          },
+        })
+    );
+  }
+
+  /**
+   * Trash a recording. Trashed items can be recovered.
+   * @param recordingId - The recording ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.recordings.trash(123);
+   * ```
+   */
+  async trash(recordingId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Recordings",
+        operation: "TrashRecording",
+        resourceType: "recording",
+        isMutation: true,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.PUT("/recordings/{recordingId}/status/trashed.json", {
+          params: {
+            path: { recordingId },
+          },
+        })
     );
   }
 }

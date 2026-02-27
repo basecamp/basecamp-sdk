@@ -51,30 +51,28 @@ export class VaultsService extends BaseService {
 
   /**
    * Get a single vault by id
-   * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @returns The Vault
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.vaults.get(123, 123);
+   * const result = await client.vaults.get(123);
    * ```
    */
-  async get(projectId: number, vaultId: number): Promise<Vault> {
+  async get(vaultId: number): Promise<Vault> {
     const response = await this.request(
       {
         service: "Vaults",
         operation: "GetVault",
         resourceType: "vault",
         isMutation: false,
-        projectId,
         resourceId: vaultId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/vaults/{vaultId}", {
+        this.client.GET("/vaults/{vaultId}", {
           params: {
-            path: { projectId, vaultId },
+            path: { vaultId },
           },
         })
     );
@@ -83,7 +81,6 @@ export class VaultsService extends BaseService {
 
   /**
    * Update an existing vault
-   * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @param req - Vault update parameters
    * @returns The Vault
@@ -91,23 +88,22 @@ export class VaultsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.vaults.update(123, 123, { });
+   * const result = await client.vaults.update(123, { });
    * ```
    */
-  async update(projectId: number, vaultId: number, req: UpdateVaultRequest): Promise<Vault> {
+  async update(vaultId: number, req: UpdateVaultRequest): Promise<Vault> {
     const response = await this.request(
       {
         service: "Vaults",
         operation: "UpdateVault",
         resourceType: "vault",
         isMutation: true,
-        projectId,
         resourceId: vaultId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/vaults/{vaultId}", {
+        this.client.PUT("/vaults/{vaultId}", {
           params: {
-            path: { projectId, vaultId },
+            path: { vaultId },
           },
           body: {
             title: req.title,
@@ -119,30 +115,28 @@ export class VaultsService extends BaseService {
 
   /**
    * List vaults (subfolders) in a vault
-   * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @param options - Optional query parameters
    * @returns All Vault across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.vaults.list(123, 123);
+   * const result = await client.vaults.list(123);
    * ```
    */
-  async list(projectId: number, vaultId: number, options?: ListVaultOptions): Promise<ListResult<Vault>> {
+  async list(vaultId: number, options?: ListVaultOptions): Promise<ListResult<Vault>> {
     return this.requestPaginated(
       {
         service: "Vaults",
         operation: "ListVaults",
         resourceType: "vault",
         isMutation: false,
-        projectId,
         resourceId: vaultId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/vaults/{vaultId}/vaults.json", {
+        this.client.GET("/vaults/{vaultId}/vaults.json", {
           params: {
-            path: { projectId, vaultId },
+            path: { vaultId },
           },
         })
       , options
@@ -151,7 +145,6 @@ export class VaultsService extends BaseService {
 
   /**
    * Create a new vault (subfolder) in a vault
-   * @param projectId - The project ID
    * @param vaultId - The vault ID
    * @param req - Vault creation parameters
    * @returns The Vault
@@ -159,10 +152,10 @@ export class VaultsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.vaults.create(123, 123, { title: "example" });
+   * const result = await client.vaults.create(123, { title: "example" });
    * ```
    */
-  async create(projectId: number, vaultId: number, req: CreateVaultRequest): Promise<Vault> {
+  async create(vaultId: number, req: CreateVaultRequest): Promise<Vault> {
     if (!req.title) {
       throw Errors.validation("Title is required");
     }
@@ -172,13 +165,12 @@ export class VaultsService extends BaseService {
         operation: "CreateVault",
         resourceType: "vault",
         isMutation: true,
-        projectId,
         resourceId: vaultId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/vaults/{vaultId}/vaults.json", {
+        this.client.POST("/vaults/{vaultId}/vaults.json", {
           params: {
-            path: { projectId, vaultId },
+            path: { vaultId },
           },
           body: {
             title: req.title,

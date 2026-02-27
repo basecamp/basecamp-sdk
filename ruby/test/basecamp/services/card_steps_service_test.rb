@@ -27,10 +27,9 @@ class CardStepsServiceTest < Minitest::Test
 
   def test_create_step
     new_step = sample_step(id: 999, title: "New step")
-    stub_post("/12345/buckets/100/card_tables/cards/200/steps.json", response_body: new_step)
+    stub_post("/12345/card_tables/cards/200/steps.json", response_body: new_step)
 
     step = @account.card_steps.create(
-      project_id: 100,
       card_id: 200,
       title: "New step",
       due_on: "2024-12-15",
@@ -44,10 +43,9 @@ class CardStepsServiceTest < Minitest::Test
   def test_update_step
     # Generated service: /card_tables/steps/{id} without .json
     updated_step = sample_step(id: 200, title: "Updated step")
-    stub_put("/12345/buckets/100/card_tables/steps/200", response_body: updated_step)
+    stub_put("/12345/card_tables/steps/200", response_body: updated_step)
 
     step = @account.card_steps.update(
-      project_id: 100,
       step_id: 200,
       title: "Updated step",
       due_on: "2024-12-20"
@@ -59,28 +57,27 @@ class CardStepsServiceTest < Minitest::Test
   def test_set_completion_on
     completed_step = sample_step(id: 200)
     completed_step["completed"] = true
-    stub_put("/12345/buckets/100/card_tables/steps/200/completions.json", response_body: completed_step)
+    stub_put("/12345/card_tables/steps/200/completions.json", response_body: completed_step)
 
-    step = @account.card_steps.set_completion(project_id: 100, step_id: 200, completion: "on")
+    step = @account.card_steps.set_completion(step_id: 200, completion: "on")
 
     assert step["completed"]
   end
 
   def test_set_completion_off
     uncompleted_step = sample_step(id: 200)
-    stub_put("/12345/buckets/100/card_tables/steps/200/completions.json", response_body: uncompleted_step)
+    stub_put("/12345/card_tables/steps/200/completions.json", response_body: uncompleted_step)
 
-    step = @account.card_steps.set_completion(project_id: 100, step_id: 200, completion: "")
+    step = @account.card_steps.set_completion(step_id: 200, completion: "")
 
     assert_not step["completed"]
   end
 
   def test_reposition_step
     # Generated service uses source_id instead of step_id
-    stub_post("/12345/buckets/100/card_tables/cards/200/positions.json", response_body: {})
+    stub_post("/12345/card_tables/cards/200/positions.json", response_body: {})
 
     result = @account.card_steps.reposition(
-      project_id: 100,
       card_id: 200,
       source_id: 300,
       position: 2

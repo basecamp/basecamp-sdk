@@ -46,15 +46,14 @@ func NewClientRepliesService(client *AccountClient) *ClientRepliesService {
 }
 
 // List returns all replies for a client recording (correspondence or approval).
-// bucketID is the project ID, recordingID is the parent correspondence/approval ID.
 //
 // The returned ClientReplyListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID int64) (result *ClientReplyListResult, err error) {
+func (s *ClientRepliesService) List(ctx context.Context, recordingID int64) (result *ClientReplyListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientReplies", Operation: "List",
 		ResourceType: "client_reply", IsMutation: false,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -65,7 +64,7 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListClientRepliesWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ListClientRepliesWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -89,13 +88,11 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 }
 
 // Get returns a specific client reply.
-// bucketID is the project ID, recordingID is the parent correspondence/approval ID,
-// replyID is the client reply ID.
-func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, replyID int64) (result *ClientReply, err error) {
+func (s *ClientRepliesService) Get(ctx context.Context, recordingID, replyID int64) (result *ClientReply, err error) {
 	op := OperationInfo{
 		Service: "ClientReplies", Operation: "Get",
 		ResourceType: "client_reply", IsMutation: false,
-		BucketID: bucketID, ResourceID: replyID,
+		ResourceID: replyID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -106,7 +103,7 @@ func (s *ClientRepliesService) Get(ctx context.Context, bucketID, recordingID, r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetClientReplyWithResponse(ctx, s.client.accountID, bucketID, recordingID, replyID)
+	resp, err := s.client.parent.gen.GetClientReplyWithResponse(ctx, s.client.accountID, recordingID, replyID)
 	if err != nil {
 		return nil, err
 	}
@@ -138,13 +135,13 @@ func clientReplyFromGenerated(gr generated.ClientReply) ClientReply {
 		Content:          gr.Content,
 	}
 
-	if gr.Id != 0 {
-		r.ID = gr.Id
+	if derefInt64(gr.Id) != 0 {
+		r.ID = derefInt64(gr.Id)
 	}
 
-	if gr.Parent.Id != 0 || gr.Parent.Title != "" {
+	if derefInt64(gr.Parent.Id) != 0 || gr.Parent.Title != "" {
 		r.Parent = &Parent{
-			ID:     gr.Parent.Id,
+			ID:     derefInt64(gr.Parent.Id),
 			Title:  gr.Parent.Title,
 			Type:   gr.Parent.Type,
 			URL:    gr.Parent.Url,
@@ -152,17 +149,17 @@ func clientReplyFromGenerated(gr generated.ClientReply) ClientReply {
 		}
 	}
 
-	if gr.Bucket.Id != 0 || gr.Bucket.Name != "" {
+	if derefInt64(gr.Bucket.Id) != 0 || gr.Bucket.Name != "" {
 		r.Bucket = &Bucket{
-			ID:   gr.Bucket.Id,
+			ID:   derefInt64(gr.Bucket.Id),
 			Name: gr.Bucket.Name,
 			Type: gr.Bucket.Type,
 		}
 	}
 
-	if gr.Creator.Id != 0 || gr.Creator.Name != "" {
+	if derefInt64(gr.Creator.Id) != 0 || gr.Creator.Name != "" {
 		r.Creator = &Person{
-			ID:           gr.Creator.Id,
+			ID:           derefInt64(gr.Creator.Id),
 			Name:         gr.Creator.Name,
 			EmailAddress: gr.Creator.EmailAddress,
 			AvatarURL:    gr.Creator.AvatarUrl,

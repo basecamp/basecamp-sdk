@@ -209,7 +209,6 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 }
 
 // ListProjectPeople returns all active people on a project.
-// bucketID is the project ID.
 //
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
@@ -217,11 +216,10 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 //
 // The returned PeopleListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, opts *PeopleListOptions) (result *PeopleListResult, err error) {
+func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, opts *PeopleListOptions) (result *PeopleListResult, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "ListProjectPeople",
 		ResourceType: "person", IsMutation: false,
-		BucketID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -233,7 +231,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, bucketID int64, o
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, bucketID)
+	resp, err := s.client.parent.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -322,13 +320,11 @@ func (s *PeopleService) Pingable(ctx context.Context) (result []Person, err erro
 }
 
 // UpdateProjectAccess grants or revokes project access for people.
-// bucketID is the project ID.
 // Returns the list of people who were granted and revoked access.
-func (s *PeopleService) UpdateProjectAccess(ctx context.Context, bucketID int64, req *UpdateProjectAccessRequest) (result *UpdateProjectAccessResponse, err error) {
+func (s *PeopleService) UpdateProjectAccess(ctx context.Context, projectID int64, req *UpdateProjectAccessRequest) (result *UpdateProjectAccessResponse, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "UpdateProjectAccess",
 		ResourceType: "person", IsMutation: true,
-		BucketID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -360,7 +356,7 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, bucketID int64,
 		}
 	}
 
-	resp, err := s.client.parent.gen.UpdateProjectAccessWithResponse(ctx, s.client.accountID, bucketID, body)
+	resp, err := s.client.parent.gen.UpdateProjectAccessWithResponse(ctx, s.client.accountID, projectID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -407,8 +403,8 @@ func personFromGenerated(gp generated.Person) Person {
 		CanManagePeople:   gp.CanManagePeople,
 	}
 
-	if gp.Id != 0 {
-		p.ID = gp.Id
+	if derefInt64(gp.Id) != 0 {
+		p.ID = derefInt64(gp.Id)
 	}
 
 	// Convert timestamps to strings (the SDK Person type uses strings for these)
@@ -420,9 +416,9 @@ func personFromGenerated(gp generated.Person) Person {
 	}
 
 	// Convert company
-	if gp.Company.Id != 0 || gp.Company.Name != "" {
+	if derefInt64(gp.Company.Id) != 0 || gp.Company.Name != "" {
 		p.Company = &PersonCompany{
-			ID:   gp.Company.Id,
+			ID:   derefInt64(gp.Company.Id),
 			Name: gp.Company.Name,
 		}
 	}

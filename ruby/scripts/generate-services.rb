@@ -682,15 +682,7 @@ class ServiceGenerator
   end
 
   def build_path_expression(op)
-    path = op[:path]
-    # Check if it's a bucket path
-    if path.start_with?('/buckets/#{project_id}')
-      # Use bucket_path helper - extract the part after /buckets/{project_id}
-      path_after_bucket = path.sub(%r{^/buckets/#\{project_id\}}, '')
-      "bucket_path(project_id, \"#{path_after_bucket}\")"
-    else
-      "\"#{path}\""
-    end
+    "\"#{op[:path]}\""
   end
 
   def generate_void_method_body(op, path_expr)
@@ -735,13 +727,7 @@ class ServiceGenerator
         query_parts = op[:query_params].map { |q| "#{q[:name]}=\#{URI.encode_www_form_component(#{to_snake_case(q[:name])}.to_s)}" }
         query_string = query_parts.join('&')
         # Modify path_expr to include query string
-        if path_expr.start_with?('bucket_path')
-          # For bucket_path, append query string to the path argument
-          path_expr_with_query = path_expr.sub(/\)$/, " + \"?#{query_string}\")")
-        else
-          # For string paths, append directly
-          path_expr_with_query = path_expr.sub(/"$/, "?#{query_string}\"")
-        end
+        path_expr_with_query = path_expr.sub(/"$/, "?#{query_string}\"")
         lines << "        http_#{http_method}_raw(#{path_expr_with_query}, body: data, content_type: content_type).json"
       else
         lines << "        http_#{http_method}_raw(#{path_expr}, body: data, content_type: content_type).json"

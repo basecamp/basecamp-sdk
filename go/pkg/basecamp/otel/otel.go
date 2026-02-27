@@ -149,9 +149,6 @@ func (h *Hooks) OnOperationStart(ctx context.Context, op basecamp.OperationInfo)
 		),
 	)
 
-	if op.BucketID != 0 {
-		span.SetAttributes(attribute.Int64("basecamp.bucket_id", op.BucketID))
-	}
 	if op.ResourceID != 0 {
 		span.SetAttributes(attribute.Int64("basecamp.resource_id", op.ResourceID))
 	}

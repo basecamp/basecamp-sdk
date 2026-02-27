@@ -227,12 +227,11 @@ func NewCardTablesService(client *AccountClient) *CardTablesService {
 }
 
 // Get returns a card table by ID.
-// bucketID is the project ID, cardTableID is the card table ID.
-func (s *CardTablesService) Get(ctx context.Context, bucketID, cardTableID int64) (result *CardTable, err error) {
+func (s *CardTablesService) Get(ctx context.Context, cardTableID int64) (result *CardTable, err error) {
 	op := OperationInfo{
 		Service: "CardTables", Operation: "Get",
 		ResourceType: "card_table", IsMutation: false,
-		BucketID: bucketID, ResourceID: cardTableID,
+		ResourceID: cardTableID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -243,7 +242,7 @@ func (s *CardTablesService) Get(ctx context.Context, bucketID, cardTableID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetCardTableWithResponse(ctx, s.client.accountID, bucketID, cardTableID)
+	resp, err := s.client.parent.gen.GetCardTableWithResponse(ctx, s.client.accountID, cardTableID)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +269,6 @@ func NewCardsService(client *AccountClient) *CardsService {
 }
 
 // List returns all cards in a column.
-// bucketID is the project ID, columnID is the column ID.
 //
 // By default, returns all cards (no limit). Use Limit to cap results.
 //
@@ -280,11 +278,11 @@ func NewCardsService(client *AccountClient) *CardsService {
 //
 // The returned CardListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts *CardListOptions) (result *CardListResult, err error) {
+func (s *CardsService) List(ctx context.Context, columnID int64, opts *CardListOptions) (result *CardListResult, err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "List",
 		ResourceType: "card", IsMutation: false,
-		BucketID: bucketID, ResourceID: columnID,
+		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -296,7 +294,7 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts 
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListCardsWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.ListCardsWithResponse(ctx, s.client.accountID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -350,12 +348,11 @@ func (s *CardsService) List(ctx context.Context, bucketID, columnID int64, opts 
 }
 
 // Get returns a card by ID.
-// bucketID is the project ID, cardID is the card ID.
-func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (result *Card, err error) {
+func (s *CardsService) Get(ctx context.Context, cardID int64) (result *Card, err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "Get",
 		ResourceType: "card", IsMutation: false,
-		BucketID: bucketID, ResourceID: cardID,
+		ResourceID: cardID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -366,7 +363,7 @@ func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (result 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetCardWithResponse(ctx, s.client.accountID, bucketID, cardID)
+	resp, err := s.client.parent.gen.GetCardWithResponse(ctx, s.client.accountID, cardID)
 	if err != nil {
 		return nil, err
 	}
@@ -383,13 +380,12 @@ func (s *CardsService) Get(ctx context.Context, bucketID, cardID int64) (result 
 }
 
 // Create creates a new card in a column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns the created card.
-func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req *CreateCardRequest) (result *Card, err error) {
+func (s *CardsService) Create(ctx context.Context, columnID int64, req *CreateCardRequest) (result *Card, err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "Create",
 		ResourceType: "card", IsMutation: true,
-		BucketID: bucketID, ResourceID: columnID,
+		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -423,7 +419,7 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 		body.Notify = &req.Notify
 	}
 
-	resp, err := s.client.parent.gen.CreateCardWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
+	resp, err := s.client.parent.gen.CreateCardWithResponse(ctx, s.client.accountID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -441,13 +437,12 @@ func (s *CardsService) Create(ctx context.Context, bucketID, columnID int64, req
 }
 
 // Update updates an existing card.
-// bucketID is the project ID, cardID is the card ID.
 // Returns the updated card.
-func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *UpdateCardRequest) (result *Card, err error) {
+func (s *CardsService) Update(ctx context.Context, cardID int64, req *UpdateCardRequest) (result *Card, err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "Update",
 		ResourceType: "card", IsMutation: true,
-		BucketID: bucketID, ResourceID: cardID,
+		ResourceID: cardID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -482,7 +477,7 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 		body.AssigneeIds = req.AssigneeIDs
 	}
 
-	resp, err := s.client.parent.gen.UpdateCardWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.UpdateCardWithResponse(ctx, s.client.accountID, cardID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -499,12 +494,11 @@ func (s *CardsService) Update(ctx context.Context, bucketID, cardID int64, req *
 }
 
 // Move moves a card to a different column.
-// bucketID is the project ID, cardID is the card ID, columnID is the destination column ID.
-func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int64) (err error) {
+func (s *CardsService) Move(ctx context.Context, cardID, columnID int64) (err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "Move",
 		ResourceType: "card", IsMutation: true,
-		BucketID: bucketID, ResourceID: cardID,
+		ResourceID: cardID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -519,7 +513,7 @@ func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int6
 		ColumnId: columnID,
 	}
 
-	resp, err := s.client.parent.gen.MoveCardWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.MoveCardWithResponse(ctx, s.client.accountID, cardID, body)
 	if err != nil {
 		return err
 	}
@@ -527,13 +521,12 @@ func (s *CardsService) Move(ctx context.Context, bucketID, cardID, columnID int6
 }
 
 // Trash moves a card to the trash.
-// bucketID is the project ID, cardID is the card ID.
 // Trashed cards can be recovered from the trash.
-func (s *CardsService) Trash(ctx context.Context, bucketID, cardID int64) (err error) {
+func (s *CardsService) Trash(ctx context.Context, cardID int64) (err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "Trash",
 		ResourceType: "card", IsMutation: true,
-		BucketID: bucketID, ResourceID: cardID,
+		ResourceID: cardID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -544,7 +537,7 @@ func (s *CardsService) Trash(ctx context.Context, bucketID, cardID int64) (err e
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, cardID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, cardID)
 	if err != nil {
 		return err
 	}
@@ -562,12 +555,11 @@ func NewCardColumnsService(client *AccountClient) *CardColumnsService {
 }
 
 // Get returns a column by ID.
-// bucketID is the project ID, columnID is the column ID.
-func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) (result *CardColumn, err error) {
+func (s *CardColumnsService) Get(ctx context.Context, columnID int64) (result *CardColumn, err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "Get",
 		ResourceType: "card_column", IsMutation: false,
-		BucketID: bucketID, ResourceID: columnID,
+		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -578,7 +570,7 @@ func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetCardColumnWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.GetCardColumnWithResponse(ctx, s.client.accountID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -595,13 +587,12 @@ func (s *CardColumnsService) Get(ctx context.Context, bucketID, columnID int64) 
 }
 
 // Create creates a new column in a card table.
-// bucketID is the project ID, cardTableID is the card table ID.
 // Returns the created column.
-func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID int64, req *CreateColumnRequest) (result *CardColumn, err error) {
+func (s *CardColumnsService) Create(ctx context.Context, cardTableID int64, req *CreateColumnRequest) (result *CardColumn, err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "Create",
 		ResourceType: "card_column", IsMutation: true,
-		BucketID: bucketID, ResourceID: cardTableID,
+		ResourceID: cardTableID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -622,7 +613,7 @@ func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID i
 		Description: req.Description,
 	}
 
-	resp, err := s.client.parent.gen.CreateCardColumnWithResponse(ctx, s.client.accountID, bucketID, cardTableID, body)
+	resp, err := s.client.parent.gen.CreateCardColumnWithResponse(ctx, s.client.accountID, cardTableID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -640,13 +631,12 @@ func (s *CardColumnsService) Create(ctx context.Context, bucketID, cardTableID i
 }
 
 // Update updates an existing column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns the updated column.
-func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int64, req *UpdateColumnRequest) (result *CardColumn, err error) {
+func (s *CardColumnsService) Update(ctx context.Context, columnID int64, req *UpdateColumnRequest) (result *CardColumn, err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "Update",
 		ResourceType: "card_column", IsMutation: true,
-		BucketID: bucketID, ResourceID: columnID,
+		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -667,7 +657,7 @@ func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int6
 		Description: req.Description,
 	}
 
-	resp, err := s.client.parent.gen.UpdateCardColumnWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
+	resp, err := s.client.parent.gen.UpdateCardColumnWithResponse(ctx, s.client.accountID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -684,12 +674,11 @@ func (s *CardColumnsService) Update(ctx context.Context, bucketID, columnID int6
 }
 
 // Move moves a column within a card table.
-// bucketID is the project ID, cardTableID is the card table ID.
-func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int64, req *MoveColumnRequest) (err error) {
+func (s *CardColumnsService) Move(ctx context.Context, cardTableID int64, req *MoveColumnRequest) (err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "Move",
 		ResourceType: "card_column", IsMutation: true,
-		BucketID: bucketID, ResourceID: cardTableID,
+		ResourceID: cardTableID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -711,7 +700,7 @@ func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int
 		Position: int32(req.Position), // #nosec G115 -- position is validated and bounded by API
 	}
 
-	resp, err := s.client.parent.gen.MoveCardColumnWithResponse(ctx, s.client.accountID, bucketID, cardTableID, body)
+	resp, err := s.client.parent.gen.MoveCardColumnWithResponse(ctx, s.client.accountID, cardTableID, body)
 	if err != nil {
 		return err
 	}
@@ -719,14 +708,13 @@ func (s *CardColumnsService) Move(ctx context.Context, bucketID, cardTableID int
 }
 
 // SetColor sets the color of a column.
-// bucketID is the project ID, columnID is the column ID.
 // Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown.
 // Returns the updated column.
-func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID int64, color string) (result *CardColumn, err error) {
+func (s *CardColumnsService) SetColor(ctx context.Context, columnID int64, color string) (result *CardColumn, err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "SetColor",
 		ResourceType: "card_column", IsMutation: true,
-		BucketID: bucketID, ResourceID: columnID,
+		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -746,7 +734,7 @@ func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID in
 		Color: color,
 	}
 
-	resp, err := s.client.parent.gen.SetCardColumnColorWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
+	resp, err := s.client.parent.gen.SetCardColumnColorWithResponse(ctx, s.client.accountID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -763,13 +751,12 @@ func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID in
 }
 
 // EnableOnHold adds an on-hold section to a column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns the updated column.
-func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnID int64) (result *CardColumn, err error) {
+func (s *CardColumnsService) EnableOnHold(ctx context.Context, columnID int64) (result *CardColumn, err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "EnableOnHold",
 		ResourceType: "card_column", IsMutation: true,
-		BucketID: bucketID, ResourceID: columnID,
+		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -780,7 +767,7 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnI
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.EnableCardColumnOnHoldWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.EnableCardColumnOnHoldWithResponse(ctx, s.client.accountID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -797,13 +784,12 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnI
 }
 
 // DisableOnHold removes the on-hold section from a column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns the updated column.
-func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, columnID int64) (result *CardColumn, err error) {
+func (s *CardColumnsService) DisableOnHold(ctx context.Context, columnID int64) (result *CardColumn, err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "DisableOnHold",
 		ResourceType: "card_column", IsMutation: true,
-		BucketID: bucketID, ResourceID: columnID,
+		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -814,7 +800,7 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, column
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DisableCardColumnOnHoldWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.DisableCardColumnOnHoldWithResponse(ctx, s.client.accountID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -831,13 +817,12 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, column
 }
 
 // Watch subscribes the current user to the column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns the updated subscription information.
-func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64) (result *Subscription, err error) {
+func (s *CardColumnsService) Watch(ctx context.Context, columnID int64) (result *Subscription, err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "Watch",
 		ResourceType: "card_column", IsMutation: true,
-		BucketID: bucketID, ResourceID: columnID,
+		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -848,7 +833,7 @@ func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.SubscribeWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.SubscribeWithResponse(ctx, s.client.accountID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -865,13 +850,12 @@ func (s *CardColumnsService) Watch(ctx context.Context, bucketID, columnID int64
 }
 
 // Unwatch unsubscribes the current user from the column.
-// bucketID is the project ID, columnID is the column ID.
 // Returns nil on success (204 No Content).
-func (s *CardColumnsService) Unwatch(ctx context.Context, bucketID, columnID int64) (err error) {
+func (s *CardColumnsService) Unwatch(ctx context.Context, columnID int64) (err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "Unwatch",
 		ResourceType: "card_column", IsMutation: true,
-		BucketID: bucketID, ResourceID: columnID,
+		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -882,7 +866,7 @@ func (s *CardColumnsService) Unwatch(ctx context.Context, bucketID, columnID int
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.UnsubscribeWithResponse(ctx, s.client.accountID, bucketID, columnID)
+	resp, err := s.client.parent.gen.UnsubscribeWithResponse(ctx, s.client.accountID, columnID)
 	if err != nil {
 		return err
 	}
@@ -900,13 +884,12 @@ func NewCardStepsService(client *AccountClient) *CardStepsService {
 }
 
 // Create creates a new step on a card.
-// bucketID is the project ID, cardID is the card ID.
 // Returns the created step.
-func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, req *CreateStepRequest) (result *CardStep, err error) {
+func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *CreateStepRequest) (result *CardStep, err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Create",
 		ResourceType: "card_step", IsMutation: true,
-		BucketID: bucketID, ResourceID: cardID,
+		ResourceID: cardID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -935,7 +918,7 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 		body.DueOn = d
 	}
 
-	resp, err := s.client.parent.gen.CreateCardStepWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.CreateCardStepWithResponse(ctx, s.client.accountID, cardID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -953,13 +936,12 @@ func (s *CardStepsService) Create(ctx context.Context, bucketID, cardID int64, r
 }
 
 // Update updates an existing step.
-// bucketID is the project ID, stepID is the step ID.
 // Returns the updated step.
-func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, req *UpdateStepRequest) (result *CardStep, err error) {
+func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *UpdateStepRequest) (result *CardStep, err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Update",
 		ResourceType: "card_step", IsMutation: true,
-		BucketID: bucketID, ResourceID: stepID,
+		ResourceID: stepID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -988,7 +970,7 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 		body.DueOn = d
 	}
 
-	resp, err := s.client.parent.gen.UpdateCardStepWithResponse(ctx, s.client.accountID, bucketID, stepID, body)
+	resp, err := s.client.parent.gen.UpdateCardStepWithResponse(ctx, s.client.accountID, stepID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1005,13 +987,12 @@ func (s *CardStepsService) Update(ctx context.Context, bucketID, stepID int64, r
 }
 
 // Complete marks a step as completed.
-// bucketID is the project ID, stepID is the step ID.
 // Returns the updated step.
-func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64) (result *CardStep, err error) {
+func (s *CardStepsService) Complete(ctx context.Context, stepID int64) (result *CardStep, err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Complete",
 		ResourceType: "card_step", IsMutation: true,
-		BucketID: bucketID, ResourceID: stepID,
+		ResourceID: stepID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -1023,7 +1004,7 @@ func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	body := generated.SetCardStepCompletionJSONRequestBody{Completion: "on"}
-	resp, err := s.client.parent.gen.SetCardStepCompletionWithResponse(ctx, s.client.accountID, bucketID, stepID, body)
+	resp, err := s.client.parent.gen.SetCardStepCompletionWithResponse(ctx, s.client.accountID, stepID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1040,13 +1021,12 @@ func (s *CardStepsService) Complete(ctx context.Context, bucketID, stepID int64)
 }
 
 // Uncomplete marks a step as incomplete.
-// bucketID is the project ID, stepID is the step ID.
 // Returns the updated step.
-func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int64) (result *CardStep, err error) {
+func (s *CardStepsService) Uncomplete(ctx context.Context, stepID int64) (result *CardStep, err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Uncomplete",
 		ResourceType: "card_step", IsMutation: true,
-		BucketID: bucketID, ResourceID: stepID,
+		ResourceID: stepID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -1058,7 +1038,7 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int6
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	body := generated.SetCardStepCompletionJSONRequestBody{Completion: ""}
-	resp, err := s.client.parent.gen.SetCardStepCompletionWithResponse(ctx, s.client.accountID, bucketID, stepID, body)
+	resp, err := s.client.parent.gen.SetCardStepCompletionWithResponse(ctx, s.client.accountID, stepID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1075,13 +1055,12 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, bucketID, stepID int6
 }
 
 // Reposition changes the position of a step within a card.
-// bucketID is the project ID, cardID is the card ID, stepID is the step ID.
 // position is 0-indexed.
-func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, stepID int64, position int) (err error) {
+func (s *CardStepsService) Reposition(ctx context.Context, cardID, stepID int64, position int) (err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Reposition",
 		ResourceType: "card_step", IsMutation: true,
-		BucketID: bucketID, ResourceID: stepID,
+		ResourceID: stepID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -1102,7 +1081,7 @@ func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, ste
 		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
 	}
 
-	resp, err := s.client.parent.gen.RepositionCardStepWithResponse(ctx, s.client.accountID, bucketID, cardID, body)
+	resp, err := s.client.parent.gen.RepositionCardStepWithResponse(ctx, s.client.accountID, cardID, body)
 	if err != nil {
 		return err
 	}
@@ -1110,12 +1089,11 @@ func (s *CardStepsService) Reposition(ctx context.Context, bucketID, cardID, ste
 }
 
 // Delete deletes a step (moves it to trash).
-// bucketID is the project ID, stepID is the step ID.
-func (s *CardStepsService) Delete(ctx context.Context, bucketID, stepID int64) (err error) {
+func (s *CardStepsService) Delete(ctx context.Context, stepID int64) (err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Delete",
 		ResourceType: "card_step", IsMutation: true,
-		BucketID: bucketID, ResourceID: stepID,
+		ResourceID: stepID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -1126,7 +1104,7 @@ func (s *CardStepsService) Delete(ctx context.Context, bucketID, stepID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, bucketID, stepID)
+	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, stepID)
 	if err != nil {
 		return err
 	}
@@ -1149,21 +1127,21 @@ func cardTableFromGenerated(gc generated.CardTable) CardTable {
 		UpdatedAt:        gc.UpdatedAt,
 	}
 
-	if gc.Id != 0 {
-		ct.ID = gc.Id
+	if derefInt64(gc.Id) != 0 {
+		ct.ID = derefInt64(gc.Id)
 	}
 
-	if gc.Bucket.Id != 0 || gc.Bucket.Name != "" {
+	if derefInt64(gc.Bucket.Id) != 0 || gc.Bucket.Name != "" {
 		ct.Bucket = &Bucket{
-			ID:   gc.Bucket.Id,
+			ID:   derefInt64(gc.Bucket.Id),
 			Name: gc.Bucket.Name,
 			Type: gc.Bucket.Type,
 		}
 	}
 
-	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
+	if derefInt64(gc.Creator.Id) != 0 || gc.Creator.Name != "" {
 		ct.Creator = &Person{
-			ID:           gc.Creator.Id,
+			ID:           derefInt64(gc.Creator.Id),
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -1210,13 +1188,13 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 		UpdatedAt:        gc.UpdatedAt,
 	}
 
-	if gc.Id != 0 {
-		cc.ID = gc.Id
+	if derefInt64(gc.Id) != 0 {
+		cc.ID = derefInt64(gc.Id)
 	}
 
-	if gc.Parent.Id != 0 || gc.Parent.Title != "" {
+	if derefInt64(gc.Parent.Id) != 0 || gc.Parent.Title != "" {
 		cc.Parent = &Parent{
-			ID:     gc.Parent.Id,
+			ID:     derefInt64(gc.Parent.Id),
 			Title:  gc.Parent.Title,
 			Type:   gc.Parent.Type,
 			URL:    gc.Parent.Url,
@@ -1224,17 +1202,17 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 		}
 	}
 
-	if gc.Bucket.Id != 0 || gc.Bucket.Name != "" {
+	if derefInt64(gc.Bucket.Id) != 0 || gc.Bucket.Name != "" {
 		cc.Bucket = &Bucket{
-			ID:   gc.Bucket.Id,
+			ID:   derefInt64(gc.Bucket.Id),
 			Name: gc.Bucket.Name,
 			Type: gc.Bucket.Type,
 		}
 	}
 
-	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
+	if derefInt64(gc.Creator.Id) != 0 || gc.Creator.Name != "" {
 		cc.Creator = &Person{
-			ID:           gc.Creator.Id,
+			ID:           derefInt64(gc.Creator.Id),
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -1277,8 +1255,8 @@ func cardFromGenerated(gc generated.Card) Card {
 		UpdatedAt:        gc.UpdatedAt,
 	}
 
-	if gc.Id != 0 {
-		c.ID = gc.Id
+	if derefInt64(gc.Id) != 0 {
+		c.ID = derefInt64(gc.Id)
 	}
 
 	// Handle due_on - it's types.Date in generated, string in SDK
@@ -1291,9 +1269,9 @@ func cardFromGenerated(gc generated.Card) Card {
 		c.CompletedAt = &gc.CompletedAt
 	}
 
-	if gc.Parent.Id != 0 || gc.Parent.Title != "" {
+	if derefInt64(gc.Parent.Id) != 0 || gc.Parent.Title != "" {
 		c.Parent = &Parent{
-			ID:     gc.Parent.Id,
+			ID:     derefInt64(gc.Parent.Id),
 			Title:  gc.Parent.Title,
 			Type:   gc.Parent.Type,
 			URL:    gc.Parent.Url,
@@ -1301,17 +1279,17 @@ func cardFromGenerated(gc generated.Card) Card {
 		}
 	}
 
-	if gc.Bucket.Id != 0 || gc.Bucket.Name != "" {
+	if derefInt64(gc.Bucket.Id) != 0 || gc.Bucket.Name != "" {
 		c.Bucket = &Bucket{
-			ID:   gc.Bucket.Id,
+			ID:   derefInt64(gc.Bucket.Id),
 			Name: gc.Bucket.Name,
 			Type: gc.Bucket.Type,
 		}
 	}
 
-	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
+	if derefInt64(gc.Creator.Id) != 0 || gc.Creator.Name != "" {
 		c.Creator = &Person{
-			ID:           gc.Creator.Id,
+			ID:           derefInt64(gc.Creator.Id),
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -1320,9 +1298,9 @@ func cardFromGenerated(gc generated.Card) Card {
 		}
 	}
 
-	if gc.Completer.Id != 0 || gc.Completer.Name != "" {
+	if derefInt64(gc.Completer.Id) != 0 || gc.Completer.Name != "" {
 		c.Completer = &Person{
-			ID:           gc.Completer.Id,
+			ID:           derefInt64(gc.Completer.Id),
 			Name:         gc.Completer.Name,
 			EmailAddress: gc.Completer.EmailAddress,
 			AvatarURL:    gc.Completer.AvatarUrl,
@@ -1372,8 +1350,8 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		UpdatedAt:        gs.UpdatedAt,
 	}
 
-	if gs.Id != 0 {
-		s.ID = gs.Id
+	if derefInt64(gs.Id) != 0 {
+		s.ID = derefInt64(gs.Id)
 	}
 
 	// Handle due_on - it's types.Date in generated, string in SDK
@@ -1386,9 +1364,9 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		s.CompletedAt = &gs.CompletedAt
 	}
 
-	if gs.Parent.Id != 0 || gs.Parent.Title != "" {
+	if derefInt64(gs.Parent.Id) != 0 || gs.Parent.Title != "" {
 		s.Parent = &Parent{
-			ID:     gs.Parent.Id,
+			ID:     derefInt64(gs.Parent.Id),
 			Title:  gs.Parent.Title,
 			Type:   gs.Parent.Type,
 			URL:    gs.Parent.Url,
@@ -1396,17 +1374,17 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		}
 	}
 
-	if gs.Bucket.Id != 0 || gs.Bucket.Name != "" {
+	if derefInt64(gs.Bucket.Id) != 0 || gs.Bucket.Name != "" {
 		s.Bucket = &Bucket{
-			ID:   gs.Bucket.Id,
+			ID:   derefInt64(gs.Bucket.Id),
 			Name: gs.Bucket.Name,
 			Type: gs.Bucket.Type,
 		}
 	}
 
-	if gs.Creator.Id != 0 || gs.Creator.Name != "" {
+	if derefInt64(gs.Creator.Id) != 0 || gs.Creator.Name != "" {
 		s.Creator = &Person{
-			ID:           gs.Creator.Id,
+			ID:           derefInt64(gs.Creator.Id),
 			Name:         gs.Creator.Name,
 			EmailAddress: gs.Creator.EmailAddress,
 			AvatarURL:    gs.Creator.AvatarUrl,
@@ -1415,9 +1393,9 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		}
 	}
 
-	if gs.Completer.Id != 0 || gs.Completer.Name != "" {
+	if derefInt64(gs.Completer.Id) != 0 || gs.Completer.Name != "" {
 		s.Completer = &Person{
-			ID:           gs.Completer.Id,
+			ID:           derefInt64(gs.Completer.Id),
 			Name:         gs.Completer.Name,
 			EmailAddress: gs.Completer.EmailAddress,
 			AvatarURL:    gs.Completer.AvatarUrl,

@@ -578,7 +578,7 @@ structure ClientSide {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/todolists/{todolistId}/todos.json")
+@http(method: "GET", uri: "/{accountId}/todolists/{todolistId}/todos.json")
 operation ListTodos {
   input: ListTodosInput
   output: ListTodosOutput
@@ -589,10 +589,6 @@ structure ListTodosInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -613,7 +609,7 @@ structure ListTodosOutput {
 /// Get a single todo by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}")
+@http(method: "GET", uri: "/{accountId}/todos/{todoId}")
 operation GetTodo {
   input: GetTodoInput
   output: GetTodoOutput
@@ -627,10 +623,6 @@ structure GetTodoInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   todoId: TodoId
 }
 
@@ -641,7 +633,7 @@ structure GetTodoOutput {
 
 /// Create a new todo in a todolist
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todolists/{todolistId}/todos.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/todolists/{todolistId}/todos.json", code: 201)
 operation CreateTodo {
   input: CreateTodoInput
   output: CreateTodoOutput
@@ -652,10 +644,6 @@ structure CreateTodoInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -681,7 +669,7 @@ structure CreateTodoOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}")
+@http(method: "PUT", uri: "/{accountId}/todos/{todoId}")
 operation UpdateTodo {
   input: UpdateTodoInput
   output: UpdateTodoOutput
@@ -692,10 +680,6 @@ structure UpdateTodoInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -719,7 +703,7 @@ structure UpdateTodoOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/todos/{todoId}", code: 204)
 operation TrashTodo {
   input: TrashTodoInput
   output: TrashTodoOutput
@@ -733,10 +717,6 @@ structure TrashTodoInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   todoId: TodoId
 }
 
@@ -745,7 +725,7 @@ structure TrashTodoOutput {}
 /// Mark a todo as complete
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}/completion.json", code: 204)
+@http(method: "POST", uri: "/{accountId}/todos/{todoId}/completion.json", code: 204)
 operation CompleteTodo {
   input: CompleteTodoInput
   output: CompleteTodoOutput
@@ -759,10 +739,6 @@ structure CompleteTodoInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   todoId: TodoId
 }
 
@@ -772,7 +748,7 @@ structure CompleteTodoOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}/completion.json", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/todos/{todoId}/completion.json", code: 204)
 operation UncompleteTodo {
   input: UncompleteTodoInput
   output: UncompleteTodoOutput
@@ -786,10 +762,6 @@ structure UncompleteTodoInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   todoId: TodoId
 }
 
@@ -799,7 +771,7 @@ structure UncompleteTodoOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/todos/{todoId}/position.json")
+@http(method: "PUT", uri: "/{accountId}/todos/{todoId}/position.json")
 operation RepositionTodo {
   input: RepositionTodoInput
   output: RepositionTodoOutput
@@ -810,10 +782,6 @@ structure RepositionTodoInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -833,7 +801,7 @@ structure RepositionTodoOutput {}
 /// Get a todoset (container for todolists in a project)
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/todosets/{todosetId}")
+@http(method: "GET", uri: "/{accountId}/todosets/{todosetId}")
 operation GetTodoset {
   input: GetTodosetInput
   output: GetTodosetOutput
@@ -844,10 +812,6 @@ structure GetTodosetInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -868,7 +832,7 @@ structure GetTodosetOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/todosets/{todosetId}/todolists.json")
+@http(method: "GET", uri: "/{accountId}/todosets/{todosetId}/todolists.json")
 operation ListTodolists {
   input: ListTodolistsInput
   output: ListTodolistsOutput
@@ -879,10 +843,6 @@ structure ListTodolistsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -901,7 +861,7 @@ structure ListTodolistsOutput {
 /// The endpoint is polymorphic - the same URI returns either a Todolist or TodolistGroup
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/todolists/{id}")
+@http(method: "GET", uri: "/{accountId}/todolists/{id}")
 operation GetTodolistOrGroup {
   input: GetTodolistOrGroupInput
   output: GetTodolistOrGroupOutput
@@ -912,10 +872,6 @@ structure GetTodolistOrGroupInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -935,7 +891,7 @@ union TodolistOrGroup {
 
 /// Create a new todolist in a todoset
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todosets/{todosetId}/todolists.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/todosets/{todosetId}/todolists.json", code: 201)
 operation CreateTodolist {
   input: CreateTodolistInput
   output: CreateTodolistOutput
@@ -946,10 +902,6 @@ structure CreateTodolistInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -971,7 +923,7 @@ structure CreateTodolistOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/todolists/{id}")
+@http(method: "PUT", uri: "/{accountId}/todolists/{id}")
 operation UpdateTodolistOrGroup {
   input: UpdateTodolistOrGroupInput
   output: UpdateTodolistOrGroupOutput
@@ -982,10 +934,6 @@ structure UpdateTodolistOrGroupInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1015,7 +963,7 @@ structure UpdateTodolistOrGroupOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/todolists/{todolistId}/groups.json")
+@http(method: "GET", uri: "/{accountId}/todolists/{todolistId}/groups.json")
 operation ListTodolistGroups {
   input: ListTodolistGroupsInput
   output: ListTodolistGroupsOutput
@@ -1029,10 +977,6 @@ structure ListTodolistGroupsInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   todolistId: TodolistId
 }
 
@@ -1043,7 +987,7 @@ structure ListTodolistGroupsOutput {
 
 /// Create a new group in a todolist
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/todolists/{todolistId}/groups.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/todolists/{todolistId}/groups.json", code: 201)
 operation CreateTodolistGroup {
   input: CreateTodolistGroupInput
   output: CreateTodolistGroupOutput
@@ -1054,10 +998,6 @@ structure CreateTodolistGroupInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1076,7 +1016,7 @@ structure CreateTodolistGroupOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/todolists/{groupId}/position.json")
+@http(method: "PUT", uri: "/{accountId}/todolists/{groupId}/position.json")
 operation RepositionTodolistGroup {
   input: RepositionTodolistGroupInput
   output: RepositionTodolistGroupOutput
@@ -1087,10 +1027,6 @@ structure RepositionTodolistGroupInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1399,7 +1335,7 @@ structure TodolistGroup {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/comments.json")
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}/comments.json")
 operation ListComments {
   input: ListCommentsInput
   output: ListCommentsOutput
@@ -1410,10 +1346,6 @@ structure ListCommentsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1428,7 +1360,7 @@ structure ListCommentsOutput {
 /// Get a single comment by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/comments/{commentId}")
+@http(method: "GET", uri: "/{accountId}/comments/{commentId}")
 operation GetComment {
   input: GetCommentInput
   output: GetCommentOutput
@@ -1442,10 +1374,6 @@ structure GetCommentInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   commentId: CommentId
 }
 
@@ -1456,7 +1384,7 @@ structure GetCommentOutput {
 
 /// Create a new comment on a recording
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/comments.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/comments.json", code: 201)
 operation CreateComment {
   input: CreateCommentInput
   output: CreateCommentOutput
@@ -1467,10 +1395,6 @@ structure CreateCommentInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1489,7 +1413,7 @@ structure CreateCommentOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/comments/{commentId}")
+@http(method: "PUT", uri: "/{accountId}/comments/{commentId}")
 operation UpdateComment {
   input: UpdateCommentInput
   output: UpdateCommentOutput
@@ -1500,10 +1424,6 @@ structure UpdateCommentInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1529,7 +1449,7 @@ structure UpdateCommentOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/message_boards/{boardId}/messages.json")
+@http(method: "GET", uri: "/{accountId}/message_boards/{boardId}/messages.json")
 operation ListMessages {
   input: ListMessagesInput
   output: ListMessagesOutput
@@ -1540,10 +1460,6 @@ structure ListMessagesInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1558,7 +1474,7 @@ structure ListMessagesOutput {
 /// Get a single message by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/messages/{messageId}")
+@http(method: "GET", uri: "/{accountId}/messages/{messageId}")
 operation GetMessage {
   input: GetMessageInput
   output: GetMessageOutput
@@ -1572,10 +1488,6 @@ structure GetMessageInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   messageId: MessageId
 }
 
@@ -1586,7 +1498,7 @@ structure GetMessageOutput {
 
 /// Create a new message on a message board
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/message_boards/{boardId}/messages.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/message_boards/{boardId}/messages.json", code: 201)
 operation CreateMessage {
   input: CreateMessageInput
   output: CreateMessageOutput
@@ -1597,10 +1509,6 @@ structure CreateMessageInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1626,7 +1534,7 @@ structure CreateMessageOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/messages/{messageId}")
+@http(method: "PUT", uri: "/{accountId}/messages/{messageId}")
 operation UpdateMessage {
   input: UpdateMessageInput
   output: UpdateMessageOutput
@@ -1637,10 +1545,6 @@ structure UpdateMessageInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1662,7 +1566,7 @@ structure UpdateMessageOutput {
 
 /// Pin a message to the top of the message board
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{messageId}/pin.json", code: 204)
+@http(method: "POST", uri: "/{accountId}/recordings/{messageId}/pin.json", code: 204)
 operation PinMessage {
   input: PinMessageInput
   output: PinMessageOutput
@@ -1676,10 +1580,6 @@ structure PinMessageInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   messageId: MessageId
 }
 
@@ -1689,7 +1589,7 @@ structure PinMessageOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/recordings/{messageId}/pin.json", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/recordings/{messageId}/pin.json", code: 204)
 operation UnpinMessage {
   input: UnpinMessageInput
   output: UnpinMessageOutput
@@ -1700,10 +1600,6 @@ structure UnpinMessageInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1719,7 +1615,7 @@ structure UnpinMessageOutput {}
 /// Get a message board
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/message_boards/{boardId}")
+@http(method: "GET", uri: "/{accountId}/message_boards/{boardId}")
 operation GetMessageBoard {
   input: GetMessageBoardInput
   output: GetMessageBoardOutput
@@ -1730,10 +1626,6 @@ structure GetMessageBoardInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1754,7 +1646,7 @@ structure GetMessageBoardOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/categories.json")
+@http(method: "GET", uri: "/{accountId}/categories.json")
 operation ListMessageTypes {
   input: ListMessageTypesInput
   output: ListMessageTypesOutput
@@ -1766,9 +1658,6 @@ structure ListMessageTypesInput {
   @httpLabel
   accountId: AccountId
 
-  @required
-  @httpLabel
-  projectId: ProjectId
 }
 
 structure ListMessageTypesOutput {
@@ -1779,7 +1668,7 @@ structure ListMessageTypesOutput {
 /// Get a single message type by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/categories/{typeId}")
+@http(method: "GET", uri: "/{accountId}/categories/{typeId}")
 operation GetMessageType {
   input: GetMessageTypeInput
   output: GetMessageTypeOutput
@@ -1793,10 +1682,6 @@ structure GetMessageTypeInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   typeId: MessageTypeId
 }
 
@@ -1807,7 +1692,7 @@ structure GetMessageTypeOutput {
 
 /// Create a new message type in a project
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/categories.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/categories.json", code: 201)
 operation CreateMessageType {
   input: CreateMessageTypeInput
   output: CreateMessageTypeOutput
@@ -1818,10 +1703,6 @@ structure CreateMessageTypeInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   name: MessageTypeName
@@ -1839,7 +1720,7 @@ structure CreateMessageTypeOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/categories/{typeId}")
+@http(method: "PUT", uri: "/{accountId}/categories/{typeId}")
 operation UpdateMessageType {
   input: UpdateMessageTypeInput
   output: UpdateMessageTypeOutput
@@ -1850,10 +1731,6 @@ structure UpdateMessageTypeInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1872,7 +1749,7 @@ structure UpdateMessageTypeOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/categories/{typeId}", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/categories/{typeId}", code: 204)
 operation DeleteMessageType {
   input: DeleteMessageTypeInput
   output: DeleteMessageTypeOutput
@@ -1883,10 +1760,6 @@ structure DeleteMessageTypeInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1904,7 +1777,7 @@ structure DeleteMessageTypeOutput {}
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/vaults.json")
+@http(method: "GET", uri: "/{accountId}/vaults/{vaultId}/vaults.json")
 operation ListVaults {
   input: ListVaultsInput
   output: ListVaultsOutput
@@ -1915,10 +1788,6 @@ structure ListVaultsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1933,7 +1802,7 @@ structure ListVaultsOutput {
 /// Get a single vault by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}")
+@http(method: "GET", uri: "/{accountId}/vaults/{vaultId}")
 operation GetVault {
   input: GetVaultInput
   output: GetVaultOutput
@@ -1947,10 +1816,6 @@ structure GetVaultInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   vaultId: VaultId
 }
 
@@ -1961,7 +1826,7 @@ structure GetVaultOutput {
 
 /// Create a new vault (subfolder) in a vault
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/vaults.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/vaults/{vaultId}/vaults.json", code: 201)
 operation CreateVault {
   input: CreateVaultInput
   output: CreateVaultOutput
@@ -1972,10 +1837,6 @@ structure CreateVaultInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -1994,7 +1855,7 @@ structure CreateVaultOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}")
+@http(method: "PUT", uri: "/{accountId}/vaults/{vaultId}")
 operation UpdateVault {
   input: UpdateVaultInput
   output: UpdateVaultOutput
@@ -2005,10 +1866,6 @@ structure UpdateVaultInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2031,7 +1888,7 @@ structure UpdateVaultOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/documents.json")
+@http(method: "GET", uri: "/{accountId}/vaults/{vaultId}/documents.json")
 operation ListDocuments {
   input: ListDocumentsInput
   output: ListDocumentsOutput
@@ -2042,10 +1899,6 @@ structure ListDocumentsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2060,7 +1913,7 @@ structure ListDocumentsOutput {
 /// Get a single document by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/documents/{documentId}")
+@http(method: "GET", uri: "/{accountId}/documents/{documentId}")
 operation GetDocument {
   input: GetDocumentInput
   output: GetDocumentOutput
@@ -2074,10 +1927,6 @@ structure GetDocumentInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   documentId: DocumentId
 }
 
@@ -2088,7 +1937,7 @@ structure GetDocumentOutput {
 
 /// Create a new document in a vault
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/documents.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/vaults/{vaultId}/documents.json", code: 201)
 operation CreateDocument {
   input: CreateDocumentInput
   output: CreateDocumentOutput
@@ -2099,10 +1948,6 @@ structure CreateDocumentInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2126,7 +1971,7 @@ structure CreateDocumentOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/documents/{documentId}")
+@http(method: "PUT", uri: "/{accountId}/documents/{documentId}")
 operation UpdateDocument {
   input: UpdateDocumentInput
   output: UpdateDocumentOutput
@@ -2137,10 +1982,6 @@ structure UpdateDocumentInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2166,7 +2007,7 @@ structure UpdateDocumentOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/uploads.json")
+@http(method: "GET", uri: "/{accountId}/vaults/{vaultId}/uploads.json")
 operation ListUploads {
   input: ListUploadsInput
   output: ListUploadsOutput
@@ -2177,10 +2018,6 @@ structure ListUploadsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2195,7 +2032,7 @@ structure ListUploadsOutput {
 /// Get a single upload by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/uploads/{uploadId}")
+@http(method: "GET", uri: "/{accountId}/uploads/{uploadId}")
 operation GetUpload {
   input: GetUploadInput
   output: GetUploadOutput
@@ -2209,10 +2046,6 @@ structure GetUploadInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   uploadId: UploadId
 }
 
@@ -2223,7 +2056,7 @@ structure GetUploadOutput {
 
 /// Create a new upload in a vault
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/vaults/{vaultId}/uploads.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/vaults/{vaultId}/uploads.json", code: 201)
 operation CreateUpload {
   input: CreateUploadInput
   output: CreateUploadOutput
@@ -2234,10 +2067,6 @@ structure CreateUploadInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2259,7 +2088,7 @@ structure CreateUploadOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/uploads/{uploadId}")
+@http(method: "PUT", uri: "/{accountId}/uploads/{uploadId}")
 operation UpdateUpload {
   input: UpdateUploadInput
   output: UpdateUploadOutput
@@ -2270,10 +2099,6 @@ structure UpdateUploadInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2297,7 +2122,7 @@ structure UpdateUploadOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/uploads/{uploadId}/versions.json")
+@http(method: "GET", uri: "/{accountId}/uploads/{uploadId}/versions.json")
 operation ListUploadVersions {
   input: ListUploadVersionsInput
   output: ListUploadVersionsOutput
@@ -2308,10 +2133,6 @@ structure ListUploadVersionsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2357,7 +2178,7 @@ structure CreateAttachmentOutput {
 /// Get a schedule
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/schedules/{scheduleId}")
+@http(method: "GET", uri: "/{accountId}/schedules/{scheduleId}")
 operation GetSchedule {
   input: GetScheduleInput
   output: GetScheduleOutput
@@ -2368,10 +2189,6 @@ structure GetScheduleInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2387,7 +2204,7 @@ structure GetScheduleOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/schedules/{scheduleId}")
+@http(method: "PUT", uri: "/{accountId}/schedules/{scheduleId}")
 operation UpdateScheduleSettings {
   input: UpdateScheduleSettingsInput
   output: UpdateScheduleSettingsOutput
@@ -2398,10 +2215,6 @@ structure UpdateScheduleSettingsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2423,7 +2236,7 @@ structure UpdateScheduleSettingsOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/schedules/{scheduleId}/entries.json")
+@http(method: "GET", uri: "/{accountId}/schedules/{scheduleId}/entries.json")
 operation ListScheduleEntries {
   input: ListScheduleEntriesInput
   output: ListScheduleEntriesOutput
@@ -2434,10 +2247,6 @@ structure ListScheduleEntriesInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2457,7 +2266,7 @@ structure ListScheduleEntriesOutput {
 /// Use GetScheduleEntryOccurrence for recurring entries instead.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/schedule_entries/{entryId}")
+@http(method: "GET", uri: "/{accountId}/schedule_entries/{entryId}")
 operation GetScheduleEntry {
   input: GetScheduleEntryInput
   output: GetScheduleEntryOutput
@@ -2468,10 +2277,6 @@ structure GetScheduleEntryInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2486,7 +2291,7 @@ structure GetScheduleEntryOutput {
 /// Get a specific occurrence of a recurring schedule entry
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/schedule_entries/{entryId}/occurrences/{date}")
+@http(method: "GET", uri: "/{accountId}/schedule_entries/{entryId}/occurrences/{date}")
 operation GetScheduleEntryOccurrence {
   input: GetScheduleEntryOccurrenceInput
   output: GetScheduleEntryOccurrenceOutput
@@ -2497,10 +2302,6 @@ structure GetScheduleEntryOccurrenceInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2518,7 +2319,7 @@ structure GetScheduleEntryOccurrenceOutput {
 
 /// Create a new schedule entry
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/schedules/{scheduleId}/entries.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/schedules/{scheduleId}/entries.json", code: 201)
 operation CreateScheduleEntry {
   input: CreateScheduleEntryInput
   output: CreateScheduleEntryOutput
@@ -2529,10 +2330,6 @@ structure CreateScheduleEntryInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2562,7 +2359,7 @@ structure CreateScheduleEntryOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/schedule_entries/{entryId}")
+@http(method: "PUT", uri: "/{accountId}/schedule_entries/{entryId}")
 operation UpdateScheduleEntry {
   input: UpdateScheduleEntryInput
   output: UpdateScheduleEntryOutput
@@ -2573,10 +2370,6 @@ structure UpdateScheduleEntryInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2667,7 +2460,7 @@ structure GetProjectTimesheetOutput {
 /// Get timesheet for a specific recording
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/projects/{projectId}/recordings/{recordingId}/timesheet.json")
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}/timesheet.json")
 operation GetRecordingTimesheet {
   input: GetRecordingTimesheetInput
   output: GetRecordingTimesheetOutput
@@ -2678,10 +2471,6 @@ structure GetRecordingTimesheetInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2705,7 +2494,7 @@ structure GetRecordingTimesheetOutput {
 /// Get a single timesheet entry
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/projects/{projectId}/timesheet/entries/{entryId}")
+@http(method: "GET", uri: "/{accountId}/timesheet_entries/{entryId}")
 operation GetTimesheetEntry {
   input: GetTimesheetEntryInput
   output: GetTimesheetEntryOutput
@@ -2719,10 +2508,6 @@ structure GetTimesheetEntryInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   entryId: TimesheetEntryId
 }
 
@@ -2732,7 +2517,7 @@ structure GetTimesheetEntryOutput {
 
 /// Create a timesheet entry on a recording
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/projects/{projectId}/recordings/{recordingId}/timesheet/entries.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/timesheet/entries.json", code: 201)
 operation CreateTimesheetEntry {
   input: CreateTimesheetEntryInput
   output: CreateTimesheetEntryOutput
@@ -2743,10 +2528,6 @@ structure CreateTimesheetEntryInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -2771,7 +2552,7 @@ structure CreateTimesheetEntryOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/projects/{projectId}/timesheet/entries/{entryId}")
+@http(method: "PUT", uri: "/{accountId}/timesheet_entries/{entryId}")
 operation UpdateTimesheetEntry {
   input: UpdateTimesheetEntryInput
   output: UpdateTimesheetEntryOutput
@@ -2782,10 +2563,6 @@ structure UpdateTimesheetEntryInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3279,7 +3056,7 @@ structure ListCampfiresOutput {
 /// Get a campfire by ID
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}")
+@http(method: "GET", uri: "/{accountId}/chats/{campfireId}")
 operation GetCampfire {
   input: GetCampfireInput
   output: GetCampfireOutput
@@ -3290,10 +3067,6 @@ structure GetCampfireInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3312,7 +3085,7 @@ structure GetCampfireOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines.json")
+@http(method: "GET", uri: "/{accountId}/chats/{campfireId}/lines.json")
 operation ListCampfireLines {
   input: ListCampfireLinesInput
   output: ListCampfireLinesOutput
@@ -3323,10 +3096,6 @@ structure ListCampfireLinesInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3341,7 +3110,7 @@ structure ListCampfireLinesOutput {
 /// Get a campfire line by ID
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines/{lineId}")
+@http(method: "GET", uri: "/{accountId}/chats/{campfireId}/lines/{lineId}")
 operation GetCampfireLine {
   input: GetCampfireLineInput
   output: GetCampfireLineOutput
@@ -3352,10 +3121,6 @@ structure GetCampfireLineInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3373,7 +3138,7 @@ structure GetCampfireLineOutput {
 
 /// Create a new line (message) in a campfire
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/chats/{campfireId}/lines.json", code: 201)
 operation CreateCampfireLine {
   input: CreateCampfireLineInput
   output: CreateCampfireLineOutput
@@ -3384,10 +3149,6 @@ structure CreateCampfireLineInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3408,7 +3169,7 @@ structure CreateCampfireLineOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/lines/{lineId}", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/chats/{campfireId}/lines/{lineId}", code: 204)
 operation DeleteCampfireLine {
   input: DeleteCampfireLineInput
   output: DeleteCampfireLineOutput
@@ -3419,10 +3180,6 @@ structure DeleteCampfireLineInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3444,7 +3201,7 @@ structure DeleteCampfireLineOutput {}
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations.json")
+@http(method: "GET", uri: "/{accountId}/chats/{campfireId}/integrations.json")
 operation ListChatbots {
   input: ListChatbotsInput
   output: ListChatbotsOutput
@@ -3455,10 +3212,6 @@ structure ListChatbotsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3473,7 +3226,7 @@ structure ListChatbotsOutput {
 /// Get a chatbot by ID
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
+@http(method: "GET", uri: "/{accountId}/chats/{campfireId}/integrations/{chatbotId}")
 operation GetChatbot {
   input: GetChatbotInput
   output: GetChatbotOutput
@@ -3484,10 +3237,6 @@ structure GetChatbotInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3505,7 +3254,7 @@ structure GetChatbotOutput {
 
 /// Create a new chatbot for a campfire
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/chats/{campfireId}/integrations.json", code: 201)
 operation CreateChatbot {
   input: CreateChatbotInput
   output: CreateChatbotOutput
@@ -3516,10 +3265,6 @@ structure CreateChatbotInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3540,7 +3285,7 @@ structure CreateChatbotOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}")
+@http(method: "PUT", uri: "/{accountId}/chats/{campfireId}/integrations/{chatbotId}")
 operation UpdateChatbot {
   input: UpdateChatbotInput
   output: UpdateChatbotOutput
@@ -3551,10 +3296,6 @@ structure UpdateChatbotInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3579,7 +3320,7 @@ structure UpdateChatbotOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/chats/{campfireId}/integrations/{chatbotId}", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/chats/{campfireId}/integrations/{chatbotId}", code: 204)
 operation DeleteChatbot {
   input: DeleteChatbotInput
   output: DeleteChatbotOutput
@@ -3590,10 +3331,6 @@ structure DeleteChatbotInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3611,7 +3348,7 @@ structure DeleteChatbotOutput {}
 /// Get an inbox by ID
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/inboxes/{inboxId}")
+@http(method: "GET", uri: "/{accountId}/inboxes/{inboxId}")
 operation GetInbox {
   input: GetInboxInput
   output: GetInboxOutput
@@ -3622,10 +3359,6 @@ structure GetInboxInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3646,7 +3379,7 @@ structure GetInboxOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/inboxes/{inboxId}/forwards.json")
+@http(method: "GET", uri: "/{accountId}/inboxes/{inboxId}/forwards.json")
 operation ListForwards {
   input: ListForwardsInput
   output: ListForwardsOutput
@@ -3657,10 +3390,6 @@ structure ListForwardsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3675,7 +3404,7 @@ structure ListForwardsOutput {
 /// Get a forward by ID
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}")
+@http(method: "GET", uri: "/{accountId}/inbox_forwards/{forwardId}")
 operation GetForward {
   input: GetForwardInput
   output: GetForwardOutput
@@ -3686,10 +3415,6 @@ structure GetForwardInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3708,7 +3433,7 @@ structure GetForwardOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json")
+@http(method: "GET", uri: "/{accountId}/inbox_forwards/{forwardId}/replies.json")
 operation ListForwardReplies {
   input: ListForwardRepliesInput
   output: ListForwardRepliesOutput
@@ -3719,10 +3444,6 @@ structure ListForwardRepliesInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3737,7 +3458,7 @@ structure ListForwardRepliesOutput {
 /// Get a forward reply by ID
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}/replies/{replyId}")
+@http(method: "GET", uri: "/{accountId}/inbox_forwards/{forwardId}/replies/{replyId}")
 operation GetForwardReply {
   input: GetForwardReplyInput
   output: GetForwardReplyOutput
@@ -3748,10 +3469,6 @@ structure GetForwardReplyInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -3769,7 +3486,7 @@ structure GetForwardReplyOutput {
 
 /// Create a reply to a forward
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/inbox_forwards/{forwardId}/replies.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/inbox_forwards/{forwardId}/replies.json", code: 201)
 operation CreateForwardReply {
   input: CreateForwardReplyInput
   output: CreateForwardReplyOutput
@@ -3780,10 +3497,6 @@ structure CreateForwardReplyInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4022,7 +3735,7 @@ structure ForwardReply {
 /// Get a card table by ID
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}")
+@http(method: "GET", uri: "/{accountId}/card_tables/{cardTableId}")
 operation GetCardTable {
   input: GetCardTableInput
   output: GetCardTableOutput
@@ -4033,10 +3746,6 @@ structure GetCardTableInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4057,7 +3766,7 @@ structure GetCardTableOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/cards.json")
+@http(method: "GET", uri: "/{accountId}/card_tables/lists/{columnId}/cards.json")
 operation ListCards {
   input: ListCardsInput
   output: ListCardsOutput
@@ -4068,10 +3777,6 @@ structure ListCardsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4086,7 +3791,7 @@ structure ListCardsOutput {
 /// Get a card by ID
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}")
+@http(method: "GET", uri: "/{accountId}/card_tables/cards/{cardId}")
 operation GetCard {
   input: GetCardInput
   output: GetCardOutput
@@ -4100,10 +3805,6 @@ structure GetCardInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   cardId: CardId
 }
 
@@ -4114,7 +3815,7 @@ structure GetCardOutput {
 
 /// Create a card in a column
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/cards.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/card_tables/lists/{columnId}/cards.json", code: 201)
 operation CreateCard {
   input: CreateCardInput
   output: CreateCardOutput
@@ -4125,10 +3826,6 @@ structure CreateCardInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4151,7 +3848,7 @@ structure CreateCardOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}")
+@http(method: "PUT", uri: "/{accountId}/card_tables/cards/{cardId}")
 operation UpdateCard {
   input: UpdateCardInput
   output: UpdateCardOutput
@@ -4162,10 +3859,6 @@ structure UpdateCardInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4184,7 +3877,7 @@ structure UpdateCardOutput {
 
 /// Move a card to a different column
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/moves.json", code: 204)
+@http(method: "POST", uri: "/{accountId}/card_tables/cards/{cardId}/moves.json", code: 204)
 operation MoveCard {
   input: MoveCardInput
   output: MoveCardOutput
@@ -4195,10 +3888,6 @@ structure MoveCardInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4217,7 +3906,7 @@ structure MoveCardOutput {}
 /// Get a card column by ID
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}")
+@http(method: "GET", uri: "/{accountId}/card_tables/columns/{columnId}")
 operation GetCardColumn {
   input: GetCardColumnInput
   output: GetCardColumnOutput
@@ -4231,10 +3920,6 @@ structure GetCardColumnInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   columnId: CardColumnId
 }
 
@@ -4245,7 +3930,7 @@ structure GetCardColumnOutput {
 
 /// Create a column in a card table
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}/columns.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/card_tables/{cardTableId}/columns.json", code: 201)
 operation CreateCardColumn {
   input: CreateCardColumnInput
   output: CreateCardColumnOutput
@@ -4256,10 +3941,6 @@ structure CreateCardColumnInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4280,7 +3961,7 @@ structure CreateCardColumnOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}")
+@http(method: "PUT", uri: "/{accountId}/card_tables/columns/{columnId}")
 operation UpdateCardColumn {
   input: UpdateCardColumnInput
   output: UpdateCardColumnOutput
@@ -4291,10 +3972,6 @@ structure UpdateCardColumnInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4311,7 +3988,7 @@ structure UpdateCardColumnOutput {
 
 /// Move a column within a card table
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/{cardTableId}/moves.json", code: 204)
+@http(method: "POST", uri: "/{accountId}/card_tables/{cardTableId}/moves.json", code: 204)
 operation MoveCardColumn {
   input: MoveCardColumnInput
   output: MoveCardColumnOutput
@@ -4322,10 +3999,6 @@ structure MoveCardColumnInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4346,7 +4019,7 @@ structure MoveCardColumnOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}/color.json")
+@http(method: "PUT", uri: "/{accountId}/card_tables/columns/{columnId}/color.json")
 operation SetCardColumnColor {
   input: SetCardColumnColorInput
   output: SetCardColumnColorOutput
@@ -4357,10 +4030,6 @@ structure SetCardColumnColorInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4378,7 +4047,7 @@ structure SetCardColumnColorOutput {
 
 /// Enable on-hold section in a column
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json")
+@http(method: "POST", uri: "/{accountId}/card_tables/columns/{columnId}/on_hold.json")
 operation EnableCardColumnOnHold {
   input: EnableCardColumnOnHoldInput
   output: EnableCardColumnOnHoldOutput
@@ -4389,10 +4058,6 @@ structure EnableCardColumnOnHoldInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4408,7 +4073,7 @@ structure EnableCardColumnOnHoldOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/card_tables/columns/{columnId}/on_hold.json")
+@http(method: "DELETE", uri: "/{accountId}/card_tables/columns/{columnId}/on_hold.json")
 operation DisableCardColumnOnHold {
   input: DisableCardColumnOnHoldInput
   output: DisableCardColumnOnHoldOutput
@@ -4419,10 +4084,6 @@ structure DisableCardColumnOnHoldInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4437,7 +4098,7 @@ structure DisableCardColumnOnHoldOutput {
 /// Subscribe to a card column (watch for changes)
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json", code: 204)
+@http(method: "POST", uri: "/{accountId}/card_tables/lists/{columnId}/subscription.json", code: 204)
 operation SubscribeToCardColumn {
   input: SubscribeToCardColumnInput
   output: SubscribeToCardColumnOutput
@@ -4451,10 +4112,6 @@ structure SubscribeToCardColumnInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   columnId: CardColumnId
 }
 
@@ -4464,7 +4121,7 @@ structure SubscribeToCardColumnOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/card_tables/lists/{columnId}/subscription.json", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/card_tables/lists/{columnId}/subscription.json", code: 204)
 operation UnsubscribeFromCardColumn {
   input: UnsubscribeFromCardColumnInput
   output: UnsubscribeFromCardColumnOutput
@@ -4478,10 +4135,6 @@ structure UnsubscribeFromCardColumnInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   columnId: CardColumnId
 }
 
@@ -4491,7 +4144,7 @@ structure UnsubscribeFromCardColumnOutput {}
 
 /// Create a step on a card
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/steps.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/card_tables/cards/{cardId}/steps.json", code: 201)
 operation CreateCardStep {
   input: CreateCardStepInput
   output: CreateCardStepOutput
@@ -4502,10 +4155,6 @@ structure CreateCardStepInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4527,7 +4176,7 @@ structure CreateCardStepOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}")
+@http(method: "PUT", uri: "/{accountId}/card_tables/steps/{stepId}")
 operation UpdateCardStep {
   input: UpdateCardStepInput
   output: UpdateCardStepOutput
@@ -4538,10 +4187,6 @@ structure UpdateCardStepInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4561,7 +4206,7 @@ structure UpdateCardStepOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/card_tables/steps/{stepId}/completions.json")
+@http(method: "PUT", uri: "/{accountId}/card_tables/steps/{stepId}/completions.json")
 operation SetCardStepCompletion {
   input: SetCardStepCompletionInput
   output: SetCardStepCompletionOutput
@@ -4572,10 +4217,6 @@ structure SetCardStepCompletionInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4593,7 +4234,7 @@ structure SetCardStepCompletionOutput {
 
 /// Reposition a step within a card
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/card_tables/cards/{cardId}/positions.json")
+@http(method: "POST", uri: "/{accountId}/card_tables/cards/{cardId}/positions.json")
 operation RepositionCardStep {
   input: RepositionCardStepInput
   output: RepositionCardStepOutput
@@ -4604,10 +4245,6 @@ structure RepositionCardStepInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -4981,7 +4618,7 @@ structure ProjectAccessResult {
 /// Get subscription information for a recording
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/subscription.json")
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}/subscription.json")
 operation GetSubscription {
   input: GetSubscriptionInput
   output: GetSubscriptionOutput
@@ -4995,10 +4632,6 @@ structure GetSubscriptionInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   recordingId: RecordingId
 }
 
@@ -5009,7 +4642,7 @@ structure GetSubscriptionOutput {
 
 /// Subscribe the current user to a recording
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/subscription.json")
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/subscription.json")
 operation Subscribe {
   input: SubscribeInput
   output: SubscribeOutput
@@ -5020,10 +4653,6 @@ structure SubscribeInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -5039,7 +4668,7 @@ structure SubscribeOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/subscription.json", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/recordings/{recordingId}/subscription.json", code: 204)
 operation Unsubscribe {
   input: UnsubscribeInput
   output: UnsubscribeOutput
@@ -5053,10 +4682,6 @@ structure UnsubscribeInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   recordingId: RecordingId
 }
 
@@ -5066,7 +4691,7 @@ structure UnsubscribeOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/subscription.json")
+@http(method: "PUT", uri: "/{accountId}/recordings/{recordingId}/subscription.json")
 operation UpdateSubscription {
   input: UpdateSubscriptionInput
   output: UpdateSubscriptionOutput
@@ -5077,10 +4702,6 @@ structure UpdateSubscriptionInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -5120,7 +4741,7 @@ structure Subscription {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/client/approvals.json")
+@http(method: "GET", uri: "/{accountId}/client/approvals.json")
 operation ListClientApprovals {
   input: ListClientApprovalsInput
   output: ListClientApprovalsOutput
@@ -5132,9 +4753,6 @@ structure ListClientApprovalsInput {
   @httpLabel
   accountId: AccountId
 
-  @required
-  @httpLabel
-  projectId: ProjectId
 }
 
 structure ListClientApprovalsOutput {
@@ -5145,7 +4763,7 @@ structure ListClientApprovalsOutput {
 /// Get a single client approval by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/client/approvals/{approvalId}")
+@http(method: "GET", uri: "/{accountId}/client/approvals/{approvalId}")
 operation GetClientApproval {
   input: GetClientApprovalInput
   output: GetClientApprovalOutput
@@ -5156,10 +4774,6 @@ structure GetClientApprovalInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -5180,7 +4794,7 @@ structure GetClientApprovalOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/client/correspondences.json")
+@http(method: "GET", uri: "/{accountId}/client/correspondences.json")
 operation ListClientCorrespondences {
   input: ListClientCorrespondencesInput
   output: ListClientCorrespondencesOutput
@@ -5192,9 +4806,6 @@ structure ListClientCorrespondencesInput {
   @httpLabel
   accountId: AccountId
 
-  @required
-  @httpLabel
-  projectId: ProjectId
 }
 
 structure ListClientCorrespondencesOutput {
@@ -5205,7 +4816,7 @@ structure ListClientCorrespondencesOutput {
 /// Get a single client correspondence by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/client/correspondences/{correspondenceId}")
+@http(method: "GET", uri: "/{accountId}/client/correspondences/{correspondenceId}")
 operation GetClientCorrespondence {
   input: GetClientCorrespondenceInput
   output: GetClientCorrespondenceOutput
@@ -5216,10 +4827,6 @@ structure GetClientCorrespondenceInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -5240,7 +4847,7 @@ structure GetClientCorrespondenceOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/client/recordings/{recordingId}/replies.json")
+@http(method: "GET", uri: "/{accountId}/client/recordings/{recordingId}/replies.json")
 operation ListClientReplies {
   input: ListClientRepliesInput
   output: ListClientRepliesOutput
@@ -5251,10 +4858,6 @@ structure ListClientRepliesInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -5269,7 +4872,7 @@ structure ListClientRepliesOutput {
 /// Get a single client reply by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}")
+@http(method: "GET", uri: "/{accountId}/client/recordings/{recordingId}/replies/{replyId}")
 operation GetClientReply {
   input: GetClientReplyInput
   output: GetClientReplyOutput
@@ -5280,10 +4883,6 @@ structure GetClientReplyInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -5468,7 +5067,7 @@ structure RecordingBucket {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/webhooks.json")
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/webhooks.json")
 operation ListWebhooks {
   input: ListWebhooksInput
   output: ListWebhooksOutput
@@ -5482,7 +5081,7 @@ structure ListWebhooksInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
+  bucketId: ProjectId
 }
 
 structure ListWebhooksOutput {
@@ -5493,7 +5092,7 @@ structure ListWebhooksOutput {
 /// Get a single webhook by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/webhooks/{webhookId}")
+@http(method: "GET", uri: "/{accountId}/webhooks/{webhookId}")
 operation GetWebhook {
   input: GetWebhookInput
   output: GetWebhookOutput
@@ -5507,10 +5106,6 @@ structure GetWebhookInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   webhookId: WebhookId
 }
 
@@ -5521,7 +5116,7 @@ structure GetWebhookOutput {
 
 /// Create a new webhook for a project
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/webhooks.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/webhooks.json", code: 201)
 operation CreateWebhook {
   input: CreateWebhookInput
   output: CreateWebhookOutput
@@ -5535,7 +5130,7 @@ structure CreateWebhookInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
+  bucketId: ProjectId
 
   @required
   payload_url: String
@@ -5555,7 +5150,7 @@ structure CreateWebhookOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/webhooks/{webhookId}")
+@http(method: "PUT", uri: "/{accountId}/webhooks/{webhookId}")
 operation UpdateWebhook {
   input: UpdateWebhookInput
   output: UpdateWebhookOutput
@@ -5566,10 +5161,6 @@ structure UpdateWebhookInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -5589,7 +5180,7 @@ structure UpdateWebhookOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/webhooks/{webhookId}", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/webhooks/{webhookId}", code: 204)
 operation DeleteWebhook {
   input: DeleteWebhookInput
   output: DeleteWebhookOutput
@@ -5600,10 +5191,6 @@ structure DeleteWebhookInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -5621,7 +5208,7 @@ structure DeleteWebhookOutput {}
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/events.json")
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}/events.json")
 operation ListEvents {
   input: ListEventsInput
   output: ListEventsOutput
@@ -5632,10 +5219,6 @@ structure ListEventsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -5693,7 +5276,7 @@ structure ListRecordingsOutput {
 /// Get a single recording by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}")
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}")
 operation GetRecording {
   input: GetRecordingInput
   output: GetRecordingOutput
@@ -5704,10 +5287,6 @@ structure GetRecordingInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -5723,7 +5302,7 @@ structure GetRecordingOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/trashed.json", code: 204)
+@http(method: "PUT", uri: "/{accountId}/recordings/{recordingId}/status/trashed.json", code: 204)
 operation TrashRecording {
   input: TrashRecordingInput
   output: TrashRecordingOutput
@@ -5737,10 +5316,6 @@ structure TrashRecordingInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   recordingId: RecordingId
 }
 
@@ -5750,7 +5325,7 @@ structure TrashRecordingOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/archived.json", code: 204)
+@http(method: "PUT", uri: "/{accountId}/recordings/{recordingId}/status/archived.json", code: 204)
 operation ArchiveRecording {
   input: ArchiveRecordingInput
   output: ArchiveRecordingOutput
@@ -5764,10 +5339,6 @@ structure ArchiveRecordingInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   recordingId: RecordingId
 }
 
@@ -5777,7 +5348,7 @@ structure ArchiveRecordingOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/status/active.json", code: 204)
+@http(method: "PUT", uri: "/{accountId}/recordings/{recordingId}/status/active.json", code: 204)
 operation UnarchiveRecording {
   input: UnarchiveRecordingInput
   output: UnarchiveRecordingOutput
@@ -5791,10 +5362,6 @@ structure UnarchiveRecordingInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   recordingId: RecordingId
 }
 
@@ -5804,7 +5371,7 @@ structure UnarchiveRecordingOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/client_visibility.json")
+@http(method: "PUT", uri: "/{accountId}/recordings/{recordingId}/client_visibility.json")
 operation SetClientVisibility {
   input: SetClientVisibilityInput
   output: SetClientVisibilityOutput
@@ -5815,10 +5382,6 @@ structure SetClientVisibilityInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6006,7 +5569,7 @@ structure Recording {
 /// Get a questionnaire (automatic check-ins container) by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/questionnaires/{questionnaireId}")
+@http(method: "GET", uri: "/{accountId}/questionnaires/{questionnaireId}")
 operation GetQuestionnaire {
   input: GetQuestionnaireInput
   output: GetQuestionnaireOutput
@@ -6017,10 +5580,6 @@ structure GetQuestionnaireInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6041,7 +5600,7 @@ structure GetQuestionnaireOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json")
+@http(method: "GET", uri: "/{accountId}/questionnaires/{questionnaireId}/questions.json")
 operation ListQuestions {
   input: ListQuestionsInput
   output: ListQuestionsOutput
@@ -6052,10 +5611,6 @@ structure ListQuestionsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6070,7 +5625,7 @@ structure ListQuestionsOutput {
 /// Get a single question by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}")
+@http(method: "GET", uri: "/{accountId}/questions/{questionId}")
 operation GetQuestion {
   input: GetQuestionInput
   output: GetQuestionOutput
@@ -6084,10 +5639,6 @@ structure GetQuestionInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   questionId: QuestionId
 }
 
@@ -6098,7 +5649,7 @@ structure GetQuestionOutput {
 
 /// Create a new question in a questionnaire
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/questionnaires/{questionnaireId}/questions.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/questionnaires/{questionnaireId}/questions.json", code: 201)
 operation CreateQuestion {
   input: CreateQuestionInput
   output: CreateQuestionOutput
@@ -6109,10 +5660,6 @@ structure CreateQuestionInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6134,7 +5681,7 @@ structure CreateQuestionOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}")
+@http(method: "PUT", uri: "/{accountId}/questions/{questionId}")
 operation UpdateQuestion {
   input: UpdateQuestionInput
   output: UpdateQuestionOutput
@@ -6145,10 +5692,6 @@ structure UpdateQuestionInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6167,7 +5710,7 @@ structure UpdateQuestionOutput {
 /// Pause a check-in question (stops sending reminders)
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/pause.json")
+@http(method: "POST", uri: "/{accountId}/questions/{questionId}/pause.json")
 operation PauseQuestion {
   input: PauseQuestionInput
   output: PauseQuestionOutput
@@ -6178,10 +5721,6 @@ structure PauseQuestionInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6196,7 +5735,7 @@ structure PauseQuestionOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/pause.json")
+@http(method: "DELETE", uri: "/{accountId}/questions/{questionId}/pause.json")
 operation ResumeQuestion {
   input: ResumeQuestionInput
   output: ResumeQuestionOutput
@@ -6207,10 +5746,6 @@ structure ResumeQuestionInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6225,7 +5760,7 @@ structure ResumeQuestionOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/notification_settings.json")
+@http(method: "PUT", uri: "/{accountId}/questions/{questionId}/notification_settings.json")
 operation UpdateQuestionNotificationSettings {
   input: UpdateQuestionNotificationSettingsInput
   output: UpdateQuestionNotificationSettingsOutput
@@ -6236,10 +5771,6 @@ structure UpdateQuestionNotificationSettingsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6266,7 +5797,7 @@ structure UpdateQuestionNotificationSettingsOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/answers.json")
+@http(method: "GET", uri: "/{accountId}/questions/{questionId}/answers.json")
 operation ListAnswers {
   input: ListAnswersInput
   output: ListAnswersOutput
@@ -6277,10 +5808,6 @@ structure ListAnswersInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6295,7 +5822,7 @@ structure ListAnswersOutput {
 /// Get a single answer by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/question_answers/{answerId}")
+@http(method: "GET", uri: "/{accountId}/question_answers/{answerId}")
 operation GetAnswer {
   input: GetAnswerInput
   output: GetAnswerOutput
@@ -6309,10 +5836,6 @@ structure GetAnswerInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   answerId: AnswerId
 }
 
@@ -6323,7 +5846,7 @@ structure GetAnswerOutput {
 
 /// Create a new answer for a question
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/answers.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/questions/{questionId}/answers.json", code: 201)
 operation CreateAnswer {
   input: CreateAnswerInput
   output: CreateAnswerOutput
@@ -6334,10 +5857,6 @@ structure CreateAnswerInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6364,7 +5883,7 @@ structure CreateAnswerOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/question_answers/{answerId}", code: 204)
+@http(method: "PUT", uri: "/{accountId}/question_answers/{answerId}", code: 204)
 operation UpdateAnswer {
   input: UpdateAnswerInput
   output: UpdateAnswerOutput
@@ -6375,10 +5894,6 @@ structure UpdateAnswerInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6403,7 +5918,7 @@ structure UpdateAnswerOutput {}
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/answers/by.json")
+@http(method: "GET", uri: "/{accountId}/questions/{questionId}/answers/by.json")
 operation ListQuestionAnswerers {
   input: ListQuestionAnswerersInput
   output: ListQuestionAnswerersOutput
@@ -6414,10 +5929,6 @@ structure ListQuestionAnswerersInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6436,7 +5947,7 @@ structure ListQuestionAnswerersOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/questions/{questionId}/answers/by/{personId}")
+@http(method: "GET", uri: "/{accountId}/questions/{questionId}/answers/by/{personId}")
 operation GetAnswersByPerson {
   input: GetAnswersByPersonInput
   output: GetAnswersByPersonOutput
@@ -6447,10 +5958,6 @@ structure GetAnswersByPersonInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6902,7 +6409,7 @@ structure GetProjectConstructionOutput {
 /// Get a dock tool by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/dock/tools/{toolId}")
+@http(method: "GET", uri: "/{accountId}/dock/tools/{toolId}")
 operation GetTool {
   input: GetToolInput
   output: GetToolOutput
@@ -6916,10 +6423,6 @@ structure GetToolInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   toolId: ToolId
 }
 
@@ -6930,7 +6433,7 @@ structure GetToolOutput {
 
 /// Clone an existing tool to create a new one
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/dock/tools.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/dock/tools.json", code: 201)
 operation CloneTool {
   input: CloneToolInput
   output: CloneToolOutput
@@ -6941,10 +6444,6 @@ structure CloneToolInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   source_recording_id: ToolId
@@ -6959,7 +6458,7 @@ structure CloneToolOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/dock/tools/{toolId}")
+@http(method: "PUT", uri: "/{accountId}/dock/tools/{toolId}")
 operation UpdateTool {
   input: UpdateToolInput
   output: UpdateToolOutput
@@ -6970,10 +6469,6 @@ structure UpdateToolInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6992,7 +6487,7 @@ structure UpdateToolOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/dock/tools/{toolId}", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/dock/tools/{toolId}", code: 204)
 operation DeleteTool {
   input: DeleteToolInput
   output: DeleteToolOutput
@@ -7006,10 +6501,6 @@ structure DeleteToolInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   toolId: ToolId
 }
 
@@ -7017,7 +6508,7 @@ structure DeleteToolOutput {}
 
 /// Enable a tool (show it on the project dock)
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/recordings/{toolId}/position.json", code: 201)
 operation EnableTool {
   input: EnableToolInput
   output: EnableToolOutput
@@ -7031,10 +6522,6 @@ structure EnableToolInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   toolId: ToolId
 }
 
@@ -7044,7 +6531,7 @@ structure EnableToolOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/recordings/{toolId}/position.json", code: 204)
 operation DisableTool {
   input: DisableToolInput
   output: DisableToolOutput
@@ -7058,10 +6545,6 @@ structure DisableToolInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   toolId: ToolId
 }
 
@@ -7071,7 +6554,7 @@ structure DisableToolOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/recordings/{toolId}/position.json")
+@http(method: "PUT", uri: "/{accountId}/recordings/{toolId}/position.json")
 operation RepositionTool {
   input: RepositionToolInput
   output: RepositionToolOutput
@@ -7082,10 +6565,6 @@ structure RepositionToolInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -7539,7 +7018,7 @@ long BoostId
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/boosts.json")
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}/boosts.json")
 operation ListRecordingBoosts {
   input: ListRecordingBoostsInput
   output: ListRecordingBoostsOutput
@@ -7550,10 +7029,6 @@ structure ListRecordingBoostsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -7568,7 +7043,7 @@ structure ListRecordingBoostsOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/events/{eventId}/boosts.json")
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}/events/{eventId}/boosts.json")
 operation ListEventBoosts {
   input: ListEventBoostsInput
   output: ListEventBoostsOutput
@@ -7579,10 +7054,6 @@ structure ListEventBoostsInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -7600,7 +7071,7 @@ structure ListEventBoostsOutput {
 /// Get a single boost
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/boosts/{boostId}")
+@http(method: "GET", uri: "/{accountId}/boosts/{boostId}")
 operation GetBoost {
   input: GetBoostInput
   output: GetBoostOutput
@@ -7614,10 +7085,6 @@ structure GetBoostInput {
 
   @required
   @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
   boostId: BoostId
 }
 
@@ -7627,7 +7094,7 @@ structure GetBoostOutput {
 
 /// Create a boost on a recording
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/boosts.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/boosts.json", code: 201)
 operation CreateRecordingBoost {
   input: CreateRecordingBoostInput
   output: CreateRecordingBoostOutput
@@ -7638,10 +7105,6 @@ structure CreateRecordingBoostInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -7657,7 +7120,7 @@ structure CreateRecordingBoostOutput {
 
 /// Create a boost on a specific event within a recording
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/recordings/{recordingId}/events/{eventId}/boosts.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/events/{eventId}/boosts.json", code: 201)
 operation CreateEventBoost {
   input: CreateEventBoostInput
   output: CreateEventBoostOutput
@@ -7668,10 +7131,6 @@ structure CreateEventBoostInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel
@@ -7693,7 +7152,7 @@ structure CreateEventBoostOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/boosts/{boostId}", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/boosts/{boostId}", code: 204)
 operation DeleteBoost {
   input: DeleteBoostInput
   output: DeleteBoostOutput
@@ -7704,10 +7163,6 @@ structure DeleteBoostInput {
   @required
   @httpLabel
   accountId: AccountId
-
-  @required
-  @httpLabel
-  projectId: ProjectId
 
   @required
   @httpLabel

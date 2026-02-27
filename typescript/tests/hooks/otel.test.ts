@@ -97,8 +97,7 @@ describe("otelHooks", () => {
         operation: "List",
         resourceType: "todo",
         isMutation: false,
-        projectId: 123,
-      };
+        };
 
       hooks.onOperationStart?.(operationInfo);
 
@@ -110,7 +109,6 @@ describe("otelHooks", () => {
             "basecamp.operation": "List",
             "basecamp.resource_type": "todo",
             "basecamp.is_mutation": false,
-            "basecamp.project_id": 123,
           }),
         })
       );

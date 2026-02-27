@@ -39,12 +39,12 @@ describe("UploadsService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/uploads/7001`, () => {
+        http.get(`${BASE_URL}/uploads/7001`, () => {
           return HttpResponse.json(upload);
         })
       );
 
-      const result = await service.get(123, 7001);
+      const result = await service.get(7001);
 
       expect(result.id).toBe(7001);
       expect(result.filename).toBe("report.pdf");
@@ -53,15 +53,15 @@ describe("UploadsService", () => {
 
     it("should throw not_found error for 404 response", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/uploads/9999`, () => {
+        http.get(`${BASE_URL}/uploads/9999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
-      await expect(service.get(123, 9999)).rejects.toThrow(BasecampError);
+      await expect(service.get(9999)).rejects.toThrow(BasecampError);
 
       try {
-        await service.get(123, 9999);
+        await service.get(9999);
       } catch (err) {
         expect((err as BasecampError).code).toBe("not_found");
       }
@@ -76,12 +76,12 @@ describe("UploadsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, () => {
+        http.get(`${BASE_URL}/vaults/1001/uploads.json`, () => {
           return HttpResponse.json(uploads);
         })
       );
 
-      const result = await service.list(123, 1001);
+      const result = await service.list(1001);
 
       expect(result).toHaveLength(2);
       expect(result[0].filename).toBe("file1.pdf");
@@ -90,12 +90,12 @@ describe("UploadsService", () => {
 
     it("should return empty array when no uploads", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, () => {
+        http.get(`${BASE_URL}/vaults/1001/uploads.json`, () => {
           return HttpResponse.json([]);
         })
       );
 
-      const result = await service.list(123, 1001);
+      const result = await service.list(1001);
 
       expect(result).toHaveLength(0);
     });
@@ -112,12 +112,12 @@ describe("UploadsService", () => {
       };
 
       server.use(
-        http.post(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, () => {
+        http.post(`${BASE_URL}/vaults/1001/uploads.json`, () => {
           return HttpResponse.json(newUpload);
         })
       );
 
-      const result = await service.create(123, 1001, {
+      const result = await service.create(1001, {
         attachableSgid: "BAh7CEkiCGdpZAY6BkVUSSI...",
         description: "Q4 Presentation",
       });
@@ -130,13 +130,13 @@ describe("UploadsService", () => {
       let capturedBody: { attachable_sgid?: string; description?: string; base_name?: string } | null = null;
 
       server.use(
-        http.post(`${BASE_URL}/buckets/123/vaults/1001/uploads.json`, async ({ request }) => {
+        http.post(`${BASE_URL}/vaults/1001/uploads.json`, async ({ request }) => {
           capturedBody = (await request.json()) as { attachable_sgid?: string; description?: string; base_name?: string };
           return HttpResponse.json({ id: 1, title: "Test" });
         })
       );
 
-      await service.create(123, 1001, {
+      await service.create(1001, {
         attachableSgid: "test-sgid",
         description: "<p>Description</p>",
         baseName: "custom-name",
@@ -160,12 +160,12 @@ describe("UploadsService", () => {
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/123/uploads/7001`, () => {
+        http.put(`${BASE_URL}/uploads/7001`, () => {
           return HttpResponse.json(updatedUpload);
         })
       );
 
-      const result = await service.update(123, 7001, {
+      const result = await service.update(7001, {
         description: "Updated description",
         baseName: "new-name",
       });
@@ -177,13 +177,13 @@ describe("UploadsService", () => {
       let capturedBody: { description?: string; base_name?: string } | null = null;
 
       server.use(
-        http.put(`${BASE_URL}/buckets/123/uploads/7001`, async ({ request }) => {
+        http.put(`${BASE_URL}/uploads/7001`, async ({ request }) => {
           capturedBody = (await request.json()) as { description?: string; base_name?: string };
           return HttpResponse.json({ id: 7001, title: "Test" });
         })
       );
 
-      await service.update(123, 7001, {
+      await service.update(7001, {
         description: "New description",
         baseName: "renamed-file",
       });
@@ -202,30 +202,30 @@ describe("UploadsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/uploads/7001/versions.json`, () => {
+        http.get(`${BASE_URL}/uploads/7001/versions.json`, () => {
           return HttpResponse.json(uploads);
         })
       );
 
-      const result = await service.listVersions(123, 7001);
+      const result = await service.listVersions(7001);
 
       expect(result).toHaveLength(3);
     });
 
     it("should return empty array when no versions", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/uploads/7001/versions.json`, () => {
+        http.get(`${BASE_URL}/uploads/7001/versions.json`, () => {
           return HttpResponse.json([]);
         })
       );
 
-      const result = await service.listVersions(123, 7001);
+      const result = await service.listVersions(7001);
 
       expect(result).toHaveLength(0);
     });
   });
 
   // Note: trash() is on RecordingsService, not UploadsService (spec-conformant)
-  // Use client.recordings.trash(projectId, uploadId) instead
+  // Use client.recordings.trash(uploadId) instead
 });
 

@@ -864,25 +864,6 @@ func parseRetryAfter(header string) int {
 	return 0
 }
 
-// ProjectPath builds a path relative to a project (bucket).
-func (c *Client) ProjectPath(resource string) string {
-	if c.cfg.ProjectID == "" {
-		return ""
-	}
-	return "/buckets/" + c.cfg.ProjectID + resource
-}
-
-// RequireProject returns an error if no project is configured.
-func (c *Client) RequireProject() error {
-	if c.cfg.ProjectID == "" {
-		return ErrUsageHint(
-			"No project specified",
-			"Use --project or set BASECAMP_PROJECT_ID",
-		)
-	}
-	return nil
-}
-
 // Config returns a copy of the client configuration.
 //
 // Modifying the returned Config has no effect on the client.

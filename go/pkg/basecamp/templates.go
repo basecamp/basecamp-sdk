@@ -334,8 +334,8 @@ func templateFromGenerated(gt generated.Template) Template {
 		Description: gt.Description,
 	}
 
-	if gt.Id != 0 {
-		t.ID = gt.Id
+	if derefInt64(gt.Id) != 0 {
+		t.ID = derefInt64(gt.Id)
 	}
 
 	return t
@@ -348,11 +348,11 @@ func projectConstructionFromGenerated(gc generated.ProjectConstruction) ProjectC
 		URL:    gc.Url,
 	}
 
-	if gc.Id != 0 {
-		c.ID = gc.Id
+	if derefInt64(gc.Id) != 0 {
+		c.ID = derefInt64(gc.Id)
 	}
 
-	if gc.Project.Id != 0 || gc.Project.Name != "" {
+	if derefInt64(gc.Project.Id) != 0 || gc.Project.Name != "" {
 		c.Project = &Project{
 			Name:        gc.Project.Name,
 			Description: gc.Project.Description,
@@ -363,7 +363,7 @@ func projectConstructionFromGenerated(gc generated.ProjectConstruction) ProjectC
 			URL:         gc.Project.Url,
 			AppURL:      gc.Project.AppUrl,
 		}
-		c.Project.ID = gc.Project.Id
+		c.Project.ID = derefInt64(gc.Project.Id)
 	}
 
 	return c

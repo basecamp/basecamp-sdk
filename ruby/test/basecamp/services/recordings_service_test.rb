@@ -55,34 +55,34 @@ class RecordingsServiceTest < Minitest::Test
 
   def test_get
     # Generated service: /recordings/{id} without .json
-    stub_get("/12345/buckets/100/recordings/456", response_body: sample_recording)
+    stub_get("/12345/recordings/456", response_body: sample_recording)
 
-    result = @account.recordings.get(project_id: 100, recording_id: 456)
+    result = @account.recordings.get(recording_id: 456)
 
     assert_equal 456, result["id"]
     assert_equal "Test Recording", result["title"]
   end
 
   def test_archive
-    stub_put("/12345/buckets/100/recordings/456/status/archived.json", response_body: {})
+    stub_put("/12345/recordings/456/status/archived.json", response_body: {})
 
-    result = @account.recordings.archive(project_id: 100, recording_id: 456)
+    result = @account.recordings.archive(recording_id: 456)
 
     assert_nil result
   end
 
   def test_unarchive
-    stub_put("/12345/buckets/100/recordings/456/status/active.json", response_body: {})
+    stub_put("/12345/recordings/456/status/active.json", response_body: {})
 
-    result = @account.recordings.unarchive(project_id: 100, recording_id: 456)
+    result = @account.recordings.unarchive(recording_id: 456)
 
     assert_nil result
   end
 
   def test_trash
-    stub_put("/12345/buckets/100/recordings/456/status/trashed.json", response_body: {})
+    stub_put("/12345/recordings/456/status/trashed.json", response_body: {})
 
-    result = @account.recordings.trash(project_id: 100, recording_id: 456)
+    result = @account.recordings.trash(recording_id: 456)
 
     assert_nil result
   end

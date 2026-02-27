@@ -53,8 +53,8 @@
     "description": "Verifies that CreateTodo returns 201 Created per Smithy spec (code: 201)",
     "operation": "CreateTodo",
     "method": "POST",
-    "path": "/buckets/{projectId}/todolists/{todolistId}/todos.json",
-    "pathParams": {"projectId": 12345, "todolistId": 67890},
+    "path": "/todolists/{todolistId}/todos.json",
+    "pathParams": {"todolistId": 67890},
     "requestBody": {"content": "New todo item"},
     "mockResponses": [
       {"status": 201, "body": {"id": 111, "content": "New todo item", "status": "active", "visible_to_clients": false, "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "title": "New todo item", "inherits_status": true, "type": "Todo", "url": "https://3.basecampapi.com/999/buckets/12345/todos/111.json", "app_url": "https://3.basecamp.com/999/buckets/12345/todos/111", "parent": {"id": 67890, "title": "Todolist", "type": "Todolist", "url": "https://3.basecampapi.com/999/buckets/12345/todolists/67890.json", "app_url": "https://3.basecamp.com/999/buckets/12345/todolists/67890"}, "bucket": {"id": 12345, "name": "Project", "type": "Project"}, "creator": {"id": 1, "name": "Test User", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z"}}}
@@ -213,8 +213,8 @@
     "description": "Verifies that 422 validation errors on POST create operations are not retried",
     "operation": "CreateTodo",
     "method": "POST",
-    "path": "/buckets/{projectId}/todolists/{todolistId}/todos.json",
-    "pathParams": {"projectId": 12345, "todolistId": 67890},
+    "path": "/todolists/{todolistId}/todos.json",
+    "pathParams": {"todolistId": 67890},
     "requestBody": {"content": ""},
     "mockResponses": [
       {"status": 422, "body": {"error": "Content can't be blank"}}

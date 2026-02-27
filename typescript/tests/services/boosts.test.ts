@@ -31,16 +31,15 @@ describe("BoostsService", () => {
 
   describe("boost (get)", () => {
     it("should return a single boost", async () => {
-      const projectId = 100;
       const boostId = 42;
 
       server.use(
-        http.get(`${BASE_URL}/buckets/${projectId}/boosts/${boostId}`, () => {
+        http.get(`${BASE_URL}/boosts/${boostId}`, () => {
           return HttpResponse.json(sampleBoost(boostId));
         })
       );
 
-      const boost = await client.boosts.get(projectId, boostId);
+      const boost = await client.boosts.get(boostId);
       expect(boost.id).toBe(boostId);
       expect(boost.content).toBe("🎉");
       expect(boost.booster.name).toBe("Jane Doe");
@@ -48,39 +47,38 @@ describe("BoostsService", () => {
 
     it("should throw not_found for missing boost", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/100/boosts/999`, () => {
+        http.get(`${BASE_URL}/boosts/999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
-      await expect(client.boosts.get(100, 999)).rejects.toThrow(BasecampError);
+      await expect(client.boosts.get(999)).rejects.toThrow(BasecampError);
     });
   });
 
   describe("deleteBoost", () => {
     it("should delete a boost", async () => {
       server.use(
-        http.delete(`${BASE_URL}/buckets/100/boosts/42`, () => {
+        http.delete(`${BASE_URL}/boosts/42`, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
 
-      await expect(client.boosts.delete(100, 42)).resolves.toBeUndefined();
+      await expect(client.boosts.delete(42)).resolves.toBeUndefined();
     });
   });
 
   describe("listForRecording", () => {
     it("should list boosts on a recording", async () => {
-      const projectId = 100;
       const recordingId = 200;
 
       server.use(
-        http.get(`${BASE_URL}/buckets/${projectId}/recordings/${recordingId}/boosts.json`, () => {
+        http.get(`${BASE_URL}/recordings/${recordingId}/boosts.json`, () => {
           return HttpResponse.json([sampleBoost(1), sampleBoost(2)]);
         })
       );
 
-      const boosts = await client.boosts.listForRecording(projectId, recordingId);
+      const boosts = await client.boosts.listForRecording(recordingId);
       expect(boosts).toHaveLength(2);
       expect(boosts[0]!.id).toBe(1);
       expect(boosts[1]!.id).toBe(2);
@@ -89,18 +87,17 @@ describe("BoostsService", () => {
 
   describe("createForRecording", () => {
     it("should create a boost on a recording", async () => {
-      const projectId = 100;
       const recordingId = 200;
 
       server.use(
-        http.post(`${BASE_URL}/buckets/${projectId}/recordings/${recordingId}/boosts.json`, async ({ request }) => {
+        http.post(`${BASE_URL}/recordings/${recordingId}/boosts.json`, async ({ request }) => {
           const body = (await request.json()) as { content: string };
           expect(body.content).toBe("🔥");
           return HttpResponse.json(sampleBoost(99), { status: 201 });
         })
       );
 
-      const boost = await client.boosts.createForRecording(projectId, recordingId, {
+      const boost = await client.boosts.createForRecording(recordingId, {
         content: "🔥",
       });
       expect(boost.id).toBe(99);
@@ -109,20 +106,19 @@ describe("BoostsService", () => {
 
   describe("listForEvent", () => {
     it("should list boosts on an event", async () => {
-      const projectId = 100;
       const recordingId = 200;
       const eventId = 300;
 
       server.use(
         http.get(
-          `${BASE_URL}/buckets/${projectId}/recordings/${recordingId}/events/${eventId}/boosts.json`,
+          `${BASE_URL}/recordings/${recordingId}/events/${eventId}/boosts.json`,
           () => {
             return HttpResponse.json([sampleBoost(5)]);
           }
         )
       );
 
-      const boosts = await client.boosts.listForEvent(projectId, recordingId, eventId);
+      const boosts = await client.boosts.listForEvent(recordingId, eventId);
       expect(boosts).toHaveLength(1);
       expect(boosts[0]!.id).toBe(5);
     });
@@ -130,13 +126,12 @@ describe("BoostsService", () => {
 
   describe("createForEvent", () => {
     it("should create a boost on an event", async () => {
-      const projectId = 100;
       const recordingId = 200;
       const eventId = 300;
 
       server.use(
         http.post(
-          `${BASE_URL}/buckets/${projectId}/recordings/${recordingId}/events/${eventId}/boosts.json`,
+          `${BASE_URL}/recordings/${recordingId}/events/${eventId}/boosts.json`,
           async ({ request }) => {
             const body = (await request.json()) as { content: string };
             expect(body.content).toBe("👍");
@@ -145,7 +140,7 @@ describe("BoostsService", () => {
         )
       );
 
-      const boost = await client.boosts.createForEvent(projectId, recordingId, eventId, {
+      const boost = await client.boosts.createForEvent(recordingId, eventId, {
         content: "👍",
       });
       expect(boost.id).toBe(77);

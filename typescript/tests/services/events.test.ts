@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
-import { EventsService } from "../../src/services/events.js";
+import { EventsService } from "../../src/generated/services/events.js";
 import { createBasecampClient } from "../../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -52,12 +52,12 @@ describe("EventsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/recordings/5001/events.json`, () => {
+        http.get(`${BASE_URL}/recordings/5001/events.json`, () => {
           return HttpResponse.json(events);
         })
       );
 
-      const result = await service.list(123, 5001);
+      const result = await service.list(5001);
 
       expect(result).toHaveLength(3);
       expect(result[0].action).toBe("created");
@@ -68,12 +68,12 @@ describe("EventsService", () => {
 
     it("should return empty array when no events", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/recordings/5001/events.json`, () => {
+        http.get(`${BASE_URL}/recordings/5001/events.json`, () => {
           return HttpResponse.json([]);
         })
       );
 
-      const result = await service.list(123, 5001);
+      const result = await service.list(5001);
 
       expect(result).toHaveLength(0);
     });
@@ -95,12 +95,12 @@ describe("EventsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/recordings/5001/events.json`, () => {
+        http.get(`${BASE_URL}/recordings/5001/events.json`, () => {
           return HttpResponse.json(events);
         })
       );
 
-      const result = await service.list(123, 5001);
+      const result = await service.list(5001);
 
       expect(result[0].creator?.name).toBe("Alice Johnson");
       expect(result[0].creator?.email_address).toBe("alice@example.com");
@@ -121,12 +121,12 @@ describe("EventsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/recordings/5001/events.json`, () => {
+        http.get(`${BASE_URL}/recordings/5001/events.json`, () => {
           return HttpResponse.json(events);
         })
       );
 
-      const result = await service.list(123, 5001);
+      const result = await service.list(5001);
 
       expect(result[0].details?.notified_recipient_ids).toEqual([1002, 1003]);
     });
@@ -147,12 +147,12 @@ describe("EventsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/recordings/5001/events.json`, () => {
+        http.get(`${BASE_URL}/recordings/5001/events.json`, () => {
           return HttpResponse.json(events);
         })
       );
 
-      const result = await service.list(123, 5001);
+      const result = await service.list(5001);
 
       expect(result[0].details?.removed_person_ids).toEqual([1003]);
     });

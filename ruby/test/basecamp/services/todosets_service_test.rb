@@ -17,10 +17,10 @@ class TodosetsServiceTest < Minitest::Test
       "completed_ratio" => "25/100"
     }
 
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/todosets/\d+})
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/todosets/\d+})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.todosets.get(project_id: 1, todoset_id: 2)
+    result = @account.todosets.get(todoset_id: 2)
     assert_equal "To-dos", result["name"]
     assert_equal 5, result["todolists_count"]
   end

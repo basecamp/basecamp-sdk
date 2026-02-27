@@ -16,10 +16,10 @@ class SubscriptionsServiceTest < Minitest::Test
       "subscribers" => []
     }
 
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/recordings/\d+/subscription\.json})
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/recordings/\d+/subscription\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.subscriptions.get(project_id: 1, recording_id: 2)
+    result = @account.subscriptions.get(recording_id: 2)
     assert_equal true, result["subscribed"]
     assert_equal 5, result["count"]
   end
@@ -27,29 +27,28 @@ class SubscriptionsServiceTest < Minitest::Test
   def test_subscribe
     response = { "subscribed" => true }
 
-    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/recordings/\d+/subscription\.json})
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/recordings/\d+/subscription\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.subscriptions.subscribe(project_id: 1, recording_id: 2)
+    result = @account.subscriptions.subscribe(recording_id: 2)
     assert_equal true, result["subscribed"]
   end
 
   def test_unsubscribe
-    stub_request(:delete, %r{https://3\.basecampapi\.com/12345/buckets/\d+/recordings/\d+/subscription\.json})
+    stub_request(:delete, %r{https://3\.basecampapi\.com/12345/recordings/\d+/subscription\.json})
       .to_return(status: 204)
 
-    result = @account.subscriptions.unsubscribe(project_id: 1, recording_id: 2)
+    result = @account.subscriptions.unsubscribe(recording_id: 2)
     assert_nil result
   end
 
   def test_update
     response = { "subscribed" => true, "count" => 2 }
 
-    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/recordings/\d+/subscription\.json})
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/recordings/\d+/subscription\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
     result = @account.subscriptions.update(
-      project_id: 1,
       recording_id: 2,
       subscriptions: [ 100, 101 ]
     )

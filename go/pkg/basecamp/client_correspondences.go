@@ -50,15 +50,13 @@ func NewClientCorrespondencesService(client *AccountClient) *ClientCorrespondenc
 }
 
 // List returns all client correspondences in a project.
-// bucketID is the project ID.
 //
 // The returned ClientCorrespondenceListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64) (result *ClientCorrespondenceListResult, err error) {
+func (s *ClientCorrespondencesService) List(ctx context.Context) (result *ClientCorrespondenceListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientCorrespondences", Operation: "List",
 		ResourceType: "client_correspondence", IsMutation: false,
-		BucketID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -69,7 +67,7 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID, bucketID)
+	resp, err := s.client.parent.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -93,12 +91,11 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64)
 }
 
 // Get returns a client correspondence by ID.
-// bucketID is the project ID, correspondenceID is the client correspondence ID.
-func (s *ClientCorrespondencesService) Get(ctx context.Context, bucketID, correspondenceID int64) (result *ClientCorrespondence, err error) {
+func (s *ClientCorrespondencesService) Get(ctx context.Context, correspondenceID int64) (result *ClientCorrespondence, err error) {
 	op := OperationInfo{
 		Service: "ClientCorrespondences", Operation: "Get",
 		ResourceType: "client_correspondence", IsMutation: false,
-		BucketID: bucketID, ResourceID: correspondenceID,
+		ResourceID: correspondenceID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -109,7 +106,7 @@ func (s *ClientCorrespondencesService) Get(ctx context.Context, bucketID, corres
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetClientCorrespondenceWithResponse(ctx, s.client.accountID, bucketID, correspondenceID)
+	resp, err := s.client.parent.gen.GetClientCorrespondenceWithResponse(ctx, s.client.accountID, correspondenceID)
 	if err != nil {
 		return nil, err
 	}
@@ -145,13 +142,13 @@ func clientCorrespondenceFromGenerated(gc generated.ClientCorrespondence) Client
 		RepliesURL:       gc.RepliesUrl,
 	}
 
-	if gc.Id != 0 {
-		c.ID = gc.Id
+	if derefInt64(gc.Id) != 0 {
+		c.ID = derefInt64(gc.Id)
 	}
 
-	if gc.Parent.Id != 0 || gc.Parent.Title != "" {
+	if derefInt64(gc.Parent.Id) != 0 || gc.Parent.Title != "" {
 		c.Parent = &Parent{
-			ID:     gc.Parent.Id,
+			ID:     derefInt64(gc.Parent.Id),
 			Title:  gc.Parent.Title,
 			Type:   gc.Parent.Type,
 			URL:    gc.Parent.Url,
@@ -159,17 +156,17 @@ func clientCorrespondenceFromGenerated(gc generated.ClientCorrespondence) Client
 		}
 	}
 
-	if gc.Bucket.Id != 0 || gc.Bucket.Name != "" {
+	if derefInt64(gc.Bucket.Id) != 0 || gc.Bucket.Name != "" {
 		c.Bucket = &Bucket{
-			ID:   gc.Bucket.Id,
+			ID:   derefInt64(gc.Bucket.Id),
 			Name: gc.Bucket.Name,
 			Type: gc.Bucket.Type,
 		}
 	}
 
-	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
+	if derefInt64(gc.Creator.Id) != 0 || gc.Creator.Name != "" {
 		c.Creator = &Person{
-			ID:           gc.Creator.Id,
+			ID:           derefInt64(gc.Creator.Id),
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,

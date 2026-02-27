@@ -73,15 +73,13 @@ func NewClientApprovalsService(client *AccountClient) *ClientApprovalsService {
 }
 
 // List returns all client approvals in a project.
-// bucketID is the project ID.
 //
 // The returned ClientApprovalListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (result *ClientApprovalListResult, err error) {
+func (s *ClientApprovalsService) List(ctx context.Context) (result *ClientApprovalListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientApprovals", Operation: "List",
 		ResourceType: "client_approval", IsMutation: false,
-		BucketID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -92,7 +90,7 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (resu
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID, bucketID)
+	resp, err := s.client.parent.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -116,12 +114,11 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64) (resu
 }
 
 // Get returns a client approval by ID.
-// bucketID is the project ID, approvalID is the client approval ID.
-func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID int64) (result *ClientApproval, err error) {
+func (s *ClientApprovalsService) Get(ctx context.Context, approvalID int64) (result *ClientApproval, err error) {
 	op := OperationInfo{
 		Service: "ClientApprovals", Operation: "Get",
 		ResourceType: "client_approval", IsMutation: false,
-		BucketID: bucketID, ResourceID: approvalID,
+		ResourceID: approvalID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -132,7 +129,7 @@ func (s *ClientApprovalsService) Get(ctx context.Context, bucketID, approvalID i
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetClientApprovalWithResponse(ctx, s.client.accountID, bucketID, approvalID)
+	resp, err := s.client.parent.gen.GetClientApprovalWithResponse(ctx, s.client.accountID, approvalID)
 	if err != nil {
 		return nil, err
 	}
@@ -169,8 +166,8 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		ApprovalStatus:   ga.ApprovalStatus,
 	}
 
-	if ga.Id != 0 {
-		a.ID = ga.Id
+	if derefInt64(ga.Id) != 0 {
+		a.ID = derefInt64(ga.Id)
 	}
 
 	if !ga.DueOn.IsZero() {
@@ -178,9 +175,9 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		a.DueOn = &dueOn
 	}
 
-	if ga.Parent.Id != 0 || ga.Parent.Title != "" {
+	if derefInt64(ga.Parent.Id) != 0 || ga.Parent.Title != "" {
 		a.Parent = &Parent{
-			ID:     ga.Parent.Id,
+			ID:     derefInt64(ga.Parent.Id),
 			Title:  ga.Parent.Title,
 			Type:   ga.Parent.Type,
 			URL:    ga.Parent.Url,
@@ -188,17 +185,17 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		}
 	}
 
-	if ga.Bucket.Id != 0 || ga.Bucket.Name != "" {
+	if derefInt64(ga.Bucket.Id) != 0 || ga.Bucket.Name != "" {
 		a.Bucket = &Bucket{
-			ID:   ga.Bucket.Id,
+			ID:   derefInt64(ga.Bucket.Id),
 			Name: ga.Bucket.Name,
 			Type: ga.Bucket.Type,
 		}
 	}
 
-	if ga.Creator.Id != 0 || ga.Creator.Name != "" {
+	if derefInt64(ga.Creator.Id) != 0 || ga.Creator.Name != "" {
 		a.Creator = &Person{
-			ID:           ga.Creator.Id,
+			ID:           derefInt64(ga.Creator.Id),
 			Name:         ga.Creator.Name,
 			EmailAddress: ga.Creator.EmailAddress,
 			AvatarURL:    ga.Creator.AvatarUrl,
@@ -207,9 +204,9 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		}
 	}
 
-	if ga.Approver.Id != 0 || ga.Approver.Name != "" {
+	if derefInt64(ga.Approver.Id) != 0 || ga.Approver.Name != "" {
 		a.Approver = &Person{
-			ID:           ga.Approver.Id,
+			ID:           derefInt64(ga.Approver.Id),
 			Name:         ga.Approver.Name,
 			EmailAddress: ga.Approver.EmailAddress,
 			AvatarURL:    ga.Approver.AvatarUrl,
@@ -238,25 +235,25 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 			if gr.Id != nil {
 				resp.ID = *gr.Id
 			}
-			if gr.Parent.Id != 0 || gr.Parent.Title != "" {
+			if derefInt64(gr.Parent.Id) != 0 || gr.Parent.Title != "" {
 				resp.Parent = &Parent{
-					ID:     gr.Parent.Id,
+					ID:     derefInt64(gr.Parent.Id),
 					Title:  gr.Parent.Title,
 					Type:   gr.Parent.Type,
 					URL:    gr.Parent.Url,
 					AppURL: gr.Parent.AppUrl,
 				}
 			}
-			if gr.Bucket.Id != 0 || gr.Bucket.Name != "" {
+			if derefInt64(gr.Bucket.Id) != 0 || gr.Bucket.Name != "" {
 				resp.Bucket = &Bucket{
-					ID:   gr.Bucket.Id,
+					ID:   derefInt64(gr.Bucket.Id),
 					Name: gr.Bucket.Name,
 					Type: gr.Bucket.Type,
 				}
 			}
-			if gr.Creator.Id != 0 || gr.Creator.Name != "" {
+			if derefInt64(gr.Creator.Id) != 0 || gr.Creator.Name != "" {
 				resp.Creator = &Person{
-					ID:           gr.Creator.Id,
+					ID:           derefInt64(gr.Creator.Id),
 					Name:         gr.Creator.Name,
 					EmailAddress: gr.Creator.EmailAddress,
 					AvatarURL:    gr.Creator.AvatarUrl,

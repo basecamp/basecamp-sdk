@@ -14,6 +14,18 @@ import { Errors } from "../../errors.js";
 
 
 /**
+ * Options for forProject.
+ */
+export interface ForProjectTimesheetOptions {
+  /** From */
+  from?: string;
+  /** To */
+  to?: string;
+  /** Person id */
+  personId?: number;
+}
+
+/**
  * Options for forRecording.
  */
 export interface ForRecordingTimesheetOptions {
@@ -40,9 +52,9 @@ export interface CreateTimesheetRequest {
 }
 
 /**
- * Options for forProject.
+ * Options for report.
  */
-export interface ForProjectTimesheetOptions {
+export interface ReportTimesheetOptions {
   /** From */
   from?: string;
   /** To */
@@ -65,18 +77,6 @@ export interface UpdateTimesheetRequest {
   personId?: number;
 }
 
-/**
- * Options for report.
- */
-export interface ReportTimesheetOptions {
-  /** From */
-  from?: string;
-  /** To */
-  to?: string;
-  /** Person id */
-  personId?: number;
-}
-
 
 // =============================================================================
 // Service
@@ -86,84 +86,6 @@ export interface ReportTimesheetOptions {
  * Service for Timesheets operations.
  */
 export class TimesheetsService extends BaseService {
-
-  /**
-   * Get timesheet for a specific recording
-   * @param projectId - The project ID
-   * @param recordingId - The recording ID
-   * @param options - Optional query parameters
-   * @returns Array of results
-   *
-   * @example
-   * ```ts
-   * const result = await client.timesheets.forRecording(123, 123);
-   * ```
-   */
-  async forRecording(projectId: number, recordingId: number, options?: ForRecordingTimesheetOptions): Promise<components["schemas"]["GetRecordingTimesheetResponseContent"]> {
-    const response = await this.request(
-      {
-        service: "Timesheets",
-        operation: "GetRecordingTimesheet",
-        resourceType: "recording_timesheet",
-        isMutation: false,
-        projectId,
-        resourceId: recordingId,
-      },
-      () =>
-        this.client.GET("/projects/{projectId}/recordings/{recordingId}/timesheet.json", {
-          params: {
-            path: { projectId, recordingId },
-            query: { from: options?.from, to: options?.to, "person_id": options?.personId },
-          },
-        })
-    );
-    return response ?? [];
-  }
-
-  /**
-   * Create a timesheet entry on a recording
-   * @param projectId - The project ID
-   * @param recordingId - The recording ID
-   * @param req - Timesheet_entry creation parameters
-   * @returns The timesheet_entry
-   * @throws {BasecampError} If required fields are missing or invalid
-   *
-   * @example
-   * ```ts
-   * const result = await client.timesheets.create(123, 123, { date: "example", hours: "example" });
-   * ```
-   */
-  async create(projectId: number, recordingId: number, req: CreateTimesheetRequest): Promise<components["schemas"]["CreateTimesheetEntryResponseContent"]> {
-    if (!req.date) {
-      throw Errors.validation("Date is required");
-    }
-    if (!req.hours) {
-      throw Errors.validation("Hours is required");
-    }
-    const response = await this.request(
-      {
-        service: "Timesheets",
-        operation: "CreateTimesheetEntry",
-        resourceType: "timesheet_entry",
-        isMutation: true,
-        projectId,
-        resourceId: recordingId,
-      },
-      () =>
-        this.client.POST("/projects/{projectId}/recordings/{recordingId}/timesheet/entries.json", {
-          params: {
-            path: { projectId, recordingId },
-          },
-          body: {
-            date: req.date,
-            hours: req.hours,
-            description: req.description,
-            person_id: req.personId,
-          },
-        })
-    );
-    return response;
-  }
 
   /**
    * Get timesheet for a specific project
@@ -197,64 +119,67 @@ export class TimesheetsService extends BaseService {
   }
 
   /**
-   * Get a single timesheet entry
-   * @param projectId - The project ID
-   * @param entryId - The entry ID
-   * @returns The timesheet_entry
-   * @throws {BasecampError} If the resource is not found
+   * Get timesheet for a specific recording
+   * @param recordingId - The recording ID
+   * @param options - Optional query parameters
+   * @returns Array of results
    *
    * @example
    * ```ts
-   * const result = await client.timesheets.get(123, 123);
+   * const result = await client.timesheets.forRecording(123);
    * ```
    */
-  async get(projectId: number, entryId: number): Promise<components["schemas"]["GetTimesheetEntryResponseContent"]> {
+  async forRecording(recordingId: number, options?: ForRecordingTimesheetOptions): Promise<components["schemas"]["GetRecordingTimesheetResponseContent"]> {
     const response = await this.request(
       {
         service: "Timesheets",
-        operation: "GetTimesheetEntry",
-        resourceType: "timesheet_entry",
+        operation: "GetRecordingTimesheet",
+        resourceType: "recording_timesheet",
         isMutation: false,
-        projectId,
-        resourceId: entryId,
+        resourceId: recordingId,
       },
       () =>
-        this.client.GET("/projects/{projectId}/timesheet/entries/{entryId}", {
+        this.client.GET("/recordings/{recordingId}/timesheet.json", {
           params: {
-            path: { projectId, entryId },
+            path: { recordingId },
+            query: { from: options?.from, to: options?.to, "person_id": options?.personId },
           },
         })
     );
-    return response;
+    return response ?? [];
   }
 
   /**
-   * Update a timesheet entry
-   * @param projectId - The project ID
-   * @param entryId - The entry ID
-   * @param req - Timesheet_entry update parameters
+   * Create a timesheet entry on a recording
+   * @param recordingId - The recording ID
+   * @param req - Timesheet_entry creation parameters
    * @returns The timesheet_entry
-   * @throws {BasecampError} If the resource is not found or fields are invalid
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.timesheets.update(123, 123, { });
+   * const result = await client.timesheets.create(123, { date: "example", hours: "example" });
    * ```
    */
-  async update(projectId: number, entryId: number, req: UpdateTimesheetRequest): Promise<components["schemas"]["UpdateTimesheetEntryResponseContent"]> {
+  async create(recordingId: number, req: CreateTimesheetRequest): Promise<components["schemas"]["CreateTimesheetEntryResponseContent"]> {
+    if (!req.date) {
+      throw Errors.validation("Date is required");
+    }
+    if (!req.hours) {
+      throw Errors.validation("Hours is required");
+    }
     const response = await this.request(
       {
         service: "Timesheets",
-        operation: "UpdateTimesheetEntry",
+        operation: "CreateTimesheetEntry",
         resourceType: "timesheet_entry",
         isMutation: true,
-        projectId,
-        resourceId: entryId,
+        resourceId: recordingId,
       },
       () =>
-        this.client.PUT("/projects/{projectId}/timesheet/entries/{entryId}", {
+        this.client.POST("/recordings/{recordingId}/timesheet/entries.json", {
           params: {
-            path: { projectId, entryId },
+            path: { recordingId },
           },
           body: {
             date: req.date,
@@ -293,5 +218,72 @@ export class TimesheetsService extends BaseService {
         })
     );
     return response ?? [];
+  }
+
+  /**
+   * Get a single timesheet entry
+   * @param entryId - The entry ID
+   * @returns The timesheet_entry
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.timesheets.get(123);
+   * ```
+   */
+  async get(entryId: number): Promise<components["schemas"]["GetTimesheetEntryResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Timesheets",
+        operation: "GetTimesheetEntry",
+        resourceType: "timesheet_entry",
+        isMutation: false,
+        resourceId: entryId,
+      },
+      () =>
+        this.client.GET("/timesheet_entries/{entryId}", {
+          params: {
+            path: { entryId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Update a timesheet entry
+   * @param entryId - The entry ID
+   * @param req - Timesheet_entry update parameters
+   * @returns The timesheet_entry
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.timesheets.update(123, { });
+   * ```
+   */
+  async update(entryId: number, req: UpdateTimesheetRequest): Promise<components["schemas"]["UpdateTimesheetEntryResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Timesheets",
+        operation: "UpdateTimesheetEntry",
+        resourceType: "timesheet_entry",
+        isMutation: true,
+        resourceId: entryId,
+      },
+      () =>
+        this.client.PUT("/timesheet_entries/{entryId}", {
+          params: {
+            path: { entryId },
+          },
+          body: {
+            date: req.date,
+            hours: req.hours,
+            description: req.description,
+            person_id: req.personId,
+          },
+        })
+    );
+    return response;
   }
 }

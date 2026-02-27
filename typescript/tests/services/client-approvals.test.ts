@@ -31,15 +31,15 @@ describe("ClientApprovalsService", () => {
           title: "Design Review",
           inherits_status: true,
           type: "Client::Approval",
-          url: "https://3.basecampapi.com/12345/buckets/1/client/approvals/1.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/client/approvals/1",
+          url: "https://3.basecampapi.com/12345/client/approvals/1.json",
+          app_url: "https://3.basecamp.com/12345/client/approvals/1",
           bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-          subscription_url: "https://3.basecampapi.com/12345/buckets/1/recordings/1/subscription.json",
+          subscription_url: "https://3.basecampapi.com/12345/recordings/1/subscription.json",
           content: "<p>Please review the attached designs</p>",
           subject: "Design Review",
           due_on: "2024-01-15",
           replies_count: 2,
-          replies_url: "https://3.basecampapi.com/12345/buckets/1/client/recordings/1/replies.json",
+          replies_url: "https://3.basecampapi.com/12345/client/recordings/1/replies.json",
           approval_status: "pending",
           bucket: { id: 1, name: "Test Project", type: "Project" },
           creator: { id: 999, name: "Test User" },
@@ -47,7 +47,7 @@ describe("ClientApprovalsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/client/approvals.json`, () => {
+        http.get(`${BASE_URL}/client/approvals.json`, () => {
           return HttpResponse.json(mockApprovals);
         })
       );
@@ -62,7 +62,7 @@ describe("ClientApprovalsService", () => {
 
     it("should return empty array when no approvals exist", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/1/client/approvals.json`, () => {
+        http.get(`${BASE_URL}/client/approvals.json`, () => {
           return HttpResponse.json([]);
         })
       );
@@ -83,15 +83,15 @@ describe("ClientApprovalsService", () => {
         title: "Design Review",
         inherits_status: true,
         type: "Client::Approval",
-        url: "https://3.basecampapi.com/12345/buckets/1/client/approvals/1.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/client/approvals/1",
+        url: "https://3.basecampapi.com/12345/client/approvals/1.json",
+        app_url: "https://3.basecamp.com/12345/client/approvals/1",
         bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-        subscription_url: "https://3.basecampapi.com/12345/buckets/1/recordings/1/subscription.json",
+        subscription_url: "https://3.basecampapi.com/12345/recordings/1/subscription.json",
         content: "<p>Please review the attached designs</p>",
         subject: "Design Review",
         due_on: "2024-01-15",
         replies_count: 2,
-        replies_url: "https://3.basecampapi.com/12345/buckets/1/client/recordings/1/replies.json",
+        replies_url: "https://3.basecampapi.com/12345/client/recordings/1/replies.json",
         approval_status: "approved",
         bucket: { id: 1, name: "Test Project", type: "Project" },
         creator: { id: 999, name: "Test User" },
@@ -106,7 +106,7 @@ describe("ClientApprovalsService", () => {
             title: "",
             inherits_status: true,
             type: "Client::Approval::Response",
-            app_url: "https://3.basecamp.com/12345/buckets/1/client/approvals/1/responses/10",
+            app_url: "https://3.basecamp.com/12345/client/approvals/1/responses/10",
             bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
             content: "<p>Looks great!</p>",
             approved: true,
@@ -116,12 +116,12 @@ describe("ClientApprovalsService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/client/approvals/1`, () => {
+        http.get(`${BASE_URL}/client/approvals/1`, () => {
           return HttpResponse.json(mockApproval);
         })
       );
 
-      const approval = await client.clientApprovals.get(1, 1);
+      const approval = await client.clientApprovals.get(1);
 
       expect(approval.id).toBe(1);
       expect(approval.subject).toBe("Design Review");
@@ -133,13 +133,13 @@ describe("ClientApprovalsService", () => {
 
     it("should throw not_found for non-existent approval", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/1/client/approvals/999`, () => {
+        http.get(`${BASE_URL}/client/approvals/999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
       try {
-        await client.clientApprovals.get(1, 999);
+        await client.clientApprovals.get(999);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).toBeInstanceOf(BasecampError);

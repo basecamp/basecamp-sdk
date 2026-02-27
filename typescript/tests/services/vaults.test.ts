@@ -38,12 +38,12 @@ describe("VaultsService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/vaults/1001`, () => {
+        http.get(`${BASE_URL}/vaults/1001`, () => {
           return HttpResponse.json(vault);
         })
       );
 
-      const result = await service.get(123, 1001);
+      const result = await service.get(1001);
 
       expect(result.id).toBe(1001);
       expect(result.title).toBe("Documents Folder");
@@ -52,15 +52,15 @@ describe("VaultsService", () => {
 
     it("should throw not_found error for 404 response", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/vaults/9999`, () => {
+        http.get(`${BASE_URL}/vaults/9999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
-      await expect(service.get(123, 9999)).rejects.toThrow(BasecampError);
+      await expect(service.get(9999)).rejects.toThrow(BasecampError);
 
       try {
-        await service.get(123, 9999);
+        await service.get(9999);
       } catch (err) {
         expect((err as BasecampError).code).toBe("not_found");
       }
@@ -75,12 +75,12 @@ describe("VaultsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, () => {
+        http.get(`${BASE_URL}/vaults/1001/vaults.json`, () => {
           return HttpResponse.json(vaults);
         })
       );
 
-      const result = await service.list(123, 1001);
+      const result = await service.list(1001);
 
       expect(result).toHaveLength(2);
       expect(result[0].title).toBe("Subfolder 1");
@@ -89,12 +89,12 @@ describe("VaultsService", () => {
 
     it("should return empty array when no child vaults", async () => {
       server.use(
-        http.get(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, () => {
+        http.get(`${BASE_URL}/vaults/1001/vaults.json`, () => {
           return HttpResponse.json([]);
         })
       );
 
-      const result = await service.list(123, 1001);
+      const result = await service.list(1001);
 
       expect(result).toHaveLength(0);
     });
@@ -109,12 +109,12 @@ describe("VaultsService", () => {
       };
 
       server.use(
-        http.post(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, () => {
+        http.post(`${BASE_URL}/vaults/1001/vaults.json`, () => {
           return HttpResponse.json(newVault);
         })
       );
 
-      const result = await service.create(123, 1001, { title: "New Folder" });
+      const result = await service.create(1001, { title: "New Folder" });
 
       expect(result.id).toBe(3001);
       expect(result.title).toBe("New Folder");
@@ -124,13 +124,13 @@ describe("VaultsService", () => {
       let capturedBody: { title?: string } | null = null;
 
       server.use(
-        http.post(`${BASE_URL}/buckets/123/vaults/1001/vaults.json`, async ({ request }) => {
+        http.post(`${BASE_URL}/vaults/1001/vaults.json`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string };
           return HttpResponse.json({ id: 1, title: "Test" });
         })
       );
 
-      await service.create(123, 1001, { title: "My New Folder" });
+      await service.create(1001, { title: "My New Folder" });
 
       expect(capturedBody?.title).toBe("My New Folder");
     });
@@ -147,12 +147,12 @@ describe("VaultsService", () => {
       };
 
       server.use(
-        http.put(`${BASE_URL}/buckets/123/vaults/1001`, () => {
+        http.put(`${BASE_URL}/vaults/1001`, () => {
           return HttpResponse.json(updatedVault);
         })
       );
 
-      const result = await service.update(123, 1001, { title: "Renamed Folder" });
+      const result = await service.update(1001, { title: "Renamed Folder" });
 
       expect(result.title).toBe("Renamed Folder");
     });
@@ -161,13 +161,13 @@ describe("VaultsService", () => {
       let capturedBody: { title?: string } | null = null;
 
       server.use(
-        http.put(`${BASE_URL}/buckets/123/vaults/1001`, async ({ request }) => {
+        http.put(`${BASE_URL}/vaults/1001`, async ({ request }) => {
           capturedBody = (await request.json()) as { title?: string };
           return HttpResponse.json({ id: 1001, title: "Updated" });
         })
       );
 
-      await service.update(123, 1001, { title: "Updated Title" });
+      await service.update(1001, { title: "Updated Title" });
 
       expect(capturedBody?.title).toBe("Updated Title");
     });

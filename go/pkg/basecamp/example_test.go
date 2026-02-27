@@ -131,11 +131,11 @@ func ExampleTodosService_List() {
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
-	projectID := int64(123456)
+
 	todolistID := int64(789012)
 
 	// List all todos in a todolist
-	todosResult, err := client.ForAccount("12345").Todos().List(ctx, projectID, todolistID, nil)
+	todosResult, err := client.ForAccount("12345").Todos().List(ctx, todolistID, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -155,11 +155,11 @@ func ExampleTodosService_Create() {
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
-	projectID := int64(123456)
+
 	todolistID := int64(789012)
 
 	// Create a new todo with assignees and due date
-	todo, err := client.ForAccount("12345").Todos().Create(ctx, projectID, todolistID, &basecamp.CreateTodoRequest{
+	todo, err := client.ForAccount("12345").Todos().Create(ctx, todolistID, &basecamp.CreateTodoRequest{
 		Content:     "Review pull request",
 		Description: "<strong>Priority:</strong> High",
 		DueOn:       "2024-12-31",
@@ -179,11 +179,11 @@ func ExampleTodosService_Complete() {
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
-	projectID := int64(123456)
+
 	todoID := int64(789012)
 
 	// Mark a todo as complete
-	err := client.ForAccount("12345").Todos().Complete(ctx, projectID, todoID)
+	err := client.ForAccount("12345").Todos().Complete(ctx, todoID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -235,11 +235,11 @@ func ExampleMessagesService_Create() {
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
-	projectID := int64(123456)
+
 	boardID := int64(789012)
 
 	// Create a message on a message board
-	message, err := client.ForAccount("12345").Messages().Create(ctx, projectID, boardID, &basecamp.CreateMessageRequest{
+	message, err := client.ForAccount("12345").Messages().Create(ctx, boardID, &basecamp.CreateMessageRequest{
 		Subject: "Weekly Update",
 		Content: "<p>Here's what we accomplished this week...</p>",
 	})
@@ -323,10 +323,10 @@ func ExampleWebhooksService_Create() {
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
-	projectID := int64(123456)
 
 	// Create a webhook to receive notifications
-	webhook, err := client.ForAccount("12345").Webhooks().Create(ctx, projectID, &basecamp.CreateWebhookRequest{
+	var bucketID int64 = 67890
+	webhook, err := client.ForAccount("12345").Webhooks().Create(ctx, bucketID, &basecamp.CreateWebhookRequest{
 		PayloadURL: "https://example.com/webhooks/basecamp",
 		Types:      []string{"Todo", "Comment"},
 	})
@@ -343,11 +343,11 @@ func ExampleCommentsService_Create() {
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
-	projectID := int64(123456)
+
 	recordingID := int64(789012) // Can be a todo, message, etc.
 
 	// Add a comment to any recording
-	comment, err := client.ForAccount("12345").Comments().Create(ctx, projectID, recordingID, &basecamp.CreateCommentRequest{
+	comment, err := client.ForAccount("12345").Comments().Create(ctx, recordingID, &basecamp.CreateCommentRequest{
 		Content: "<p>Looks good to me!</p>",
 	})
 	if err != nil {
@@ -363,11 +363,11 @@ func ExampleCampfiresService_CreateLine() {
 	client := basecamp.NewClient(cfg, token)
 
 	ctx := context.Background()
-	projectID := int64(123456)
+
 	campfireID := int64(789012)
 
 	// Post a message to a campfire (chat)
-	line, err := client.ForAccount("12345").Campfires().CreateLine(ctx, projectID, campfireID, "Hello team!")
+	line, err := client.ForAccount("12345").Campfires().CreateLine(ctx, campfireID, "Hello team!")
 	if err != nil {
 		log.Fatal(err)
 	}

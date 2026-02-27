@@ -112,12 +112,11 @@ func NewForwardsService(client *AccountClient) *ForwardsService {
 }
 
 // GetInbox returns an inbox by ID.
-// bucketID is the project ID, inboxID is the inbox ID.
-func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64) (result *Inbox, err error) {
+func (s *ForwardsService) GetInbox(ctx context.Context, inboxID int64) (result *Inbox, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "GetInbox",
 		ResourceType: "inbox", IsMutation: false,
-		BucketID: bucketID, ResourceID: inboxID,
+		ResourceID: inboxID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -128,7 +127,7 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetInboxWithResponse(ctx, s.client.accountID, bucketID, inboxID)
+	resp, err := s.client.parent.gen.GetInboxWithResponse(ctx, s.client.accountID, inboxID)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +144,6 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 }
 
 // List returns all forwards in an inbox.
-// bucketID is the project ID, inboxID is the inbox ID.
 //
 // By default, returns all forwards (no limit). Use Limit to cap results.
 //
@@ -155,11 +153,11 @@ func (s *ForwardsService) GetInbox(ctx context.Context, bucketID, inboxID int64)
 //
 // The returned ForwardListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opts *ForwardListOptions) (result *ForwardListResult, err error) {
+func (s *ForwardsService) List(ctx context.Context, inboxID int64, opts *ForwardListOptions) (result *ForwardListResult, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "List",
 		ResourceType: "forward", IsMutation: false,
-		BucketID: bucketID, ResourceID: inboxID,
+		ResourceID: inboxID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -171,7 +169,7 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opt
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, bucketID, inboxID)
+	resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, inboxID)
 	if err != nil {
 		return nil, err
 	}
@@ -225,12 +223,11 @@ func (s *ForwardsService) List(ctx context.Context, bucketID, inboxID int64, opt
 }
 
 // Get returns a forward by ID.
-// bucketID is the project ID, forwardID is the forward ID.
-func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (result *Forward, err error) {
+func (s *ForwardsService) Get(ctx context.Context, forwardID int64) (result *Forward, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "Get",
 		ResourceType: "forward", IsMutation: false,
-		BucketID: bucketID, ResourceID: forwardID,
+		ResourceID: forwardID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -241,7 +238,7 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetForwardWithResponse(ctx, s.client.accountID, bucketID, forwardID)
+	resp, err := s.client.parent.gen.GetForwardWithResponse(ctx, s.client.accountID, forwardID)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +255,6 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (r
 }
 
 // ListReplies returns all replies to a forward.
-// bucketID is the project ID, forwardID is the forward ID.
 //
 // By default, returns all replies (no limit). Use Limit to cap results.
 //
@@ -268,11 +264,11 @@ func (s *ForwardsService) Get(ctx context.Context, bucketID, forwardID int64) (r
 //
 // The returned ForwardReplyListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID int64, opts *ForwardReplyListOptions) (result *ForwardReplyListResult, err error) {
+func (s *ForwardsService) ListReplies(ctx context.Context, forwardID int64, opts *ForwardReplyListOptions) (result *ForwardReplyListResult, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "ListReplies",
 		ResourceType: "forward_reply", IsMutation: false,
-		BucketID: bucketID, ResourceID: forwardID,
+		ResourceID: forwardID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -284,7 +280,7 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListForwardRepliesWithResponse(ctx, s.client.accountID, bucketID, forwardID)
+	resp, err := s.client.parent.gen.ListForwardRepliesWithResponse(ctx, s.client.accountID, forwardID)
 	if err != nil {
 		return nil, err
 	}
@@ -338,12 +334,11 @@ func (s *ForwardsService) ListReplies(ctx context.Context, bucketID, forwardID i
 }
 
 // GetReply returns a forward reply by ID.
-// bucketID is the project ID, forwardID is the forward ID, replyID is the reply ID.
-func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, replyID int64) (result *ForwardReply, err error) {
+func (s *ForwardsService) GetReply(ctx context.Context, forwardID, replyID int64) (result *ForwardReply, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "GetReply",
 		ResourceType: "forward_reply", IsMutation: false,
-		BucketID: bucketID, ResourceID: replyID,
+		ResourceID: replyID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -354,7 +349,7 @@ func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, rep
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetForwardReplyWithResponse(ctx, s.client.accountID, bucketID, forwardID, replyID)
+	resp, err := s.client.parent.gen.GetForwardReplyWithResponse(ctx, s.client.accountID, forwardID, replyID)
 	if err != nil {
 		return nil, err
 	}
@@ -371,13 +366,12 @@ func (s *ForwardsService) GetReply(ctx context.Context, bucketID, forwardID, rep
 }
 
 // CreateReply creates a new reply to a forwarded email.
-// bucketID is the project ID, forwardID is the forward ID.
 // Returns the created reply.
-func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID int64, req *CreateForwardReplyRequest) (result *ForwardReply, err error) {
+func (s *ForwardsService) CreateReply(ctx context.Context, forwardID int64, req *CreateForwardReplyRequest) (result *ForwardReply, err error) {
 	op := OperationInfo{
 		Service: "Forwards", Operation: "CreateReply",
 		ResourceType: "forward_reply", IsMutation: true,
-		BucketID: bucketID, ResourceID: forwardID,
+		ResourceID: forwardID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -397,7 +391,7 @@ func (s *ForwardsService) CreateReply(ctx context.Context, bucketID, forwardID i
 		Content: req.Content,
 	}
 
-	resp, err := s.client.parent.gen.CreateForwardReplyWithResponse(ctx, s.client.accountID, bucketID, forwardID, body)
+	resp, err := s.client.parent.gen.CreateForwardReplyWithResponse(ctx, s.client.accountID, forwardID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -425,21 +419,21 @@ func inboxFromGenerated(gi generated.Inbox) Inbox {
 		AppURL:    gi.AppUrl,
 	}
 
-	if gi.Id != 0 {
-		i.ID = gi.Id
+	if derefInt64(gi.Id) != 0 {
+		i.ID = derefInt64(gi.Id)
 	}
 
-	if gi.Bucket.Id != 0 || gi.Bucket.Name != "" {
+	if derefInt64(gi.Bucket.Id) != 0 || gi.Bucket.Name != "" {
 		i.Bucket = &Bucket{
-			ID:   gi.Bucket.Id,
+			ID:   derefInt64(gi.Bucket.Id),
 			Name: gi.Bucket.Name,
 			Type: gi.Bucket.Type,
 		}
 	}
 
-	if gi.Creator.Id != 0 || gi.Creator.Name != "" {
+	if derefInt64(gi.Creator.Id) != 0 || gi.Creator.Name != "" {
 		i.Creator = &Person{
-			ID:           gi.Creator.Id,
+			ID:           derefInt64(gi.Creator.Id),
 			Name:         gi.Creator.Name,
 			EmailAddress: gi.Creator.EmailAddress,
 			AvatarURL:    gi.Creator.AvatarUrl,
@@ -465,13 +459,13 @@ func forwardFromGenerated(gf generated.Forward) Forward {
 		AppURL:    gf.AppUrl,
 	}
 
-	if gf.Id != 0 {
-		f.ID = gf.Id
+	if derefInt64(gf.Id) != 0 {
+		f.ID = derefInt64(gf.Id)
 	}
 
-	if gf.Parent.Id != 0 || gf.Parent.Title != "" {
+	if derefInt64(gf.Parent.Id) != 0 || gf.Parent.Title != "" {
 		f.Parent = &Parent{
-			ID:     gf.Parent.Id,
+			ID:     derefInt64(gf.Parent.Id),
 			Title:  gf.Parent.Title,
 			Type:   gf.Parent.Type,
 			URL:    gf.Parent.Url,
@@ -479,17 +473,17 @@ func forwardFromGenerated(gf generated.Forward) Forward {
 		}
 	}
 
-	if gf.Bucket.Id != 0 || gf.Bucket.Name != "" {
+	if derefInt64(gf.Bucket.Id) != 0 || gf.Bucket.Name != "" {
 		f.Bucket = &Bucket{
-			ID:   gf.Bucket.Id,
+			ID:   derefInt64(gf.Bucket.Id),
 			Name: gf.Bucket.Name,
 			Type: gf.Bucket.Type,
 		}
 	}
 
-	if gf.Creator.Id != 0 || gf.Creator.Name != "" {
+	if derefInt64(gf.Creator.Id) != 0 || gf.Creator.Name != "" {
 		f.Creator = &Person{
-			ID:           gf.Creator.Id,
+			ID:           derefInt64(gf.Creator.Id),
 			Name:         gf.Creator.Name,
 			EmailAddress: gf.Creator.EmailAddress,
 			AvatarURL:    gf.Creator.AvatarUrl,
@@ -513,13 +507,13 @@ func forwardReplyFromGenerated(gr generated.ForwardReply) ForwardReply {
 		AppURL:    gr.AppUrl,
 	}
 
-	if gr.Id != 0 {
-		r.ID = gr.Id
+	if derefInt64(gr.Id) != 0 {
+		r.ID = derefInt64(gr.Id)
 	}
 
-	if gr.Parent.Id != 0 || gr.Parent.Title != "" {
+	if derefInt64(gr.Parent.Id) != 0 || gr.Parent.Title != "" {
 		r.Parent = &Parent{
-			ID:     gr.Parent.Id,
+			ID:     derefInt64(gr.Parent.Id),
 			Title:  gr.Parent.Title,
 			Type:   gr.Parent.Type,
 			URL:    gr.Parent.Url,
@@ -527,17 +521,17 @@ func forwardReplyFromGenerated(gr generated.ForwardReply) ForwardReply {
 		}
 	}
 
-	if gr.Bucket.Id != 0 || gr.Bucket.Name != "" {
+	if derefInt64(gr.Bucket.Id) != 0 || gr.Bucket.Name != "" {
 		r.Bucket = &Bucket{
-			ID:   gr.Bucket.Id,
+			ID:   derefInt64(gr.Bucket.Id),
 			Name: gr.Bucket.Name,
 			Type: gr.Bucket.Type,
 		}
 	}
 
-	if gr.Creator.Id != 0 || gr.Creator.Name != "" {
+	if derefInt64(gr.Creator.Id) != 0 || gr.Creator.Name != "" {
 		r.Creator = &Person{
-			ID:           gr.Creator.Id,
+			ID:           derefInt64(gr.Creator.Id),
 			Name:         gr.Creator.Name,
 			EmailAddress: gr.Creator.EmailAddress,
 			AvatarURL:    gr.Creator.AvatarUrl,

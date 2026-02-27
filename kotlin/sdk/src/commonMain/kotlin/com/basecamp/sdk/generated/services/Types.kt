@@ -340,6 +340,14 @@ data class CreateProjectFromTemplateBody(
     val description: String? = null
 )
 
+/** Options for GetProjectTimesheet. */
+data class GetProjectTimesheetOptions(
+    val from: String? = null,
+    val to: String? = null,
+    val personId: Long? = null
+) {
+}
+
 /** Options for GetRecordingTimesheet. */
 data class GetRecordingTimesheetOptions(
     val from: String? = null,
@@ -356,8 +364,8 @@ data class CreateTimesheetEntryBody(
     val personId: Long? = null
 )
 
-/** Options for GetProjectTimesheet. */
-data class GetProjectTimesheetOptions(
+/** Options for GetTimesheetReport. */
+data class GetTimesheetReportOptions(
     val from: String? = null,
     val to: String? = null,
     val personId: Long? = null
@@ -371,14 +379,6 @@ data class UpdateTimesheetEntryBody(
     val description: String? = null,
     val personId: Long? = null
 )
-
-/** Options for GetTimesheetReport. */
-data class GetTimesheetReportOptions(
-    val from: String? = null,
-    val to: String? = null,
-    val personId: Long? = null
-) {
-}
 
 /** Request body for RepositionTodolistGroup. */
 data class RepositionTodolistGroupBody(

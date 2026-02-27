@@ -8,7 +8,7 @@ apply GetTodolistOrGroup @examples([
   {
     title: "Get a Todolist"
     documentation: "Returns a Todolist when ID refers to a todolist"
-    input: { accountId: "999", projectId: 12345678, id: 987654 }
+    input: { accountId: "999", id: 987654 }
     output: { result: { todolist: {
       id: 987654, status: "active", name: "Launch Tasks",
       visible_to_clients: false, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z",
@@ -23,7 +23,7 @@ apply GetTodolistOrGroup @examples([
   {
     title: "Get a TodolistGroup"
     documentation: "Returns a TodolistGroup when ID refers to a group"
-    input: { accountId: "999", projectId: 12345678, id: 111222 }
+    input: { accountId: "999", id: 111222 }
     output: { result: { group: {
       id: 111222, status: "active", name: "Q1 Milestones",
       visible_to_clients: false, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z",
@@ -59,7 +59,7 @@ apply TrashRecording @examples([
   {
     title: "Trash any recording type"
     documentation: "Works on comments, messages, documents, cards - any recording"
-    input: { accountId: "999", projectId: 12345678, recordingId: 555666 }
+    input: { accountId: "999", recordingId: 555666 }
   }
 ])
 
@@ -84,10 +84,10 @@ apply UpdateProjectAccess @examples([
 apply UpdateSubscription @examples([
   {
     title: "Add subscribers"
-    input: { accountId: "999", projectId: 12345678, recordingId: 987654, subscriptions: [111, 222] }
+    input: { accountId: "999", recordingId: 987654, subscriptions: [111, 222] }
   },
   {
     title: "Remove subscribers"
-    input: { accountId: "999", projectId: 12345678, recordingId: 987654, unsubscriptions: [333] }
+    input: { accountId: "999", recordingId: 987654, unsubscriptions: [333] }
   }
 ])

@@ -14,20 +14,19 @@ class ClientApprovalsService(client: AccountClient) : BaseService(client) {
 
     /**
      * List all client approvals in a project
-     * @param projectId The project ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(projectId: Long, options: PaginationOptions? = null): ListResult<ClientApproval> {
+    suspend fun list(options: PaginationOptions? = null): ListResult<ClientApproval> {
         val info = OperationInfo(
             service = "ClientApprovals",
             operation = "ListClientApprovals",
             resourceType = "client_approval",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = null,
         )
         return requestPaginated(info, options, {
-            httpGet("/buckets/${projectId}/client/approvals.json", operationName = info.operation)
+            httpGet("/client/approvals.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<ClientApproval>>(body)
         }
@@ -35,20 +34,19 @@ class ClientApprovalsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a single client approval by id
-     * @param projectId The project ID
      * @param approvalId The approval ID
      */
-    suspend fun get(projectId: Long, approvalId: Long): ClientApproval {
+    suspend fun get(approvalId: Long): ClientApproval {
         val info = OperationInfo(
             service = "ClientApprovals",
             operation = "GetClientApproval",
             resourceType = "client_approval",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = approvalId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/client/approvals/${approvalId}", operationName = info.operation)
+            httpGet("/client/approvals/${approvalId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<ClientApproval>(body)
         }

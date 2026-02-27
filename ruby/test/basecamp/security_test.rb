@@ -520,7 +520,7 @@ class SecurityWebhookTest < Minitest::Test
 
     assert_raises(Basecamp::Error) do
       @account.webhooks.create(
-        project_id: 1,
+        bucket_id: 1,
         payload_url: "http://example.com/webhook",
         types: [ "Todo" ]
       )
@@ -534,7 +534,7 @@ class SecurityWebhookTest < Minitest::Test
 
     assert_raises(Basecamp::Error) do
       @account.webhooks.create(
-        project_id: 1,
+        bucket_id: 1,
         payload_url: "",
         types: [ "Todo" ]
       )
@@ -548,7 +548,7 @@ class SecurityWebhookTest < Minitest::Test
 
     assert_raises(Basecamp::Error) do
       @account.webhooks.create(
-        project_id: 1,
+        bucket_id: 1,
         payload_url: "javascript:alert(1)",
         types: [ "Todo" ]
       )
@@ -562,7 +562,7 @@ class SecurityWebhookTest < Minitest::Test
 
     assert_raises(Basecamp::Error) do
       @account.webhooks.create(
-        project_id: 1,
+        bucket_id: 1,
         payload_url: "file:///etc/passwd",
         types: [ "Todo" ]
       )
@@ -570,13 +570,12 @@ class SecurityWebhookTest < Minitest::Test
   end
 
   def test_webhook_update_sends_http_url_to_api
-    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks/\d+})
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/webhooks/\d+})
       .to_return(status: 422, body: { error: "payload_url must use HTTPS" }.to_json,
         headers: { "Content-Type" => "application/json" })
 
     assert_raises(Basecamp::Error) do
       @account.webhooks.update(
-        project_id: 1,
         webhook_id: 2,
         payload_url: "http://example.com/webhook"
       )
@@ -586,10 +585,10 @@ class SecurityWebhookTest < Minitest::Test
   def test_webhook_update_allows_nil_url
     response = { "id" => 2, "active" => false }
 
-    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks/\d+})
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/webhooks/\d+})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.webhooks.update(project_id: 1, webhook_id: 2, active: false)
+    result = @account.webhooks.update(webhook_id: 2, active: false)
     assert_equal false, result["active"]
   end
 end

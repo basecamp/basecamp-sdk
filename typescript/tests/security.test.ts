@@ -529,13 +529,13 @@ describe("Webhook update URL validation", () => {
 
   it("webhook update sends http:// payload URL to API (server validates)", async () => {
     server.use(
-      http.put(`${BASE_URL}/buckets/1/webhooks/1`, () => {
+      http.put(`${BASE_URL}/webhooks/1`, () => {
         return HttpResponse.json({ error: "payload_url must use HTTPS" }, { status: 422 });
       })
     );
 
     await expect(
-      client.webhooks.update(1, 1, {
+      client.webhooks.update(1, {
         payloadUrl: "http://example.com/webhook",
       })
     ).rejects.toThrow();
@@ -543,7 +543,7 @@ describe("Webhook update URL validation", () => {
 
   it("webhook update allows undefined payload URL", async () => {
     server.use(
-      http.put(`${BASE_URL}/buckets/1/webhooks/1`, () => {
+      http.put(`${BASE_URL}/webhooks/1`, () => {
         return HttpResponse.json({
           id: 1,
           active: false,
@@ -555,7 +555,7 @@ describe("Webhook update URL validation", () => {
       })
     );
 
-    const webhook = await client.webhooks.update(1, 1, {
+    const webhook = await client.webhooks.update(1, {
       active: false,
     });
 

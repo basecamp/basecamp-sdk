@@ -34,30 +34,28 @@ export class ClientRepliesService extends BaseService {
 
   /**
    * List all client replies for a recording (correspondence or approval)
-   * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
    * @returns All ClientReply across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.clientReplies.list(123, 123);
+   * const result = await client.clientReplies.list(123);
    * ```
    */
-  async list(projectId: number, recordingId: number, options?: ListClientReplyOptions): Promise<ListResult<ClientReply>> {
+  async list(recordingId: number, options?: ListClientReplyOptions): Promise<ListResult<ClientReply>> {
     return this.requestPaginated(
       {
         service: "ClientReplies",
         operation: "ListClientReplies",
         resourceType: "client_replie",
         isMutation: false,
-        projectId,
         resourceId: recordingId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/client/recordings/{recordingId}/replies.json", {
+        this.client.GET("/client/recordings/{recordingId}/replies.json", {
           params: {
-            path: { projectId, recordingId },
+            path: { recordingId },
           },
         })
       , options
@@ -66,7 +64,6 @@ export class ClientRepliesService extends BaseService {
 
   /**
    * Get a single client reply by id
-   * @param projectId - The project ID
    * @param recordingId - The recording ID
    * @param replyId - The reply ID
    * @returns The ClientReply
@@ -74,23 +71,22 @@ export class ClientRepliesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.clientReplies.get(123, 123, 123);
+   * const result = await client.clientReplies.get(123, 123);
    * ```
    */
-  async get(projectId: number, recordingId: number, replyId: number): Promise<ClientReply> {
+  async get(recordingId: number, replyId: number): Promise<ClientReply> {
     const response = await this.request(
       {
         service: "ClientReplies",
         operation: "GetClientReply",
         resourceType: "client_reply",
         isMutation: false,
-        projectId,
         resourceId: recordingId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/client/recordings/{recordingId}/replies/{replyId}", {
+        this.client.GET("/client/recordings/{recordingId}/replies/{replyId}", {
           params: {
-            path: { projectId, recordingId, replyId },
+            path: { recordingId, replyId },
           },
         })
     );

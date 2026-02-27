@@ -8,35 +8,32 @@ module Basecamp
     class TodolistGroupsService < BaseService
 
       # Reposition a todolist group
-      # @param project_id [Integer] project id ID
       # @param group_id [Integer] group id ID
       # @param position [Integer] position
       # @return [void]
-      def reposition(project_id:, group_id:, position:)
-        with_operation(service: "todolistgroups", operation: "reposition", is_mutation: true, project_id: project_id, resource_id: group_id) do
-          http_put(bucket_path(project_id, "/todolists/#{group_id}/position.json"), body: compact_params(position: position))
+      def reposition(group_id:, position:)
+        with_operation(service: "todolistgroups", operation: "reposition", is_mutation: true, resource_id: group_id) do
+          http_put("/todolists/#{group_id}/position.json", body: compact_params(position: position))
           nil
         end
       end
 
       # List groups in a todolist
-      # @param project_id [Integer] project id ID
       # @param todolist_id [Integer] todolist id ID
       # @return [Enumerator<Hash>] paginated results
-      def list(project_id:, todolist_id:)
-        wrap_paginated(service: "todolistgroups", operation: "list", is_mutation: false, project_id: project_id, resource_id: todolist_id) do
-          paginate(bucket_path(project_id, "/todolists/#{todolist_id}/groups.json"))
+      def list(todolist_id:)
+        wrap_paginated(service: "todolistgroups", operation: "list", is_mutation: false, resource_id: todolist_id) do
+          paginate("/todolists/#{todolist_id}/groups.json")
         end
       end
 
       # Create a new group in a todolist
-      # @param project_id [Integer] project id ID
       # @param todolist_id [Integer] todolist id ID
       # @param name [String] name
       # @return [Hash] response data
-      def create(project_id:, todolist_id:, name:)
-        with_operation(service: "todolistgroups", operation: "create", is_mutation: true, project_id: project_id, resource_id: todolist_id) do
-          http_post(bucket_path(project_id, "/todolists/#{todolist_id}/groups.json"), body: compact_params(name: name)).json
+      def create(todolist_id:, name:)
+        with_operation(service: "todolistgroups", operation: "create", is_mutation: true, resource_id: todolist_id) do
+          http_post("/todolists/#{todolist_id}/groups.json", body: compact_params(name: name)).json
         end
       end
     end

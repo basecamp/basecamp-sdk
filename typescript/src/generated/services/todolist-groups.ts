@@ -51,7 +51,6 @@ export class TodolistGroupsService extends BaseService {
 
   /**
    * Reposition a todolist group
-   * @param projectId - The project ID
    * @param groupId - The group ID
    * @param req - Todolist_group request parameters
    * @returns void
@@ -59,23 +58,22 @@ export class TodolistGroupsService extends BaseService {
    *
    * @example
    * ```ts
-   * await client.todolistGroups.reposition(123, 123, { position: 1 });
+   * await client.todolistGroups.reposition(123, { position: 1 });
    * ```
    */
-  async reposition(projectId: number, groupId: number, req: RepositionTodolistGroupRequest): Promise<void> {
+  async reposition(groupId: number, req: RepositionTodolistGroupRequest): Promise<void> {
     await this.request(
       {
         service: "TodolistGroups",
         operation: "RepositionTodolistGroup",
         resourceType: "todolist_group",
         isMutation: true,
-        projectId,
         resourceId: groupId,
       },
       () =>
-        this.client.PUT("/buckets/{projectId}/todolists/{groupId}/position.json", {
+        this.client.PUT("/todolists/{groupId}/position.json", {
           params: {
-            path: { projectId, groupId },
+            path: { groupId },
           },
           body: {
             position: req.position,
@@ -86,30 +84,28 @@ export class TodolistGroupsService extends BaseService {
 
   /**
    * List groups in a todolist
-   * @param projectId - The project ID
    * @param todolistId - The todolist ID
    * @param options - Optional query parameters
    * @returns All TodolistGroup across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.todolistGroups.list(123, 123);
+   * const result = await client.todolistGroups.list(123);
    * ```
    */
-  async list(projectId: number, todolistId: number, options?: ListTodolistGroupOptions): Promise<ListResult<TodolistGroup>> {
+  async list(todolistId: number, options?: ListTodolistGroupOptions): Promise<ListResult<TodolistGroup>> {
     return this.requestPaginated(
       {
         service: "TodolistGroups",
         operation: "ListTodolistGroups",
         resourceType: "todolist_group",
         isMutation: false,
-        projectId,
         resourceId: todolistId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/todolists/{todolistId}/groups.json", {
+        this.client.GET("/todolists/{todolistId}/groups.json", {
           params: {
-            path: { projectId, todolistId },
+            path: { todolistId },
           },
         })
       , options
@@ -118,7 +114,6 @@ export class TodolistGroupsService extends BaseService {
 
   /**
    * Create a new group in a todolist
-   * @param projectId - The project ID
    * @param todolistId - The todolist ID
    * @param req - Todolist_group creation parameters
    * @returns The TodolistGroup
@@ -126,10 +121,10 @@ export class TodolistGroupsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.todolistGroups.create(123, 123, { name: "My example" });
+   * const result = await client.todolistGroups.create(123, { name: "My example" });
    * ```
    */
-  async create(projectId: number, todolistId: number, req: CreateTodolistGroupRequest): Promise<TodolistGroup> {
+  async create(todolistId: number, req: CreateTodolistGroupRequest): Promise<TodolistGroup> {
     if (!req.name) {
       throw Errors.validation("Name is required");
     }
@@ -139,13 +134,12 @@ export class TodolistGroupsService extends BaseService {
         operation: "CreateTodolistGroup",
         resourceType: "todolist_group",
         isMutation: true,
-        projectId,
         resourceId: todolistId,
       },
       () =>
-        this.client.POST("/buckets/{projectId}/todolists/{todolistId}/groups.json", {
+        this.client.POST("/todolists/{todolistId}/groups.json", {
           params: {
-            path: { projectId, todolistId },
+            path: { todolistId },
           },
           body: {
             name: req.name,

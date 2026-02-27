@@ -34,29 +34,24 @@ export class ClientApprovalsService extends BaseService {
 
   /**
    * List all client approvals in a project
-   * @param projectId - The project ID
    * @param options - Optional query parameters
    * @returns All ClientApproval across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.clientApprovals.list(123);
+   * const result = await client.clientApprovals.list();
    * ```
    */
-  async list(projectId: number, options?: ListClientApprovalOptions): Promise<ListResult<ClientApproval>> {
+  async list(options?: ListClientApprovalOptions): Promise<ListResult<ClientApproval>> {
     return this.requestPaginated(
       {
         service: "ClientApprovals",
         operation: "ListClientApprovals",
         resourceType: "client_approval",
         isMutation: false,
-        projectId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/client/approvals.json", {
-          params: {
-            path: { projectId },
-          },
+        this.client.GET("/client/approvals.json", {
         })
       , options
     );
@@ -64,30 +59,28 @@ export class ClientApprovalsService extends BaseService {
 
   /**
    * Get a single client approval by id
-   * @param projectId - The project ID
    * @param approvalId - The approval ID
    * @returns The ClientApproval
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.clientApprovals.get(123, 123);
+   * const result = await client.clientApprovals.get(123);
    * ```
    */
-  async get(projectId: number, approvalId: number): Promise<ClientApproval> {
+  async get(approvalId: number): Promise<ClientApproval> {
     const response = await this.request(
       {
         service: "ClientApprovals",
         operation: "GetClientApproval",
         resourceType: "client_approval",
         isMutation: false,
-        projectId,
         resourceId: approvalId,
       },
       () =>
-        this.client.GET("/buckets/{projectId}/client/approvals/{approvalId}", {
+        this.client.GET("/client/approvals/{approvalId}", {
           params: {
-            path: { projectId, approvalId },
+            path: { approvalId },
           },
         })
     );

@@ -42,7 +42,7 @@ class TodosServiceTest {
     fun listTodos() = runTest {
         val client = mockClient { request ->
             val path = request.url.encodedPath
-            assertTrue(path.contains("/buckets/1/todolists/2/todos.json"), "Path: $path")
+            assertTrue(path.contains("/todolists/2/todos.json"), "Path: $path")
             assertEquals("Bearer test-token", request.headers["Authorization"])
 
             respond(
@@ -59,7 +59,7 @@ class TodosServiceTest {
         }
 
         val account = client.forAccount("12345")
-        val todos = account.todos.list(projectId = 1, todolistId = 2)
+        val todos = account.todos.list(todolistId = 2)
 
         assertEquals(2, todos.size)
         assertEquals(100L, todos[0].id)
@@ -75,7 +75,7 @@ class TodosServiceTest {
     @Test
     fun getTodo() = runTest {
         val client = mockClient { request ->
-            assertTrue(request.url.encodedPath.contains("/buckets/1/todos/100"))
+            assertTrue(request.url.encodedPath.contains("/todos/100"))
 
             respond(
                 content = todoJson(100, "Buy milk", extras = """"position": 1"""),
@@ -85,7 +85,7 @@ class TodosServiceTest {
         }
 
         val account = client.forAccount("12345")
-        val todo = account.todos.get(projectId = 1, todoId = 100)
+        val todo = account.todos.get(todoId = 100)
 
         assertEquals(100L, todo.id)
         assertEquals("Buy milk", todo.content)
@@ -99,7 +99,7 @@ class TodosServiceTest {
         var capturedBody: String? = null
 
         val client = mockClient { request ->
-            assertTrue(request.url.encodedPath.contains("/buckets/1/todolists/2/todos.json"))
+            assertTrue(request.url.encodedPath.contains("/todolists/2/todos.json"))
             assertEquals(HttpMethod.Post, request.method)
             capturedBody = request.body.toByteArray().decodeToString()
 
@@ -112,7 +112,6 @@ class TodosServiceTest {
 
         val account = client.forAccount("12345")
         val todo = account.todos.create(
-            projectId = 1,
             todolistId = 2,
             body = CreateTodoBody(content = "New todo", description = "Details here"),
         )
@@ -144,10 +143,10 @@ class TodosServiceTest {
         }
 
         val account = client.forAccount("12345")
-        account.todos.complete(projectId = 1, todoId = 100)
+        account.todos.complete(todoId = 100)
 
         assertEquals(HttpMethod.Post, capturedMethod)
-        assertTrue(capturedPath!!.contains("/buckets/1/todos/100/completion.json"))
+        assertTrue(capturedPath!!.contains("/todos/100/completion.json"))
 
         client.close()
     }
@@ -156,7 +155,7 @@ class TodosServiceTest {
     fun trashTodoReturnsUnit() = runTest {
         val client = mockClient { request ->
             assertEquals(HttpMethod.Delete, request.method)
-            assertTrue(request.url.encodedPath.contains("/buckets/1/todos/100"))
+            assertTrue(request.url.encodedPath.contains("/todos/100"))
 
             respond(
                 content = "",
@@ -165,7 +164,7 @@ class TodosServiceTest {
         }
 
         val account = client.forAccount("12345")
-        account.todos.trash(projectId = 1, todoId = 100)
+        account.todos.trash(todoId = 100)
         // No exception = success
 
         client.close()
@@ -183,7 +182,7 @@ class TodosServiceTest {
 
         val account = client.forAccount("12345")
         try {
-            account.todos.get(projectId = 1, todoId = 999)
+            account.todos.get(todoId = 999)
             assertTrue(false, "Should have thrown")
         } catch (e: BasecampException.NotFound) {
             assertEquals("Not found", e.message)
@@ -206,7 +205,7 @@ class TodosServiceTest {
                     status = HttpStatusCode.OK,
                     headers = headersOf(
                         HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
-                        "Link" to listOf("""<https://3.basecampapi.com/12345/buckets/1/todolists/2/todos.json?page=2>; rel="next""""),
+                        "Link" to listOf("""<https://3.basecampapi.com/12345/todolists/2/todos.json?page=2>; rel="next""""),
                         "X-Total-Count" to listOf("2"),
                     ),
                 )
@@ -221,7 +220,7 @@ class TodosServiceTest {
         }
 
         val account = client.forAccount("12345")
-        val todos = account.todos.list(projectId = 1, todolistId = 2)
+        val todos = account.todos.list(todolistId = 2)
 
         assertEquals(2, todos.size)
         assertEquals(1L, todos[0].id)

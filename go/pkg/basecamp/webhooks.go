@@ -82,7 +82,6 @@ func NewWebhooksService(client *AccountClient) *WebhooksService {
 }
 
 // List returns all webhooks for a project (bucket).
-// bucketID is the project ID.
 //
 // The returned WebhookListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -90,7 +89,6 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result *Web
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "List",
 		ResourceType: "webhook", IsMutation: false,
-		BucketID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -125,12 +123,11 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result *Web
 }
 
 // Get returns a webhook by ID.
-// bucketID is the project ID, webhookID is the webhook ID.
-func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (result *Webhook, err error) {
+func (s *WebhooksService) Get(ctx context.Context, webhookID int64) (result *Webhook, err error) {
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "Get",
 		ResourceType: "webhook", IsMutation: false,
-		BucketID: bucketID, ResourceID: webhookID,
+		ResourceID: webhookID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -141,7 +138,7 @@ func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (r
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetWebhookWithResponse(ctx, s.client.accountID, bucketID, webhookID)
+	resp, err := s.client.parent.gen.GetWebhookWithResponse(ctx, s.client.accountID, webhookID)
 	if err != nil {
 		return nil, err
 	}
@@ -158,13 +155,11 @@ func (s *WebhooksService) Get(ctx context.Context, bucketID, webhookID int64) (r
 }
 
 // Create creates a new webhook for a project (bucket).
-// bucketID is the project ID.
 // Returns the created webhook.
 func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *CreateWebhookRequest) (result *Webhook, err error) {
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "Create",
 		ResourceType: "webhook", IsMutation: true,
-		BucketID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -216,13 +211,12 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 }
 
 // Update updates an existing webhook.
-// bucketID is the project ID, webhookID is the webhook ID.
 // Returns the updated webhook.
-func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64, req *UpdateWebhookRequest) (result *Webhook, err error) {
+func (s *WebhooksService) Update(ctx context.Context, webhookID int64, req *UpdateWebhookRequest) (result *Webhook, err error) {
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "Update",
 		ResourceType: "webhook", IsMutation: true,
-		BucketID: bucketID, ResourceID: webhookID,
+		ResourceID: webhookID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -246,7 +240,7 @@ func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64,
 		Active:     req.Active,
 	}
 
-	resp, err := s.client.parent.gen.UpdateWebhookWithResponse(ctx, s.client.accountID, bucketID, webhookID, body)
+	resp, err := s.client.parent.gen.UpdateWebhookWithResponse(ctx, s.client.accountID, webhookID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -263,12 +257,11 @@ func (s *WebhooksService) Update(ctx context.Context, bucketID, webhookID int64,
 }
 
 // Delete removes a webhook.
-// bucketID is the project ID, webhookID is the webhook ID.
-func (s *WebhooksService) Delete(ctx context.Context, bucketID, webhookID int64) (err error) {
+func (s *WebhooksService) Delete(ctx context.Context, webhookID int64) (err error) {
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "Delete",
 		ResourceType: "webhook", IsMutation: true,
-		BucketID: bucketID, ResourceID: webhookID,
+		ResourceID: webhookID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -279,7 +272,7 @@ func (s *WebhooksService) Delete(ctx context.Context, bucketID, webhookID int64)
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DeleteWebhookWithResponse(ctx, s.client.accountID, bucketID, webhookID)
+	resp, err := s.client.parent.gen.DeleteWebhookWithResponse(ctx, s.client.accountID, webhookID)
 	if err != nil {
 		return err
 	}
@@ -298,8 +291,8 @@ func webhookFromGenerated(gw generated.Webhook) Webhook {
 		URL:        gw.Url,
 	}
 
-	if gw.Id != 0 {
-		w.ID = gw.Id
+	if derefInt64(gw.Id) != 0 {
+		w.ID = derefInt64(gw.Id)
 	}
 
 	if len(gw.RecentDeliveries) > 0 {
@@ -358,8 +351,8 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 		CommentsURL:      rec.CommentsUrl,
 		SubscriptionURL:  rec.SubscriptionUrl,
 	}
-	if rec.Id != 0 {
-		event.Recording.ID = rec.Id
+	if derefInt64(rec.Id) != 0 {
+		event.Recording.ID = derefInt64(rec.Id)
 	}
 	if !rec.CreatedAt.IsZero() {
 		event.Recording.CreatedAt = rec.CreatedAt.Format(time.RFC3339Nano)
@@ -367,29 +360,29 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 	if !rec.UpdatedAt.IsZero() {
 		event.Recording.UpdatedAt = rec.UpdatedAt.Format(time.RFC3339Nano)
 	}
-	if rec.Parent.Id != 0 {
+	if derefInt64(rec.Parent.Id) != 0 {
 		event.Recording.Parent = &WebhookEventParent{
 			Title:  rec.Parent.Title,
 			Type:   rec.Parent.Type,
 			URL:    rec.Parent.Url,
 			AppURL: rec.Parent.AppUrl,
 		}
-		event.Recording.Parent.ID = rec.Parent.Id
+		event.Recording.Parent.ID = derefInt64(rec.Parent.Id)
 	}
-	if rec.Bucket.Id != 0 {
+	if derefInt64(rec.Bucket.Id) != 0 {
 		event.Recording.Bucket = &WebhookEventBucket{
 			Name: rec.Bucket.Name,
 			Type: rec.Bucket.Type,
 		}
-		event.Recording.Bucket.ID = rec.Bucket.Id
+		event.Recording.Bucket.ID = derefInt64(rec.Bucket.Id)
 	}
-	if rec.Creator.Id != 0 {
+	if derefInt64(rec.Creator.Id) != 0 {
 		p := webhookPersonFromGenerated(rec.Creator)
 		event.Recording.Creator = &p
 	}
 
 	// Map top-level creator
-	if ge.Creator.Id != 0 {
+	if derefInt64(ge.Creator.Id) != 0 {
 		event.Creator = webhookPersonFromGenerated(ge.Creator)
 	}
 
@@ -432,8 +425,8 @@ func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 		CanAccessTimesheet:  gp.CanAccessTimesheet,
 		CanAccessHillCharts: gp.CanAccessHillCharts,
 	}
-	if gp.Id != 0 {
-		p.ID = gp.Id
+	if derefInt64(gp.Id) != 0 {
+		p.ID = derefInt64(gp.Id)
 	}
 	if gp.Bio != "" {
 		p.Bio = &gp.Bio
@@ -447,11 +440,11 @@ func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 	if !gp.UpdatedAt.IsZero() {
 		p.UpdatedAt = gp.UpdatedAt.Format(time.RFC3339Nano)
 	}
-	if gp.Company.Id != 0 {
+	if derefInt64(gp.Company.Id) != 0 {
 		p.Company = &WebhookEventCompany{
 			Name: gp.Company.Name,
 		}
-		p.Company.ID = gp.Company.Id
+		p.Company.ID = derefInt64(gp.Company.Id)
 	}
 	return p
 }

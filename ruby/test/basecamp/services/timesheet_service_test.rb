@@ -47,7 +47,7 @@ class TimesheetServiceTest < Minitest::Test
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/projects/\d+/timesheet\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.timesheets.for_project(project_id: 1)
+    result = @account.timesheets.for_project(project_id: 456)
     assert_kind_of Hash, result
     assert_equal 6.0, result["entries"].first["hours"]
   end
@@ -55,10 +55,10 @@ class TimesheetServiceTest < Minitest::Test
   def test_for_recording
     response = { "entries" => [ { "id" => 1, "hours" => 2.5 } ] }
 
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/projects/\d+/recordings/\d+/timesheet\.json})
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/recordings/\d+/timesheet\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.timesheets.for_recording(project_id: 1, recording_id: 2)
+    result = @account.timesheets.for_recording(recording_id: 2)
     assert_kind_of Hash, result
     assert_equal 2.5, result["entries"].first["hours"]
   end

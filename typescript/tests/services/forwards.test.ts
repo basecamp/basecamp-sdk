@@ -31,18 +31,18 @@ describe("ForwardsService", () => {
         updated_at: "2024-01-01T00:00:00Z",
         title: "Inbox",
         type: "Inbox",
-        url: "https://3.basecampapi.com/12345/buckets/1/inboxes/100.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/inboxes/100",
+        url: "https://3.basecampapi.com/12345/inboxes/100.json",
+        app_url: "https://3.basecamp.com/12345/inboxes/100",
         bucket: { id: 1, name: "Test Project", type: "Project" },
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/inboxes/100`, () => {
+        http.get(`${BASE_URL}/inboxes/100`, () => {
           return HttpResponse.json(mockInbox);
         })
       );
 
-      const inbox = await client.forwards.getInbox(1, 100);
+      const inbox = await client.forwards.getInbox(100);
 
       expect(inbox.id).toBe(100);
       expect(inbox.title).toBe("Inbox");
@@ -62,8 +62,8 @@ describe("ForwardsService", () => {
           content: "<p>Email content here</p>",
           from: "sender@example.com",
           type: "Inbox::Forward",
-          url: "https://3.basecampapi.com/12345/buckets/1/inbox_forwards/1.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/inbox_forwards/1",
+          url: "https://3.basecampapi.com/12345/inbox_forwards/1.json",
+          app_url: "https://3.basecamp.com/12345/inbox_forwards/1",
         },
         {
           id: 2,
@@ -74,18 +74,18 @@ describe("ForwardsService", () => {
           content: "<p>Another email</p>",
           from: "other@example.com",
           type: "Inbox::Forward",
-          url: "https://3.basecampapi.com/12345/buckets/1/inbox_forwards/2.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/inbox_forwards/2",
+          url: "https://3.basecampapi.com/12345/inbox_forwards/2.json",
+          app_url: "https://3.basecamp.com/12345/inbox_forwards/2",
         },
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/inboxes/100/forwards.json`, () => {
+        http.get(`${BASE_URL}/inboxes/100/forwards.json`, () => {
           return HttpResponse.json(mockForwards);
         })
       );
 
-      const forwards = await client.forwards.list(1, 100);
+      const forwards = await client.forwards.list(100);
 
       expect(forwards).toHaveLength(2);
       expect(forwards[0].subject).toBe("Re: Project Update");
@@ -105,17 +105,17 @@ describe("ForwardsService", () => {
         content: "<p>Email content here</p>",
         from: "sender@example.com",
         type: "Inbox::Forward",
-        url: "https://3.basecampapi.com/12345/buckets/1/inbox_forwards/1.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/inbox_forwards/1",
+        url: "https://3.basecampapi.com/12345/inbox_forwards/1.json",
+        app_url: "https://3.basecamp.com/12345/inbox_forwards/1",
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/inbox_forwards/1`, () => {
+        http.get(`${BASE_URL}/inbox_forwards/1`, () => {
           return HttpResponse.json(mockForward);
         })
       );
 
-      const forward = await client.forwards.get(1, 1);
+      const forward = await client.forwards.get(1);
 
       expect(forward.id).toBe(1);
       expect(forward.subject).toBe("Re: Project Update");
@@ -133,18 +133,18 @@ describe("ForwardsService", () => {
           updated_at: "2024-01-01T00:00:00Z",
           content: "<p>Thanks for the update!</p>",
           type: "Inbox::Reply",
-          url: "https://3.basecampapi.com/12345/buckets/1/inbox_replies/10.json",
-          app_url: "https://3.basecamp.com/12345/buckets/1/inbox_replies/10",
+          url: "https://3.basecampapi.com/12345/inbox_replies/10.json",
+          app_url: "https://3.basecamp.com/12345/inbox_replies/10",
         },
       ];
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/inbox_forwards/1/replies.json`, () => {
+        http.get(`${BASE_URL}/inbox_forwards/1/replies.json`, () => {
           return HttpResponse.json(mockReplies);
         })
       );
 
-      const replies = await client.forwards.listReplies(1, 1);
+      const replies = await client.forwards.listReplies(1);
 
       expect(replies).toHaveLength(1);
       expect(replies[0].content).toBe("<p>Thanks for the update!</p>");
@@ -160,17 +160,17 @@ describe("ForwardsService", () => {
         updated_at: "2024-01-01T00:00:00Z",
         content: "<p>Thanks for the update!</p>",
         type: "Inbox::Reply",
-        url: "https://3.basecampapi.com/12345/buckets/1/inbox_replies/10.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/inbox_replies/10",
+        url: "https://3.basecampapi.com/12345/inbox_replies/10.json",
+        app_url: "https://3.basecamp.com/12345/inbox_replies/10",
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/1/inbox_forwards/1/replies/10`, () => {
+        http.get(`${BASE_URL}/inbox_forwards/1/replies/10`, () => {
           return HttpResponse.json(mockReply);
         })
       );
 
-      const reply = await client.forwards.getReply(1, 1, 10);
+      const reply = await client.forwards.getReply(1, 10);
 
       expect(reply.id).toBe(10);
       expect(reply.content).toBe("<p>Thanks for the update!</p>");
@@ -186,19 +186,19 @@ describe("ForwardsService", () => {
         updated_at: "2024-01-01T00:00:00Z",
         content: "<p>New reply content</p>",
         type: "Inbox::Reply",
-        url: "https://3.basecampapi.com/12345/buckets/1/inbox_replies/11.json",
-        app_url: "https://3.basecamp.com/12345/buckets/1/inbox_replies/11",
+        url: "https://3.basecampapi.com/12345/inbox_replies/11.json",
+        app_url: "https://3.basecamp.com/12345/inbox_replies/11",
       };
 
       server.use(
-        http.post(`${BASE_URL}/buckets/1/inbox_forwards/1/replies.json`, async ({ request }) => {
+        http.post(`${BASE_URL}/inbox_forwards/1/replies.json`, async ({ request }) => {
           const body = await request.json() as { content: string };
           expect(body.content).toBe("<p>New reply content</p>");
           return HttpResponse.json(mockReply);
         })
       );
 
-      const reply = await client.forwards.createReply(1, 1, {
+      const reply = await client.forwards.createReply(1, {
         content: "<p>New reply content</p>",
       });
 

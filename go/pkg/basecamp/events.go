@@ -64,7 +64,6 @@ func NewEventsService(client *AccountClient) *EventsService {
 }
 
 // List returns all events for a recording.
-// bucketID is the project ID, recordingID is the ID of the recording.
 //
 // By default, returns up to 100 events. Use Limit: -1 for unlimited.
 //
@@ -74,11 +73,11 @@ func NewEventsService(client *AccountClient) *EventsService {
 //
 // The returned EventListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, opts *EventListOptions) (result *EventListResult, err error) {
+func (s *EventsService) List(ctx context.Context, recordingID int64, opts *EventListOptions) (result *EventListResult, err error) {
 	op := OperationInfo{
 		Service: "Events", Operation: "List",
 		ResourceType: "event", IsMutation: false,
-		BucketID: bucketID, ResourceID: recordingID,
+		ResourceID: recordingID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -90,7 +89,7 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, o
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListEventsWithResponse(ctx, s.client.accountID, bucketID, recordingID)
+	resp, err := s.client.parent.gen.ListEventsWithResponse(ctx, s.client.accountID, recordingID)
 	if err != nil {
 		return nil, err
 	}
@@ -150,13 +149,13 @@ func (s *EventsService) List(ctx context.Context, bucketID, recordingID int64, o
 // eventFromGenerated converts a generated Event to our clean type.
 func eventFromGenerated(ge generated.Event) Event {
 	e := Event{
-		RecordingID: ge.RecordingId,
+		RecordingID: derefInt64(ge.RecordingId),
 		Action:      ge.Action,
 		CreatedAt:   ge.CreatedAt,
 	}
 
-	if ge.Id != 0 {
-		e.ID = ge.Id
+	if derefInt64(ge.Id) != 0 {
+		e.ID = derefInt64(ge.Id)
 	}
 
 	// Convert details
@@ -168,9 +167,9 @@ func eventFromGenerated(ge generated.Event) Event {
 		}
 	}
 
-	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
+	if derefInt64(ge.Creator.Id) != 0 || ge.Creator.Name != "" {
 		e.Creator = &Person{
-			ID:           ge.Creator.Id,
+			ID:           derefInt64(ge.Creator.Id),
 			Name:         ge.Creator.Name,
 			EmailAddress: ge.Creator.EmailAddress,
 			AvatarURL:    ge.Creator.AvatarUrl,

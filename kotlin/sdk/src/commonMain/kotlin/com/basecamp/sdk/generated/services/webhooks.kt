@@ -14,20 +14,20 @@ class WebhooksService(client: AccountClient) : BaseService(client) {
 
     /**
      * List all webhooks for a project
-     * @param projectId The project ID
+     * @param bucketId The bucket ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(projectId: Long, options: PaginationOptions? = null): ListResult<Webhook> {
+    suspend fun list(bucketId: Long, options: PaginationOptions? = null): ListResult<Webhook> {
         val info = OperationInfo(
             service = "Webhooks",
             operation = "ListWebhooks",
             resourceType = "webhook",
             isMutation = false,
-            projectId = projectId,
-            resourceId = null,
+            projectId = null,
+            resourceId = bucketId,
         )
         return requestPaginated(info, options, {
-            httpGet("/buckets/${projectId}/webhooks.json", operationName = info.operation)
+            httpGet("/buckets/${bucketId}/webhooks.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Webhook>>(body)
         }
@@ -35,20 +35,20 @@ class WebhooksService(client: AccountClient) : BaseService(client) {
 
     /**
      * Create a new webhook for a project
-     * @param projectId The project ID
+     * @param bucketId The bucket ID
      * @param body Request body
      */
-    suspend fun create(projectId: Long, body: CreateWebhookBody): Webhook {
+    suspend fun create(bucketId: Long, body: CreateWebhookBody): Webhook {
         val info = OperationInfo(
             service = "Webhooks",
             operation = "CreateWebhook",
             resourceType = "webhook",
             isMutation = true,
-            projectId = projectId,
-            resourceId = null,
+            projectId = null,
+            resourceId = bucketId,
         )
         return request(info, {
-            httpPost("/buckets/${projectId}/webhooks.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPost("/buckets/${bucketId}/webhooks.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("payload_url", kotlinx.serialization.json.JsonPrimitive(body.payloadUrl))
                 put("types", kotlinx.serialization.json.JsonArray(body.types.map { kotlinx.serialization.json.JsonPrimitive(it) }))
                 body.active?.let { put("active", kotlinx.serialization.json.JsonPrimitive(it)) }
@@ -60,20 +60,19 @@ class WebhooksService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a single webhook by id
-     * @param projectId The project ID
      * @param webhookId The webhook ID
      */
-    suspend fun get(projectId: Long, webhookId: Long): Webhook {
+    suspend fun get(webhookId: Long): Webhook {
         val info = OperationInfo(
             service = "Webhooks",
             operation = "GetWebhook",
             resourceType = "webhook",
             isMutation = false,
-            projectId = projectId,
+            projectId = null,
             resourceId = webhookId,
         )
         return request(info, {
-            httpGet("/buckets/${projectId}/webhooks/${webhookId}", operationName = info.operation)
+            httpGet("/webhooks/${webhookId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<Webhook>(body)
         }
@@ -81,21 +80,20 @@ class WebhooksService(client: AccountClient) : BaseService(client) {
 
     /**
      * Update an existing webhook
-     * @param projectId The project ID
      * @param webhookId The webhook ID
      * @param body Request body
      */
-    suspend fun update(projectId: Long, webhookId: Long, body: UpdateWebhookBody): Webhook {
+    suspend fun update(webhookId: Long, body: UpdateWebhookBody): Webhook {
         val info = OperationInfo(
             service = "Webhooks",
             operation = "UpdateWebhook",
             resourceType = "webhook",
             isMutation = true,
-            projectId = projectId,
+            projectId = null,
             resourceId = webhookId,
         )
         return request(info, {
-            httpPut("/buckets/${projectId}/webhooks/${webhookId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPut("/webhooks/${webhookId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 body.payloadUrl?.let { put("payload_url", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.types?.let { put("types", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
                 body.active?.let { put("active", kotlinx.serialization.json.JsonPrimitive(it)) }
@@ -107,20 +105,19 @@ class WebhooksService(client: AccountClient) : BaseService(client) {
 
     /**
      * Delete a webhook
-     * @param projectId The project ID
      * @param webhookId The webhook ID
      */
-    suspend fun delete(projectId: Long, webhookId: Long): Unit {
+    suspend fun delete(webhookId: Long): Unit {
         val info = OperationInfo(
             service = "Webhooks",
             operation = "DeleteWebhook",
             resourceType = "webhook",
             isMutation = true,
-            projectId = projectId,
+            projectId = null,
             resourceId = webhookId,
         )
         request(info, {
-            httpDelete("/buckets/${projectId}/webhooks/${webhookId}", operationName = info.operation)
+            httpDelete("/webhooks/${webhookId}", operationName = info.operation)
         }) { Unit }
     }
 }

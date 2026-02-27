@@ -27,7 +27,6 @@ describe("ToolsService", () => {
 
   describe("get", () => {
     it("should get a tool by ID", async () => {
-      const projectId = 111;
       const toolId = 222;
       const mockTool = {
         id: toolId,
@@ -38,33 +37,31 @@ describe("ToolsService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/buckets/${projectId}/dock/tools/${toolId}`, () => {
+        http.get(`${BASE_URL}/dock/tools/${toolId}`, () => {
           return HttpResponse.json(mockTool);
         })
       );
 
-      const tool = await client.tools.get(projectId, toolId);
+      const tool = await client.tools.get(toolId);
       expect(tool.id).toBe(toolId);
       expect(tool.name).toBe("todoset");
       expect(tool.title).toBe("To-dos");
     });
 
     it("should throw not_found error for non-existent tool", async () => {
-      const projectId = 111;
 
       server.use(
-        http.get(`${BASE_URL}/buckets/${projectId}/dock/tools/999`, () => {
+        http.get(`${BASE_URL}/dock/tools/999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         })
       );
 
-      await expect(client.tools.get(projectId, 999)).rejects.toThrow(BasecampError);
+      await expect(client.tools.get(999)).rejects.toThrow(BasecampError);
     });
   });
 
   describe("clone", () => {
     it("should clone a tool", async () => {
-      const projectId = 111;
       const sourceToolId = 222;
       const mockTool = {
         id: 333,
@@ -76,7 +73,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.post(
-          `${BASE_URL}/buckets/${projectId}/dock/tools.json`,
+          `${BASE_URL}/dock/tools.json`,
           async ({ request }) => {
             const body = await request.json() as { source_recording_id: number };
             expect(body.source_recording_id).toBe(sourceToolId);
@@ -85,7 +82,7 @@ describe("ToolsService", () => {
         )
       );
 
-      const tool = await client.tools.clone(projectId, { sourceRecordingId: sourceToolId });
+      const tool = await client.tools.clone({ sourceRecordingId: sourceToolId });
       expect(tool.id).toBe(333);
       expect(tool.title).toBe("To-dos (Copy)");
     });
@@ -93,7 +90,6 @@ describe("ToolsService", () => {
 
   describe("update", () => {
     it("should update (rename) a tool", async () => {
-      const projectId = 111;
       const toolId = 222;
       const mockTool = {
         id: toolId,
@@ -104,7 +100,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.put(
-          `${BASE_URL}/buckets/${projectId}/dock/tools/${toolId}`,
+          `${BASE_URL}/dock/tools/${toolId}`,
           async ({ request }) => {
             const body = await request.json() as { title: string };
             expect(body.title).toBe("Sprint Backlog");
@@ -114,7 +110,7 @@ describe("ToolsService", () => {
       );
 
       // Generated service takes a request object
-      const tool = await client.tools.update(projectId, toolId, { title: "Sprint Backlog" });
+      const tool = await client.tools.update(toolId, { title: "Sprint Backlog" });
       expect(tool.title).toBe("Sprint Backlog");
     });
 
@@ -123,63 +119,59 @@ describe("ToolsService", () => {
 
   describe("delete", () => {
     it("should delete a tool", async () => {
-      const projectId = 111;
       const toolId = 222;
 
       server.use(
-        http.delete(`${BASE_URL}/buckets/${projectId}/dock/tools/${toolId}`, () => {
+        http.delete(`${BASE_URL}/dock/tools/${toolId}`, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
 
-      await expect(client.tools.delete(projectId, toolId)).resolves.toBeUndefined();
+      await expect(client.tools.delete(toolId)).resolves.toBeUndefined();
     });
   });
 
   describe("enable", () => {
     it("should enable a tool on the dock", async () => {
-      const projectId = 111;
       const toolId = 222;
 
       server.use(
         http.post(
-          `${BASE_URL}/buckets/${projectId}/recordings/${toolId}/position.json`,
+          `${BASE_URL}/recordings/${toolId}/position.json`,
           () => {
             return new HttpResponse(null, { status: 204 });
           }
         )
       );
 
-      await expect(client.tools.enable(projectId, toolId)).resolves.toBeUndefined();
+      await expect(client.tools.enable(toolId)).resolves.toBeUndefined();
     });
   });
 
   describe("disable", () => {
     it("should disable a tool from the dock", async () => {
-      const projectId = 111;
       const toolId = 222;
 
       server.use(
         http.delete(
-          `${BASE_URL}/buckets/${projectId}/recordings/${toolId}/position.json`,
+          `${BASE_URL}/recordings/${toolId}/position.json`,
           () => {
             return new HttpResponse(null, { status: 204 });
           }
         )
       );
 
-      await expect(client.tools.disable(projectId, toolId)).resolves.toBeUndefined();
+      await expect(client.tools.disable(toolId)).resolves.toBeUndefined();
     });
   });
 
   describe("reposition", () => {
     it("should change the position of a tool on the dock", async () => {
-      const projectId = 111;
       const toolId = 222;
 
       server.use(
         http.put(
-          `${BASE_URL}/buckets/${projectId}/recordings/${toolId}/position.json`,
+          `${BASE_URL}/recordings/${toolId}/position.json`,
           async ({ request }) => {
             const body = await request.json() as { position: number };
             expect(body.position).toBe(1);
@@ -190,7 +182,7 @@ describe("ToolsService", () => {
 
       // Generated service takes a request object
       await expect(
-        client.tools.reposition(projectId, toolId, { position: 1 })
+        client.tools.reposition(toolId, { position: 1 })
       ).resolves.toBeUndefined();
     });
 

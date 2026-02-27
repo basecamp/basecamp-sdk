@@ -14,9 +14,9 @@ class MessageTypesServiceTest < Minitest::Test
       { "id" => 1, "name" => "Announcement", "icon" => "\u{1F4E2}" },
       { "id" => 2, "name" => "Update", "icon" => "\u{1F4DD}" }
     ]
-    stub_get("/12345/buckets/100/categories.json", response_body: types)
+    stub_get("/12345/categories.json", response_body: types)
 
-    result = @account.message_types.list(project_id: 100).to_a
+    result = @account.message_types.list.to_a
 
     assert_equal 2, result.length
     assert_equal "Announcement", result[0]["name"]
@@ -25,9 +25,9 @@ class MessageTypesServiceTest < Minitest::Test
 
   def test_get
     type = { "id" => 1, "name" => "Announcement", "icon" => "\u{1F4E2}" }
-    stub_get("/12345/buckets/100/categories/1", response_body: type)
+    stub_get("/12345/categories/1", response_body: type)
 
-    result = @account.message_types.get(project_id: 100, type_id: 1)
+    result = @account.message_types.get(type_id: 1)
 
     assert_equal 1, result["id"]
     assert_equal "Announcement", result["name"]
@@ -35,9 +35,9 @@ class MessageTypesServiceTest < Minitest::Test
 
   def test_create
     type = { "id" => 3, "name" => "Question", "icon" => "\u{2753}" }
-    stub_post("/12345/buckets/100/categories.json", response_body: type)
+    stub_post("/12345/categories.json", response_body: type)
 
-    result = @account.message_types.create(project_id: 100, name: "Question", icon: "\u{2753}")
+    result = @account.message_types.create(name: "Question", icon: "\u{2753}")
 
     assert_equal 3, result["id"]
     assert_equal "Question", result["name"]
@@ -45,17 +45,17 @@ class MessageTypesServiceTest < Minitest::Test
 
   def test_update
     updated_type = { "id" => 1, "name" => "Important Announcement", "icon" => "\u{1F4E3}" }
-    stub_put("/12345/buckets/100/categories/1", response_body: updated_type)
+    stub_put("/12345/categories/1", response_body: updated_type)
 
-    result = @account.message_types.update(project_id: 100, type_id: 1, name: "Important Announcement")
+    result = @account.message_types.update(type_id: 1, name: "Important Announcement")
 
     assert_equal "Important Announcement", result["name"]
   end
 
   def test_delete
-    stub_delete("/12345/buckets/100/categories/1")
+    stub_delete("/12345/categories/1")
 
-    result = @account.message_types.delete(project_id: 100, type_id: 1)
+    result = @account.message_types.delete(type_id: 1)
 
     assert_nil result
   end

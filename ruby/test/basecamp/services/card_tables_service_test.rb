@@ -28,9 +28,9 @@ class CardTablesServiceTest < Minitest::Test
 
   def test_get_card_table
     # Generated service: /card_tables/{id} without .json
-    stub_get("/12345/buckets/100/card_tables/200", response_body: sample_card_table(id: 200))
+    stub_get("/12345/card_tables/200", response_body: sample_card_table(id: 200))
 
-    table = @account.card_tables.get(project_id: 100, card_table_id: 200)
+    table = @account.card_tables.get(card_table_id: 200)
 
     assert_equal 200, table["id"]
     assert_equal "Project Board", table["title"]

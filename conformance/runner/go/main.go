@@ -211,7 +211,6 @@ func runTest(tc TestCase) TestResult {
 		sdkResp, sdkErr = client.TrashProject(ctx, testAccountID, projectId)
 
 	case "CreateTodo":
-		projectId := getInt64Param(tc.PathParams, "projectId")
 		todolistId := getInt64Param(tc.PathParams, "todolistId")
 		body := generated.CreateTodoJSONRequestBody{
 			Content: getStringParam(tc.RequestBody, "content"),
@@ -221,20 +220,17 @@ func runTest(tc TestCase) TestResult {
 				body.DueOn = d
 			}
 		}
-		sdkResp, sdkErr = client.CreateTodo(ctx, testAccountID, projectId, todolistId, body)
+		sdkResp, sdkErr = client.CreateTodo(ctx, testAccountID, todolistId, body)
 
 	case "ListTodos":
-		projectId := getInt64Param(tc.PathParams, "projectId")
 		todolistId := getInt64Param(tc.PathParams, "todolistId")
-		sdkResp, sdkErr = client.ListTodos(ctx, testAccountID, projectId, todolistId, nil)
+		sdkResp, sdkErr = client.ListTodos(ctx, testAccountID, todolistId, nil)
 
 	case "GetTimesheetEntry":
-		projectId := getInt64Param(tc.PathParams, "projectId")
 		entryId := getInt64Param(tc.PathParams, "entryId")
-		sdkResp, sdkErr = client.GetTimesheetEntry(ctx, testAccountID, projectId, entryId)
+		sdkResp, sdkErr = client.GetTimesheetEntry(ctx, testAccountID, entryId)
 
 	case "CreateTimesheetEntry":
-		projectId := getInt64Param(tc.PathParams, "projectId")
 		recordingId := getInt64Param(tc.PathParams, "recordingId")
 		body := generated.CreateTimesheetEntryJSONRequestBody{
 			Date:  getStringParam(tc.RequestBody, "date"),
@@ -243,10 +239,9 @@ func runTest(tc TestCase) TestResult {
 		if desc := getStringParam(tc.RequestBody, "description"); desc != "" {
 			body.Description = desc
 		}
-		sdkResp, sdkErr = client.CreateTimesheetEntry(ctx, testAccountID, projectId, recordingId, body)
+		sdkResp, sdkErr = client.CreateTimesheetEntry(ctx, testAccountID, recordingId, body)
 
 	case "UpdateTimesheetEntry":
-		projectId := getInt64Param(tc.PathParams, "projectId")
 		entryId := getInt64Param(tc.PathParams, "entryId")
 		body := generated.UpdateTimesheetEntryJSONRequestBody{}
 		if date := getStringParam(tc.RequestBody, "date"); date != "" {
@@ -258,7 +253,7 @@ func runTest(tc TestCase) TestResult {
 		if desc := getStringParam(tc.RequestBody, "description"); desc != "" {
 			body.Description = desc
 		}
-		sdkResp, sdkErr = client.UpdateTimesheetEntry(ctx, testAccountID, projectId, entryId, body)
+		sdkResp, sdkErr = client.UpdateTimesheetEntry(ctx, testAccountID, entryId, body)
 
 	case "GetProjectTimeline":
 		projectId := getInt64Param(tc.PathParams, "projectId")
@@ -270,6 +265,22 @@ func runTest(tc TestCase) TestResult {
 	case "GetPersonProgress":
 		personId := getInt64Param(tc.PathParams, "personId")
 		sdkResp, sdkErr = client.GetPersonProgress(ctx, testAccountID, personId)
+
+	case "GetProjectTimesheet":
+		projectId := getInt64Param(tc.PathParams, "projectId")
+		sdkResp, sdkErr = client.GetProjectTimesheet(ctx, testAccountID, projectId, nil)
+
+	case "ListWebhooks":
+		bucketId := getInt64Param(tc.PathParams, "bucketId")
+		sdkResp, sdkErr = client.ListWebhooks(ctx, testAccountID, bucketId)
+
+	case "CreateWebhook":
+		bucketId := getInt64Param(tc.PathParams, "bucketId")
+		body := generated.CreateWebhookJSONRequestBody{
+			PayloadUrl: getStringParam(tc.RequestBody, "payload_url"),
+			Types:      getStringSliceParam(tc.RequestBody, "types"),
+		}
+		sdkResp, sdkErr = client.CreateWebhook(ctx, testAccountID, bucketId, body)
 
 	default:
 		return TestResult{
@@ -385,4 +396,20 @@ func getStringParam(params map[string]interface{}, key string) string {
 		}
 	}
 	return ""
+}
+
+// getStringSliceParam extracts a []string parameter from a map (JSON arrays of strings)
+func getStringSliceParam(params map[string]interface{}, key string) []string {
+	if val, ok := params[key]; ok {
+		if arr, ok := val.([]interface{}); ok {
+			result := make([]string, 0, len(arr))
+			for _, item := range arr {
+				if s, ok := item.(string); ok {
+					result = append(result, s)
+				}
+			}
+			return result
+		}
+	}
+	return nil
 }
