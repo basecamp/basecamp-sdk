@@ -21,7 +21,7 @@ sedi() {
   local expr="$1" file="$2"
   local tmp
   tmp=$(mktemp)
-  sed "$expr" "$file" > "$tmp" && mv "$tmp" "$file"
+  sed "$expr" "$file" > "$tmp" && cat "$tmp" > "$file" && rm "$tmp"
 }
 
 echo "Syncing API version: $API_VERSION"
