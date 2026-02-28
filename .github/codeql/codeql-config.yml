@@ -1,0 +1,29 @@
+queries:
+  - uses: security-and-quality
+
+paths:
+  - go/
+  - typescript/
+  - ruby/
+  - swift/
+  - kotlin/
+
+paths-ignore:
+  # Generated SDK code (fix in the generator or spec, not here).
+  # Note: paths-ignore only prevents source-level extraction (JS, Ruby).
+  # For compiled languages (Go, Swift, Kotlin), generated code enters the
+  # database via build tracing — the workflow's SARIF filter step strips
+  # those alerts before upload.
+  - go/pkg/generated/
+  - typescript/src/generated/
+  - typescript/dist/
+  - ruby/lib/basecamp/generated/
+  - swift/Sources/Basecamp/Generated/
+  - kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/
+  # Test infrastructure
+  - conformance/
+  - kotlin/conformance/
+
+query-filters:
+  - exclude:
+      kind: [diagnostic, metric]

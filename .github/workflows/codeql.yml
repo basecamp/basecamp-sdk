@@ -1,0 +1,125 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 7 * * 1'     # Monday 7am UTC (security.yml at 6am)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-15') || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: go
+            build-mode: manual
+          - language: javascript
+            build-mode: none
+          - language: ruby
+            build-mode: none
+          - language: swift
+            build-mode: manual
+          - language: java-kotlin
+            build-mode: manual
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # --- Language setup (conditional) ---
+
+      - name: Set up Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go/go.mod'
+
+      - name: Set up Java
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        if: matrix.language == 'java-kotlin'
+        uses: gradle/actions/setup-gradle@v5
+
+      # --- CodeQL init ---
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yml
+
+      # --- Build steps (manual mode only) ---
+
+      - name: Build (Go)
+        if: matrix.language == 'go'
+        working-directory: go
+        env:
+          CODEQL_EXTRACTOR_GO_BUILD_TRACING: 'on'
+        run: go build ./...
+
+      - name: Build (Swift)
+        if: matrix.language == 'swift'
+        working-directory: swift
+        run: swift build
+
+      - name: Build (Kotlin)
+        if: matrix.language == 'java-kotlin'
+        working-directory: kotlin
+        run: ./gradlew :basecamp-sdk:build :generator:build
+
+      # --- Analysis (fails build on real errors) ---
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: codeql-${{ matrix.language }}
+          upload: never
+          output: sarif-results
+
+      # --- Filter generated-code alerts ---
+      # paths-ignore in codeql-config.yml only governs source extraction
+      # (effective for JS/Ruby). For compiled languages the extractor traces
+      # the build, so generated code enters the database. Strip those results
+      # from SARIF before upload.
+
+      - name: Filter generated-code alerts from SARIF
+        run: |
+          for sarif in sarif-results/*.sarif; do
+            [ -f "$sarif" ] || continue
+            before=$(jq '[.runs[].results // [] | length] | add // 0' "$sarif")
+            jq '
+              .runs |= map(.results |= (. // [] | map(
+                select(
+                  (.locations // [])[0].physicalLocation.artifactLocation.uri // "" |
+                  test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/)") | not
+                )
+              )))
+            ' "$sarif" > "${sarif}.tmp" && mv "${sarif}.tmp" "$sarif"
+            after=$(jq '[.runs[].results | length] | add // 0' "$sarif")
+            filtered=$((before - after))
+            echo "$(basename "$sarif"): $before findings, filtered $filtered generated-code alerts, $after remaining"
+          done
+
+      # --- Upload (tolerates GHAS unavailability) ---
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true  # Requires GitHub Advanced Security
+        with:
+          sarif_file: sarif-results
+          category: codeql-${{ matrix.language }}
