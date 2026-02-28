@@ -128,9 +128,21 @@ jobs:
 
       - name: Publish to RubyGems
         if: github.event_name == 'push'
+        shell: bash
         run: |
           gem build basecamp-sdk.gemspec
-          gem push basecamp-sdk-${{ steps.version.outputs.version }}.gem
+          set +e
+          output=$(gem push basecamp-sdk-${{ steps.version.outputs.version }}.gem 2>&1)
+          status=$?
+          set -e
+          echo "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "Publish succeeded."
+          elif echo "$output" | grep -qi "repushing of gem versions is not allowed\|already been pushed"; then
+            echo "Version already published — treating as success for idempotency."
+          else
+            exit "$status"
+          fi
           gem exec rubygems-await basecamp-sdk-${{ steps.version.outputs.version }}.gem
 
       - name: Dry-run build
