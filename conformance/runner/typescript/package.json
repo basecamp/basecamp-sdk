@@ -1,0 +1,15 @@
+{
+  "name": "conformance-runner-typescript",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.0",
+    "msw": "^2.12.0"
+  },
+  "dependencies": {
+    "@basecamp/sdk": "file:../../../typescript"
+  }
+}

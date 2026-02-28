@@ -232,7 +232,7 @@ rb-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-kotlin conformance-build
+.PHONY: conformance conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-build
 
 # Build conformance test runner
 conformance-build:
@@ -249,8 +249,18 @@ conformance-kotlin:
 	@echo "==> Running Kotlin conformance tests..."
 	cd kotlin && ./gradlew :conformance:run
 
+# Run TypeScript conformance tests
+conformance-typescript:
+	@echo "==> Running TypeScript conformance tests..."
+	cd conformance/runner/typescript && npm ci && npm test
+
+# Run Ruby conformance tests
+conformance-ruby:
+	@echo "==> Running Ruby conformance tests..."
+	cd conformance/runner/ruby && bundle install --quiet && ruby runner.rb
+
 # Run all conformance tests
-conformance: conformance-go conformance-kotlin
+conformance: conformance-go conformance-kotlin conformance-typescript conformance-ruby
 	@echo "==> Conformance tests passed"
 
 #------------------------------------------------------------------------------
@@ -376,9 +386,12 @@ help:
 	@echo "  swift-clean      Remove Swift build artifacts"
 	@echo ""
 	@echo "Conformance:"
-	@echo "  conformance      Run all conformance tests"
-	@echo "  conformance-go   Run Go conformance tests"
-	@echo "  conformance-build Build conformance test runner"
+	@echo "  conformance            Run all conformance tests"
+	@echo "  conformance-go         Run Go conformance tests"
+	@echo "  conformance-kotlin     Run Kotlin conformance tests"
+	@echo "  conformance-typescript Run TypeScript conformance tests"
+	@echo "  conformance-ruby       Run Ruby conformance tests"
+	@echo "  conformance-build      Build Go conformance test runner"
 	@echo ""
 	@echo "Ruby SDK:"
 	@echo "  rb-generate          Generate types and metadata from OpenAPI"
