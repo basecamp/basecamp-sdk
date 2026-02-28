@@ -5,7 +5,7 @@ import Foundation
 /// Provides sensible defaults matching the other SDK implementations.
 /// All properties are immutable after construction.
 public struct BasecampConfig: Sendable {
-    /// Base URL for the Basecamp 3 API.
+    /// Base URL for the Basecamp API.
     public let baseURL: String
 
     /// User-Agent header value sent with every request.

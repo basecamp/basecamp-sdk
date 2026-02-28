@@ -1,7 +1,7 @@
 /**
  * Basecamp TypeScript SDK
  *
- * Type-safe client for the Basecamp 3 API.
+ * Type-safe client for the Basecamp API.
  *
  * @example
  * ```ts

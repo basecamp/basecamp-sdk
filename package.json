@@ -2,7 +2,7 @@
   "name": "@37signals/basecamp",
   "version": "0.2.0",
   "private": true,
-  "description": "TypeScript SDK for the Basecamp 3 API",
+  "description": "TypeScript SDK for the Basecamp API",
   "engines": {
     "node": ">=18.0.0"
   },

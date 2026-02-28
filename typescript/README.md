@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Test](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml)
 
-Official TypeScript SDK for the [Basecamp 3 API](https://github.com/basecamp/bc3-api).
+Official TypeScript SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Features
 

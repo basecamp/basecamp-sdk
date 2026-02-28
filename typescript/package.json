@@ -1,7 +1,7 @@
 {
   "name": "@37signals/basecamp",
   "version": "0.1.0",
-  "description": "TypeScript SDK for the Basecamp 3 API",
+  "description": "TypeScript SDK for the Basecamp API",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

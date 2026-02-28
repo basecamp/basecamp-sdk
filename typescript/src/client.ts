@@ -1,7 +1,7 @@
 /**
  * Basecamp TypeScript SDK Client
  *
- * Creates a type-safe client for the Basecamp 3 API using openapi-fetch.
+ * Creates a type-safe client for the Basecamp API using openapi-fetch.
  * Includes middleware for authentication, retry with exponential backoff,
  * and ETag-based caching.
  */

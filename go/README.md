@@ -4,7 +4,7 @@
 [![Test](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/basecamp/basecamp-sdk/go)](https://goreportcard.com/report/github.com/basecamp/basecamp-sdk/go)
 
-Official Go SDK for the [Basecamp 3 API](https://github.com/basecamp/bc3-api).
+Official Go SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Features
 
