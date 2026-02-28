@@ -1,6 +1,12 @@
 package com.basecamp.sdk
 
 import com.basecamp.sdk.oauth.*
+import io.ktor.client.*
+import io.ktor.client.engine.mock.*
+import io.ktor.http.*
+import kotlinx.coroutines.test.runTest
+import java.security.MessageDigest
+import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -128,5 +134,199 @@ class OAuthTest {
     @Test
     fun launchpadBaseUrl() {
         assertEquals("https://launchpad.37signals.com", LAUNCHPAD_BASE_URL)
+    }
+
+    // =========================================================================
+    // exchangeCode with mock HTTP
+    // =========================================================================
+
+    @Test
+    fun exchangeCodeSuccess() = runTest {
+        val engine = MockEngine { request ->
+            assertEquals(HttpMethod.Post, request.method)
+            val body = request.body.toByteArray().decodeToString()
+            assertTrue(body.contains("grant_type=authorization_code"))
+            assertTrue(body.contains("code=test-code"))
+            assertTrue(body.contains("client_id=test-client"))
+
+            respond(
+                content = """{
+                    "access_token": "access-123",
+                    "refresh_token": "refresh-456",
+                    "token_type": "Bearer",
+                    "expires_in": 3600
+                }""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val httpClient = HttpClient(engine)
+        val token = exchangeCode(
+            tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+            code = "test-code",
+            redirectUri = "https://myapp.com/callback",
+            clientId = "test-client",
+            clientSecret = "test-secret",
+            client = httpClient,
+        )
+
+        assertEquals("access-123", token.accessToken)
+        assertEquals("refresh-456", token.refreshToken)
+        assertEquals("Bearer", token.tokenType)
+        assertEquals(3600L, token.expiresIn)
+        assertTrue(token.expiresAt!! > System.currentTimeMillis())
+
+        httpClient.close()
+    }
+
+    @Test
+    fun exchangeCodeErrorResponse() = runTest {
+        val engine = MockEngine { _ ->
+            respond(
+                content = """{
+                    "error": "invalid_grant",
+                    "error_description": "Authorization code has expired"
+                }""",
+                status = HttpStatusCode.BadRequest,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val httpClient = HttpClient(engine)
+        try {
+            exchangeCode(
+                tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                code = "expired-code",
+                redirectUri = "https://myapp.com/callback",
+                clientId = "test-client",
+                clientSecret = "test-secret",
+                client = httpClient,
+            )
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Auth) {
+            assertTrue(e.message!!.contains("Authorization code has expired"))
+        }
+
+        httpClient.close()
+    }
+
+    // =========================================================================
+    // refreshToken with mock HTTP
+    // =========================================================================
+
+    @Test
+    fun refreshTokenSuccess() = runTest {
+        val engine = MockEngine { request ->
+            val body = request.body.toByteArray().decodeToString()
+            assertTrue(body.contains("grant_type=refresh_token"))
+            assertTrue(body.contains("refresh_token=refresh-456"))
+
+            respond(
+                content = """{
+                    "access_token": "new-access-789",
+                    "refresh_token": "new-refresh-012",
+                    "token_type": "Bearer",
+                    "expires_in": 7200
+                }""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val httpClient = HttpClient(engine)
+        val token = refreshToken(
+            tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+            refreshToken = "refresh-456",
+            clientId = "test-client",
+            clientSecret = "test-secret",
+            client = httpClient,
+        )
+
+        assertEquals("new-access-789", token.accessToken)
+        assertEquals("new-refresh-012", token.refreshToken)
+        assertEquals(7200L, token.expiresIn)
+
+        httpClient.close()
+    }
+
+    @Test
+    fun refreshTokenErrorResponse() = runTest {
+        val engine = MockEngine { _ ->
+            respond(
+                content = """{
+                    "error": "invalid_grant",
+                    "error_description": "Refresh token is invalid"
+                }""",
+                status = HttpStatusCode.Unauthorized,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val httpClient = HttpClient(engine)
+        try {
+            refreshToken(
+                tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                refreshToken = "invalid-token",
+                clientId = "test-client",
+                clientSecret = "test-secret",
+                client = httpClient,
+            )
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Auth) {
+            assertTrue(e.message!!.contains("Refresh token is invalid"))
+        }
+
+        httpClient.close()
+    }
+
+    // =========================================================================
+    // PKCE challenge is correct SHA-256 of verifier
+    // =========================================================================
+
+    @Test
+    fun pkceChallengeIsCorrectSha256OfVerifier() {
+        val pkce = generatePkce()
+
+        // Compute expected challenge: base64url(sha256(verifier))
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hash = digest.digest(pkce.verifier.toByteArray(Charsets.US_ASCII))
+        val expected = Base64.getUrlEncoder().withoutPadding().encodeToString(hash)
+
+        assertEquals(expected, pkce.challenge, "PKCE challenge should be base64url(SHA-256(verifier))")
+    }
+
+    @Test
+    fun exchangeCodeWithLegacyFormat() = runTest {
+        val engine = MockEngine { request ->
+            val body = request.body.toByteArray().decodeToString()
+            assertTrue(body.contains("type=web_server"), "Legacy format should use type=web_server")
+            assertTrue(!body.contains("grant_type"), "Legacy format should not use grant_type")
+
+            respond(
+                content = """{
+                    "access_token": "legacy-access",
+                    "token_type": "Bearer",
+                    "expires_in": 1209600
+                }""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val httpClient = HttpClient(engine)
+        val token = exchangeCode(
+            tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+            code = "test-code",
+            redirectUri = "https://myapp.com/callback",
+            clientId = "test-client",
+            clientSecret = "test-secret",
+            useLegacyFormat = true,
+            client = httpClient,
+        )
+
+        assertEquals("legacy-access", token.accessToken)
+
+        httpClient.close()
     }
 }

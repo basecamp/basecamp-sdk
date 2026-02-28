@@ -266,6 +266,29 @@ private fun runTest(tc: TestCase): TestResult {
                 }
             }
 
+            "errorType" -> {
+                val expectedType = assertion.expected?.asString()
+                    ?: return TestResult(false, "errorType assertion missing expected value")
+                if (caughtException == null) {
+                    return TestResult(false, "Expected error type \"$expectedType\", but got no error")
+                }
+                // Map conformance canonical error types to Kotlin SDK error codes
+                val codeMap = mapOf(
+                    "not_found" to BasecampException.CODE_NOT_FOUND,
+                    "auth_required" to BasecampException.CODE_AUTH,
+                    "forbidden" to BasecampException.CODE_FORBIDDEN,
+                    "rate_limit" to BasecampException.CODE_RATE_LIMIT,
+                    "validation" to BasecampException.CODE_VALIDATION,
+                )
+                val expectedCode = codeMap[expectedType]
+                if (expectedCode == null) {
+                    return TestResult(false, "Unknown conformance error type \"$expectedType\" (add to codeMap)")
+                }
+                if (caughtException.code != expectedCode) {
+                    return TestResult(false, "Expected error code \"$expectedCode\", got \"${caughtException.code}\"")
+                }
+            }
+
             else -> {
                 return TestResult(false, "Unknown assertion type: ${assertion.type}")
             }
