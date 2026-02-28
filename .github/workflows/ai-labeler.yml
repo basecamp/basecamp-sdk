@@ -190,6 +190,15 @@ assert doc['messages'][-1]['role'] == 'user', 'prompt splice failed: last messag
         run: |
           # Read response from file to avoid backtick/quote issues in shell
           RESPONSE_FILE="${{ steps.detect.outputs.response-file }}"
+          if ! jq empty "$RESPONSE_FILE" 2>/dev/null; then
+            echo "::warning::Model response is not valid JSON; skipping breaking label. See step summary for details."
+            echo "## Breaking change detection failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "Model returned invalid JSON. Breaking label was **not** applied." >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat "$RESPONSE_FILE" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           BREAKING=$(jq -r '.breaking' "$RESPONSE_FILE")
           PR=${{ github.event.pull_request.number }}
 
