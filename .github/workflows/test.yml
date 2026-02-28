@@ -359,6 +359,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: conformance/runner/typescript/package-lock.json
 
+      - name: Build TypeScript SDK
+        working-directory: typescript
+        run: |
+          npm ci
+          npm run build
+
       - name: Run TypeScript conformance tests
         working-directory: conformance/runner/typescript
         run: |
