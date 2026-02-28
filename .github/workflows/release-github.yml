@@ -19,7 +19,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          WORKFLOWS=("Release" "Release TypeScript SDK" "Release Ruby SDK" "Release Swift SDK" "Release Kotlin SDK")
+          WORKFLOWS=("release-go.yml" "release-typescript.yml" "release-ruby.yml" "release-swift.yml" "release-kotlin.yml")
           TAG="${GITHUB_REF#refs/tags/}"
           MAX_WAIT=1800  # 30 minutes
           POLL=30
