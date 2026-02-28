@@ -7,11 +7,72 @@ on:
 
 permissions:
   contents: write
+  actions: read
   models: read
 
 jobs:
+  wait-for-publishes:
+    name: Wait for SDK publishes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for all SDK release workflows
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          WORKFLOWS=("Release" "Release TypeScript SDK" "Release Ruby SDK" "Release Swift SDK" "Release Kotlin SDK")
+          TAG="${GITHUB_REF#refs/tags/}"
+          MAX_WAIT=1800  # 30 minutes
+          POLL=30
+          ELAPSED=0
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            ALL_DONE=true
+            ANY_FAILED=false
+            STATUS_LINE=""
+
+            for WF in "${WORKFLOWS[@]}"; do
+              CONCLUSION=$(gh run list \
+                --repo "$GITHUB_REPOSITORY" \
+                --workflow "$WF" \
+                --branch "$TAG" \
+                --limit 1 \
+                --json conclusion \
+                --jq '.[0].conclusion // empty')
+
+              if [ -z "$CONCLUSION" ]; then
+                ALL_DONE=false
+                STATUS_LINE+="  ⏳ $WF: pending"$'\n'
+              elif [ "$CONCLUSION" = "success" ]; then
+                STATUS_LINE+="  ✅ $WF: success"$'\n'
+              else
+                ANY_FAILED=true
+                STATUS_LINE+="  ❌ $WF: $CONCLUSION"$'\n'
+              fi
+            done
+
+            echo "$STATUS_LINE"
+
+            if $ANY_FAILED; then
+              echo "::error::One or more SDK release workflows failed"
+              exit 1
+            fi
+
+            if $ALL_DONE; then
+              echo "All SDK release workflows completed successfully"
+              exit 0
+            fi
+
+            echo "Waiting ${POLL}s for remaining workflows... (${ELAPSED}s elapsed)"
+            sleep $POLL
+            ELAPSED=$((ELAPSED + POLL))
+          done
+
+          echo "::error::Timed out waiting for SDK release workflows after ${MAX_WAIT}s"
+          exit 1
+
   release:
     name: Create Release
+    needs: [wait-for-publishes]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -37,7 +98,8 @@ jobs:
           PREV_TAG=$(git describe --tags --match 'v*' --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
             COMMITS=$(git log --pretty=format:"- %s (%h)")
-            git diff --stat HEAD > /tmp/sdk-diff.txt
+            ROOT=$(git rev-list --max-parents=0 HEAD)
+            git diff --stat "${ROOT}..HEAD" > /tmp/sdk-diff.txt
           else
             COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD")
             git diff --stat "${PREV_TAG}..HEAD" > /tmp/sdk-diff.txt
