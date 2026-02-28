@@ -1,0 +1,223 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 7 * * 1'     # Monday 7am UTC (security.yml at 6am)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  security-events: write
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      swift: ${{ steps.set-matrix.outputs.swift }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        if: github.event_name == 'pull_request'
+        id: filter
+        with:
+          filters: |
+            go:
+              - 'go/**'
+            typescript:
+              - 'typescript/**'
+            ruby:
+              - 'ruby/**'
+            kotlin:
+              - 'kotlin/**'
+            swift:
+              - 'swift/**'
+            config:
+              - '.github/codeql/**'
+              - '.github/workflows/codeql.yml'
+
+      - name: Build language matrix
+        id: set-matrix
+        env:
+          EVENT: ${{ github.event_name }}
+          GO: ${{ steps.filter.outputs.go }}
+          TS: ${{ steps.filter.outputs.typescript }}
+          RUBY: ${{ steps.filter.outputs.ruby }}
+          KOTLIN: ${{ steps.filter.outputs.kotlin }}
+          SWIFT: ${{ steps.filter.outputs.swift }}
+          CONFIG: ${{ steps.filter.outputs.config }}
+        run: |
+          matrix='[]'
+          add() { matrix=$(echo "$matrix" | jq -c --arg l "$1" --arg m "$2" '. + [{"language": $l, "build-mode": $m}]'); }
+
+          if [ "$EVENT" != "pull_request" ] || [ "$CONFIG" = "true" ]; then
+            add go manual
+            add javascript none
+            add ruby none
+            add java-kotlin manual
+            swift=true
+          else
+            if [ "$GO" = "true" ]; then add go manual; fi
+            if [ "$TS" = "true" ]; then add javascript none; fi
+            if [ "$RUBY" = "true" ]; then add ruby none; fi
+            if [ "$KOTLIN" = "true" ]; then add java-kotlin manual; fi
+            swift=$SWIFT
+          fi
+
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "swift=$swift" >> "$GITHUB_OUTPUT"
+
+  analyze:
+    name: CodeQL (${{ matrix.language }})
+    needs: changes
+    if: ${{ needs.changes.outputs.matrix != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.matrix) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # --- Language setup (conditional) ---
+
+      - name: Set up Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go/go.mod'
+
+      - name: Set up Java
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        if: matrix.language == 'java-kotlin'
+        uses: gradle/actions/setup-gradle@v5
+
+      # --- CodeQL init ---
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yml
+
+      # --- Build steps (manual mode only) ---
+
+      - name: Build (Go)
+        if: matrix.language == 'go'
+        working-directory: go
+        env:
+          CODEQL_EXTRACTOR_GO_BUILD_TRACING: 'on'
+        run: go build ./...
+
+      - name: Build (Kotlin)
+        if: matrix.language == 'java-kotlin'
+        working-directory: kotlin
+        run: ./gradlew --no-build-cache clean :basecamp-sdk:build :generator:build
+
+      # --- Analysis (fails build on real errors) ---
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: codeql-${{ matrix.language }}
+          upload: never
+          output: sarif-results
+
+      # --- Filter generated-code alerts ---
+      # paths-ignore in codeql-config.yml only governs source extraction
+      # (effective for JS/Ruby). For compiled languages the extractor traces
+      # the build, so generated code enters the database. Strip those results
+      # from SARIF before upload.
+
+      - name: Filter generated-code alerts from SARIF
+        run: |
+          for sarif in sarif-results/*.sarif; do
+            [ -f "$sarif" ] || continue
+            before=$(jq '[.runs[].results // [] | length] | add // 0' "$sarif")
+            jq '
+              .runs |= map(.results |= (. // [] | map(
+                select(
+                  (.locations // [])[0].physicalLocation.artifactLocation.uri // "" |
+                  test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/)") | not
+                )
+              )))
+            ' "$sarif" > "${sarif}.tmp" && mv "${sarif}.tmp" "$sarif"
+            after=$(jq '[.runs[].results | length] | add // 0' "$sarif")
+            filtered=$((before - after))
+            echo "$(basename "$sarif"): $before findings, filtered $filtered generated-code alerts, $after remaining"
+          done
+
+      # --- Upload (tolerates GHAS unavailability) ---
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true  # Requires GitHub Advanced Security
+        with:
+          sarif_file: sarif-results
+          category: codeql-${{ matrix.language }}
+
+  analyze-swift:
+    name: CodeQL (swift)
+    needs: changes
+    if: needs.changes.outputs.swift == 'true'
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: swift
+          build-mode: manual
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Build (Swift)
+        working-directory: swift
+        run: swift build
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: codeql-swift
+          upload: never
+          output: sarif-results
+
+      - name: Filter generated-code alerts from SARIF
+        run: |
+          for sarif in sarif-results/*.sarif; do
+            [ -f "$sarif" ] || continue
+            before=$(jq '[.runs[].results // [] | length] | add // 0' "$sarif")
+            jq '
+              .runs |= map(.results |= (. // [] | map(
+                select(
+                  (.locations // [])[0].physicalLocation.artifactLocation.uri // "" |
+                  test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/)") | not
+                )
+              )))
+            ' "$sarif" > "${sarif}.tmp" && mv "${sarif}.tmp" "$sarif"
+            after=$(jq '[.runs[].results | length] | add // 0' "$sarif")
+            filtered=$((before - after))
+            echo "$(basename "$sarif"): $before findings, filtered $filtered generated-code alerts, $after remaining"
+          done
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true  # Requires GitHub Advanced Security
+        with:
+          sarif_file: sarif-results
+          category: codeql-swift
