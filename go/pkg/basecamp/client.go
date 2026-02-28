@@ -20,7 +20,7 @@ import (
 // Note: Default retry/backoff values are now in http.go as exported constants.
 
 // DefaultUserAgent is the default User-Agent header value.
-const DefaultUserAgent = "basecamp-sdk-go/" + Version
+const DefaultUserAgent = "basecamp-sdk-go/" + Version + " (api:" + APIVersion + ")"
 
 // Client is an HTTP client for the Basecamp API.
 // Client holds shared resources and is used to create AccountClient instances

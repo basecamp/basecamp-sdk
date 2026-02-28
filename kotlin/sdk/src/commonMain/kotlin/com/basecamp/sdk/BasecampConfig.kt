@@ -28,9 +28,10 @@ data class BasecampConfig(
     val baseRetryDelay: Duration = 1.seconds,
 ) {
     companion object {
-        const val VERSION = "0.1.1"
+        const val VERSION = "0.2.1"
+        const val API_VERSION = "2026-01-26"
         const val DEFAULT_BASE_URL = "https://3.basecampapi.com"
-        const val DEFAULT_USER_AGENT = "basecamp-sdk-kotlin/$VERSION"
+        const val DEFAULT_USER_AGENT = "basecamp-sdk-kotlin/$VERSION (api:$API_VERSION)"
         const val DEFAULT_MAX_RETRIES = 3
         const val DEFAULT_MAX_PAGES = 10_000
     }

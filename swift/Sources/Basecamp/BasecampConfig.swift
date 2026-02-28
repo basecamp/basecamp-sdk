@@ -24,10 +24,13 @@ public struct BasecampConfig: Sendable {
     public let timeoutInterval: TimeInterval
 
     /// SDK version string.
-    public static let version = "0.1.0"
+    public static let version = "0.2.1"
+
+    /// Basecamp API version this SDK targets.
+    public static let apiVersion = "2026-01-26"
 
     /// Default User-Agent header value.
-    public static let defaultUserAgent = "basecamp-sdk-swift/\(version)"
+    public static let defaultUserAgent = "basecamp-sdk-swift/\(version) (api:\(apiVersion))"
 
     /// Default base URL for the Basecamp API.
     public static let defaultBaseURL = "https://3.basecampapi.com"
@@ -36,7 +39,7 @@ public struct BasecampConfig: Sendable {
     ///
     /// - Parameters:
     ///   - baseURL: API base URL (default: `https://3.basecampapi.com`)
-    ///   - userAgent: User-Agent header (default: `basecamp-sdk-swift/VERSION`)
+    ///   - userAgent: User-Agent header (default: `basecamp-sdk-swift/VERSION (api:API_VERSION)`)
     ///   - enableRetry: Enable automatic retry on 429/503 (default: `true`)
     ///   - enableCache: Enable ETag-based caching (default: `false`)
     ///   - maxPages: Maximum pages to follow (default: `10_000`)

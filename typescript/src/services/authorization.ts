@@ -68,7 +68,7 @@ export interface GetAuthorizationInfoOptions {
   endpoint?: string;
   /**
    * Filter accounts by product type.
-   * Common values: "bc3" (Basecamp 3), "bcx" (Basecamp 2), "hey" (HEY)
+   * Common values: "bc3" (Basecamp), "bcx" (Basecamp 2), "hey" (HEY)
    */
   filterProduct?: string;
 }
@@ -117,7 +117,7 @@ const DEFAULT_AUTHORIZATION_ENDPOINT = "https://launchpad.37signals.com/authoriz
  * const info = await client.authorization.getInfo();
  * console.log(`Logged in as ${info.identity.firstName}`);
  *
- * // Filter to only Basecamp 3 accounts
+ * // Filter to only Basecamp accounts
  * const bc3Info = await client.authorization.getInfo({ filterProduct: "bc3" });
  * for (const account of bc3Info.accounts) {
  *   console.log(account.name);

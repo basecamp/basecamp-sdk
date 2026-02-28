@@ -188,7 +188,7 @@ export interface BasecampClientOptions {
   auth?: AuthStrategy;
   /** Base URL override (defaults to https://3.basecampapi.com/{accountId}) */
   baseUrl?: string;
-  /** User-Agent header (defaults to basecamp-sdk-ts/VERSION) */
+  /** User-Agent header (defaults to basecamp-sdk-ts/VERSION (api:API_VERSION)) */
   userAgent?: string;
   /** Enable ETag-based caching (defaults to false) */
   enableCache?: boolean;
@@ -200,8 +200,9 @@ export interface BasecampClientOptions {
   hooks?: BasecampHooks;
 }
 
-export const VERSION = "0.2.0";
-const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION}`;
+export const VERSION = "0.2.1";
+export const API_VERSION = "2026-01-26";
+const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
 
 /**
  * Creates a type-safe Basecamp API client with built-in middleware for:
