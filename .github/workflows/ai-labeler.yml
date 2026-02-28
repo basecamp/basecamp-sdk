@@ -157,6 +157,7 @@ jobs:
 
           if [ "$BREAKING" = "true" ]; then
             ITEMS=$(echo "$RESPONSE" | jq -r '.items[]' | sed 's/^/- /')
+            gh label create breaking --color "B60205" 2>/dev/null || true
             gh pr edit "$PR" --add-label "breaking"
             # Post/update comment
             COMMENT_BODY=$(cat <<'COMMENT_EOF'
