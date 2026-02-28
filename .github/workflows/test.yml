@@ -83,8 +83,17 @@ jobs:
       - name: Check service layer drift
         run: ../scripts/check-service-drift.sh
 
-      - name: Test
-        run: go test -v ./...
+      - name: Test with coverage
+        run: |
+          go test -v -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out | tail -1
+          # Check minimum coverage threshold (60%)
+          COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $NF}' | sed 's/%//')
+          echo "Total coverage: ${COVERAGE}%"
+          if [ "$(echo "$COVERAGE < 60" | bc -l)" -eq 1 ]; then
+            echo "::error::Coverage ${COVERAGE}% is below minimum threshold of 60%"
+            exit 1
+          fi
 
   test-typescript:
     name: TypeScript Tests
@@ -327,7 +336,7 @@ jobs:
       - name: Build conformance runner
         run: go build -o conformance-runner .
 
-      - name: Run conformance tests
+      - name: Run Go conformance tests
         run: ./conformance-runner
 
       - name: Set up Java
@@ -342,6 +351,30 @@ jobs:
       - name: Run Kotlin conformance tests
         working-directory: kotlin
         run: ./gradlew :conformance:run
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: conformance/runner/typescript/package-lock.json
+
+      - name: Run TypeScript conformance tests
+        working-directory: conformance/runner/typescript
+        run: |
+          npm ci
+          npm test
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: conformance/runner/ruby
+
+      - name: Run Ruby conformance tests
+        working-directory: conformance/runner/ruby
+        run: ruby runner.rb
 
   lint:
     name: Lint

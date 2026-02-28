@@ -180,3 +180,55 @@ jobs:
 
       - name: Run bundler-audit
         run: bundle-audit check
+
+  gradle-dependency-check:
+    name: Gradle Dependency Check (Kotlin SDK)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kotlin
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Run dependency verification
+        run: ./gradlew :basecamp-sdk:dependencies --scan
+
+      - name: Check for known vulnerabilities
+        run: ./gradlew :basecamp-sdk:dependencyInsight --dependency org.jetbrains.kotlin --scan || true
+
+  swift-audit:
+    name: Swift Dependency Audit
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: swift
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Audit Swift dependencies
+        run: |
+          swift package show-dependencies --format json > deps.json
+          echo "Swift package dependencies:"
+          cat deps.json | python3 -c "
+          import json, sys
+          deps = json.load(sys.stdin)
+          def walk(dep, depth=0):
+              name = dep.get('identity', dep.get('name', 'unknown'))
+              version = dep.get('version', 'unknown')
+              print(f\"{'  ' * depth}{name}@{version}\")
+              for d in dep.get('dependencies', []):
+                  walk(d, depth + 1)
+          walk(deps)
+          "
+          rm -f deps.json
