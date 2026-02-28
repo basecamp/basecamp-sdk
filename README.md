@@ -10,7 +10,7 @@ OpenAPI 3.1 spec included.
 |----------|------|--------|---------|
 | [Go](go/) | `go/` | Active | `github.com/basecamp/basecamp-sdk/go` |
 | [Ruby](ruby/) | `ruby/` | Active | `basecamp-sdk` |
-| [TypeScript](typescript/) | `typescript/` | Active | `@basecamp/sdk` |
+| [TypeScript](typescript/) | `typescript/` | Active | `@37signals/basecamp` |
 
 | Feature | Go | TypeScript | Ruby |
 |---------|:--:|:----------:|:----:|
@@ -79,7 +79,7 @@ end
 ### TypeScript
 
 ```typescript
-import { createBasecampClient } from "@basecamp/sdk";
+import { createBasecampClient } from "@37signals/basecamp";
 
 const client = createBasecampClient({
   accountId: process.env.BASECAMP_ACCOUNT_ID!,

@@ -5,7 +5,7 @@
  *
  * @example
  * ```ts
- * import { createBasecampClient } from "@basecamp/sdk";
+ * import { createBasecampClient } from "@37signals/basecamp";
  *
  * const client = createBasecampClient({
  *   accountId: "12345",

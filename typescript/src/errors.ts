@@ -6,7 +6,7 @@
  *
  * @example
  * ```ts
- * import { BasecampError, Errors } from "@basecamp/sdk";
+ * import { BasecampError, Errors } from "@37signals/basecamp";
  *
  * try {
  *   await client.todos.get(projectId, todoId);

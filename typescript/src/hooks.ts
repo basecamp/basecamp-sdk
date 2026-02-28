@@ -7,7 +7,7 @@
  *
  * @example
  * ```ts
- * import { createBasecampClient, consoleHooks } from "@basecamp/sdk";
+ * import { createBasecampClient, consoleHooks } from "@37signals/basecamp";
  *
  * // Simple console logging
  * const client = createBasecampClient({

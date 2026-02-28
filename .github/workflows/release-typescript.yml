@@ -174,7 +174,7 @@ jobs:
           echo "## Installation" >> changelog.md
           echo "" >> changelog.md
           echo '```' >> changelog.md
-          echo "npm install @basecamp/sdk@${{ steps.version.outputs.version }}" >> changelog.md
+          echo "npm install @37signals/basecamp@${{ steps.version.outputs.version }}" >> changelog.md
           echo '```' >> changelog.md
 
       - name: Create GitHub Release

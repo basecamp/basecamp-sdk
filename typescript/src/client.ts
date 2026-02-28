@@ -209,7 +209,7 @@ const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION}`;
  *
  * @example
  * ```ts
- * import { createBasecampClient } from "@basecamp/sdk";
+ * import { createBasecampClient } from "@37signals/basecamp";
  *
  * const client = createBasecampClient({
  *   accountId: "12345",

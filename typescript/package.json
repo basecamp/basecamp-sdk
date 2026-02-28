@@ -1,5 +1,5 @@
 {
-  "name": "@basecamp/sdk",
+  "name": "@37signals/basecamp",
   "version": "0.1.0",
   "description": "TypeScript SDK for the Basecamp 3 API",
   "type": "module",

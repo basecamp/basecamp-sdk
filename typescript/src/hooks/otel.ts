@@ -6,7 +6,7 @@
  *
  * @example
  * ```ts
- * import { createBasecampClient, otelHooks } from "@basecamp/sdk";
+ * import { createBasecampClient, otelHooks } from "@37signals/basecamp";
  * import { trace, metrics } from "@opentelemetry/api";
  *
  * const tracer = trace.getTracer("my-app");
@@ -157,7 +157,7 @@ function requestKey(info: RequestInfo): string {
  *
  * @example
  * ```ts
- * import { createBasecampClient, otelHooks } from "@basecamp/sdk";
+ * import { createBasecampClient, otelHooks } from "@37signals/basecamp";
  * import { trace, metrics } from "@opentelemetry/api";
  *
  * // Set up OpenTelemetry first (SDK configuration not shown)
