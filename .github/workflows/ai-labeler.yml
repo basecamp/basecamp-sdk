@@ -151,29 +151,33 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RESPONSE='${{ steps.detect.outputs.response }}'
-          BREAKING=$(echo "$RESPONSE" | jq -r '.breaking')
+          # Read response from file to avoid backtick/quote issues in shell
+          RESPONSE_FILE="${{ steps.detect.outputs.response-file }}"
+          # Strip markdown code fences if the model wrapped its JSON output
+          sed -i '/^```/d' "$RESPONSE_FILE"
+          BREAKING=$(jq -r '.breaking' "$RESPONSE_FILE")
           PR=${{ github.event.pull_request.number }}
 
           if [ "$BREAKING" = "true" ]; then
-            ITEMS=$(echo "$RESPONSE" | jq -r '.items[]' | sed 's/^/- /')
+            ITEMS=$(jq -r '.items[]' "$RESPONSE_FILE" | sed 's/^/- /')
+            gh label create breaking --color "B60205" 2>/dev/null || true
             gh pr edit "$PR" --add-label "breaking"
-            # Post/update comment
-            COMMENT_BODY=$(cat <<'COMMENT_EOF'
-          ⚠️ **Potential breaking changes detected:**
 
-          COMMENT_EOF
-          )
-            COMMENT_BODY="${COMMENT_BODY}
-          ${ITEMS}
+            # Build comment body
+            {
+              echo "⚠️ **Potential breaking changes detected:**"
+              echo ""
+              echo "$ITEMS"
+              echo ""
+              echo "_Review carefully before merging. Consider a major version bump._"
+            } > /tmp/breaking-comment.md
 
-          _Review carefully before merging. Consider a major version bump._"
             # Find existing bot comment or create new
             EXISTING=$(gh pr view "$PR" --json comments --jq '.comments[] | select(.body | startswith("⚠️ **Potential breaking")) | .id' | head -1)
             if [ -n "$EXISTING" ]; then
-              gh api graphql -f query="mutation { updateIssueComment(input: {id: \"$EXISTING\", body: $(echo "$COMMENT_BODY" | jq -Rs .)}) { issueComment { id } } }"
+              gh api graphql -f query="mutation { updateIssueComment(input: {id: \"$EXISTING\", body: $(jq -Rs . /tmp/breaking-comment.md)}) { issueComment { id } } }"
             else
-              gh pr comment "$PR" --body "$COMMENT_BODY"
+              gh pr comment "$PR" --body-file /tmp/breaking-comment.md
             fi
           else
             gh pr edit "$PR" --remove-label "breaking" 2>/dev/null || true
