@@ -98,6 +98,16 @@ sealed class BasecampException(
         requestId: String? = null,
     ) : BasecampException(message, CODE_VALIDATION, hint, httpStatus, false, requestId)
 
+    /** Ambiguous match error (multiple resources match a name/identifier). */
+    class Ambiguous(
+        /** The type of resource that was ambiguous. */
+        val resource: String,
+        /** The matching resources. */
+        val matches: List<String> = emptyList(),
+        hint: String? = if (matches.isNotEmpty() && matches.size <= 5)
+            "Did you mean: ${matches.joinToString(", ")}" else "Be more specific",
+    ) : BasecampException("Ambiguous $resource", CODE_AMBIGUOUS, hint)
+
     /** Usage error (bad arguments, configuration errors). */
     class Usage(
         message: String,
@@ -112,6 +122,7 @@ sealed class BasecampException(
         const val CODE_NETWORK = "network"
         const val CODE_API = "api_error"
         const val CODE_VALIDATION = "validation"
+        const val CODE_AMBIGUOUS = "ambiguous"
         const val CODE_USAGE = "usage"
 
         private const val EXIT_OK = 0
@@ -122,16 +133,20 @@ sealed class BasecampException(
         private const val EXIT_RATE_LIMIT = 5
         private const val EXIT_NETWORK = 6
         private const val EXIT_API = 7
+        private const val EXIT_AMBIGUOUS = 8
+        private const val EXIT_VALIDATION = 9
 
         /** Maps an error code to a CLI exit code. */
         fun exitCodeFor(code: String): Int = when (code) {
-            CODE_USAGE, CODE_VALIDATION -> EXIT_USAGE
+            CODE_USAGE -> EXIT_USAGE
             CODE_NOT_FOUND -> EXIT_NOT_FOUND
             CODE_AUTH -> EXIT_AUTH
             CODE_FORBIDDEN -> EXIT_FORBIDDEN
             CODE_RATE_LIMIT -> EXIT_RATE_LIMIT
             CODE_NETWORK -> EXIT_NETWORK
             CODE_API -> EXIT_API
+            CODE_AMBIGUOUS -> EXIT_AMBIGUOUS
+            CODE_VALIDATION -> EXIT_VALIDATION
             else -> EXIT_API
         }
 

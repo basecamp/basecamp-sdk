@@ -43,6 +43,9 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     /// Validation error (HTTP 400, 422).
     case validation(message: String, httpStatus: Int, hint: String?, requestId: String?)
 
+    /// Multiple matches found for a name or identifier.
+    case ambiguous(resource: String, matches: [String], hint: String?)
+
     /// Client usage error (invalid arguments, bad configuration).
     case usage(message: String, hint: String?)
 
@@ -54,6 +57,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .rateLimit: true
         case .network: true
         case .api(_, let status, _, _): status.map { $0 >= 500 } ?? false
+        case .ambiguous: false
         default: false
         }
     }
@@ -67,6 +71,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .rateLimit: 429
         case .validation(_, let status, _, _): status
         case .api(_, let status, _, _): status
+        case .ambiguous: nil
         case .network: nil
         case .usage: nil
         }
@@ -76,13 +81,14 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     public var exitCode: Int {
         switch self {
         case .usage: 1
-        case .validation: 1
         case .notFound: 2
         case .auth: 3
         case .forbidden: 4
         case .rateLimit: 5
         case .network: 6
         case .api: 7
+        case .ambiguous: 8
+        case .validation: 9
         }
     }
 
@@ -95,6 +101,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .rateLimit(_, _, let hint, _): hint
         case .network: "Check your network connection"
         case .api(_, _, let hint, _): hint
+        case .ambiguous(_, _, let hint): hint
         case .validation(_, _, let hint, _): hint
         case .usage(_, let hint): hint
         }
@@ -109,6 +116,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .rateLimit(let msg, _, _, _): msg
         case .network(let msg, _): msg
         case .api(let msg, _, _, _): msg
+        case .ambiguous(let resource, _, _): "Ambiguous \(resource)"
         case .validation(let msg, _, _, _): msg
         case .usage(let msg, _): msg
         }
@@ -122,6 +130,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .notFound(_, _, let id): id
         case .rateLimit(_, _, _, let id): id
         case .api(_, _, _, let id): id
+        case .ambiguous: nil
         case .validation(_, _, _, let id): id
         case .network: nil
         case .usage: nil
