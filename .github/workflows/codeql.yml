@@ -18,31 +18,68 @@ jobs:
     name: Detect changes
     runs-on: ubuntu-latest
     outputs:
-      swift: ${{ github.event_name != 'pull_request' || steps.filter.outputs.swift == 'true' }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      swift: ${{ steps.set-matrix.outputs.swift }}
     steps:
       - uses: dorny/paths-filter@v3
         if: github.event_name == 'pull_request'
         id: filter
         with:
           filters: |
+            go:
+              - 'go/**'
+            typescript:
+              - 'typescript/**'
+            ruby:
+              - 'ruby/**'
+            kotlin:
+              - 'kotlin/**'
             swift:
               - 'swift/**'
+            config:
+              - '.github/codeql/**'
+              - '.github/workflows/codeql.yml'
+
+      - name: Build language matrix
+        id: set-matrix
+        env:
+          EVENT: ${{ github.event_name }}
+          GO: ${{ steps.filter.outputs.go }}
+          TS: ${{ steps.filter.outputs.typescript }}
+          RUBY: ${{ steps.filter.outputs.ruby }}
+          KOTLIN: ${{ steps.filter.outputs.kotlin }}
+          SWIFT: ${{ steps.filter.outputs.swift }}
+          CONFIG: ${{ steps.filter.outputs.config }}
+        run: |
+          matrix='[]'
+          add() { matrix=$(echo "$matrix" | jq -c --arg l "$1" --arg m "$2" '. + [{"language": $l, "build-mode": $m}]'); }
+
+          if [ "$EVENT" != "pull_request" ] || [ "$CONFIG" = "true" ]; then
+            add go manual
+            add javascript none
+            add ruby none
+            add java-kotlin manual
+            swift=true
+          else
+            if [ "$GO" = "true" ]; then add go manual; fi
+            if [ "$TS" = "true" ]; then add javascript none; fi
+            if [ "$RUBY" = "true" ]; then add ruby none; fi
+            if [ "$KOTLIN" = "true" ]; then add java-kotlin manual; fi
+            swift=$SWIFT
+          fi
+
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "swift=$swift" >> "$GITHUB_OUTPUT"
 
   analyze:
     name: CodeQL (${{ matrix.language }})
+    needs: changes
+    if: ${{ needs.changes.outputs.matrix != '[]' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - language: go
-            build-mode: manual
-          - language: javascript
-            build-mode: none
-          - language: ruby
-            build-mode: none
-          - language: java-kotlin
-            build-mode: manual
+        include: ${{ fromJSON(needs.changes.outputs.matrix) }}
 
     steps:
       - name: Checkout code
