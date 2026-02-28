@@ -143,6 +143,12 @@ endif
 		{ echo "ERROR: Go version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -q '"version": "$(VERSION)"' typescript/package.json || \
 		{ echo "ERROR: TypeScript version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -q 'VERSION = "$(VERSION)"' ruby/lib/basecamp/version.rb || \
+		{ echo "ERROR: Ruby version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -q 'const val VERSION = "$(VERSION)"' kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt || \
+		{ echo "ERROR: Kotlin version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -q 'public static let version = "$(VERSION)"' swift/Sources/Basecamp/BasecampConfig.swift || \
+		{ echo "ERROR: Swift version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@git diff --quiet && git diff --cached --quiet || \
 		{ echo "ERROR: Working tree has uncommitted changes. Commit first."; exit 1; }
 	git tag "v$(VERSION)"
