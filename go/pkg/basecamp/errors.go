@@ -18,12 +18,12 @@ var (
 
 // Error codes for API responses.
 const (
-	CodeUsage     = "usage"
-	CodeNotFound  = "not_found"
-	CodeAuth      = "auth_required"
-	CodeForbidden = "forbidden"
-	CodeRateLimit = "rate_limit"
-	CodeNetwork   = "network"
+	CodeUsage      = "usage"
+	CodeNotFound   = "not_found"
+	CodeAuth       = "auth_required"
+	CodeForbidden  = "forbidden"
+	CodeRateLimit  = "rate_limit"
+	CodeNetwork    = "network"
 	CodeAPI        = "api_error"
 	CodeValidation = "validation"
 	CodeAmbiguous  = "ambiguous"
