@@ -7,8 +7,7 @@ on:
   workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
 
 permissions:
-  contents: write
-  models: read
+  contents: read
 
 jobs:
   smithy:
@@ -65,26 +64,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go/go.mod'
-
-      - name: Run tests
-        run: go test -v ./...
-
-      - name: Run tests with race detector
-        run: go test -race ./...
-
-  release:
-    name: Create Release
-    needs: [smithy, test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
       - name: Verify tag is on main
         if: github.event_name == 'push'
         run: |
@@ -96,23 +75,8 @@ jobs:
         with:
           go-version-file: 'go/go.mod'
 
-      - name: Extract version
-        id: version
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Manual trigger (dry-run): use a fixed rehearsal version
-            VERSION="v0.0.0-dry-run"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "Rehearsal for version: $VERSION"
-          else
-            # Tag trigger: extract from tag (v0.2.1 → v0.2.1, Go keeps v prefix)
-            VERSION="${GITHUB_REF#refs/tags/}"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "Releasing version: $VERSION"
-          fi
-
       - name: Verify module version
-        working-directory: go
+        if: github.event_name == 'push'
         run: |
           # Ensure go.mod exists and module path is correct
           if ! grep -q "^module github.com/basecamp/basecamp-sdk/go" go.mod; then
@@ -120,100 +84,18 @@ jobs:
             exit 1
           fi
 
-          # Verify version.go matches the tag (skip for dry-run)
-          VERSION="${{ steps.version.outputs.version }}"
-          if [[ "$VERSION" != "v0.0.0-dry-run" ]]; then
-            EXPECTED="${VERSION#v}"  # Strip leading v
-            if ! grep -q "Version = \"${EXPECTED}\"" pkg/basecamp/version.go; then
-              echo "::error::version.go does not match tag ${VERSION}"
-              echo "Expected: Version = \"${EXPECTED}\""
-              echo "Found:    $(grep 'Version =' pkg/basecamp/version.go)"
-              exit 1
-            fi
+          # Verify version.go matches the tag
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if ! grep -q "Version = \"${VERSION}\"" pkg/basecamp/version.go; then
+            echo "::error::version.go does not match tag v${VERSION}"
+            echo "Expected: Version = \"${VERSION}\""
+            echo "Found:    $(grep 'Version =' pkg/basecamp/version.go)"
+            exit 1
           fi
           echo "Module verification passed"
 
-      - name: Build changelog prompt
-        id: changelog-inputs
-        run: |
-          PREV_TAG=$(git describe --tags --match 'v*' --abbrev=0 HEAD^ 2>/dev/null || true)
-          if [ -z "$PREV_TAG" ]; then
-            COMMITS=$(git log --pretty=format:"- %s (%h)" -- go/)
-            git diff --stat HEAD -- go/ > /tmp/sdk-diff.txt
-          else
-            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- go/)
-            git diff "${PREV_TAG}..HEAD" -- go/ > /tmp/sdk-diff.txt
-          fi
-          echo "$COMMITS" > /tmp/commits.txt
+      - name: Run tests
+        run: go test -v ./...
 
-          # Compose user message
-          {
-            echo "SDK: Go"
-            echo "Version: ${{ steps.version.outputs.version }}"
-            echo ""
-            echo "Commits since last release:"
-            cat /tmp/commits.txt
-            echo ""
-            echo "Diff (truncated):"
-            head -c 100000 /tmp/sdk-diff.txt
-          } > /tmp/user-message.txt
-
-          # Build full prompt YAML
-          cp .github/prompts/summarize-changelog.prompt.yml /tmp/prompt.yml
-          python3 -c "
-          import yaml
-          with open('/tmp/prompt.yml') as f:
-              prompt = yaml.safe_load(f)
-          with open('/tmp/user-message.txt') as f:
-              user_msg = f.read()
-          prompt['messages'].append({'role': 'user', 'content': user_msg})
-          with open('/tmp/prompt.yml', 'w') as f:
-              yaml.dump(prompt, f, default_flow_style=False, allow_unicode=True)
-          "
-
-      - name: Summarize changes
-        id: summarize
-        continue-on-error: true
-        uses: actions/ai-inference@v1
-        with:
-          prompt-file: /tmp/prompt.yml
-
-      - name: Write changelog
-        if: steps.summarize.outcome == 'success'
-        run: |
-          RESPONSE_FILE="${{ steps.summarize.outputs.response-file }}"
-          {
-            cat "$RESPONSE_FILE"
-            echo ""
-            echo "## Installation"
-            echo ""
-            echo '```'
-            echo "go get github.com/basecamp/basecamp-sdk/go@${{ steps.version.outputs.version }}"
-            echo '```'
-          } > changelog.md
-
-      - name: Fallback changelog
-        if: steps.summarize.outcome != 'success'
-        run: |
-          {
-            echo "## Changes"
-            echo ""
-            cat /tmp/commits.txt
-            echo ""
-            echo "## Installation"
-            echo ""
-            echo '```'
-            echo "go get github.com/basecamp/basecamp-sdk/go@${{ steps.version.outputs.version }}"
-            echo '```'
-          } > changelog.md
-
-      - name: Create GitHub Release
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Go SDK ${{ steps.version.outputs.version }}
-          body_path: changelog.md
-          draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run tests with race detector
+        run: go test -race ./...

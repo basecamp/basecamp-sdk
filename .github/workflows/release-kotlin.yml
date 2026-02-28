@@ -7,9 +7,8 @@ on:
   workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
 
 permissions:
-  contents: write
+  contents: read
   packages: write
-  models: read
 
 jobs:
   smithy:
@@ -160,95 +159,3 @@ jobs:
         run: |
           ./gradlew :basecamp-sdk:build
           echo "::notice::Dry run mode - not actually publishing"
-
-      - name: Build changelog prompt
-        if: github.event_name == 'push'
-        id: changelog-inputs
-        run: |
-          cd ..
-          PREV_TAG=$(git describe --tags --match 'v*' --abbrev=0 HEAD^ 2>/dev/null || true)
-          if [ -z "$PREV_TAG" ]; then
-            COMMITS=$(git log --pretty=format:"- %s (%h)" -- kotlin/)
-            git diff --stat HEAD -- kotlin/ > /tmp/sdk-diff.txt
-          else
-            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- kotlin/)
-            git diff "${PREV_TAG}..HEAD" -- kotlin/ > /tmp/sdk-diff.txt
-          fi
-          echo "$COMMITS" > /tmp/commits.txt
-
-          {
-            echo "SDK: Kotlin"
-            echo "Version: v${{ steps.version.outputs.version }}"
-            echo ""
-            echo "Commits since last release:"
-            cat /tmp/commits.txt
-            echo ""
-            echo "Diff (truncated):"
-            head -c 100000 /tmp/sdk-diff.txt
-          } > /tmp/user-message.txt
-
-          cp .github/prompts/summarize-changelog.prompt.yml /tmp/prompt.yml
-          python3 -c "
-          import yaml
-          with open('/tmp/prompt.yml') as f:
-              prompt = yaml.safe_load(f)
-          with open('/tmp/user-message.txt') as f:
-              user_msg = f.read()
-          prompt['messages'].append({'role': 'user', 'content': user_msg})
-          with open('/tmp/prompt.yml', 'w') as f:
-              yaml.dump(prompt, f, default_flow_style=False, allow_unicode=True)
-          "
-
-      - name: Summarize changes
-        if: github.event_name == 'push'
-        id: summarize
-        continue-on-error: true
-        uses: actions/ai-inference@v1
-        with:
-          prompt-file: /tmp/prompt.yml
-
-      - name: Write changelog
-        if: github.event_name == 'push' && steps.summarize.outcome == 'success'
-        run: |
-          cd ..
-          RESPONSE_FILE="${{ steps.summarize.outputs.response-file }}"
-          {
-            cat "$RESPONSE_FILE"
-            echo ""
-            echo "## Installation"
-            echo ""
-            echo "Add the GitHub Packages Maven repository and dependency:"
-            echo ""
-            echo '```kotlin'
-            echo 'implementation("com.basecamp:basecamp-sdk:${{ steps.version.outputs.version }}")'
-            echo '```'
-          } > changelog.md
-
-      - name: Fallback changelog
-        if: github.event_name == 'push' && steps.summarize.outcome != 'success'
-        run: |
-          cd ..
-          {
-            echo "## Changes"
-            echo ""
-            cat /tmp/commits.txt
-            echo ""
-            echo "## Installation"
-            echo ""
-            echo "Add the GitHub Packages Maven repository and dependency:"
-            echo ""
-            echo '```kotlin'
-            echo 'implementation("com.basecamp:basecamp-sdk:${{ steps.version.outputs.version }}")'
-            echo '```'
-          } > changelog.md
-
-      - name: Create GitHub Release
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Kotlin SDK v${{ steps.version.outputs.version }}
-          body_path: changelog.md
-          draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
