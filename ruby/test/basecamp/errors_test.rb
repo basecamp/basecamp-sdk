@@ -84,6 +84,21 @@ class ErrorsTest < Minitest::Test
     assert_equal 400, error.http_status
   end
 
+  def test_validation_error_preserves_422_status
+    error = Basecamp::ValidationError.new("Unprocessable", http_status: 422)
+
+    assert_equal "Unprocessable", error.message
+    assert_equal 422, error.http_status
+  end
+
+  def test_error_from_response_422
+    error = Basecamp.error_from_response(422, '{"error": "Invalid data"}')
+
+    assert_instance_of Basecamp::ValidationError, error
+    assert_equal 422, error.http_status
+    assert_equal "Invalid data", error.message
+  end
+
   def test_ambiguous_error_with_matches
     error = Basecamp::AmbiguousError.new("project", matches: %w[Project1 Project2])
 

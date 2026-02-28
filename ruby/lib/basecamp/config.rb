@@ -39,7 +39,7 @@ module Basecamp
     # Default values
     DEFAULT_BASE_URL = "https://3.basecampapi.com"
     DEFAULT_TIMEOUT = 30
-    DEFAULT_MAX_RETRIES = 5
+    DEFAULT_MAX_RETRIES = 3
     DEFAULT_BASE_DELAY = 1.0
     DEFAULT_MAX_JITTER = 0.1
     DEFAULT_MAX_PAGES = 10_000
