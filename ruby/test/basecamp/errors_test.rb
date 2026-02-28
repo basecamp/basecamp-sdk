@@ -99,6 +99,18 @@ class ErrorsTest < Minitest::Test
     assert_equal "Invalid data", error.message
   end
 
+  def test_validation_error_exit_code
+    error = Basecamp::ValidationError.new("Name is required")
+
+    assert_equal 9, error.exit_code
+  end
+
+  def test_ambiguous_error_exit_code
+    error = Basecamp::AmbiguousError.new("project", matches: %w[A B])
+
+    assert_equal 8, error.exit_code
+  end
+
   def test_ambiguous_error_with_matches
     error = Basecamp::AmbiguousError.new("project", matches: %w[Project1 Project2])
 

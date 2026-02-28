@@ -45,13 +45,15 @@ describe("BasecampError", () => {
   describe("exitCode", () => {
     it("should return correct exit codes for each error type", () => {
       const codes: Record<string, number> = {
-        validation: 1,
+        usage: 1,
         not_found: 2,
         auth_required: 3,
         forbidden: 4,
         rate_limit: 5,
         network: 6,
         api_error: 7,
+        ambiguous: 8,
+        validation: 9,
       };
 
       for (const [code, expected] of Object.entries(codes)) {
@@ -176,6 +178,21 @@ describe("Errors factory", () => {
       expect(error.code).toBe("network");
       expect(error.retryable).toBe(true);
       expect(error.hint).toContain("network connection");
+    });
+  });
+
+  describe("ambiguous", () => {
+    it("should create an ambiguous error", () => {
+      const error = Errors.ambiguous("project", ["Project A", "Project B"]);
+      expect(error.code).toBe("ambiguous");
+      expect(error.exitCode).toBe(8);
+      expect(error.message).toBe("Ambiguous project");
+      expect(error.hint).toBe("Did you mean: Project A, Project B");
+    });
+
+    it("should use generic hint for many matches", () => {
+      const error = Errors.ambiguous("todo", ["a", "b", "c", "d", "e", "f"]);
+      expect(error.hint).toBe("Be more specific");
     });
   });
 

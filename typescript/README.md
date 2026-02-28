@@ -324,9 +324,10 @@ try {
 | `forbidden` | 403 | 4 | Access denied |
 | `not_found` | 404 | 2 | Resource not found |
 | `rate_limit` | 429 | 5 | Rate limit exceeded (retryable) |
-| `validation` | 400, 422 | 1 | Invalid request data |
 | `network` | - | 6 | Network error (retryable) |
 | `api_error` | 5xx | 7 | Server error |
+| `ambiguous` | - | 8 | Multiple matches found |
+| `validation` | 400, 422 | 9 | Invalid request data |
 | `usage` | - | 1 | Configuration or argument error |
 
 ## Retry Behavior

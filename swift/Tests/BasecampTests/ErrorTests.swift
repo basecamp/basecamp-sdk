@@ -62,8 +62,17 @@ final class ErrorTests: XCTestCase {
     func testValidationErrorProperties() {
         let error = BasecampError.validation(message: "Invalid", httpStatus: 422, hint: nil, requestId: nil)
         XCTAssertEqual(error.httpStatusCode, 422)
-        XCTAssertEqual(error.exitCode, 1)
+        XCTAssertEqual(error.exitCode, 9)
         XCTAssertFalse(error.isRetryable)
+    }
+
+    func testAmbiguousErrorProperties() {
+        let error = BasecampError.ambiguous(resource: "project", matches: ["Project A", "Project B"], hint: "Did you mean: Project A, Project B")
+        XCTAssertNil(error.httpStatusCode)
+        XCTAssertEqual(error.exitCode, 8)
+        XCTAssertFalse(error.isRetryable)
+        XCTAssertEqual(error.message, "Ambiguous project")
+        XCTAssertEqual(error.hint, "Did you mean: Project A, Project B")
     }
 
     func testUsageErrorProperties() {

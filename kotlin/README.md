@@ -333,6 +333,7 @@ try {
         is BasecampException.NotFound -> println("Not found: ${e.message}")
         is BasecampException.RateLimit -> println("Retry in ${e.retryAfterSeconds}s")
         is BasecampException.Validation -> println("Invalid input: ${e.message}")
+        is BasecampException.Ambiguous -> println("Ambiguous: ${e.message}")
         is BasecampException.Network -> println("Network error: ${e.message}")
         is BasecampException.Api -> println("Server error (${e.httpStatus}): ${e.message}")
         is BasecampException.Usage -> println("Bad arguments: ${e.message}")
@@ -355,9 +356,10 @@ try {
 | `Forbidden` | 403 | 4 | Access denied |
 | `NotFound` | 404 | 2 | Resource not found |
 | `RateLimit` | 429 | 5 | Rate limit exceeded (retryable) |
-| `Validation` | 400, 422 | 1 | Invalid request data |
 | `Network` | - | 6 | Network error (retryable) |
 | `Api` | 5xx | 7 | Server error |
+| `Ambiguous` | - | 8 | Multiple matches found |
+| `Validation` | 400, 422 | 9 | Invalid request data |
 | `Usage` | - | 1 | Configuration or argument error |
 
 ## Observability

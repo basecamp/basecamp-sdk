@@ -46,6 +46,7 @@ export type ErrorCode =
   | "not_found"
   | "rate_limit"
   | "validation"
+  | "ambiguous"
   | "network"
   | "api_error"
   | "usage";
@@ -74,13 +75,14 @@ export interface BasecampErrorOptions {
  */
 const EXIT_CODES: Record<ErrorCode, number> = {
   usage: 1, // Usage error (invalid arguments, config)
-  validation: 1, // General error
   not_found: 2, // Not found
   auth_required: 3, // Authentication error
   forbidden: 4, // Permission denied
   rate_limit: 5, // Rate limited
   network: 6, // Network error
   api_error: 7, // API error
+  ambiguous: 8, // Multiple matches found
+  validation: 9, // Validation error (422)
 };
 
 /**
@@ -216,13 +218,23 @@ export const Errors = {
     }),
 
   /**
-   * Creates a validation error (400).
+   * Creates a validation error (400/422).
    */
   validation: (message: string, hint?: string): BasecampError =>
     new BasecampError("validation", message, {
       httpStatus: 400,
       hint,
     }),
+
+  /**
+   * Creates an ambiguous match error.
+   */
+  ambiguous: (resource: string, matches: string[]): BasecampError => {
+    const hint = matches.length > 0 && matches.length <= 5
+      ? `Did you mean: ${matches.join(", ")}`
+      : "Be more specific";
+    return new BasecampError("ambiguous", `Ambiguous ${resource}`, { hint });
+  },
 
   /**
    * Creates a network error.

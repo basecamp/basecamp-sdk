@@ -277,6 +277,8 @@ do {
         print("API error (\(status ?? 0)): \(message)")
     case .validation(let message, _, _, _):
         print("Validation: \(message)")
+    case .ambiguous(let resource, _, _):
+        print("Ambiguous \(resource)")
     case .usage(let message, _):
         print("Usage error: \(message)")
     }
@@ -298,9 +300,10 @@ do {
 | `.forbidden` | 403 | 4 | Access denied |
 | `.notFound` | 404 | 2 | Resource not found |
 | `.rateLimit` | 429 | 5 | Rate limit exceeded (retryable) |
-| `.validation` | 400, 422 | 1 | Invalid request data |
 | `.network` | - | 6 | Network error (retryable) |
 | `.api` | 5xx | 7 | Server error |
+| `.ambiguous` | - | 8 | Multiple matches found |
+| `.validation` | 400, 422 | 9 | Invalid request data |
 | `.usage` | - | 1 | Configuration or argument error |
 
 ## Observability

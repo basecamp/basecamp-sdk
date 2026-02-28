@@ -344,6 +344,7 @@ if err != nil {
 | `network` | Network error (retryable) | 6 |
 | `api_error` | Server error | 7 |
 | `ambiguous` | Multiple matches found | 8 |
+| `validation` | Validation error (422) | 9 |
 
 ## Caching
 

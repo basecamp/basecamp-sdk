@@ -26,6 +26,7 @@ module Basecamp
     NETWORK = 6
     API = 7
     AMBIGUOUS = 8
+    VALIDATION = 9
   end
 
   # Base error class for all Basecamp SDK errors.
@@ -100,6 +101,7 @@ module Basecamp
       when ErrorCode::NETWORK then ExitCode::NETWORK
       when ErrorCode::API then ExitCode::API
       when ErrorCode::AMBIGUOUS then ExitCode::AMBIGUOUS
+      when ErrorCode::VALIDATION then ExitCode::VALIDATION
       else ExitCode::API
       end
     end

@@ -69,8 +69,17 @@ class ErrorTest {
     @Test
     fun validationErrorExitCode() {
         val e = BasecampException.Validation("Name is required")
-        assertEquals(1, e.exitCode)
+        assertEquals(9, e.exitCode)
         assertEquals("validation", e.code)
+    }
+
+    @Test
+    fun ambiguousErrorExitCode() {
+        val e = BasecampException.Ambiguous("project", listOf("Project A", "Project B"))
+        assertEquals(8, e.exitCode)
+        assertEquals("ambiguous", e.code)
+        assertEquals("Ambiguous project", e.message)
+        assertEquals("Did you mean: Project A, Project B", e.hint)
     }
 
     @Test
@@ -141,6 +150,7 @@ class ErrorTest {
             BasecampException.RateLimit(),
             BasecampException.Network(),
             BasecampException.Api("error", 500),
+            BasecampException.Ambiguous("project"),
             BasecampException.Validation("invalid"),
             BasecampException.Usage("bad arg"),
         )
@@ -154,6 +164,7 @@ class ErrorTest {
                 is BasecampException.RateLimit -> "rate_limit"
                 is BasecampException.Network -> "network"
                 is BasecampException.Api -> "api"
+                is BasecampException.Ambiguous -> "ambiguous"
                 is BasecampException.Validation -> "validation"
                 is BasecampException.Usage -> "usage"
             }
