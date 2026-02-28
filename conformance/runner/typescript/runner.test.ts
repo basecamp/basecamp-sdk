@@ -10,8 +10,8 @@
 import { describe, it, expect, afterEach, afterAll, beforeAll } from "vitest";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
-import { createBasecampClient, BasecampError } from "@basecamp/sdk";
-import type { BasecampClient } from "@basecamp/sdk";
+import { createBasecampClient, BasecampError } from "@37signals/basecamp";
+import type { BasecampClient } from "@37signals/basecamp";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
