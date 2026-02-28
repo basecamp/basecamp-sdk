@@ -482,6 +482,6 @@ help:
 	@echo "  release VERSION=x.y.z    Tag and push a global release (triggers all SDK releases)"
 	@echo ""
 	@echo "Combined:"
-	@echo "  check            Run all checks (Smithy + Go + TypeScript + Ruby + Swift + Conformance + Provenance)"
+	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Conformance + Provenance + API version sync)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"
