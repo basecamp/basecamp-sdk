@@ -1,11 +1,11 @@
 /**
  * Basecamp TypeScript SDK
  *
- * Type-safe client for the Basecamp 3 API.
+ * Type-safe client for the Basecamp API.
  *
  * @example
  * ```ts
- * import { createBasecampClient } from "@basecamp/sdk";
+ * import { createBasecampClient } from "@37signals/basecamp";
  *
  * const client = createBasecampClient({
  *   accountId: "12345",

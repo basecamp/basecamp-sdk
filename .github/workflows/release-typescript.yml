@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   smithy:
@@ -69,6 +70,7 @@ jobs:
     name: Publish to npm
     needs: [smithy, test]
     runs-on: ubuntu-latest
+    environment: release-npm
     defaults:
       run:
         working-directory: typescript
@@ -137,13 +139,11 @@ jobs:
       - name: Publish to npm
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
+            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --provenance
           else
             echo "::notice::Dry run mode - not actually publishing"
             npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --dry-run
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Generate changelog
         if: github.event_name == 'push'
@@ -174,7 +174,7 @@ jobs:
           echo "## Installation" >> changelog.md
           echo "" >> changelog.md
           echo '```' >> changelog.md
-          echo "npm install @basecamp/sdk@${{ steps.version.outputs.version }}" >> changelog.md
+          echo "npm install @37signals/basecamp@${{ steps.version.outputs.version }}" >> changelog.md
           echo '```' >> changelog.md
 
       - name: Create GitHub Release

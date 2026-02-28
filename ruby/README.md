@@ -1,6 +1,6 @@
 # Basecamp Ruby SDK
 
-Official Ruby SDK for the [Basecamp 3 API](https://github.com/basecamp/bc3-api).
+Official Ruby SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Requirements
 
@@ -135,7 +135,7 @@ end
 
 ## Services
 
-The SDK provides 38 services covering the complete Basecamp 3 API:
+The SDK provides 38 services covering the complete Basecamp API:
 
 | Service | Description |
 |---------|-------------|

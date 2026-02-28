@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors = [ 'Basecamp' ]
   spec.email = [ 'support@basecamp.com' ]
 
-  spec.summary = 'Official Ruby SDK for the Basecamp 3 API'
-  spec.description = 'A Ruby SDK for the Basecamp 3 API with automatic retry, ' \
+  spec.summary = 'Official Ruby SDK for the Basecamp API'
+  spec.description = 'A Ruby SDK for the Basecamp API with automatic retry, ' \
                      'exponential backoff, Link header pagination, and observability hooks.'
   spec.homepage = 'https://github.com/basecamp/basecamp-sdk'
   spec.license = 'MIT'

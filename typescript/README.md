@@ -1,10 +1,10 @@
 # Basecamp TypeScript SDK
 
-[![npm version](https://img.shields.io/npm/v/@basecamp/sdk.svg)](https://www.npmjs.com/package/@basecamp/sdk)
+[![npm version](https://img.shields.io/npm/v/@37signals/basecamp.svg)](https://www.npmjs.com/package/@37signals/basecamp)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Test](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml)
 
-Official TypeScript SDK for the [Basecamp 3 API](https://github.com/basecamp/bc3-api).
+Official TypeScript SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Features
 
@@ -20,7 +20,7 @@ Official TypeScript SDK for the [Basecamp 3 API](https://github.com/basecamp/bc3
 ## Installation
 
 ```bash
-npm install @basecamp/sdk
+npm install @37signals/basecamp
 ```
 
 Requires Node.js 18+ and TypeScript 5.0+.
@@ -28,7 +28,7 @@ Requires Node.js 18+ and TypeScript 5.0+.
 ## Quick Start
 
 ```ts
-import { createBasecampClient } from "@basecamp/sdk";
+import { createBasecampClient } from "@37signals/basecamp";
 
 const client = createBasecampClient({
   accountId: process.env.BASECAMP_ACCOUNT_ID!,
@@ -47,7 +47,7 @@ for (const project of projects) {
 ### Client Options
 
 ```ts
-import { createBasecampClient } from "@basecamp/sdk";
+import { createBasecampClient } from "@37signals/basecamp";
 
 const client = createBasecampClient({
   // Required
@@ -101,7 +101,7 @@ import {
   exchangeCode,
   refreshToken,
   isTokenExpired,
-} from "@basecamp/sdk";
+} from "@37signals/basecamp";
 
 // 1. Discover OAuth endpoints
 const config = await discoverLaunchpad();
@@ -239,7 +239,7 @@ The SDK provides typed services for the complete Basecamp API:
 List methods return a single page of results by default. Use the pagination helpers with low-level API calls to fetch all pages:
 
 ```ts
-import { fetchAllPages, paginateAll } from "@basecamp/sdk";
+import { fetchAllPages, paginateAll } from "@37signals/basecamp";
 
 // First, fetch the initial page using the low-level client
 const initialResponse = await client.GET("/projects.json");
@@ -293,7 +293,7 @@ const { data: newProject } = await client.POST("/projects.json", {
 The SDK provides structured errors with codes, hints, and exit codes for CLI applications:
 
 ```ts
-import { BasecampError, isBasecampError, isErrorCode } from "@basecamp/sdk";
+import { BasecampError, isBasecampError, isErrorCode } from "@37signals/basecamp";
 
 try {
   await client.todos.get(todoId);
@@ -377,7 +377,7 @@ const client = createBasecampClient({
 For debugging or verbose CLI modes:
 
 ```ts
-import { createBasecampClient, consoleHooks } from "@basecamp/sdk";
+import { createBasecampClient, consoleHooks } from "@37signals/basecamp";
 
 const client = createBasecampClient({
   accountId: "12345",
@@ -404,7 +404,7 @@ Output:
 Implement the `BasecampHooks` interface for custom observability:
 
 ```ts
-import type { BasecampHooks } from "@basecamp/sdk";
+import type { BasecampHooks } from "@37signals/basecamp";
 
 const metricsHooks: BasecampHooks = {
   onOperationStart(info) {
@@ -435,7 +435,7 @@ const client = createBasecampClient({
 For distributed tracing and metrics:
 
 ```ts
-import { createBasecampClient, otelHooks } from "@basecamp/sdk";
+import { createBasecampClient, otelHooks } from "@37signals/basecamp";
 import { trace, metrics } from "@opentelemetry/api";
 
 const tracer = trace.getTracer("my-app");
@@ -461,7 +461,7 @@ Creates spans and metrics:
 ### Combining Multiple Hooks
 
 ```ts
-import { chainHooks, consoleHooks, otelHooks } from "@basecamp/sdk";
+import { chainHooks, consoleHooks, otelHooks } from "@37signals/basecamp";
 
 const client = createBasecampClient({
   accountId: "12345",
@@ -562,7 +562,7 @@ import type {
   CreateTodoRequest,
   BasecampError,
   ErrorCode,
-} from "@basecamp/sdk";
+} from "@37signals/basecamp";
 
 function processTodo(todo: Todo): void {
   console.log(todo.content);

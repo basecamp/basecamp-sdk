@@ -1,4 +1,4 @@
-// Package basecamp provides a Go SDK for the Basecamp 3 API.
+// Package basecamp provides a Go SDK for the Basecamp API.
 //
 // The SDK handles authentication, HTTP caching, rate limiting, and retry logic.
 // It supports both OAuth 2.0 authentication and static token authentication.

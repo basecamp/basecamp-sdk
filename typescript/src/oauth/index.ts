@@ -6,7 +6,7 @@
  *
  * @example
  * ```ts
- * import { discover, exchangeCode, refreshToken, isTokenExpired } from "@basecamp/sdk/oauth";
+ * import { discover, exchangeCode, refreshToken, isTokenExpired } from "@37signals/basecamp/oauth";
  *
  * // 1. Discover OAuth configuration
  * const config = await discover("https://launchpad.37signals.com");

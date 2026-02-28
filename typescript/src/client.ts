@@ -1,7 +1,7 @@
 /**
  * Basecamp TypeScript SDK Client
  *
- * Creates a type-safe client for the Basecamp 3 API using openapi-fetch.
+ * Creates a type-safe client for the Basecamp API using openapi-fetch.
  * Includes middleware for authentication, retry with exponential backoff,
  * and ETag-based caching.
  */
@@ -198,7 +198,7 @@ export interface BasecampClientOptions {
   hooks?: BasecampHooks;
 }
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION}`;
 
 /**
@@ -209,7 +209,7 @@ const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION}`;
  *
  * @example
  * ```ts
- * import { createBasecampClient } from "@basecamp/sdk";
+ * import { createBasecampClient } from "@37signals/basecamp";
  *
  * const client = createBasecampClient({
  *   accountId: "12345",
