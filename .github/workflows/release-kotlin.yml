@@ -79,6 +79,16 @@ jobs:
       - name: Test
         run: ./gradlew :basecamp-sdk:check
 
+      - name: Check generated code drift
+        run: |
+          ./gradlew :generator:run --args="--openapi ../openapi.json --behavior ../behavior-model.json --output sdk/src/commonMain/kotlin/com/basecamp/sdk/generated"
+          if ! git diff --quiet -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/; then
+            echo "::error::Generated Kotlin code is out of date. Run 'make kt-generate-services' and commit."
+            git diff --stat -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/
+            exit 1
+          fi
+          echo "Generated code is up to date"
+
   publish:
     name: Publish to GitHub Packages
     needs: [smithy, test]
