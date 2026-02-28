@@ -39,17 +39,35 @@ jobs:
             head -c 100000 /tmp/pr.diff
           } > /tmp/user-message.txt
 
-          # Build full prompt YAML: base prompt + indented user message
-          cp .github/prompts/classify-pr.prompt.yml /tmp/prompt.yml
+          # Build full prompt YAML: splice user message into the messages array
+          # (avoids yaml round-trip which reorders keys and changes scalar styles)
           python3 -c "
-          import yaml, sys
-          with open('/tmp/prompt.yml') as f:
-              prompt = yaml.safe_load(f)
-          with open('/tmp/user-message.txt') as f:
-              user_msg = f.read()
-          prompt['messages'].append({'role': 'user', 'content': user_msg})
-          with open('/tmp/prompt.yml', 'w') as f:
-              yaml.dump(prompt, f, default_flow_style=False, allow_unicode=True)
+with open('.github/prompts/classify-pr.prompt.yml') as f:
+    lines = f.readlines()
+with open('/tmp/user-message.txt') as f:
+    user_msg = f.read()
+
+# Find where messages array ends: first non-blank top-level key after 'messages:'
+insert_at = len(lines)
+for i, line in enumerate(lines):
+    if i == 0:
+        continue
+    if line.strip() and not line[0].isspace():
+        insert_at = i
+        break
+
+entry = ['  - role: user\n', '    content: |\n']
+for ln in user_msg.splitlines():
+    entry.append('      ' + ln + '\n')
+
+lines[insert_at:insert_at] = entry
+with open('/tmp/prompt.yml', 'w') as f:
+    f.writelines(lines)
+
+# Validate: last message must be the user message we just added
+import yaml
+doc = yaml.safe_load(open('/tmp/prompt.yml'))
+assert doc['messages'][-1]['role'] == 'user', 'prompt splice failed: last message is not user'
           "
 
       - name: Classify
@@ -125,18 +143,36 @@ jobs:
               head -c 100000 /tmp/api.diff
             } > /tmp/user-message.txt
 
-            # Build full prompt YAML
-            cp .github/prompts/detect-breaking.prompt.yml /tmp/prompt.yml
+            # Build full prompt YAML: splice user message into the messages array
+            # (avoids yaml round-trip which reorders keys and changes scalar styles)
             python3 -c "
-          import yaml
-          with open('/tmp/prompt.yml') as f:
-              prompt = yaml.safe_load(f)
-          with open('/tmp/user-message.txt') as f:
-              user_msg = f.read()
-          prompt['messages'].append({'role': 'user', 'content': user_msg})
-          with open('/tmp/prompt.yml', 'w') as f:
-              yaml.dump(prompt, f, default_flow_style=False, allow_unicode=True)
-          "
+with open('.github/prompts/detect-breaking.prompt.yml') as f:
+    lines = f.readlines()
+with open('/tmp/user-message.txt') as f:
+    user_msg = f.read()
+
+# Find where messages array ends: first non-blank top-level key after 'messages:'
+insert_at = len(lines)
+for i, line in enumerate(lines):
+    if i == 0:
+        continue
+    if line.strip() and not line[0].isspace():
+        insert_at = i
+        break
+
+entry = ['  - role: user\n', '    content: |\n']
+for ln in user_msg.splitlines():
+    entry.append('      ' + ln + '\n')
+
+lines[insert_at:insert_at] = entry
+with open('/tmp/prompt.yml', 'w') as f:
+    f.writelines(lines)
+
+# Validate: last message must be the user message we just added
+import yaml
+doc = yaml.safe_load(open('/tmp/prompt.yml'))
+assert doc['messages'][-1]['role'] == 'user', 'prompt splice failed: last message is not user'
+            "
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
@@ -154,6 +190,15 @@ jobs:
         run: |
           # Read response from file to avoid backtick/quote issues in shell
           RESPONSE_FILE="${{ steps.detect.outputs.response-file }}"
+          if ! jq empty "$RESPONSE_FILE" 2>/dev/null; then
+            echo "::warning::Model response is not valid JSON; skipping breaking label. See step summary for details."
+            echo "## Breaking change detection failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "Model returned invalid JSON. Breaking label was **not** applied." >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat "$RESPONSE_FILE" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           BREAKING=$(jq -r '.breaking' "$RESPONSE_FILE")
           PR=${{ github.event.pull_request.number }}
 
@@ -208,18 +253,36 @@ jobs:
               head -c 100000 /tmp/spec.diff
             } > /tmp/user-message.txt
 
-            # Build full prompt YAML
-            cp .github/prompts/spec-impact.prompt.yml /tmp/prompt.yml
+            # Build full prompt YAML: splice user message into the messages array
+            # (avoids yaml round-trip which reorders keys and changes scalar styles)
             python3 -c "
-          import yaml
-          with open('/tmp/prompt.yml') as f:
-              prompt = yaml.safe_load(f)
-          with open('/tmp/user-message.txt') as f:
-              user_msg = f.read()
-          prompt['messages'].append({'role': 'user', 'content': user_msg})
-          with open('/tmp/prompt.yml', 'w') as f:
-              yaml.dump(prompt, f, default_flow_style=False, allow_unicode=True)
-          "
+with open('.github/prompts/spec-impact.prompt.yml') as f:
+    lines = f.readlines()
+with open('/tmp/user-message.txt') as f:
+    user_msg = f.read()
+
+# Find where messages array ends: first non-blank top-level key after 'messages:'
+insert_at = len(lines)
+for i, line in enumerate(lines):
+    if i == 0:
+        continue
+    if line.strip() and not line[0].isspace():
+        insert_at = i
+        break
+
+entry = ['  - role: user\n', '    content: |\n']
+for ln in user_msg.splitlines():
+    entry.append('      ' + ln + '\n')
+
+lines[insert_at:insert_at] = entry
+with open('/tmp/prompt.yml', 'w') as f:
+    f.writelines(lines)
+
+# Validate: last message must be the user message we just added
+import yaml
+doc = yaml.safe_load(open('/tmp/prompt.yml'))
+assert doc['messages'][-1]['role'] == 'user', 'prompt splice failed: last message is not user'
+            "
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
