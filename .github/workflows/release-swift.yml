@@ -21,6 +21,26 @@ jobs:
         working-directory: swift
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Verify SDK version matches tag
+        if: github.event_name == 'push'
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if ! grep -q "public static let version = \"${VERSION}\"" Sources/Basecamp/BasecampConfig.swift; then
+            echo "::error::BasecampConfig.swift version does not match tag v${VERSION}"
+            echo "Expected: public static let version = \"${VERSION}\""
+            echo "Found:    $(grep 'static let version' Sources/Basecamp/BasecampConfig.swift)"
+            exit 1
+          fi
+          echo "Version verification passed"
 
       - name: Build
         run: swift build
