@@ -55,6 +55,6 @@ sedi "s/public static let version = \".*\"/public static let version = \"$VERSIO
 
 # Sync TypeScript lockfile
 echo "Syncing TypeScript lockfile..."
-(cd typescript && npm install --package-lock-only --ignore-scripts 2>/dev/null)
+(cd typescript && npm install --package-lock-only --ignore-scripts)
 
 echo "Done. Bumped 8 files to $VERSION."

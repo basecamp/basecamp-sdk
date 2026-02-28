@@ -139,14 +139,15 @@ sync-api-version:
 # Check that API_VERSION constants match openapi.json info.version
 sync-api-version-check:
 	@echo "==> Checking API version freshness..."
-	@API_VER=$$(jq -r '.info.version' openapi.json) && \
-	ok=true && \
-	grep -q "const APIVersion = \"$$API_VER\"" go/pkg/basecamp/version.go || ok=false && \
-	grep -q "export const API_VERSION = \"$$API_VER\"" typescript/src/client.ts || ok=false && \
-	grep -q "API_VERSION = \"$$API_VER\"" ruby/lib/basecamp/version.rb || ok=false && \
-	grep -q "const val API_VERSION = \"$$API_VER\"" kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt || ok=false && \
-	grep -q "public static let apiVersion = \"$$API_VER\"" swift/Sources/Basecamp/BasecampConfig.swift || ok=false && \
-	if [ "$$ok" = false ]; then echo "ERROR: API_VERSION constants are out of date. Run 'make sync-api-version'" && exit 1; fi
+	@command -v jq > /dev/null 2>&1 || { echo "ERROR: jq not found. Install jq to run sync-api-version-check (used by 'make check')."; exit 1; }
+	@API_VER=$$(jq -r '.info.version' openapi.json); \
+	ok=true; \
+	grep -q "const APIVersion = \"$$API_VER\"" go/pkg/basecamp/version.go || ok=false; \
+	grep -q "export const API_VERSION = \"$$API_VER\"" typescript/src/client.ts || ok=false; \
+	grep -q "API_VERSION = \"$$API_VER\"" ruby/lib/basecamp/version.rb || ok=false; \
+	grep -q "const val API_VERSION = \"$$API_VER\"" kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt || ok=false; \
+	grep -q "public static let apiVersion = \"$$API_VER\"" swift/Sources/Basecamp/BasecampConfig.swift || ok=false; \
+	if [ "$$ok" = false ]; then echo "ERROR: API_VERSION constants are out of date. Run 'make sync-api-version'"; exit 1; fi
 	@echo "API version constants are up to date"
 
 #------------------------------------------------------------------------------

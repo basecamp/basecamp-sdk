@@ -95,7 +95,7 @@ val client = BasecampClient {
 | Option | Default | Description |
 |--------|---------|-------------|
 | `baseUrl` | `https://3.basecampapi.com` | Basecamp API base URL |
-| `userAgent` | `basecamp-sdk-kotlin/$VERSION (api:$API_VERSION)` | User-Agent header |
+| `userAgent` | `BasecampConfig.DEFAULT_USER_AGENT` | User-Agent header |
 | `enableRetry` | `true` | Automatic retry on 429/503 |
 | `enableCache` | `false` | ETag-based HTTP caching |
 | `timeout` | `30s` | Request timeout |
