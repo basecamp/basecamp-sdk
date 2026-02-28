@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   smithy:
@@ -60,6 +61,7 @@ jobs:
     name: Publish to RubyGems
     needs: [smithy, test]
     runs-on: ubuntu-latest
+    environment: release-rubygems
     defaults:
       run:
         working-directory: ruby
@@ -101,20 +103,23 @@ jobs:
             echo "Releasing version: $VERSION"
           fi
 
-      - name: Build gem
-        run: gem build basecamp-sdk.gemspec
+      - name: Configure RubyGems credentials
+        if: github.event_name == 'push'
+        uses: rubygems/configure-rubygems-credentials@v1.0.0
 
       - name: Publish to RubyGems
+        if: github.event_name == 'push'
         run: |
-          mkdir -p ~/.gem
-          echo -e "---\n:rubygems_api_key: ${{ secrets.RUBYGEMS_API_KEY }}" > ~/.gem/credentials
-          chmod 0600 ~/.gem/credentials
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            gem push basecamp-sdk-${{ steps.version.outputs.version }}.gem
-          else
-            echo "::notice::Dry run mode - not actually publishing"
-            echo "Would publish: basecamp-sdk-${{ steps.version.outputs.version }}.gem"
-          fi
+          gem build basecamp-sdk.gemspec
+          gem push basecamp-sdk-${{ steps.version.outputs.version }}.gem
+          gem exec rubygems-await basecamp-sdk-${{ steps.version.outputs.version }}.gem
+
+      - name: Dry-run build
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          gem build basecamp-sdk.gemspec
+          echo "::notice::Dry run mode - not actually publishing"
+          echo "Would publish: basecamp-sdk-${{ steps.version.outputs.version }}.gem"
 
       - name: Generate changelog
         if: github.event_name == 'push'
