@@ -1,0 +1,60 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "results": [
+        {
+          "ruleId": "keep-real-go",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "go/pkg/client/http.go"}}}]
+        },
+        {
+          "ruleId": "drop-relative-go-generated",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "go/pkg/generated/api.go"}}}]
+        },
+        {
+          "ruleId": "drop-absolute-go-generated",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "/Users/runner/work/basecamp-sdk/basecamp-sdk/go/pkg/generated/api.go"}}}]
+        },
+        {
+          "ruleId": "drop-swift-generated",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "swift/Sources/Basecamp/Generated/Models.swift"}}}]
+        },
+        {
+          "ruleId": "keep-swift-generator",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "swift/Sources/BasecampGenerator/main.swift"}}}]
+        },
+        {
+          "ruleId": "drop-kotlin-generated",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "/home/runner/work/repo/kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Api.kt"}}}]
+        },
+        {
+          "ruleId": "keep-kotlin-generator",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "kotlin/generator/src/main/kotlin/Main.kt"}}}]
+        },
+        {
+          "ruleId": "drop-ts-dist",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "typescript/dist/index.js"}}}]
+        },
+        {
+          "ruleId": "drop-ts-generated",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "typescript/src/generated/schema.ts"}}}]
+        },
+        {
+          "ruleId": "drop-ruby-generated",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "ruby/lib/basecamp/generated/types.rb"}}}]
+        },
+        {
+          "ruleId": "keep-no-locations",
+          "locations": []
+        },
+        {
+          "ruleId": "keep-null-locations"
+        }
+      ]
+    },
+    {},
+    {
+      "results": null
+    }
+  ]
+}
