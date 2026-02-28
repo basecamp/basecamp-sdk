@@ -34,6 +34,7 @@
 export {
   createBasecampClient,
   VERSION,
+  API_VERSION,
   type BasecampClient,
   type BasecampClientOptions,
   type TokenProvider,

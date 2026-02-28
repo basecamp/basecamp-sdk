@@ -4,7 +4,7 @@
 [![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-com.basecamp%3Abasecamp--sdk-blue)](https://github.com/basecamp/basecamp-sdk/packages)
 [![Test](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml)
 
-Official Kotlin SDK for the [Basecamp 3 API](https://github.com/basecamp/bc3-api).
+Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Features
 
@@ -41,7 +41,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.basecamp:basecamp-sdk:0.1.1")
+    implementation("com.basecamp:basecamp-sdk:0.2.1")
 }
 ```
 
@@ -95,7 +95,7 @@ val client = BasecampClient {
 | Option | Default | Description |
 |--------|---------|-------------|
 | `baseUrl` | `https://3.basecampapi.com` | Basecamp API base URL |
-| `userAgent` | `basecamp-sdk-kotlin/0.1.1` | User-Agent header |
+| `userAgent` | `basecamp-sdk-kotlin/$VERSION (api:$API_VERSION)` | User-Agent header |
 | `enableRetry` | `true` | Automatic retry on 429/503 |
 | `enableCache` | `false` | ETag-based HTTP caching |
 | `timeout` | `30s` | Request timeout |

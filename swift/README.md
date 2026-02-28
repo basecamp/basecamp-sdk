@@ -4,7 +4,7 @@
 [![Platforms](https://img.shields.io/badge/Platforms-iOS%2016+%20|%20macOS%2012+-blue.svg)](https://developer.apple.com)
 [![Test](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/basecamp/basecamp-sdk/actions/workflows/test.yml)
 
-Official Swift SDK for the [Basecamp 3 API](https://github.com/basecamp/bc3-api).
+Official Swift SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Features
 
@@ -29,7 +29,7 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/basecamp/basecamp-sdk", from: "0.1.0"),
+    .package(url: "https://github.com/basecamp/basecamp-sdk", from: "0.2.1"),
 ],
 targets: [
     .target(

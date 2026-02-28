@@ -10,7 +10,7 @@ module Basecamp
   # This is an internal class used by Client; you typically don't use it directly.
   class Http
     # Default User-Agent header
-    USER_AGENT = "basecamp-sdk-ruby/#{VERSION}".freeze
+    USER_AGENT = "basecamp-sdk-ruby/#{VERSION} (api:#{API_VERSION})".freeze
 
     # @param config [Config] configuration settings
     # @param token_provider [TokenProvider, nil] OAuth token provider (deprecated, use auth_strategy)
