@@ -19,12 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch PR diff
+      - name: Fetch PR context
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr diff ${{ github.event.pull_request.number }} > /tmp/pr.diff
           head -c 100000 /tmp/pr.diff > /tmp/pr-truncated.diff
+          gh pr view ${{ github.event.pull_request.number }} --json title,body --jq .title > /tmp/pr-title.txt
+          gh pr view ${{ github.event.pull_request.number }} --json body --jq .body > /tmp/pr-body.txt
 
       - name: Classify
         id: classify
@@ -33,9 +35,9 @@ jobs:
           prompt-file: .github/prompts/classify-pr.prompt.yml
           input: |
             number: "${{ github.event.pull_request.number }}"
-            title: "${{ github.event.pull_request.title }}"
-            body: "${{ github.event.pull_request.body }}"
           file_input: |
+            title: /tmp/pr-title.txt
+            body: /tmp/pr-body.txt
             diff: /tmp/pr-truncated.diff
 
       - name: Apply label
@@ -75,6 +77,7 @@ jobs:
             "swift/Sources/Basecamp/*.swift" "swift/Sources/Basecamp/Services/*.swift" "swift/Sources/Basecamp/Generated/**/*.swift"
           )
           gh pr diff ${{ github.event.pull_request.number }} > /tmp/full.diff
+          gh pr view ${{ github.event.pull_request.number }} --json title --jq .title > /tmp/pr-title.txt
 
           # Filter diff to only public API files
           python3 -c "
@@ -105,8 +108,8 @@ jobs:
           prompt-file: .github/prompts/detect-breaking.prompt.yml
           input: |
             number: "${{ github.event.pull_request.number }}"
-            title: "${{ github.event.pull_request.title }}"
           file_input: |
+            title: /tmp/pr-title.txt
             diff: /tmp/api-truncated.diff
 
       - name: Apply breaking label
@@ -158,6 +161,7 @@ jobs:
           else
             gh pr diff ${{ github.event.pull_request.number }} -- spec/ openapi.json behavior-model.json > /tmp/spec.diff 2>/dev/null || true
             head -c 100000 /tmp/spec.diff > /tmp/spec-truncated.diff
+            gh pr view ${{ github.event.pull_request.number }} --json title --jq .title > /tmp/pr-title.txt
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
@@ -169,8 +173,8 @@ jobs:
           prompt-file: .github/prompts/spec-impact.prompt.yml
           input: |
             number: "${{ github.event.pull_request.number }}"
-            title: "${{ github.event.pull_request.title }}"
           file_input: |
+            title: /tmp/pr-title.txt
             diff: /tmp/spec-truncated.diff
 
       - name: Post impact comment
