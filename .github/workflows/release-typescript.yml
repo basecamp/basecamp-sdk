@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   id-token: write
+  models: read
 
 jobs:
   smithy:
@@ -174,37 +175,67 @@ jobs:
             npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --dry-run
           fi
 
-      - name: Generate changelog
+      - name: Collect changelog inputs
         if: github.event_name == 'push'
-        id: changelog
+        id: changelog-inputs
         run: |
           cd ..
-          # Get the previous tag for this module
           PREV_TAG=$(git describe --tags --match 'ts/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
-            # First release, get all commits affecting typescript/
             COMMITS=$(git log --pretty=format:"- %s (%h)" -- typescript/)
+            git diff --stat HEAD -- typescript/ > /tmp/sdk-diff.txt
           else
-            # Get commits since previous tag
             COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- typescript/)
+            git diff "${PREV_TAG}..HEAD" -- typescript/ > /tmp/sdk-diff.txt
           fi
+          head -c 100000 /tmp/sdk-diff.txt > /tmp/sdk-diff-truncated.txt
+          echo "$COMMITS" > /tmp/commits.txt
 
-          # Write to file for multiline output
-          echo "## Changes" > changelog.md
-          echo "" >> changelog.md
-          if [ -n "$COMMITS" ]; then
-            echo "$COMMITS" >> changelog.md
-          elif [ -z "$PREV_TAG" ]; then
-            echo "- Initial release" >> changelog.md
-          else
-            echo "- No changes since $PREV_TAG" >> changelog.md
-          fi
-          echo "" >> changelog.md
-          echo "## Installation" >> changelog.md
-          echo "" >> changelog.md
-          echo '```' >> changelog.md
-          echo "npm install @37signals/basecamp@${{ steps.version.outputs.version }}" >> changelog.md
-          echo '```' >> changelog.md
+      - name: Summarize changes
+        if: github.event_name == 'push'
+        id: summarize
+        continue-on-error: true
+        uses: actions/ai-inference@v1
+        with:
+          prompt-file: .github/prompts/summarize-changelog.prompt.yml
+          input: |
+            sdk_name: "TypeScript"
+            version: "v${{ steps.version.outputs.version }}"
+            commits: |
+              $(cat /tmp/commits.txt)
+          file_input: |
+            diff: /tmp/sdk-diff-truncated.txt
+
+      - name: Write changelog
+        if: github.event_name == 'push' && steps.summarize.outcome == 'success'
+        run: |
+          cd ..
+          RESPONSE_FILE="${{ steps.summarize.outputs.response-file }}"
+          {
+            cat "$RESPONSE_FILE"
+            echo ""
+            echo "## Installation"
+            echo ""
+            echo '```'
+            echo "npm install @37signals/basecamp@${{ steps.version.outputs.version }}"
+            echo '```'
+          } > changelog.md
+
+      - name: Fallback changelog
+        if: github.event_name == 'push' && steps.summarize.outcome != 'success'
+        run: |
+          cd ..
+          {
+            echo "## Changes"
+            echo ""
+            cat /tmp/commits.txt
+            echo ""
+            echo "## Installation"
+            echo ""
+            echo '```'
+            echo "npm install @37signals/basecamp@${{ steps.version.outputs.version }}"
+            echo '```'
+          } > changelog.md
 
       - name: Create GitHub Release
         if: github.event_name == 'push'

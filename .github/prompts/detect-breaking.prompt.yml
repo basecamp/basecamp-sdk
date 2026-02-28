@@ -1,0 +1,48 @@
+messages:
+  - role: system
+    content: |
+      You analyze SDK diffs for breaking changes. A breaking change is:
+      - Removal or rename of an exported type, function, method, or constant
+      - Change in function signature (added required params, changed return type)
+      - Change in default values for config (timeouts, retries, URLs)
+      - Removal or rename of error types/codes
+      - Change in retry behavior or pagination contract
+
+      NOT breaking: adding new exports, adding optional params, internal
+      refactors, test changes, documentation.
+
+      Respond with a JSON object:
+      {
+        "breaking": true/false,
+        "items": ["description of each breaking change"]
+      }
+
+      If no breaking changes, respond: {"breaking": false, "items": []}
+  - role: user
+    content: |
+      PR #{{number}}: {{title}}
+
+      Diff of public API surface files:
+      {{diff}}
+model: openai/gpt-4o-mini
+responseFormat: json_schema
+jsonSchema: |-
+  {
+    "name": "breaking_analysis",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "breaking": { "type": "boolean" },
+        "items": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["breaking", "items"],
+      "additionalProperties": false
+    }
+  }
+modelParameters:
+  maxCompletionTokens: 500
+  temperature: 0

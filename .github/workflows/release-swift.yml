@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  models: read
 
 jobs:
   smithy:
@@ -96,37 +97,70 @@ jobs:
             echo "Releasing version: $VERSION"
           fi
 
-      - name: Generate changelog
-        id: changelog
+      - name: Collect changelog inputs
+        id: changelog-inputs
         run: |
-          # Get the previous tag for this module
           PREV_TAG=$(git describe --tags --match 'swift/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
-            # First release — include commits affecting swift/ and root Package.swift
             COMMITS=$(git log --pretty=format:"- %s (%h)" -- swift/ Package.swift)
+            git diff --stat HEAD -- swift/ Package.swift > /tmp/sdk-diff.txt
           else
             COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- swift/ Package.swift)
+            git diff "${PREV_TAG}..HEAD" -- swift/ Package.swift > /tmp/sdk-diff.txt
           fi
+          head -c 100000 /tmp/sdk-diff.txt > /tmp/sdk-diff-truncated.txt
+          echo "$COMMITS" > /tmp/commits.txt
 
-          echo "## Changes" > changelog.md
-          echo "" >> changelog.md
-          if [ -n "$COMMITS" ]; then
-            echo "$COMMITS" >> changelog.md
-          elif [ -z "$PREV_TAG" ]; then
-            echo "- Initial release" >> changelog.md
-          else
-            echo "- No changes since $PREV_TAG" >> changelog.md
-          fi
-          echo "" >> changelog.md
-          echo "## Installation" >> changelog.md
-          echo "" >> changelog.md
-          echo "Add the package dependency in your \`Package.swift\`:" >> changelog.md
-          echo "" >> changelog.md
+      - name: Summarize changes
+        id: summarize
+        continue-on-error: true
+        uses: actions/ai-inference@v1
+        with:
+          prompt-file: .github/prompts/summarize-changelog.prompt.yml
+          input: |
+            sdk_name: "Swift"
+            version: "${{ steps.version.outputs.version }}"
+            commits: |
+              $(cat /tmp/commits.txt)
+          file_input: |
+            diff: /tmp/sdk-diff-truncated.txt
+
+      - name: Write changelog
+        if: steps.summarize.outcome == 'success'
+        run: |
           VERSION="${{ steps.version.outputs.version }}"
           SEMVER="${VERSION#v}"
-          echo '```swift' >> changelog.md
-          echo ".package(url: \"https://github.com/basecamp/basecamp-sdk.git\", from: \"${SEMVER}\")" >> changelog.md
-          echo '```' >> changelog.md
+          RESPONSE_FILE="${{ steps.summarize.outputs.response-file }}"
+          {
+            cat "$RESPONSE_FILE"
+            echo ""
+            echo "## Installation"
+            echo ""
+            echo "Add the package dependency in your \`Package.swift\`:"
+            echo ""
+            echo '```swift'
+            echo ".package(url: \"https://github.com/basecamp/basecamp-sdk.git\", from: \"${SEMVER}\")"
+            echo '```'
+          } > changelog.md
+
+      - name: Fallback changelog
+        if: steps.summarize.outcome != 'success'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SEMVER="${VERSION#v}"
+          {
+            echo "## Changes"
+            echo ""
+            cat /tmp/commits.txt
+            echo ""
+            echo "## Installation"
+            echo ""
+            echo "Add the package dependency in your \`Package.swift\`:"
+            echo ""
+            echo '```swift'
+            echo ".package(url: \"https://github.com/basecamp/basecamp-sdk.git\", from: \"${SEMVER}\")"
+            echo '```'
+          } > changelog.md
 
       - name: Create GitHub Release
         if: github.event_name == 'push'

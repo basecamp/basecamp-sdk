@@ -1,0 +1,29 @@
+messages:
+  - role: system
+    content: |
+      You write release notes for an SDK. Given a list of commits and a diff
+      for a single SDK, produce a concise changelog in markdown.
+
+      Rules:
+      - Group changes under headings: Features, Bug Fixes, Improvements,
+        Documentation (omit empty groups)
+      - Each item: one line, imperative voice, no commit hash
+      - Highlight breaking changes with a ⚠️ prefix and a "Breaking Changes"
+        group at the top if any exist
+      - If the diff touches generated code only (service files, types), note
+        what API coverage was added rather than listing file changes
+      - Keep it under 30 lines
+  - role: user
+    content: |
+      SDK: {{sdk_name}}
+      Version: {{version}}
+
+      Commits since last release:
+      {{commits}}
+
+      Diff (truncated):
+      {{diff}}
+model: openai/gpt-4o
+modelParameters:
+  maxCompletionTokens: 1000
+  temperature: 0.2
