@@ -80,7 +80,7 @@ jobs:
       - name: Build (Kotlin)
         if: matrix.language == 'java-kotlin'
         working-directory: kotlin
-        run: ./gradlew :basecamp-sdk:build :generator:build
+        run: ./gradlew --no-build-cache clean :basecamp-sdk:build :generator:build
 
       # --- Analysis (fails build on real errors) ---
 
