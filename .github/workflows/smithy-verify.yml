@@ -7,6 +7,7 @@ jobs:
   smithy:
     name: Verify Smithy spec
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: spec
