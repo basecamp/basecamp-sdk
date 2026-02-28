@@ -39,13 +39,15 @@ package final class ETagCache: Sendable {
     /// Stores a response with its ETag for a URL.
     package func store(url: String, data: Data, etag: String) {
         lock.withLock {
+            let isUpdate = entries[url] != nil
+
             // Remove existing entry from insertion order if updating
-            if entries[url] != nil {
+            if isUpdate {
                 insertionOrder.removeAll { $0 == url }
             }
 
-            // Evict oldest if at capacity
-            if entries.count >= maxEntries, let oldest = insertionOrder.first {
+            // Evict oldest if at capacity (only needed for new entries)
+            if !isUpdate, entries.count >= maxEntries, let oldest = insertionOrder.first {
                 entries.removeValue(forKey: oldest)
                 insertionOrder.removeFirst()
             }

@@ -73,7 +73,7 @@ package final class HTTPClient: Sendable {
         }
 
         // Retry loop
-        let maxAttempts = config.enableRetry ? effectiveConfig.maxAttempts : 1
+        let maxAttempts = max(config.enableRetry ? effectiveConfig.maxAttempts : 1, 1)
 
         for attempt in 1...maxAttempts {
             let info = RequestInfo(method: method, url: url, attempt: attempt)
