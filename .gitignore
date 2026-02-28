@@ -4,8 +4,10 @@ docs/
 # Smithy build output (regenerate with: cd spec && smithy build)
 spec/build/
 
-# Conformance test runner binary
+# Conformance test runner artifacts
 conformance/runner/go/conformance-runner
+conformance/runner/ruby/Gemfile.lock
+conformance/runner/typescript/node_modules/
 
 # Claude Code session files (except skills, which are committed)
 .claude/*
@@ -26,6 +28,10 @@ review-session.md
 swift/.build/
 swift/.swiftpm/
 swift/Package.resolved
+
+# Kotlin SDK build artifacts
+# TypeScript SDK build artifacts
+typescript/coverage/
 
 # Kotlin SDK build artifacts
 kotlin/.gradle/
