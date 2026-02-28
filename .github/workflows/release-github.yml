@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:  # Manual trigger skips publish gate, creates draft release
 
 permissions:
   contents: write
@@ -13,6 +14,7 @@ permissions:
 jobs:
   wait-for-publishes:
     name: Wait for SDK publishes
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Wait for all SDK release workflows
@@ -68,11 +70,14 @@ jobs:
           done
 
           echo "::error::Timed out waiting for SDK release workflows after ${MAX_WAIT}s"
+          echo "Final status:"
+          echo "$STATUS_LINE"
           exit 1
 
   release:
     name: Create Release
     needs: [wait-for-publishes]
+    if: always() && (needs.wait-for-publishes.result == 'success' || needs.wait-for-publishes.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -216,7 +221,7 @@ jobs:
         with:
           name: Basecamp SDK ${{ steps.version.outputs.version }}
           body_path: changelog.md
-          draft: false
+          draft: ${{ github.event_name == 'workflow_dispatch' }}
           prerelease: ${{ contains(steps.version.outputs.version, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
