@@ -224,7 +224,7 @@ module Basecamp
       raise last_error || Basecamp::APIError.new("Request failed after #{@config.max_retries} retries")
     end
 
-    def single_request(method, url, params:, body:, attempt:)
+    def single_request(method, url, params:, body:, attempt:, retry_count: 0)
       info = RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt)
       @hooks.on_request_start(info)
 
@@ -254,6 +254,13 @@ module Basecamp
           retry_after: error.respond_to?(:retry_after) ? error.retry_after : nil
         )
         @hooks.on_request_end(info, result)
+
+        # After a successful token refresh on 401, retry the request once
+        if error.is_a?(Basecamp::AuthError) && error.http_status == 401 && retry_count < 1 && @token_refreshed
+          @token_refreshed = false
+          return single_request(method, url, params: params, body: body, attempt: attempt, retry_count: retry_count + 1)
+        end
+
         raise error
       rescue Faraday::Error => e
         duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
@@ -321,10 +328,8 @@ module Basecamp
 
       case status
       when 401
-        # Try token refresh
-        if @token_provider&.refreshable? && @token_provider.refresh
-          raise Basecamp::AuthError.new("Token refreshed", hint: "Retry the request")
-        end
+        # Try token refresh; flag for caller to retry
+        @token_refreshed = @token_provider&.refreshable? && @token_provider.refresh
 
         Basecamp::AuthError.new("Authentication failed")
       when 403
@@ -335,7 +340,7 @@ module Basecamp
         Basecamp::RateLimitError.new(retry_after: retry_after)
       when 400, 422
         message = Security.truncate(Basecamp.parse_error_message(body) || "Validation failed")
-        Basecamp::ValidationError.new(message)
+        Basecamp::ValidationError.new(message, http_status: status)
       when 500
         Basecamp::APIError.new("Server error (500)", http_status: 500)
       when 502, 503, 504

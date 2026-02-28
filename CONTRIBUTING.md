@@ -6,9 +6,15 @@ Thank you for your interest in contributing to the Basecamp SDK. This document p
 
 ### Prerequisites
 
-- Go 1.25 or later
-- [golangci-lint](https://golangci-lint.run/welcome/install/) for linting
-- A Basecamp account for integration testing (optional)
+| SDK | Requirements |
+|-----|-------------|
+| Go | Go 1.26+, [golangci-lint](https://golangci-lint.run/welcome/install/) |
+| TypeScript | Node.js 18+, npm |
+| Ruby | Ruby 3.2+, Bundler |
+| Swift | Swift 6.0+, Xcode 16+ |
+| Kotlin | JDK 17+, Kotlin 2.0+ |
+
+A Basecamp account is optional (for integration testing only).
 
 ### Getting Started
 
@@ -18,20 +24,47 @@ Thank you for your interest in contributing to the Basecamp SDK. This document p
    cd basecamp-sdk
    ```
 
-2. Install dependencies:
-   ```bash
-   cd go
-   go mod download
-   ```
+2. Install dependencies and run tests for each SDK:
 
-3. Run the test suite:
+   **Go:**
    ```bash
+   cd go && go mod download
    make test
+   make check   # formatting, linting, tests
    ```
 
-4. Run all checks (formatting, linting, tests):
+   **TypeScript:**
    ```bash
-   make check
+   cd typescript && npm install
+   npm test
+   npm run typecheck
+   npm run lint
+   ```
+
+   **Ruby:**
+   ```bash
+   cd ruby && bundle install
+   bundle exec rake test
+   bundle exec rubocop
+   ```
+
+   **Swift:**
+   ```bash
+   cd swift
+   swift build
+   swift test
+   ```
+
+   **Kotlin:**
+   ```bash
+   cd kotlin
+   ./gradlew :sdk:jvmTest
+   ```
+
+3. Run all SDKs at once from the repo root:
+   ```bash
+   make check        # all 5 SDK test suites
+   make conformance  # cross-SDK conformance tests
    ```
 
 ## Code Style
@@ -117,21 +150,15 @@ test(cards): add coverage for move operations
 
 1. **Run all checks locally:**
    ```bash
-   cd go
-   make check
+   make check  # runs all 5 SDK test suites from repo root
    ```
 
-2. **Ensure tests pass:**
+2. **Ensure conformance tests pass:**
    ```bash
-   make test
+   make conformance
    ```
 
-3. **Check for vulnerabilities:**
-   ```bash
-   make vuln
-   ```
-
-4. **Update documentation** if adding new features
+3. **Update documentation** if adding new features
 
 ### Submitting a PR
 
@@ -159,24 +186,30 @@ test(cards): add coverage for move operations
 
 ## Adding New API Coverage
 
-When adding support for new Basecamp API endpoints:
+All SDKs are generated from a single Smithy specification. When adding support for new Basecamp API endpoints:
 
-1. **Create the service file** (e.g., `go/pkg/basecamp/myservice.go`)
-   - Define types for requests and responses
-   - Implement the service with CRUD methods as applicable
-   - Follow patterns from existing services
+1. **Edit the Smithy model** (`spec/basecamp.smithy`)
+   - Define the resource, operations, and shapes
+   - Follow patterns from existing resources (e.g., `Project`, `Todo`)
 
-2. **Add tests** (e.g., `go/pkg/basecamp/myservice_test.go`)
-   - Test all public methods
-   - Mock HTTP responses
-   - Cover error cases
+2. **Regenerate the OpenAPI spec**
+   ```bash
+   make smithy-build
+   ```
 
-3. **Register the service** in `client.go`:
-   - Add the field to the `Client` struct
-   - Add the lazy-initialization getter method
+3. **Run per-SDK generators** to update generated service code:
+   - **Go:** `make go-check-drift` — Go services are hand-written wrappers around the generated client; the drift check verifies all generated operations are covered
+   - **TypeScript:** `make ts-generate-services`
+   - **Ruby:** `make rb-generate-services`
+   - **Swift:** `make swift-generate`
+   - **Kotlin:** `make kt-generate-services`
 
-4. **Update documentation**:
-   - Add to the services table in README
+4. **Add tests** for each SDK
+
+5. **Add conformance tests** (`conformance/tests/`) covering the new operations
+
+6. **Update documentation**:
+   - Add to the services table in each SDK's README
    - Add to CHANGELOG under `[Unreleased]`
 
 ## Reporting Issues

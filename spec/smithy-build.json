@@ -23,7 +23,17 @@
           "ignoreUnsupportedTraits": true,
           "tags": true,
           "version": "3.1.0",
-          "useIntegerType": true
+          "useIntegerType": true,
+          "jsonAdd": {
+            "/info/license": {
+              "name": "MIT",
+              "url": "https://github.com/basecamp/basecamp-sdk/blob/main/LICENSE"
+            },
+            "/info/contact": {
+              "name": "Basecamp",
+              "url": "https://github.com/basecamp/basecamp-sdk"
+            }
+          }
         }
       }
     },

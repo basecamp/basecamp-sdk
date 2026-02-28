@@ -160,6 +160,41 @@ describe("otelHooks", () => {
       expect(span.end).toHaveBeenCalled();
     });
 
+    it("should correctly correlate spans for concurrent same-type operations", () => {
+      const span1 = createMockSpan();
+      const span2 = createMockSpan();
+      tracer.startSpan.mockReturnValueOnce(span1).mockReturnValueOnce(span2);
+
+      // Same OperationInfo shape, but different object references (as happens with concurrent calls)
+      const info1: OperationInfo = {
+        service: "Todos",
+        operation: "List",
+        resourceType: "todo",
+        isMutation: false,
+      };
+      const info2: OperationInfo = {
+        service: "Todos",
+        operation: "List",
+        resourceType: "todo",
+        isMutation: false,
+      };
+
+      // Start both
+      hooks.onOperationStart?.(info1);
+      hooks.onOperationStart?.(info2);
+
+      // End the second one first
+      hooks.onOperationEnd?.(info2, { durationMs: 50 });
+
+      // span2 should be ended (not span1)
+      expect(span2.end).toHaveBeenCalled();
+      expect(span1.end).not.toHaveBeenCalled();
+
+      // Now end the first
+      hooks.onOperationEnd?.(info1, { durationMs: 100 });
+      expect(span1.end).toHaveBeenCalled();
+    });
+
     it("should not create request spans by default", () => {
       const requestInfo: RequestInfo = {
         method: "GET",
@@ -208,6 +243,49 @@ describe("otelHooks", () => {
           },
         })
       );
+    });
+
+    it("should correctly correlate spans for concurrent same-type requests", () => {
+      const span1 = createMockSpan();
+      const span2 = createMockSpan();
+      tracer.startSpan.mockReturnValueOnce(span1).mockReturnValueOnce(span2);
+
+      // Two concurrent requests with the same method/url/attempt (different object refs)
+      const startInfo1: RequestInfo = {
+        method: "GET",
+        url: "https://api.example.com/todos",
+        attempt: 1,
+      };
+      const startInfo2: RequestInfo = {
+        method: "GET",
+        url: "https://api.example.com/todos",
+        attempt: 1,
+      };
+
+      // Start both
+      hooks.onRequestStart?.(startInfo1);
+      hooks.onRequestStart?.(startInfo2);
+
+      // End the second one first (LIFO: pops span2)
+      const endInfo2: RequestInfo = {
+        method: "GET",
+        url: "https://api.example.com/todos",
+        attempt: 1,
+      };
+      hooks.onRequestEnd?.(endInfo2, { statusCode: 200, durationMs: 50, fromCache: false });
+
+      expect(span2.end).toHaveBeenCalled();
+      expect(span1.end).not.toHaveBeenCalled();
+
+      // End the first one (LIFO: pops span1)
+      const endInfo1: RequestInfo = {
+        method: "GET",
+        url: "https://api.example.com/todos",
+        attempt: 1,
+      };
+      hooks.onRequestEnd?.(endInfo1, { statusCode: 200, durationMs: 100, fromCache: false });
+
+      expect(span1.end).toHaveBeenCalled();
     });
 
     it("should end request span with status code", () => {

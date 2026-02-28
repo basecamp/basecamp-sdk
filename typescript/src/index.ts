@@ -33,6 +33,7 @@
 // Main client factory
 export {
   createBasecampClient,
+  VERSION,
   type BasecampClient,
   type BasecampClientOptions,
   type TokenProvider,

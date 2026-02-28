@@ -125,7 +125,7 @@ export async function startCallbackServer(
       const description = reqUrl.searchParams.get("error_description") ?? error;
       res.writeHead(400, { "Content-Type": "text/html" });
       res.end(ERROR_HTML);
-      reject!(new BasecampError("auth", `OAuth callback error: ${description}`));
+      reject!(new BasecampError("auth_required", `OAuth callback error: ${description}`));
       scheduleClose();
       return;
     }
@@ -140,7 +140,7 @@ export async function startCallbackServer(
       settled = true;
       res.writeHead(400, { "Content-Type": "text/html" });
       res.end(ERROR_HTML);
-      reject!(new BasecampError("auth", "OAuth state mismatch — possible CSRF attack"));
+      reject!(new BasecampError("auth_required", "OAuth state mismatch — possible CSRF attack"));
       scheduleClose();
       return;
     }
@@ -162,7 +162,7 @@ export async function startCallbackServer(
     if (timeoutId) clearTimeout(timeoutId);
     if (!settled) {
       settled = true;
-      reject!(new BasecampError("auth", "Callback server closed before receiving callback"));
+      reject!(new BasecampError("auth_required", "Callback server closed before receiving callback"));
     }
     httpServer.close();
   }
@@ -189,7 +189,7 @@ export async function startCallbackServer(
   timeoutId = setTimeout(() => {
     if (!settled) {
       settled = true;
-      reject!(new BasecampError("auth", `OAuth callback timed out after ${timeoutMs}ms`));
+      reject!(new BasecampError("auth_required", `OAuth callback timed out after ${timeoutMs}ms`));
       httpServer.close();
     }
   }, timeoutMs);

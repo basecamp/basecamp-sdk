@@ -54,6 +54,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "msw": "^2.12.10",
     "openapi-typescript": "^7.13.0",
     "oxlint": "^1.50.0",

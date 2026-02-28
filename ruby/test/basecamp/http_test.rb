@@ -2,6 +2,32 @@
 
 require "test_helper"
 
+# A token provider that supports refresh for testing 401 retry behavior.
+class RefreshableTokenProvider
+  include Basecamp::TokenProvider
+
+  attr_reader :refresh_count
+
+  def initialize(token, refresh_result: true)
+    @token = token
+    @refresh_result = refresh_result
+    @refresh_count = 0
+  end
+
+  def access_token
+    @token
+  end
+
+  def refreshable?
+    true
+  end
+
+  def refresh
+    @refresh_count += 1
+    @refresh_result
+  end
+end
+
 class HTTPTest < Minitest::Test
   include TestHelper
 
@@ -99,6 +125,64 @@ class HTTPTest < Minitest::Test
     end
   end
 
+  def test_401_refresh_and_retry_succeeds
+    provider = RefreshableTokenProvider.new("old-token", refresh_result: true)
+    http = Basecamp::Http.new(config: @config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+      .then.to_return(status: 200, body: '{"ok": true}')
+
+    response = http.get("/test.json")
+
+    assert_equal 200, response.status
+    assert_equal({ "ok" => true }, response.json)
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
+  end
+
+  def test_401_refresh_and_retry_no_infinite_loop
+    provider = RefreshableTokenProvider.new("old-token", refresh_result: true)
+    http = Basecamp::Http.new(config: @config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+
+    assert_raises(Basecamp::AuthError) do
+      http.get("/test.json")
+    end
+
+    # First 401 triggers refresh+retry, second 401 raises (no infinite loop)
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
+  end
+
+  def test_401_no_retry_when_refresh_fails
+    provider = RefreshableTokenProvider.new("old-token", refresh_result: false)
+    http = Basecamp::Http.new(config: @config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+
+    assert_raises(Basecamp::AuthError) do
+      http.get("/test.json")
+    end
+
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 1)
+  end
+
+  def test_401_refresh_and_retry_works_for_post
+    provider = RefreshableTokenProvider.new("old-token", refresh_result: true)
+    http = Basecamp::Http.new(config: @config, token_provider: provider)
+
+    stub_request(:post, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+      .then.to_return(status: 201, body: '{"id": 1}')
+
+    response = http.post("/test.json", body: { name: "Test" })
+
+    assert_equal 201, response.status
+    assert_requested(:post, "https://3.basecampapi.com/test.json", times: 2)
+  end
+
   def test_403_raises_forbidden_error
     stub_request(:get, "https://3.basecampapi.com/test.json")
       .to_return(status: 403, body: '{"error": "Forbidden"}')
@@ -106,6 +190,18 @@ class HTTPTest < Minitest::Test
     assert_raises(Basecamp::ForbiddenError) do
       @http.get("/test.json")
     end
+  end
+
+  def test_422_raises_validation_error_with_correct_status
+    stub_request(:post, "https://3.basecampapi.com/test.json")
+      .to_return(status: 422, body: '{"error": "Name is required"}')
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @http.post("/test.json", body: { name: "" })
+    end
+
+    assert_equal 422, error.http_status
+    assert_equal "Name is required", error.message
   end
 
   def test_404_raises_not_found_error

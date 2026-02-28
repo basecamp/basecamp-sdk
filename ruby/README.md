@@ -4,7 +4,7 @@ Official Ruby SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Requirements
 
-- Ruby 3.4+
+- Ruby 3.2+
 - Faraday HTTP client
 
 ## Installation
@@ -59,7 +59,7 @@ config = Basecamp::Config.new(
   timeout: 30,                             # Request timeout in seconds
   max_retries: 3,                          # Max retry attempts for GET requests
   base_delay: 1.0,                         # Base delay for exponential backoff
-  max_pages: 100                           # Max pages for pagination
+  max_pages: 10_000                         # Max pages for pagination
 )
 
 token_provider = Basecamp::StaticTokenProvider.new(ENV["BASECAMP_TOKEN"])
@@ -74,8 +74,8 @@ client = Basecamp::Client.new(config: config, token_provider: token_provider)
 | `timeout` | `30` | HTTP request timeout (seconds) |
 | `max_retries` | `3` | Maximum retry attempts for GET requests |
 | `base_delay` | `1.0` | Base delay for exponential backoff (seconds) |
-| `max_jitter` | `0.5` | Maximum random jitter added to delays |
-| `max_pages` | `100` | Maximum pages to fetch during pagination |
+| `max_jitter` | `0.1` | Maximum random jitter added to delays |
+| `max_pages` | `10_000` | Maximum pages to fetch during pagination |
 
 ## OAuth Authentication
 
@@ -135,7 +135,7 @@ end
 
 ## Services
 
-The SDK provides 38 services covering the complete Basecamp API:
+The SDK provides 37 services covering the complete Basecamp API:
 
 | Service | Description |
 |---------|-------------|

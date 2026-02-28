@@ -194,11 +194,13 @@ export interface BasecampClientOptions {
   enableCache?: boolean;
   /** Enable automatic retry on 429/503 (defaults to true) */
   enableRetry?: boolean;
+  /** Request timeout in milliseconds (defaults to 30000) */
+  requestTimeoutMs?: number;
   /** Hooks for observability (logging, metrics, tracing) */
   hooks?: BasecampHooks;
 }
 
-const VERSION = "0.2.0";
+export const VERSION = "0.2.0";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION}`;
 
 /**
@@ -228,6 +230,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     userAgent = DEFAULT_USER_AGENT,
     enableCache = false,
     enableRetry = true,
+    requestTimeoutMs = 30000,
     hooks,
   } = options;
 
@@ -257,7 +260,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   const client = createClient<paths>({ baseUrl });
 
   // Apply middleware in order: auth first, then hooks, then cache, then retry
-  client.use(createAuthMiddleware(authStrategy, userAgent));
+  client.use(createAuthMiddleware(authStrategy, userAgent, requestTimeoutMs));
 
   if (hooks) {
     client.use(createHooksMiddleware(hooks));
@@ -268,7 +271,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   }
 
   if (enableRetry) {
-    client.use(createRetryMiddleware(hooks));
+    client.use(createRetryMiddleware(hooks, authStrategy));
   }
 
   // Create enhanced client with additional properties
@@ -358,7 +361,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 // Auth Middleware
 // =============================================================================
 
-function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string): Middleware {
+function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, requestTimeoutMs: number): Middleware {
   return {
     async onRequest({ request }) {
       await authStrategy.authenticate(request.headers);
@@ -369,7 +372,22 @@ function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string): Mi
       }
       request.headers.set("Accept", "application/json");
 
-      return request;
+      // Apply request timeout (Node 18-compatible: no AbortSignal.any)
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), requestTimeoutMs);
+      if (request.signal) {
+        request.signal.addEventListener("abort", () => controller.abort(), {
+          once: true,
+        });
+      }
+
+      return new Request(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+        signal: controller.signal,
+        duplex: request.body ? "half" : undefined,
+      } as RequestInit);
     },
   };
 }
@@ -763,7 +781,7 @@ function getRetryConfigForRequest(method: string, url: string): RetryConfig {
   return DEFAULT_RETRY_CONFIG;
 }
 
-function createRetryMiddleware(hooks?: BasecampHooks): Middleware {
+function createRetryMiddleware(hooks?: BasecampHooks, authStrategy?: AuthStrategy): Middleware {
   // Store request body clones keyed by a request identifier
   // This is needed because Request.body can only be read once
   const bodyCache = new Map<string, ArrayBuffer | null>();
@@ -872,6 +890,11 @@ function createRetryMiddleware(hooks?: BasecampHooks): Middleware {
         signal: request.signal,
       });
       retryRequest.headers.set("X-Retry-Attempt", String(attempt + 1));
+
+      // Refresh auth header for retry (token may have been refreshed since initial request)
+      if (authStrategy) {
+        await authStrategy.authenticate(retryRequest.headers);
+      }
 
       // Retry using native fetch
       return fetch(retryRequest);

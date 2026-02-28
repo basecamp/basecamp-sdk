@@ -97,10 +97,12 @@ export interface OtelHooksOptions {
  * Internal state for tracking spans and request timing.
  */
 interface OtelState {
-  /** Active operation spans by key */
-  operationSpans: Map<string, OtelSpan>;
-  /** Active request spans by key */
+  /** Active operation spans keyed by OperationInfo object identity */
+  operationSpans: WeakMap<OperationInfo, OtelSpan>;
+  /** Active request spans by unique counter key */
   requestSpans: Map<string, OtelSpan>;
+  /** Maps request prefix (method:url:attempt) to stack of unique keys (LIFO) */
+  requestKeyStack: Map<string, string[]>;
   /** Histogram for operation duration */
   operationDuration?: OtelHistogram;
   /** Histogram for request duration */
@@ -113,21 +115,21 @@ interface OtelState {
   retryCounter?: OtelCounter;
 }
 
-/** Counter for generating unique keys */
+/** Counter for generating unique request keys */
 let keyCounter = 0;
 
 /**
- * Creates a unique key for an operation.
+ * Creates a prefix for matching request start/end pairs.
  */
-function operationKey(info: OperationInfo): string {
-  return `${info.service}.${info.operation}:${info.resourceId ?? ""}:${++keyCounter}`;
+function requestPrefix(info: RequestInfo): string {
+  return `${info.method}:${info.url}:${info.attempt}`;
 }
 
 /**
- * Creates a unique key for a request.
+ * Creates a unique key for a request span.
  */
-function requestKey(info: RequestInfo): string {
-  return `${info.method}:${info.url}:${info.attempt}:${++keyCounter}`;
+function requestKey(): string {
+  return String(++keyCounter);
 }
 
 /**
@@ -190,8 +192,9 @@ export function otelHooks(options: OtelHooksOptions = {}): BasecampHooks {
 
   // Initialize state
   const state: OtelState = {
-    operationSpans: new Map(),
+    operationSpans: new WeakMap(),
     requestSpans: new Map(),
+    requestKeyStack: new Map(),
   };
 
   // Initialize metrics if meter is provided
@@ -246,29 +249,25 @@ export function otelHooks(options: OtelHooksOptions = {}): BasecampHooks {
       }
 
       const span = tracer.startSpan(spanName, { attributes });
-      const key = operationKey(info);
-      state.operationSpans.set(key, span);
+      state.operationSpans.set(info, span);
     },
 
     onOperationEnd(info: OperationInfo, result: OperationResult): void {
-      // Find and end the span
+      // Find and end the span using object-identity lookup
       if (tracer) {
-        // Find the most recent span for this operation
-        for (const [key, span] of state.operationSpans) {
-          if (key.startsWith(`${info.service}.${info.operation}:`)) {
-            if (result.error) {
-              span.setStatus({ code: SpanStatusCode.ERROR, message: result.error.message });
-              span.recordException(result.error);
-              span.setAttribute("error", true);
-              span.setAttribute("error.message", result.error.message);
-            } else {
-              span.setStatus({ code: SpanStatusCode.OK });
-            }
-            span.setAttribute("duration_ms", result.durationMs);
-            span.end();
-            state.operationSpans.delete(key);
-            break;
+        const span = state.operationSpans.get(info);
+        if (span) {
+          if (result.error) {
+            span.setStatus({ code: SpanStatusCode.ERROR, message: result.error.message });
+            span.recordException(result.error);
+            span.setAttribute("error", true);
+            span.setAttribute("error.message", result.error.message);
+          } else {
+            span.setStatus({ code: SpanStatusCode.OK });
           }
+          span.setAttribute("duration_ms", result.durationMs);
+          span.end();
+          state.operationSpans.delete(info);
         }
       }
 
@@ -303,15 +302,33 @@ export function otelHooks(options: OtelHooksOptions = {}): BasecampHooks {
         },
       });
 
-      const key = requestKey(info);
+      const key = requestKey();
       state.requestSpans.set(key, span);
+
+      const prefix = requestPrefix(info);
+      let stack = state.requestKeyStack.get(prefix);
+      if (!stack) {
+        stack = [];
+        state.requestKeyStack.set(prefix, stack);
+      }
+      stack.push(key);
     },
 
     onRequestEnd(info: RequestInfo, result: RequestResult): void {
-      // Find and end the span
+      // Find and end the span using LIFO stack lookup
       if (tracer && recordRequestSpans) {
-        for (const [key, span] of state.requestSpans) {
-          if (key.startsWith(`${info.method}:${info.url}:${info.attempt}:`)) {
+        const prefix = requestPrefix(info);
+        const stack = state.requestKeyStack.get(prefix);
+        const key = stack?.pop();
+
+        if (key) {
+          // Clean up empty stacks
+          if (stack!.length === 0) {
+            state.requestKeyStack.delete(prefix);
+          }
+
+          const span = state.requestSpans.get(key);
+          if (span) {
             span.setAttribute("http.status_code", result.statusCode);
             span.setAttribute("http.from_cache", result.fromCache);
             span.setAttribute("duration_ms", result.durationMs);
@@ -327,7 +344,6 @@ export function otelHooks(options: OtelHooksOptions = {}): BasecampHooks {
 
             span.end();
             state.requestSpans.delete(key);
-            break;
           }
         }
       }

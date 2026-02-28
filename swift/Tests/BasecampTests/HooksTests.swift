@@ -128,6 +128,104 @@ final class HooksTests: XCTestCase {
         XCTAssertNil(spy.operationEnds.first?.1.error, "onOperationEnd should have no error on success")
     }
 
+    // MARK: - onRetry Hook
+
+    func testOnRetryHookFiresDuringRetry() async throws {
+        let spy = SpyHooks()
+
+        let counter = RequestCounter()
+        let transport = MockTransport { request in
+            let count = counter.increment()
+            if count == 1 {
+                let response = HTTPURLResponse(
+                    url: request.url!, statusCode: 429,
+                    httpVersion: "HTTP/1.1", headerFields: ["Retry-After": "0"]
+                )!
+                return (Data(), response)
+            } else {
+                let response = HTTPURLResponse(
+                    url: request.url!, statusCode: 200,
+                    httpVersion: "HTTP/1.1", headerFields: [:]
+                )!
+                return (Data("{}".utf8), response)
+            }
+        }
+
+        let client = makeTestClient(transport: transport, enableRetry: true, hooks: spy)
+        let account = client.forAccount("999999999")
+
+        _ = try await account.httpClient.performRequest(
+            method: "GET",
+            url: "https://3.basecampapi.com/999999999/projects.json",
+            retryConfig: RetryConfig(
+                maxAttempts: 3, baseDelayMs: 1,
+                backoff: .constant, retryOn: [429, 503]
+            )
+        )
+
+        XCTAssertEqual(spy.retries.count, 1, "onRetry should fire once for one retry")
+        XCTAssertEqual(spy.retries.first?.attempt, 1, "First retry attempt number should be 1")
+        XCTAssertGreaterThanOrEqual(spy.retries.first?.delaySeconds ?? -1, 0)
+    }
+
+    // MARK: - onRequestStart / onRequestEnd Count Assertions
+
+    func testRequestStartEndCountMatchesAttempts() async throws {
+        let spy = SpyHooks()
+
+        let counter = RequestCounter()
+        let transport = MockTransport { request in
+            let count = counter.increment()
+            if count < 3 {
+                let response = HTTPURLResponse(
+                    url: request.url!, statusCode: 503,
+                    httpVersion: "HTTP/1.1", headerFields: [:]
+                )!
+                return (Data(), response)
+            } else {
+                let response = HTTPURLResponse(
+                    url: request.url!, statusCode: 200,
+                    httpVersion: "HTTP/1.1", headerFields: [:]
+                )!
+                return (Data("{}".utf8), response)
+            }
+        }
+
+        let client = makeTestClient(transport: transport, enableRetry: true, hooks: spy)
+        let account = client.forAccount("999999999")
+
+        _ = try await account.httpClient.performRequest(
+            method: "GET",
+            url: "https://3.basecampapi.com/999999999/projects.json",
+            retryConfig: RetryConfig(
+                maxAttempts: 3, baseDelayMs: 1,
+                backoff: .constant, retryOn: [429, 503]
+            )
+        )
+
+        XCTAssertEqual(spy.requestStarts.count, 3, "onRequestStart should fire for each attempt")
+        XCTAssertEqual(spy.requestEnds.count, 3, "onRequestEnd should fire for each attempt")
+    }
+
+    // MARK: - Duration Reported >= 0
+
+    func testDurationReportedIsNonNegative() async throws {
+        let spy = SpyHooks()
+
+        let transport = MockTransport(statusCode: 200, data: Data("{}".utf8))
+        let client = makeTestClient(transport: transport, hooks: spy)
+        let account = client.forAccount("999999999")
+
+        _ = try await account.httpClient.performRequest(
+            method: "GET",
+            url: "https://3.basecampapi.com/999999999/projects.json"
+        )
+
+        XCTAssertEqual(spy.requestEnds.count, 1)
+        XCTAssertGreaterThanOrEqual(spy.requestEnds.first!.1.durationMs, 0,
+                                     "Duration should be >= 0")
+    }
+
     // MARK: - P0 Regression: ETag 304 cache returns success
 
     func testETagCacheHitReturnsSuccessfully() async throws {
@@ -192,11 +290,19 @@ final class HooksTests: XCTestCase {
 
 /// A spy hooks implementation that records all callbacks.
 private final class SpyHooks: BasecampHooks, @unchecked Sendable {
+    struct RetryRecord {
+        let info: RequestInfo
+        let attempt: Int
+        let error: any Error
+        let delaySeconds: TimeInterval
+    }
+
     private let lock = NSLock()
     private var _operationStarts: [OperationInfo] = []
     private var _operationEnds: [(OperationInfo, OperationResult)] = []
     private var _requestStarts: [RequestInfo] = []
     private var _requestEnds: [(RequestInfo, RequestResult)] = []
+    private var _retries: [RetryRecord] = []
 
     var operationStarts: [OperationInfo] {
         lock.withLock { _operationStarts }
@@ -214,6 +320,10 @@ private final class SpyHooks: BasecampHooks, @unchecked Sendable {
         lock.withLock { _requestEnds }
     }
 
+    var retries: [RetryRecord] {
+        lock.withLock { _retries }
+    }
+
     func onOperationStart(_ info: OperationInfo) {
         lock.withLock { _operationStarts.append(info) }
     }
@@ -228,6 +338,10 @@ private final class SpyHooks: BasecampHooks, @unchecked Sendable {
 
     func onRequestEnd(_ info: RequestInfo, result: RequestResult) {
         lock.withLock { _requestEnds.append((info, result)) }
+    }
+
+    func onRetry(_ info: RequestInfo, attempt: Int, error: any Error, delaySeconds: TimeInterval) {
+        lock.withLock { _retries.append(RetryRecord(info: info, attempt: attempt, error: error, delaySeconds: delaySeconds)) }
     }
 }
 

@@ -3,7 +3,15 @@
   "info": {
     "title": "Basecamp",
     "version": "2026-01-26",
-    "description": "Basecamp API"
+    "description": "Basecamp API",
+    "contact": {
+      "name": "Basecamp",
+      "url": "https://github.com/basecamp/basecamp-sdk"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://github.com/basecamp/basecamp-sdk/blob/main/LICENSE"
+    }
   },
   "paths": {
     "/{accountId}/attachments.json": {

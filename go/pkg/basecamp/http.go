@@ -9,7 +9,7 @@ import (
 // Default values for HTTP client configuration.
 // These can be overridden using functional options.
 const (
-	DefaultMaxRetries = 5
+	DefaultMaxRetries = 3
 	DefaultBaseDelay  = 1 * time.Second
 	DefaultMaxJitter  = 100 * time.Millisecond
 	DefaultTimeout    = 30 * time.Second
@@ -21,7 +21,7 @@ type HTTPOptions struct {
 	// Timeout is the request timeout (default: 30s).
 	Timeout time.Duration
 
-	// MaxRetries is the maximum retry attempts for GET requests (default: 5).
+	// MaxRetries is the maximum retry attempts for GET requests (default: 3).
 	// POST/PUT/DELETE requests only get 1 retry after successful token refresh.
 	MaxRetries int
 

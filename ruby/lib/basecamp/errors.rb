@@ -229,12 +229,12 @@ module Basecamp
 
   # Raised for validation errors (400, 422).
   class ValidationError < Error
-    def initialize(message, hint: nil)
+    def initialize(message, hint: nil, http_status: 400)
       super(
         code: ErrorCode::VALIDATION,
         message: message,
         hint: hint,
-        http_status: 400
+        http_status: http_status
       )
     end
   end
@@ -250,7 +250,7 @@ module Basecamp
 
     case status
     when 400, 422
-      ValidationError.new(message)
+      ValidationError.new(message, http_status: status)
     when 401
       AuthError.new(message)
     when 403

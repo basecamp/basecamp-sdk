@@ -8,7 +8,7 @@ class ConfigTest < Minitest::Test
 
     assert_equal "https://3.basecampapi.com", config.base_url
     assert_equal 30, config.timeout
-    assert_equal 5, config.max_retries
+    assert_equal 3, config.max_retries
     assert_equal 1.0, config.base_delay
     assert_equal 0.1, config.max_jitter
     assert_equal 10_000, config.max_pages

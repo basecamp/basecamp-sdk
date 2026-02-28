@@ -21,7 +21,7 @@
     "name": "DELETE operation is naturally idempotent",
     "description": "Verifies that DELETE operations can be safely retried",
     "operation": "TrashProject",
-    "method": "PUT",
+    "method": "DELETE",
     "path": "/projects/{projectId}",
     "pathParams": {"projectId": 12345},
     "mockResponses": [

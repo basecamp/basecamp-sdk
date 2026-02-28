@@ -1,0 +1,188 @@
+name: Classify PR
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: classify-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  models: read
+  pull-requests: write
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch PR diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr diff ${{ github.event.pull_request.number }} > /tmp/pr.diff
+          head -c 100000 /tmp/pr.diff > /tmp/pr-truncated.diff
+
+      - name: Classify
+        id: classify
+        uses: actions/ai-inference@v1
+        with:
+          prompt-file: .github/prompts/classify-pr.prompt.yml
+          input: |
+            number: "${{ github.event.pull_request.number }}"
+            title: "${{ github.event.pull_request.title }}"
+            body: "${{ github.event.pull_request.body }}"
+          file_input: |
+            diff: /tmp/pr-truncated.diff
+
+      - name: Apply label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LABEL=$(echo "${{ steps.classify.outputs.response }}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+          case "$LABEL" in
+            bug|enhancement|documentation) ;;
+            *) echo "Unexpected: $LABEL — skipping"; exit 0 ;;
+          esac
+          for L in bug enhancement documentation; do
+            gh pr edit ${{ github.event.pull_request.number }} --remove-label "$L" 2>/dev/null || true
+          done
+          gh pr edit ${{ github.event.pull_request.number }} --add-label "$LABEL"
+
+  breaking:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect public API diff
+        id: api-diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Public API surface files per SDK
+          PATTERNS=(
+            "go/pkg/basecamp/*.go"
+            "typescript/src/client.ts" "typescript/src/errors.ts" "typescript/src/index.ts" "typescript/src/pagination.ts"
+            "typescript/src/generated/services/**/*.ts" "typescript/src/generated/authorization.ts" "typescript/src/generated/schema.d.ts"
+            "ruby/lib/basecamp.rb" "ruby/lib/basecamp/client.rb" "ruby/lib/basecamp/config.rb" "ruby/lib/basecamp/errors.rb"
+            "ruby/lib/basecamp/services/**/*.rb" "ruby/lib/basecamp/generated/services/**/*.rb"
+            "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/*.kt"
+            "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/**/*.kt"
+            "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/**/*.kt"
+            "swift/Sources/Basecamp/*.swift" "swift/Sources/Basecamp/Services/*.swift" "swift/Sources/Basecamp/Generated/**/*.swift"
+          )
+          gh pr diff ${{ github.event.pull_request.number }} > /tmp/full.diff
+
+          # Filter diff to only public API files
+          python3 -c "
+          import sys, re, fnmatch
+          diff = open('/tmp/full.diff').read()
+          patterns = sys.argv[1:]
+          sections = re.split(r'(?=^diff --git)', diff, flags=re.MULTILINE)
+          for s in sections:
+              m = re.match(r'diff --git a/(\S+)', s)
+              if m:
+                  path = m.group(1)
+                  if any(fnmatch.fnmatch(path, p) for p in patterns):
+                      sys.stdout.write(s)
+          " "${PATTERNS[@]}" > /tmp/api.diff
+
+          if [ ! -s /tmp/api.diff ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            head -c 100000 /tmp/api.diff > /tmp/api-truncated.diff
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Detect breaking changes
+        if: steps.api-diff.outputs.skip != 'true'
+        id: detect
+        uses: actions/ai-inference@v1
+        with:
+          prompt-file: .github/prompts/detect-breaking.prompt.yml
+          input: |
+            number: "${{ github.event.pull_request.number }}"
+            title: "${{ github.event.pull_request.title }}"
+          file_input: |
+            diff: /tmp/api-truncated.diff
+
+      - name: Apply breaking label
+        if: steps.api-diff.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RESPONSE='${{ steps.detect.outputs.response }}'
+          BREAKING=$(echo "$RESPONSE" | jq -r '.breaking')
+          PR=${{ github.event.pull_request.number }}
+
+          if [ "$BREAKING" = "true" ]; then
+            ITEMS=$(echo "$RESPONSE" | jq -r '.items[]' | sed 's/^/- /')
+            gh pr edit "$PR" --add-label "breaking"
+            # Post/update comment
+            COMMENT_BODY=$(cat <<'COMMENT_EOF'
+          ⚠️ **Potential breaking changes detected:**
+
+          COMMENT_EOF
+          )
+            COMMENT_BODY="${COMMENT_BODY}
+          ${ITEMS}
+
+          _Review carefully before merging. Consider a major version bump._"
+            # Find existing bot comment or create new
+            EXISTING=$(gh pr view "$PR" --json comments --jq '.comments[] | select(.body | startswith("⚠️ **Potential breaking")) | .id' | head -1)
+            if [ -n "$EXISTING" ]; then
+              gh api graphql -f query="mutation { updateIssueComment(input: {id: \"$EXISTING\", body: $(echo "$COMMENT_BODY" | jq -Rs .)}) { issueComment { id } } }"
+            else
+              gh pr comment "$PR" --body "$COMMENT_BODY"
+            fi
+          else
+            gh pr edit "$PR" --remove-label "breaking" 2>/dev/null || true
+          fi
+
+  spec-impact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for spec changes
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CHANGED=$(gh pr diff ${{ github.event.pull_request.number }} --name-only | grep -cE '^(spec/|openapi\.json|behavior-model\.json)' || true)
+          if [ "$CHANGED" -eq 0 ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            gh pr diff ${{ github.event.pull_request.number }} -- spec/ openapi.json behavior-model.json > /tmp/spec.diff 2>/dev/null || true
+            head -c 100000 /tmp/spec.diff > /tmp/spec-truncated.diff
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Analyze impact
+        if: steps.check.outputs.skip != 'true'
+        id: analyze
+        uses: actions/ai-inference@v1
+        with:
+          prompt-file: .github/prompts/spec-impact.prompt.yml
+          input: |
+            number: "${{ github.event.pull_request.number }}"
+            title: "${{ github.event.pull_request.title }}"
+          file_input: |
+            diff: /tmp/spec-truncated.diff
+
+      - name: Post impact comment
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMENT_BODY=$(cat "${{ steps.analyze.outputs.response-file }}")
+          PR=${{ github.event.pull_request.number }}
+          EXISTING=$(gh pr view "$PR" --json comments --jq '.comments[] | select(.body | startswith("## Spec Change Impact")) | .id' | head -1)
+          if [ -n "$EXISTING" ]; then
+            gh api graphql -f query="mutation { updateIssueComment(input: {id: \"$EXISTING\", body: $(echo "$COMMENT_BODY" | jq -Rs .)}) { issueComment { id } } }"
+          else
+            gh pr comment "$PR" --body "$COMMENT_BODY"
+          fi

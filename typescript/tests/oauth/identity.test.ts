@@ -106,7 +106,7 @@ describe("discoverIdentity", () => {
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(BasecampError);
-      expect((err as BasecampError).code).toBe("auth");
+      expect((err as BasecampError).code).toBe("auth_required");
       expect((err as BasecampError).httpStatus).toBe(401);
     }
   });

@@ -277,7 +277,7 @@ describe("Token Exchange", () => {
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("auth");
+        expect((err as BasecampError).code).toBe("auth_required");
         expect((err as BasecampError).message).toContain("authorization code has expired");
       }
     });
@@ -303,7 +303,7 @@ describe("Token Exchange", () => {
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("auth");
+        expect((err as BasecampError).code).toBe("auth_required");
       }
     });
   });

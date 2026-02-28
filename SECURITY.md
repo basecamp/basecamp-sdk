@@ -1,6 +1,6 @@
 # Security Guarantees
 
-This document describes the security invariants maintained by the Basecamp SDK across all three implementations (Go, TypeScript, Ruby).
+This document describes the security invariants maintained by the Basecamp SDK across all five implementations (Go, TypeScript, Ruby, Swift, Kotlin).
 
 ## Transport Security
 
@@ -68,13 +68,23 @@ All SDK clients are safe for concurrent use after construction. Thread/goroutine
 - `OauthTokenProvider` uses mutex for token refresh operations
 - The `refresh` method holds mutex during the entire check-and-refresh operation
 
+### Swift
+- `BasecampClient` and `AccountClient` are marked `Sendable` for Swift 6 strict concurrency
+- All service properties are safe for concurrent access via actor isolation
+- Configuration is immutable (`let` properties on `BasecampConfig`)
+
+### Kotlin
+- `BasecampClient` is safe for concurrent use from coroutines
+- Ktor's `HttpClient` handles connection pooling and thread safety internally
+- Configuration is immutable (`val` properties on `BasecampConfig` data class)
+
 **Important**: Do not modify configuration after creating a client. Configuration is captured at construction time.
 
 **Breaking Change (Go)**: `Client.Config()` now returns `Config` by value instead of `*Config` pointer. This prevents post-construction modification but may require code changes if callers expected pointer semantics.
 
 ## PKCE Support
 
-All SDKs provide helper utilities for OAuth 2.0 PKCE (Proof Key for Code Exchange):
+Go, TypeScript, Ruby, and Kotlin SDKs provide helper utilities for OAuth 2.0 PKCE (Proof Key for Code Exchange):
 
 ```go
 // Go
@@ -100,6 +110,14 @@ pkce = Basecamp::Oauth::Pkce.generate
 state = Basecamp::Oauth::Pkce.generate_state
 ```
 
+```kotlin
+// Kotlin
+val pkce = Pkce.generate()
+// pkce.verifier, pkce.challenge
+
+val state = Pkce.generateState()
+```
+
 **Security properties**:
 - Verifiers are 43 characters (32 random bytes, base64url-encoded)
 - Challenges are SHA256 hashes of verifiers (use `code_challenge_method=S256`)
@@ -108,7 +126,7 @@ state = Basecamp::Oauth::Pkce.generate_state
 
 ## Header Redaction
 
-All SDKs provide utilities to safely log HTTP requests without exposing credentials:
+Go, TypeScript, and Ruby SDKs provide utilities to safely log HTTP requests without exposing credentials:
 
 ```go
 // Go
@@ -141,4 +159,4 @@ The SDKs implement safe retry behavior:
 
 ## Reporting Security Issues
 
-If you discover a security vulnerability, please report it through Basecamp's security reporting process rather than opening a public issue.
+If you discover a security vulnerability, please report it through [Basecamp's security page](https://basecamp.com/about/policies/security) or email **security@basecamp.com** rather than opening a public issue. You can also use [GitHub Security Advisories](https://github.com/basecamp/basecamp-sdk/security/advisories) to report privately.

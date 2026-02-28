@@ -72,7 +72,7 @@ export async function discoverIdentity(accessToken: TokenProvider): Promise<Auth
 
   if (!response.ok) {
     if (response.status === 401) {
-      throw new BasecampError("auth", "Invalid or expired access token", {
+      throw new BasecampError("auth_required", "Invalid or expired access token", {
         httpStatus: 401,
         hint: "The access token may need to be refreshed",
       });

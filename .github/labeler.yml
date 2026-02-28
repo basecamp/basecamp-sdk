@@ -1,0 +1,48 @@
+go:
+  - changed-files:
+      - any-glob-to-any-file: "go/**"
+
+typescript:
+  - changed-files:
+      - any-glob-to-any-file: "typescript/**"
+
+ruby:
+  - changed-files:
+      - any-glob-to-any-file: "ruby/**"
+
+kotlin:
+  - changed-files:
+      - any-glob-to-any-file: "kotlin/**"
+
+swift:
+  - changed-files:
+      - any-glob-to-any-file: "swift/**"
+
+spec:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "spec/**"
+          - "openapi.json"
+          - "behavior-model.json"
+
+conformance:
+  - changed-files:
+      - any-glob-to-any-file: "conformance/**"
+
+github-actions:
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "*.md"
+          - "docs/**"
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/package-lock.json"
+          - "**/go.sum"
+          - "**/Gemfile.lock"
+          - "**/gradle.lockfile"

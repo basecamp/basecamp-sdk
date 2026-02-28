@@ -1,5 +1,9 @@
 package com.basecamp.sdk
 
+import com.basecamp.sdk.generated.projects
+import io.ktor.client.engine.mock.*
+import io.ktor.http.*
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -157,5 +161,118 @@ class PaginationTest {
     fun parseTotalCountReturnsZeroForInvalid() {
         val headers = mapOf("X-Total-Count" to listOf("not-a-number"))
         assertEquals(0, parseTotalCount(headers))
+    }
+
+    // =========================================================================
+    // Paginated request integration tests
+    // =========================================================================
+
+    private fun projectJson(id: Long, name: String) = """{
+        "id": $id, "status": "active", "name": "$name",
+        "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z",
+        "url": "https://3.basecampapi.com/12345/projects/$id.json",
+        "app_url": "https://3.basecamp.com/12345/projects/$id",
+        "dock": []
+    }"""
+
+    private fun mockClient(handler: MockRequestHandler): BasecampClient {
+        val engine = MockEngine(handler)
+        return BasecampClient {
+            accessToken("test-token")
+            this.engine = engine
+        }
+    }
+
+    @Test
+    fun ssrfRejectionWhenLinkRedirectsToDifferentOrigin() = runTest {
+        val client = mockClient { request ->
+            respond(
+                content = """[${projectJson(1, "Project 1")}]""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(
+                    HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                    "Link" to listOf("""<https://evil.com/12345/projects.json?page=2>; rel="next""""),
+                    "X-Total-Count" to listOf("2"),
+                ),
+            )
+        }
+
+        val account = client.forAccount("12345")
+        try {
+            account.projects.list()
+            assertTrue(false, "Should have thrown for SSRF")
+        } catch (e: BasecampException.Api) {
+            assertTrue(e.message!!.contains("different origin"))
+        }
+        client.close()
+    }
+
+    @Test
+    fun emptyResultNoItemsNoLinkHeader() = runTest {
+        val client = mockClient { _ ->
+            respond(
+                content = """[]""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(
+                    HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                    "X-Total-Count" to listOf("0"),
+                ),
+            )
+        }
+
+        val account = client.forAccount("12345")
+        val projects = account.projects.list()
+
+        assertEquals(0, projects.size)
+        assertTrue(projects.isEmpty())
+        assertEquals(0L, projects.meta.totalCount)
+        assertFalse(projects.meta.truncated)
+        client.close()
+    }
+
+    @Test
+    fun paginationFollowsMultiplePages() = runTest {
+        var requestCount = 0
+        val client = mockClient { request ->
+            requestCount++
+            val page = request.url.parameters["page"]?.toIntOrNull() ?: 1
+            when (page) {
+                1 -> respond(
+                    content = """[${projectJson(1, "Project 1")}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                        "Link" to listOf("""<https://3.basecampapi.com/12345/projects.json?page=2>; rel="next""""),
+                        "X-Total-Count" to listOf("3"),
+                    ),
+                )
+                2 -> respond(
+                    content = """[${projectJson(2, "Project 2")}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                        "Link" to listOf("""<https://3.basecampapi.com/12345/projects.json?page=3>; rel="next""""),
+                    ),
+                )
+                else -> respond(
+                    content = """[${projectJson(3, "Project 3")}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                    ),
+                )
+            }
+        }
+
+        val account = client.forAccount("12345")
+        val projects = account.projects.list()
+
+        assertEquals(3, projects.size)
+        assertEquals(1L, projects[0].id)
+        assertEquals(2L, projects[1].id)
+        assertEquals(3L, projects[2].id)
+        assertEquals(3L, projects.meta.totalCount)
+        assertFalse(projects.meta.truncated)
+        client.close()
     }
 }

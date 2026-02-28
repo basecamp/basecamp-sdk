@@ -1,6 +1,6 @@
 # <img src="assets/basecamp-badge.svg" height="28" alt="Basecamp"> Basecamp SDK
 
-Official [Basecamp](https://basecamp.com) [API](https://github.com/basecamp/bc3-api) clients, runtimes, and software development kits for Go, Ruby, and TypeScript.
+Official [Basecamp](https://basecamp.com) [API](https://github.com/basecamp/bc3-api) clients, runtimes, and software development kits for Go, Ruby, TypeScript, Swift, and Kotlin.
 
 OpenAPI 3.1 spec included.
 
@@ -11,22 +11,27 @@ OpenAPI 3.1 spec included.
 | [Go](go/) | `go/` | Active | `github.com/basecamp/basecamp-sdk/go` |
 | [Ruby](ruby/) | `ruby/` | Active | `basecamp-sdk` |
 | [TypeScript](typescript/) | `typescript/` | Active | `@37signals/basecamp` |
+| [Swift](swift/) | `swift/` | Active | `Basecamp` (SPM) |
+| [Kotlin](kotlin/) | `kotlin/` | Active | `com.basecamp:basecamp-sdk` (GitHub Packages) |
 
-| Feature | Go | TypeScript | Ruby |
-|---------|:--:|:----------:|:----:|
-| OAuth 2.0 Authentication | ✓ | ✓ | ✓ |
-| Static Token Authentication | ✓ | ✓ | ✓ |
-| ETag HTTP Caching (opt-in) | ✓ | ✓ | via Faraday† |
-| Automatic Retry with Backoff | ✓ | ✓ | ✓ |
-| Pagination Handling | ✓ | ✓ | ✓ |
-| Observability Hooks | ✓ | ✓ | ✓ |
-| Structured Errors | ✓ | ✓ | ✓ |
+| Feature | Go | TypeScript | Ruby | Swift | Kotlin |
+|---------|:--:|:----------:|:----:|:-----:|:------:|
+| OAuth 2.0 Authentication | ✓ | ✓ | ✓ | ✗ | ✓ |
+| Static Token Authentication | ✓ | ✓ | ✓ | ✓ | ✓ |
+| ETag HTTP Caching (opt-in) | ✓ | ✓ | via Faraday† | ✓ | ✓ |
+| Automatic Retry with Backoff | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Pagination Handling | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Observability Hooks | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Structured Errors | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Webhook Verification | ✓ | ✓ | ✓ | ✗ | ✓ |
 
 † Ruby SDK uses Faraday - add caching via [faraday-http-cache](https://github.com/sourcelevel/faraday-http-cache)
 
 **Note:** HTTP caching is disabled by default. Enable explicitly via configuration:
 - **Go:** `cfg.CacheEnabled = true` or `BASECAMP_CACHE_ENABLED=true`
 - **TypeScript:** `enableCache: true` in client options
+- **Swift:** `BasecampConfig(enableCache: true)`
+- **Kotlin:** `enableCache = true` in builder DSL
 
 All SDKs are generated from a single [Smithy](https://smithy.io/) specification, ensuring consistent behavior and API coverage across languages.
 
@@ -90,12 +95,42 @@ const projects = await client.projects.list();
 projects.forEach(p => console.log(`${p.id}: ${p.name}`));
 ```
 
+### Swift
+
+```swift
+import Basecamp
+
+let client = BasecampClient(
+    accessToken: ProcessInfo.processInfo.environment["BASECAMP_TOKEN"]!,
+    userAgent: "my-app/1.0 (you@example.com)"
+)
+
+let account = client.forAccount(ProcessInfo.processInfo.environment["BASECAMP_ACCOUNT_ID"]!)
+let projects = try await account.projects.list()
+for project in projects {
+    print("\(project.id): \(project.name)")
+}
+```
+
+### Kotlin
+
+```kotlin
+val client = BasecampClient {
+    accessToken(System.getenv("BASECAMP_TOKEN"))
+    userAgent = "my-app/1.0 (you@example.com)"
+}
+
+val account = client.forAccount(System.getenv("BASECAMP_ACCOUNT_ID"))
+val projects = account.projects.list()
+projects.forEach { println("${it.id}: ${it.name}") }
+```
+
 ## Features
 
 All SDKs provide:
 
 - **Full API coverage** - 35+ services covering projects, todos, messages, schedules, campfires, card tables, and more
-- **OAuth 2.0 authentication** - Token refresh, PKCE support, and static token options
+- **OAuth 2.0 authentication** - Token refresh, PKCE support (Go, TypeScript, Ruby, Kotlin), and static token options
 - **Automatic retry** - Exponential backoff with jitter, respects `Retry-After` headers
 - **Pagination** - Link header–based pagination support (high-level handling may vary by SDK; see language docs)
 - **ETag caching** - Built-in HTTP caching for efficient API usage
@@ -131,7 +166,9 @@ See the [spec README](spec/README.md) for details on the model structure.
 
 - [Go SDK documentation](go/README.md) - Full API reference with examples
 - [Ruby SDK documentation](ruby/README.md) - Gem usage and configuration
-- [TypeScript SDK documentation](typescript/) - npm package usage
+- [TypeScript SDK documentation](typescript/README.md) - npm package usage
+- [Swift SDK documentation](swift/README.md) - SPM package with async/await
+- [Kotlin SDK documentation](kotlin/README.md) - Gradle package with coroutines
 - [Contributing guide](CONTRIBUTING.md) - Development setup and guidelines
 - [Security policy](SECURITY.md) - Reporting vulnerabilities
 
