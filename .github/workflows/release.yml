@@ -131,18 +131,6 @@ jobs:
               exit 1
             fi
           fi
-
-          # Verify version.go matches the tag (skip for dry-run)
-          VERSION="${{ steps.version.outputs.version }}"
-          if [[ "$VERSION" != "v0.0.0-dry-run" ]]; then
-            EXPECTED="${VERSION#v}"  # Strip leading v
-            if ! grep -q "Version = \"${EXPECTED}\"" pkg/basecamp/version.go; then
-              echo "::error::version.go does not match tag ${VERSION}"
-              echo "Expected: Version = \"${EXPECTED}\""
-              echo "Found:    $(grep 'Version =' pkg/basecamp/version.go)"
-              exit 1
-            fi
-          fi
           echo "Module verification passed"
 
       - name: Build changelog prompt

@@ -24,8 +24,9 @@ const (
 	CodeForbidden = "forbidden"
 	CodeRateLimit = "rate_limit"
 	CodeNetwork   = "network"
-	CodeAPI       = "api_error"
-	CodeAmbiguous = "ambiguous"
+	CodeAPI        = "api_error"
+	CodeValidation = "validation"
+	CodeAmbiguous  = "ambiguous"
 )
 
 // Exit codes for CLI tools.
