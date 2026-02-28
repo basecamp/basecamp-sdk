@@ -109,9 +109,21 @@ jobs:
           fi
 
       - name: Publish to npm
+        shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --provenance
+            set +e
+            output=$(npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --provenance 2>&1)
+            status=$?
+            set -e
+            echo "$output"
+            if [ "$status" -eq 0 ]; then
+              echo "Publish succeeded."
+            elif echo "$output" | grep -qi "cannot publish over the previously published versions"; then
+              echo "Version already published — treating as success for idempotency."
+            else
+              exit "$status"
+            fi
           else
             echo "::notice::Dry run mode - not actually publishing"
             npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --dry-run
