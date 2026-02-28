@@ -147,7 +147,22 @@ go-check-drift:
 # TypeScript SDK targets
 #------------------------------------------------------------------------------
 
-.PHONY: ts-generate ts-generate-services ts-build ts-test ts-typecheck ts-check ts-clean
+.PHONY: ts-install ts-generate ts-generate-services ts-build ts-test ts-typecheck ts-check ts-clean
+
+TS_NODE_STAMP := typescript/node_modules/.install-stamp
+
+$(TS_NODE_STAMP): typescript/package-lock.json typescript/package.json
+	@echo "==> Installing TypeScript dependencies..."
+	cd typescript && npm ci
+	@touch $(TS_NODE_STAMP)
+
+ts-install: $(TS_NODE_STAMP)
+
+ts-generate: ts-install
+ts-generate-services: ts-install
+ts-build: ts-install
+ts-test: ts-install
+ts-typecheck: ts-install
 
 # Generate TypeScript types and metadata from OpenAPI
 ts-generate:
