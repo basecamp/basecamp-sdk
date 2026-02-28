@@ -41,7 +41,7 @@ function truncateErrorMessage(s: string, maxLen: number = MAX_ERROR_MESSAGE_LENG
  * Error codes for categorizing Basecamp API errors.
  */
 export type ErrorCode =
-  | "auth"
+  | "auth_required"
   | "forbidden"
   | "not_found"
   | "rate_limit"
@@ -76,7 +76,7 @@ const EXIT_CODES: Record<ErrorCode, number> = {
   usage: 1, // Usage error (invalid arguments, config)
   validation: 1, // General error
   not_found: 2, // Not found
-  auth: 3, // Authentication error
+  auth_required: 3, // Authentication error
   forbidden: 4, // Permission denied
   rate_limit: 5, // Rate limited
   network: 6, // Network error
@@ -177,7 +177,7 @@ export const Errors = {
    * Creates an authentication error (401).
    */
   auth: (hint?: string, cause?: Error): BasecampError =>
-    new BasecampError("auth", "Authentication required", {
+    new BasecampError("auth_required", "Authentication required", {
       hint: hint ?? "Check your access token or refresh it if expired",
       httpStatus: 401,
       cause,
@@ -280,7 +280,7 @@ export async function errorFromResponse(
 
   switch (httpStatus) {
     case 401:
-      return new BasecampError("auth", message, { httpStatus, hint, requestId });
+      return new BasecampError("auth_required", message, { httpStatus, hint, requestId });
     case 403:
       return new BasecampError("forbidden", message, { httpStatus, hint, requestId });
     case 404:

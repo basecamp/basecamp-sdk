@@ -8,6 +8,7 @@ import { readFile, writeFile, rename, unlink, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { homedir } from "node:os";
 import type { OAuthToken } from "./types.js";
+import { BasecampError } from "../errors.js";
 
 /**
  * Interface for persisting OAuth tokens.
@@ -84,7 +85,14 @@ export class FileTokenStore implements TokenStore {
       throw err;
     }
 
-    const data = JSON.parse(raw) as SerializedToken;
+    let data: SerializedToken;
+    try {
+      data = JSON.parse(raw) as SerializedToken;
+    } catch (err) {
+      throw new BasecampError("usage", `Failed to parse token file: ${this.filePath}`, {
+        cause: err instanceof Error ? err : undefined,
+      });
+    }
 
     return {
       accessToken: data.accessToken,

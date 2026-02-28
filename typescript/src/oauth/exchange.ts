@@ -326,7 +326,7 @@ async function doTokenRequest(
       const message = rawMessage.length > 500 ? rawMessage.slice(0, 497) + "..." : rawMessage;
 
       if (response.status === 401 || errorData.error === "invalid_grant") {
-        throw new BasecampError("auth", message, {
+        throw new BasecampError("auth_required", message, {
           httpStatus: response.status,
           hint: "The authorization code or refresh token may be invalid or expired",
         });

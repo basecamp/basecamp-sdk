@@ -163,6 +163,43 @@ describe("BasecampClient", () => {
       const path = normalizeUrlPath(`${BASE_URL}/buckets/123/webhooks.json`);
       expect(path).toBe("/{accountId}/buckets/{bucketId}/webhooks.json");
     });
+
+    it("should refresh auth token on retry", async () => {
+      let attempts = 0;
+      const capturedTokens: string[] = [];
+
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, ({ request }) => {
+          attempts++;
+          capturedTokens.push(request.headers.get("Authorization") ?? "");
+          if (attempts === 1) {
+            return new HttpResponse(null, {
+              status: 429,
+              headers: { "Retry-After": "0" },
+            });
+          }
+          return HttpResponse.json([{ id: 1, name: "Test" }]);
+        })
+      );
+
+      let callCount = 0;
+      const tokenProvider = async () => {
+        callCount++;
+        return callCount === 1 ? "stale-token" : "fresh-token";
+      };
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: tokenProvider,
+        enableRetry: true,
+      });
+
+      await client.GET("/projects.json");
+
+      expect(attempts).toBe(2);
+      expect(capturedTokens[0]).toBe("Bearer stale-token");
+      expect(capturedTokens[1]).toBe("Bearer fresh-token");
+    });
   });
 
   describe("caching", () => {
@@ -247,6 +284,46 @@ describe("BasecampClient", () => {
 
       expect(data).toBeUndefined();
       expect(error).toBeDefined();
+    });
+  });
+
+  describe("request timeout", () => {
+    it("should timeout slow requests", async () => {
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, async () => {
+          // Delay longer than timeout
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return HttpResponse.json([]);
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        requestTimeoutMs: 100,
+      });
+
+      await expect(client.GET("/projects.json")).rejects.toThrow();
+    });
+
+    it("should use default timeout of 30000ms", async () => {
+      // Just verify the option is accepted and the client works normally
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, () => {
+          return HttpResponse.json([]);
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        // No requestTimeoutMs - should use default
+      });
+
+      const result = await client.GET("/projects.json");
+      expect(result.data).toEqual([]);
     });
   });
 

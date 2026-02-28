@@ -121,7 +121,7 @@ export async function performInteractiveLogin(
       if (promptForManualVisit) {
         await promptForManualVisit(authUrl.toString());
       } else {
-        throw new BasecampError("auth", "Failed to open browser and no manual visit prompt configured");
+        throw new BasecampError("auth_required", "Failed to open browser and no manual visit prompt configured");
       }
     }
 

@@ -13,10 +13,10 @@ import {
 describe("BasecampError", () => {
   describe("constructor", () => {
     it("should create an error with required fields", () => {
-      const error = new BasecampError("auth", "Test message");
+      const error = new BasecampError("auth_required", "Test message");
 
       expect(error.name).toBe("BasecampError");
-      expect(error.code).toBe("auth");
+      expect(error.code).toBe("auth_required");
       expect(error.message).toBe("Test message");
       expect(error.retryable).toBe(false);
     });
@@ -47,7 +47,7 @@ describe("BasecampError", () => {
       const codes: Record<string, number> = {
         validation: 1,
         not_found: 2,
-        auth: 3,
+        auth_required: 3,
         forbidden: 4,
         rate_limit: 5,
         network: 6,
@@ -86,7 +86,7 @@ describe("BasecampError", () => {
 
   describe("instanceof check", () => {
     it("should be an instance of Error", () => {
-      const error = new BasecampError("auth", "Test");
+      const error = new BasecampError("auth_required", "Test");
       expect(error).toBeInstanceOf(Error);
       expect(error).toBeInstanceOf(BasecampError);
     });
@@ -94,10 +94,10 @@ describe("BasecampError", () => {
 });
 
 describe("Errors factory", () => {
-  describe("auth", () => {
+  describe("auth_required", () => {
     it("should create an auth error", () => {
       const error = Errors.auth();
-      expect(error.code).toBe("auth");
+      expect(error.code).toBe("auth_required");
       expect(error.httpStatus).toBe(401);
       expect(error.hint).toContain("access token");
     });
@@ -208,7 +208,7 @@ describe("errorFromResponse", () => {
 
     const error = await errorFromResponse(response);
 
-    expect(error.code).toBe("auth");
+    expect(error.code).toBe("auth_required");
     expect(error.httpStatus).toBe(401);
     expect(error.message).toBe("Unauthorized");
   });
@@ -363,7 +363,7 @@ describe("errorFromResponse", () => {
 
 describe("isBasecampError", () => {
   it("should return true for BasecampError", () => {
-    const error = new BasecampError("auth", "test");
+    const error = new BasecampError("auth_required", "test");
     expect(isBasecampError(error)).toBe(true);
   });
 
@@ -376,7 +376,7 @@ describe("isBasecampError", () => {
     expect(isBasecampError("string")).toBe(false);
     expect(isBasecampError(null)).toBe(false);
     expect(isBasecampError(undefined)).toBe(false);
-    expect(isBasecampError({ code: "auth" })).toBe(false);
+    expect(isBasecampError({ code: "auth_required" })).toBe(false);
   });
 });
 
@@ -387,12 +387,12 @@ describe("isErrorCode", () => {
   });
 
   it("should return false for non-matching error code", () => {
-    const error = new BasecampError("auth", "test");
+    const error = new BasecampError("auth_required", "test");
     expect(isErrorCode(error, "not_found")).toBe(false);
   });
 
   it("should return false for non-BasecampError", () => {
     const error = new Error("test");
-    expect(isErrorCode(error, "auth")).toBe(false);
+    expect(isErrorCode(error, "auth_required")).toBe(false);
   });
 });

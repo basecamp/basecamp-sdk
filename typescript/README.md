@@ -57,7 +57,7 @@ const client = createBasecampClient({
   // Optional
   baseUrl: "https://3.basecampapi.com/12345", // default
   userAgent: "my-app/1.0",
-  enableCache: true, // ETag caching (default: true)
+  enableCache: true, // ETag caching (default: false)
   enableRetry: true, // Auto retry 429 and 503 (default: true)
   hooks: myHooks, // Observability hooks
 });
@@ -320,7 +320,7 @@ try {
 
 | Code | HTTP Status | Exit Code | Description |
 |------|-------------|-----------|-------------|
-| `auth` | 401 | 3 | Authentication required |
+| `auth_required` | 401 | 3 | Authentication required |
 | `forbidden` | 403 | 4 | Access denied |
 | `not_found` | 404 | 2 | Resource not found |
 | `rate_limit` | 429 | 5 | Rate limit exceeded (retryable) |

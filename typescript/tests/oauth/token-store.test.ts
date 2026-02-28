@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { FileTokenStore } from "../../src/oauth/token-store.js";
 import type { OAuthToken } from "../../src/oauth/types.js";
+import { BasecampError } from "../../src/errors.js";
 
 describe("FileTokenStore", () => {
   let tempDir: string;
@@ -96,6 +97,24 @@ describe("FileTokenStore", () => {
       const store = new FileTokenStore(join(tempDir, "nonexistent.json"));
       const loaded = await store.load();
       expect(loaded).toBeNull();
+    });
+
+    it("throws BasecampError for corrupted JSON", async () => {
+      const path = join(tempDir, "corrupted.json");
+      const { writeFile } = await import("node:fs/promises");
+      await writeFile(path, "not valid json {{{");
+
+      const store = new FileTokenStore(path);
+
+      await expect(store.load()).rejects.toThrow(BasecampError);
+      try {
+        await store.load();
+      } catch (err) {
+        expect(err).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code).toBe("usage");
+        expect((err as BasecampError).message).toContain("Failed to parse token file");
+        expect((err as BasecampError).cause).toBeInstanceOf(SyntaxError);
+      }
     });
   });
 
