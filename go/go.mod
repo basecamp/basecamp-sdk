@@ -3,7 +3,7 @@ module github.com/basecamp/basecamp-sdk/go
 go 1.26
 
 require (
-	github.com/oapi-codegen/runtime v1.1.2
+	github.com/oapi-codegen/runtime v1.2.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/zalando/go-keyring v0.2.6
 	go.opentelemetry.io/otel v1.40.0
