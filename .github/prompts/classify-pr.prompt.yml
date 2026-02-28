@@ -18,14 +18,6 @@ messages:
 
       When a PR mixes categories: bug > enhancement > documentation.
       Prefer diff evidence over the PR title.
-  - role: user
-    content: |
-      PR #{{number}}: {{title}}
-
-      {{body}}
-
-      Diff (truncated):
-      {{diff}}
 model: openai/gpt-4o-mini
 modelParameters:
   maxCompletionTokens: 10

@@ -19,26 +19,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch PR context
+      - name: Build prompt
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr diff ${{ github.event.pull_request.number }} > /tmp/pr.diff
-          head -c 100000 /tmp/pr.diff > /tmp/pr-truncated.diff
-          gh pr view ${{ github.event.pull_request.number }} --json title,body --jq .title > /tmp/pr-title.txt
-          gh pr view ${{ github.event.pull_request.number }} --json body --jq .body > /tmp/pr-body.txt
+          PR=${{ github.event.pull_request.number }}
+          gh pr diff "$PR" > /tmp/pr.diff
+          gh pr view "$PR" --json title --jq .title > /tmp/pr-title.txt
+          gh pr view "$PR" --json body --jq .body > /tmp/pr-body.txt
+
+          # Compose user message
+          {
+            echo "PR #${PR}: $(cat /tmp/pr-title.txt)"
+            echo ""
+            cat /tmp/pr-body.txt
+            echo ""
+            echo "Diff (truncated):"
+            head -c 100000 /tmp/pr.diff
+          } > /tmp/user-message.txt
+
+          # Build full prompt YAML: base prompt + indented user message
+          cp .github/prompts/classify-pr.prompt.yml /tmp/prompt.yml
+          python3 -c "
+          import yaml, sys
+          with open('/tmp/prompt.yml') as f:
+              prompt = yaml.safe_load(f)
+          with open('/tmp/user-message.txt') as f:
+              user_msg = f.read()
+          prompt['messages'].append({'role': 'user', 'content': user_msg})
+          with open('/tmp/prompt.yml', 'w') as f:
+              yaml.dump(prompt, f, default_flow_style=False, allow_unicode=True)
+          "
 
       - name: Classify
         id: classify
         uses: actions/ai-inference@v1
         with:
-          prompt-file: .github/prompts/classify-pr.prompt.yml
-          input: |
-            number: "${{ github.event.pull_request.number }}"
-          file_input: |
-            title: /tmp/pr-title.txt
-            body: /tmp/pr-body.txt
-            diff: /tmp/pr-truncated.diff
+          prompt-file: /tmp/prompt.yml
 
       - name: Apply label
         env:
@@ -59,11 +76,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Collect public API diff
+      - name: Build prompt
         id: api-diff
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          PR=${{ github.event.pull_request.number }}
+
           # Public API surface files per SDK
           PATTERNS=(
             "go/pkg/basecamp/*.go"
@@ -76,8 +95,7 @@ jobs:
             "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/**/*.kt"
             "swift/Sources/Basecamp/*.swift" "swift/Sources/Basecamp/Services/*.swift" "swift/Sources/Basecamp/Generated/**/*.swift"
           )
-          gh pr diff ${{ github.event.pull_request.number }} > /tmp/full.diff
-          gh pr view ${{ github.event.pull_request.number }} --json title --jq .title > /tmp/pr-title.txt
+          gh pr diff "$PR" > /tmp/full.diff
 
           # Filter diff to only public API files
           python3 -c "
@@ -96,7 +114,28 @@ jobs:
           if [ ! -s /tmp/api.diff ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
           else
-            head -c 100000 /tmp/api.diff > /tmp/api-truncated.diff
+            TITLE=$(gh pr view "$PR" --json title --jq .title)
+
+            # Compose user message
+            {
+              echo "PR #${PR}: ${TITLE}"
+              echo ""
+              echo "Diff of public API surface files:"
+              head -c 100000 /tmp/api.diff
+            } > /tmp/user-message.txt
+
+            # Build full prompt YAML
+            cp .github/prompts/detect-breaking.prompt.yml /tmp/prompt.yml
+            python3 -c "
+          import yaml
+          with open('/tmp/prompt.yml') as f:
+              prompt = yaml.safe_load(f)
+          with open('/tmp/user-message.txt') as f:
+              user_msg = f.read()
+          prompt['messages'].append({'role': 'user', 'content': user_msg})
+          with open('/tmp/prompt.yml', 'w') as f:
+              yaml.dump(prompt, f, default_flow_style=False, allow_unicode=True)
+          "
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
@@ -105,12 +144,7 @@ jobs:
         id: detect
         uses: actions/ai-inference@v1
         with:
-          prompt-file: .github/prompts/detect-breaking.prompt.yml
-          input: |
-            number: "${{ github.event.pull_request.number }}"
-          file_input: |
-            title: /tmp/pr-title.txt
-            diff: /tmp/api-truncated.diff
+          prompt-file: /tmp/prompt.yml
 
       - name: Apply breaking label
         if: steps.api-diff.outputs.skip != 'true'
@@ -150,18 +184,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check for spec changes
+      - name: Build prompt
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CHANGED=$(gh pr diff ${{ github.event.pull_request.number }} --name-only | grep -cE '^(spec/|openapi\.json|behavior-model\.json)' || true)
+          PR=${{ github.event.pull_request.number }}
+          CHANGED=$(gh pr diff "$PR" --name-only | grep -cE '^(spec/|openapi\.json|behavior-model\.json)' || true)
           if [ "$CHANGED" -eq 0 ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
           else
-            gh pr diff ${{ github.event.pull_request.number }} -- spec/ openapi.json behavior-model.json > /tmp/spec.diff 2>/dev/null || true
-            head -c 100000 /tmp/spec.diff > /tmp/spec-truncated.diff
-            gh pr view ${{ github.event.pull_request.number }} --json title --jq .title > /tmp/pr-title.txt
+            gh pr diff "$PR" -- spec/ openapi.json behavior-model.json > /tmp/spec.diff 2>/dev/null || true
+            TITLE=$(gh pr view "$PR" --json title --jq .title)
+
+            # Compose user message
+            {
+              echo "PR #${PR}: ${TITLE}"
+              echo ""
+              echo "Spec diff:"
+              head -c 100000 /tmp/spec.diff
+            } > /tmp/user-message.txt
+
+            # Build full prompt YAML
+            cp .github/prompts/spec-impact.prompt.yml /tmp/prompt.yml
+            python3 -c "
+          import yaml
+          with open('/tmp/prompt.yml') as f:
+              prompt = yaml.safe_load(f)
+          with open('/tmp/user-message.txt') as f:
+              user_msg = f.read()
+          prompt['messages'].append({'role': 'user', 'content': user_msg})
+          with open('/tmp/prompt.yml', 'w') as f:
+              yaml.dump(prompt, f, default_flow_style=False, allow_unicode=True)
+          "
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
@@ -170,12 +225,7 @@ jobs:
         id: analyze
         uses: actions/ai-inference@v1
         with:
-          prompt-file: .github/prompts/spec-impact.prompt.yml
-          input: |
-            number: "${{ github.event.pull_request.number }}"
-          file_input: |
-            title: /tmp/pr-title.txt
-            diff: /tmp/spec-truncated.diff
+          prompt-file: /tmp/prompt.yml
 
       - name: Post impact comment
         if: steps.check.outputs.skip != 'true'

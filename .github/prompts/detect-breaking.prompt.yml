@@ -18,12 +18,6 @@ messages:
       }
 
       If no breaking changes, respond: {"breaking": false, "items": []}
-  - role: user
-    content: |
-      PR #{{number}}: {{title}}
-
-      Diff of public API surface files:
-      {{diff}}
 model: openai/gpt-4o-mini
 responseFormat: json_schema
 jsonSchema: |-
