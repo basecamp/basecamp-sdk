@@ -26,11 +26,11 @@ jobs:
           PR=${{ github.event.pull_request.number }}
           gh pr diff "$PR" > /tmp/pr.diff
           gh pr view "$PR" --json title --jq .title > /tmp/pr-title.txt
-          gh pr view "$PR" --json body --jq .body > /tmp/pr-body.txt
+          gh pr view "$PR" --json body --jq '.body // ""' > /tmp/pr-body.txt
 
           # Compose user message
           {
-            echo "PR #${PR}: $(cat /tmp/pr-title.txt)"
+            printf 'PR #%s: %s\n' "$PR" "$(cat /tmp/pr-title.txt)"
             echo ""
             cat /tmp/pr-body.txt
             echo ""
@@ -118,7 +118,7 @@ jobs:
 
             # Compose user message
             {
-              echo "PR #${PR}: ${TITLE}"
+              printf 'PR #%s: %s\n' "$PR" "$TITLE"
               echo ""
               echo "Diff of public API surface files:"
               head -c 100000 /tmp/api.diff
@@ -199,7 +199,7 @@ jobs:
 
             # Compose user message
             {
-              echo "PR #${PR}: ${TITLE}"
+              printf 'PR #%s: %s\n' "$PR" "$TITLE"
               echo ""
               echo "Spec diff:"
               head -c 100000 /tmp/spec.diff
