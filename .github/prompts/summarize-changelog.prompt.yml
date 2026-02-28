@@ -13,16 +13,6 @@ messages:
       - If the diff touches generated code only (service files, types), note
         what API coverage was added rather than listing file changes
       - Keep it under 30 lines
-  - role: user
-    content: |
-      SDK: {{sdk_name}}
-      Version: {{version}}
-
-      Commits since last release:
-      {{commits}}
-
-      Diff (truncated):
-      {{diff}}
 model: openai/gpt-4o
 modelParameters:
   maxCompletionTokens: 1000

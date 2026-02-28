@@ -175,7 +175,7 @@ jobs:
             npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --dry-run
           fi
 
-      - name: Collect changelog inputs
+      - name: Build changelog prompt
         if: github.event_name == 'push'
         id: changelog-inputs
         run: |
@@ -188,8 +188,30 @@ jobs:
             COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- typescript/)
             git diff "${PREV_TAG}..HEAD" -- typescript/ > /tmp/sdk-diff.txt
           fi
-          head -c 100000 /tmp/sdk-diff.txt > /tmp/sdk-diff-truncated.txt
           echo "$COMMITS" > /tmp/commits.txt
+
+          {
+            echo "SDK: TypeScript"
+            echo "Version: v${{ steps.version.outputs.version }}"
+            echo ""
+            echo "Commits since last release:"
+            cat /tmp/commits.txt
+            echo ""
+            echo "Diff (truncated):"
+            head -c 100000 /tmp/sdk-diff.txt
+          } > /tmp/user-message.txt
+
+          cp .github/prompts/summarize-changelog.prompt.yml /tmp/prompt.yml
+          python3 -c "
+          import yaml
+          with open('/tmp/prompt.yml') as f:
+              prompt = yaml.safe_load(f)
+          with open('/tmp/user-message.txt') as f:
+              user_msg = f.read()
+          prompt['messages'].append({'role': 'user', 'content': user_msg})
+          with open('/tmp/prompt.yml', 'w') as f:
+              yaml.dump(prompt, f, default_flow_style=False, allow_unicode=True)
+          "
 
       - name: Summarize changes
         if: github.event_name == 'push'
@@ -197,14 +219,7 @@ jobs:
         continue-on-error: true
         uses: actions/ai-inference@v1
         with:
-          prompt-file: .github/prompts/summarize-changelog.prompt.yml
-          input: |
-            sdk_name: "TypeScript"
-            version: "v${{ steps.version.outputs.version }}"
-            commits: |
-              $(cat /tmp/commits.txt)
-          file_input: |
-            diff: /tmp/sdk-diff-truncated.txt
+          prompt-file: /tmp/prompt.yml
 
       - name: Write changelog
         if: github.event_name == 'push' && steps.summarize.outcome == 'success'
