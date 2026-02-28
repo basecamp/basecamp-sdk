@@ -82,7 +82,7 @@ const EXIT_CODES: Record<ErrorCode, number> = {
   network: 6, // Network error
   api_error: 7, // API error
   ambiguous: 8, // Multiple matches found
-  validation: 9, // Validation error (422)
+  validation: 9, // Validation error (HTTP 400/422)
 };
 
 /**
