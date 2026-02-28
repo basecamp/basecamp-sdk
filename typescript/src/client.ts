@@ -188,7 +188,7 @@ export interface BasecampClientOptions {
   auth?: AuthStrategy;
   /** Base URL override (defaults to https://3.basecampapi.com/{accountId}) */
   baseUrl?: string;
-  /** User-Agent header (defaults to basecamp-sdk-ts/VERSION) */
+  /** User-Agent header (defaults to basecamp-sdk-ts/VERSION (api:API_VERSION)) */
   userAgent?: string;
   /** Enable ETag-based caching (defaults to false) */
   enableCache?: boolean;

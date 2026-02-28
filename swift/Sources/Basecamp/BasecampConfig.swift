@@ -39,7 +39,7 @@ public struct BasecampConfig: Sendable {
     ///
     /// - Parameters:
     ///   - baseURL: API base URL (default: `https://3.basecampapi.com`)
-    ///   - userAgent: User-Agent header (default: `basecamp-sdk-swift/VERSION`)
+    ///   - userAgent: User-Agent header (default: `basecamp-sdk-swift/VERSION (api:API_VERSION)`)
     ///   - enableRetry: Enable automatic retry on 429/503 (default: `true`)
     ///   - enableCache: Enable ETag-based caching (default: `false`)
     ///   - maxPages: Maximum pages to follow (default: `10_000`)
