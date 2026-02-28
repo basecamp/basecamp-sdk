@@ -3,6 +3,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "pretest": "cd ../../../typescript && npm run build",
     "test": "vitest run"
   },
   "devDependencies": {
