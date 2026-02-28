@@ -3,7 +3,7 @@ name: Release Swift SDK
 on:
   push:
     tags:
-      - 'swift/v*'
+      - 'v*'
   workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
 
 permissions:
@@ -92,7 +92,8 @@ jobs:
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Rehearsal for version: $VERSION"
           else
-            VERSION="${GITHUB_REF#refs/tags/swift/}"
+            # Tag trigger: extract from tag (v0.2.1, Swift keeps v prefix)
+            VERSION="${GITHUB_REF#refs/tags/}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Releasing version: $VERSION"
           fi
@@ -100,7 +101,7 @@ jobs:
       - name: Build changelog prompt
         id: changelog-inputs
         run: |
-          PREV_TAG=$(git describe --tags --match 'swift/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
+          PREV_TAG=$(git describe --tags --match 'v*' --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
             COMMITS=$(git log --pretty=format:"- %s (%h)" -- swift/ Package.swift)
             git diff --stat HEAD -- swift/ Package.swift > /tmp/sdk-diff.txt

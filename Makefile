@@ -2,7 +2,7 @@
 #
 # Orchestrates both Smithy spec and Go SDK
 
-.PHONY: all check clean help provenance-sync provenance-check sync-status bump sync-api-version sync-api-version-check
+.PHONY: all check clean help provenance-sync provenance-check sync-status bump sync-api-version sync-api-version-check release
 
 # Default: run all checks
 all: check
@@ -131,6 +131,23 @@ ifndef VERSION
 	$(error VERSION is required. Usage: make bump VERSION=x.y.z)
 endif
 	@./scripts/bump-version.sh $(VERSION)
+
+# Tag and push a global release: make release VERSION=x.y.z
+release:
+ifndef VERSION
+	$(error VERSION is required. Usage: make release VERSION=x.y.z)
+endif
+	@echo "Releasing v$(VERSION)..."
+	@# Verify version constants match
+	@grep -q 'Version = "$(VERSION)"' go/pkg/basecamp/version.go || \
+		{ echo "ERROR: Go version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -q '"version": "$(VERSION)"' typescript/package.json || \
+		{ echo "ERROR: TypeScript version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@git diff --quiet && git diff --cached --quiet || \
+		{ echo "ERROR: Working tree has uncommitted changes. Commit first."; exit 1; }
+	git tag "v$(VERSION)"
+	git push origin "v$(VERSION)"
+	@echo "Pushed v$(VERSION) — all SDK release workflows will trigger."
 
 # Sync API_VERSION constants from openapi.json info.version
 sync-api-version:
@@ -452,10 +469,11 @@ help:
 	@echo "  provenance-check Verify Go embedded provenance is up to date"
 	@echo "  sync-status      Show upstream changes since last spec sync"
 	@echo ""
-	@echo "Version:"
+	@echo "Version & Release:"
 	@echo "  bump VERSION=x.y.z       Bump SDK version across all languages"
 	@echo "  sync-api-version         Sync API_VERSION from openapi.json"
 	@echo "  sync-api-version-check   Verify API_VERSION constants are up to date"
+	@echo "  release VERSION=x.y.z    Tag and push a global release (triggers all SDK releases)"
 	@echo ""
 	@echo "Combined:"
 	@echo "  check            Run all checks (Smithy + Go + TypeScript + Ruby + Swift + Conformance + Provenance)"

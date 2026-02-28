@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'go/v*'
+      - 'v*'
   workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
 
 permissions:
@@ -105,8 +105,8 @@ jobs:
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Rehearsal for version: $VERSION"
           else
-            # Tag trigger: extract from tag
-            VERSION="${GITHUB_REF#refs/tags/go/}"
+            # Tag trigger: extract from tag (v0.2.1 → v0.2.1, Go keeps v prefix)
+            VERSION="${GITHUB_REF#refs/tags/}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Releasing version: $VERSION"
           fi
@@ -136,7 +136,7 @@ jobs:
       - name: Build changelog prompt
         id: changelog-inputs
         run: |
-          PREV_TAG=$(git describe --tags --match 'go/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
+          PREV_TAG=$(git describe --tags --match 'v*' --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
             COMMITS=$(git log --pretty=format:"- %s (%h)" -- go/)
             git diff --stat HEAD -- go/ > /tmp/sdk-diff.txt
