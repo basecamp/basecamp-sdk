@@ -10,11 +10,15 @@ updates:
       timezone: America/Chicago
     open-pull-requests-limit: 10
     groups:
+      otel:
+        patterns:
+          - "go.opentelemetry.io/*"
       go-dependencies:
         patterns:
           - "*"
         exclude-patterns:
           - "github.com/basecamp/*"
+          - "go.opentelemetry.io/*"
     commit-message:
       prefix: "deps(go):"
     labels:
@@ -31,9 +35,18 @@ updates:
       timezone: America/Chicago
     open-pull-requests-limit: 10
     groups:
+      ktor:
+        patterns:
+          - "io.ktor:*"
+      kotlinx:
+        patterns:
+          - "org.jetbrains.kotlinx:*"
       gradle-dependencies:
         patterns:
           - "*"
+        exclude-patterns:
+          - "io.ktor:*"
+          - "org.jetbrains.kotlinx:*"
     commit-message:
       prefix: "deps(kotlin):"
     labels:
@@ -78,6 +91,25 @@ updates:
       - "dependencies"
       - "ruby"
 
+  # Root package (npm publishing shim)
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 5
+    groups:
+      root-npm-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(root):"
+    labels:
+      - "dependencies"
+      - "typescript"
+
   # GitHub Actions dependencies
   - package-ecosystem: github-actions
     directory: "/"
@@ -96,3 +128,82 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+
+  # Conformance runner — Go
+  - package-ecosystem: gomod
+    directory: "/conformance/runner/go"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 5
+    groups:
+      conformance-go-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(conformance-go):"
+    labels:
+      - "dependencies"
+      - "go"
+      - "conformance"
+
+  # Conformance runner — TypeScript
+  - package-ecosystem: npm
+    directory: "/conformance/runner/typescript"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 5
+    groups:
+      conformance-npm-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(conformance-ts):"
+    labels:
+      - "dependencies"
+      - "typescript"
+      - "conformance"
+
+  # Conformance runner — Ruby
+  - package-ecosystem: bundler
+    directory: "/conformance/runner/ruby"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 5
+    groups:
+      conformance-bundler-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(conformance-ruby):"
+    labels:
+      - "dependencies"
+      - "ruby"
+      - "conformance"
+
+  # Smithy bare-arrays spec (standalone Gradle project)
+  - package-ecosystem: gradle
+    directory: "/spec/smithy-bare-arrays"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 5
+    groups:
+      smithy-gradle-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(smithy):"
+    labels:
+      - "dependencies"
+      - "spec"

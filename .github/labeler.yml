@@ -42,7 +42,12 @@ documentation:
 dependencies:
   - changed-files:
       - any-glob-to-any-file:
+          - "**/package.json"
           - "**/package-lock.json"
+          - "**/go.mod"
           - "**/go.sum"
+          - "**/Gemfile"
           - "**/Gemfile.lock"
+          - "**/build.gradle.kts"
           - "**/gradle.lockfile"
+          - "**/gradle/libs.versions.toml"
