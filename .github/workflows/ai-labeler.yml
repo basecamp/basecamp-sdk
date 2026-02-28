@@ -10,6 +10,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write
   models: read
   pull-requests: write
 
@@ -153,8 +154,6 @@ jobs:
         run: |
           # Read response from file to avoid backtick/quote issues in shell
           RESPONSE_FILE="${{ steps.detect.outputs.response-file }}"
-          # Strip markdown code fences if the model wrapped its JSON output
-          sed -i '/^```/d' "$RESPONSE_FILE"
           BREAKING=$(jq -r '.breaking' "$RESPONSE_FILE")
           PR=${{ github.event.pull_request.number }}
 
