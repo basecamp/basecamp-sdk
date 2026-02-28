@@ -1,4 +1,4 @@
-name: Release Swift SDK
+name: Release Kotlin SDK
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
   models: read
 
 jobs:
@@ -55,24 +56,36 @@ jobs:
           echo "openapi.json is up to date"
 
   test:
-    name: Test Swift SDK
-    runs-on: macos-15
+    name: Test Kotlin SDK
+    runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: swift
+        working-directory: kotlin
     steps:
       - uses: actions/checkout@v6
 
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
       - name: Build
-        run: swift build
+        run: ./gradlew :basecamp-sdk:build
 
       - name: Test
-        run: swift test
+        run: ./gradlew :basecamp-sdk:check
 
-  release:
-    name: Create Release
+  publish:
+    name: Publish to GitHub Packages
     needs: [smithy, test]
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kotlin
     steps:
       - uses: actions/checkout@v6
         with:
@@ -84,36 +97,78 @@ jobs:
           git fetch origin main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
       - name: Extract version
         id: version
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="v0.0.0-dry-run"
+            VERSION=$(grep '^version' sdk/build.gradle.kts | sed 's/version = "\(.*\)"/\1/')
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Rehearsal for version: $VERSION"
           else
-            # Tag trigger: extract from tag (v0.2.1, Swift keeps v prefix)
-            VERSION="${GITHUB_REF#refs/tags/}"
+            # Tag trigger: extract from tag (v0.2.1 → 0.2.1)
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            GRADLE_VERSION=$(grep '^version' sdk/build.gradle.kts | sed 's/version = "\(.*\)"/\1/')
+            if [ "$GRADLE_VERSION" != "$VERSION" ]; then
+              echo "::error::Gradle version ($GRADLE_VERSION) does not match tag version ($VERSION)"
+              exit 1
+            fi
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Releasing version: $VERSION"
           fi
 
+      - name: Publish to GitHub Packages
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set +e
+          output=$(./gradlew :basecamp-sdk:publish 2>&1)
+          status=$?
+          set -e
+          echo "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "Publish succeeded."
+          elif echo "$output" | grep -q "status code 409"; then
+            echo "Version already published — treating as success for idempotency."
+          else
+            exit "$status"
+          fi
+        env:
+          GITHUB_USER: x-access-token
+          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dry-run build
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          ./gradlew :basecamp-sdk:build
+          echo "::notice::Dry run mode - not actually publishing"
+
       - name: Build changelog prompt
+        if: github.event_name == 'push'
         id: changelog-inputs
         run: |
+          cd ..
           PREV_TAG=$(git describe --tags --match 'v*' --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
-            COMMITS=$(git log --pretty=format:"- %s (%h)" -- swift/ Package.swift)
-            git diff --stat HEAD -- swift/ Package.swift > /tmp/sdk-diff.txt
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -- kotlin/)
+            git diff --stat HEAD -- kotlin/ > /tmp/sdk-diff.txt
           else
-            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- swift/ Package.swift)
-            git diff "${PREV_TAG}..HEAD" -- swift/ Package.swift > /tmp/sdk-diff.txt
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" -- kotlin/)
+            git diff "${PREV_TAG}..HEAD" -- kotlin/ > /tmp/sdk-diff.txt
           fi
           echo "$COMMITS" > /tmp/commits.txt
 
           {
-            echo "SDK: Swift"
-            echo "Version: ${{ steps.version.outputs.version }}"
+            echo "SDK: Kotlin"
+            echo "Version: v${{ steps.version.outputs.version }}"
             echo ""
             echo "Commits since last release:"
             cat /tmp/commits.txt
@@ -135,6 +190,7 @@ jobs:
           "
 
       - name: Summarize changes
+        if: github.event_name == 'push'
         id: summarize
         continue-on-error: true
         uses: actions/ai-inference@v1
@@ -142,28 +198,26 @@ jobs:
           prompt-file: /tmp/prompt.yml
 
       - name: Write changelog
-        if: steps.summarize.outcome == 'success'
+        if: github.event_name == 'push' && steps.summarize.outcome == 'success'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          SEMVER="${VERSION#v}"
+          cd ..
           RESPONSE_FILE="${{ steps.summarize.outputs.response-file }}"
           {
             cat "$RESPONSE_FILE"
             echo ""
             echo "## Installation"
             echo ""
-            echo "Add the package dependency in your \`Package.swift\`:"
+            echo "Add the GitHub Packages Maven repository and dependency:"
             echo ""
-            echo '```swift'
-            echo ".package(url: \"https://github.com/basecamp/basecamp-sdk.git\", from: \"${SEMVER}\")"
+            echo '```kotlin'
+            echo 'implementation("com.basecamp:basecamp-sdk:${{ steps.version.outputs.version }}")'
             echo '```'
           } > changelog.md
 
       - name: Fallback changelog
-        if: steps.summarize.outcome != 'success'
+        if: github.event_name == 'push' && steps.summarize.outcome != 'success'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          SEMVER="${VERSION#v}"
+          cd ..
           {
             echo "## Changes"
             echo ""
@@ -171,10 +225,10 @@ jobs:
             echo ""
             echo "## Installation"
             echo ""
-            echo "Add the package dependency in your \`Package.swift\`:"
+            echo "Add the GitHub Packages Maven repository and dependency:"
             echo ""
-            echo '```swift'
-            echo ".package(url: \"https://github.com/basecamp/basecamp-sdk.git\", from: \"${SEMVER}\")"
+            echo '```kotlin'
+            echo 'implementation("com.basecamp:basecamp-sdk:${{ steps.version.outputs.version }}")'
             echo '```'
           } > changelog.md
 
@@ -182,26 +236,9 @@ jobs:
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          name: Swift SDK ${{ steps.version.outputs.version }}
+          name: Kotlin SDK v${{ steps.version.outputs.version }}
           body_path: changelog.md
           draft: false
           prerelease: ${{ contains(steps.version.outputs.version, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create SPM version tag
-        if: github.event_name == 'push'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          if git rev-parse "$VERSION" >/dev/null 2>&1; then
-            EXISTING=$(git rev-parse "$VERSION")
-            if [ "$EXISTING" = "$(git rev-parse HEAD)" ]; then
-              echo "Tag $VERSION already exists on this commit; skipping."
-              exit 0
-            else
-              echo "::error::Tag $VERSION already exists on $EXISTING (HEAD is $(git rev-parse HEAD))"
-              exit 1
-            fi
-          fi
-          git tag "$VERSION"
-          git push origin "$VERSION"

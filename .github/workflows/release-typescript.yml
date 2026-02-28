@@ -3,7 +3,7 @@ name: Release TypeScript SDK
 on:
   push:
     tags:
-      - 'ts/v*'
+      - 'v*'
   workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
 
 permissions:
@@ -145,8 +145,8 @@ jobs:
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "Rehearsal for version: $VERSION"
           else
-            # Tag trigger: extract from tag and verify match
-            VERSION="${GITHUB_REF#refs/tags/ts/v}"
+            # Tag trigger: extract from tag (v0.2.1 → 0.2.1)
+            VERSION="${GITHUB_REF#refs/tags/v}"
             PKG_VERSION=$(node -p "require('./package.json').version")
             if [ "$PKG_VERSION" != "$VERSION" ]; then
               echo "::error::Package version ($PKG_VERSION) does not match tag version ($VERSION)"
@@ -180,7 +180,7 @@ jobs:
         id: changelog-inputs
         run: |
           cd ..
-          PREV_TAG=$(git describe --tags --match 'ts/v*' --abbrev=0 HEAD^ 2>/dev/null || true)
+          PREV_TAG=$(git describe --tags --match 'v*' --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
             COMMITS=$(git log --pretty=format:"- %s (%h)" -- typescript/)
             git diff --stat HEAD -- typescript/ > /tmp/sdk-diff.txt
