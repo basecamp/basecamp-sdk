@@ -2,7 +2,7 @@
 #
 # Orchestrates both Smithy spec and Go SDK
 
-.PHONY: all check clean help provenance-sync provenance-check sync-status
+.PHONY: all check clean help provenance-sync provenance-check sync-status bump sync-api-version sync-api-version-check
 
 # Default: run all checks
 all: check
@@ -23,7 +23,7 @@ smithy-mapper:
 	@echo "==> Building Smithy OpenAPI mapper..."
 	cd spec/smithy-bare-arrays && ./gradlew publishToMavenLocal --quiet
 
-# Build OpenAPI from Smithy (also regenerates behavior model)
+# Build OpenAPI from Smithy (also regenerates behavior model + syncs API version)
 smithy-build: behavior-model smithy-mapper
 	@echo "==> Building OpenAPI from Smithy..."
 	cd spec && smithy build
@@ -31,6 +31,7 @@ smithy-build: behavior-model smithy-mapper
 	@echo "==> Post-processing OpenAPI for Go types..."
 	./scripts/enhance-openapi-go-types.sh
 	@echo "Updated openapi.json"
+	@$(MAKE) sync-api-version
 
 # Check that openapi.json is up to date
 smithy-check: smithy-validate smithy-mapper
@@ -119,6 +120,34 @@ sync-status:
 		gh api "repos/$(BC3_REPO)/compare/$$REV...HEAD" \
 			--jq '[.files[] | select(.filename | startswith("app/controllers/"))] | if length == 0 then "  (no changes in app/controllers/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
 	fi
+
+#------------------------------------------------------------------------------
+# Version management
+#------------------------------------------------------------------------------
+
+# Bump SDK version across all languages: make bump VERSION=x.y.z
+bump:
+ifndef VERSION
+	$(error VERSION is required. Usage: make bump VERSION=x.y.z)
+endif
+	@./scripts/bump-version.sh $(VERSION)
+
+# Sync API_VERSION constants from openapi.json info.version
+sync-api-version:
+	@./scripts/sync-api-version.sh
+
+# Check that API_VERSION constants match openapi.json info.version
+sync-api-version-check:
+	@echo "==> Checking API version freshness..."
+	@API_VER=$$(jq -r '.info.version' openapi.json) && \
+	ok=true && \
+	grep -q "const APIVersion = \"$$API_VER\"" go/pkg/basecamp/version.go || ok=false && \
+	grep -q "export const API_VERSION = \"$$API_VER\"" typescript/src/client.ts || ok=false && \
+	grep -q "API_VERSION = \"$$API_VER\"" ruby/lib/basecamp/version.rb || ok=false && \
+	grep -q "const val API_VERSION = \"$$API_VER\"" kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt || ok=false && \
+	grep -q "public static let apiVersion = \"$$API_VER\"" swift/Sources/Basecamp/BasecampConfig.swift || ok=false && \
+	if [ "$$ok" = false ]; then echo "ERROR: API_VERSION constants are out of date. Run 'make sync-api-version'" && exit 1; fi
+	@echo "API version constants are up to date"
 
 #------------------------------------------------------------------------------
 # Go SDK targets (delegates to go/Makefile)
@@ -344,7 +373,7 @@ swift-clean:
 #------------------------------------------------------------------------------
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Behavior Model + Conformance + Provenance)
-check: smithy-check behavior-model-check provenance-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check conformance
+check: smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check conformance
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -421,6 +450,11 @@ help:
 	@echo "  provenance-sync  Copy provenance into Go package for go:embed"
 	@echo "  provenance-check Verify Go embedded provenance is up to date"
 	@echo "  sync-status      Show upstream changes since last spec sync"
+	@echo ""
+	@echo "Version:"
+	@echo "  bump VERSION=x.y.z       Bump SDK version across all languages"
+	@echo "  sync-api-version         Sync API_VERSION from openapi.json"
+	@echo "  sync-api-version-check   Verify API_VERSION constants are up to date"
 	@echo ""
 	@echo "Combined:"
 	@echo "  check            Run all checks (Smithy + Go + TypeScript + Ruby + Swift + Conformance + Provenance)"
