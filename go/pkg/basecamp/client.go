@@ -175,7 +175,7 @@ func WithAuthStrategy(strategy AuthStrategy) ClientOption {
 //
 // Configuration options:
 //   - WithTimeout(d)      - Request timeout (default: 30s)
-//   - WithMaxRetries(n)   - Max retry attempts for GET (default: 5)
+//   - WithMaxRetries(n)   - Max retry attempts for GET (default: 3)
 //   - WithCache(c)        - Enable ETag-based caching
 //   - WithTransport(t)    - Custom http.RoundTripper
 //   - WithLogger(l)       - slog.Logger for debug output

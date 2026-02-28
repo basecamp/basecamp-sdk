@@ -18,17 +18,17 @@ func checkResponse(resp *http.Response) error {
 
 	switch resp.StatusCode {
 	case http.StatusUnauthorized:
-		return &Error{Code: "auth", Message: "authentication required", HTTPStatus: 401}
+		return &Error{Code: CodeAuth, Message: "authentication required", HTTPStatus: 401}
 	case http.StatusForbidden:
-		return &Error{Code: "forbidden", Message: "access denied", HTTPStatus: 403}
+		return &Error{Code: CodeForbidden, Message: "access denied", HTTPStatus: 403}
 	case http.StatusNotFound:
-		return &Error{Code: "not_found", Message: "resource not found", HTTPStatus: 404}
+		return &Error{Code: CodeNotFound, Message: "resource not found", HTTPStatus: 404}
 	case http.StatusUnprocessableEntity:
-		return &Error{Code: "validation", Message: "validation error", HTTPStatus: 422}
+		return &Error{Code: CodeAPI, Message: "validation error", HTTPStatus: 422}
 	case http.StatusTooManyRequests:
-		return &Error{Code: "rate_limit", Message: "rate limited - try again later", HTTPStatus: 429, Retryable: true}
+		return &Error{Code: CodeRateLimit, Message: "rate limited - try again later", HTTPStatus: 429, Retryable: true}
 	default:
-		return &Error{Code: "api", Message: fmt.Sprintf("API error: %s", resp.Status), HTTPStatus: resp.StatusCode}
+		return &Error{Code: CodeAPI, Message: fmt.Sprintf("API error: %s", resp.Status), HTTPStatus: resp.StatusCode}
 	}
 }
 

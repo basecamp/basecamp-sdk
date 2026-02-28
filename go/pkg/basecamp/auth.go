@@ -340,7 +340,12 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 		RefreshToken string `json:"refresh_token"`
 		ExpiresIn    int64  `json:"expires_in"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+	const maxTokenResponseSize int64 = 1 << 20 // 1 MB
+	body, err := limitedReadAll(resp.Body, maxTokenResponseSize)
+	if err != nil {
+		return fmt.Errorf("reading token response: %w", err)
+	}
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
 		return err
 	}
 
