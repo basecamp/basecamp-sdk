@@ -198,7 +198,7 @@ export interface BasecampClientOptions {
   hooks?: BasecampHooks;
 }
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION}`;
 
 /**
