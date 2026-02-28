@@ -82,6 +82,7 @@ func TestExitCodeFor(t *testing.T) {
 		{CodeRateLimit, ExitRateLimit},
 		{CodeNetwork, ExitNetwork},
 		{CodeAPI, ExitAPI},
+		{CodeValidation, ExitValidation},
 		{CodeAmbiguous, ExitAmbiguous},
 		{"unknown_code", ExitAPI},
 	}

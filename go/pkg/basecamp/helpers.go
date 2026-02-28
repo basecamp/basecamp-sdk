@@ -24,7 +24,7 @@ func checkResponse(resp *http.Response) error {
 	case http.StatusNotFound:
 		return &Error{Code: CodeNotFound, Message: "resource not found", HTTPStatus: 404}
 	case http.StatusUnprocessableEntity:
-		return &Error{Code: CodeAPI, Message: "validation error", HTTPStatus: 422}
+		return &Error{Code: CodeValidation, Message: "validation error", HTTPStatus: 422}
 	case http.StatusTooManyRequests:
 		return &Error{Code: CodeRateLimit, Message: "rate limited - try again later", HTTPStatus: 429, Retryable: true}
 	default:

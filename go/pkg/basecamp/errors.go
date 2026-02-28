@@ -18,27 +18,29 @@ var (
 
 // Error codes for API responses.
 const (
-	CodeUsage     = "usage"
-	CodeNotFound  = "not_found"
-	CodeAuth      = "auth_required"
-	CodeForbidden = "forbidden"
-	CodeRateLimit = "rate_limit"
-	CodeNetwork   = "network"
-	CodeAPI       = "api_error"
-	CodeAmbiguous = "ambiguous"
+	CodeUsage      = "usage"
+	CodeNotFound   = "not_found"
+	CodeAuth       = "auth_required"
+	CodeForbidden  = "forbidden"
+	CodeRateLimit  = "rate_limit"
+	CodeNetwork    = "network"
+	CodeAPI        = "api_error"
+	CodeValidation = "validation"
+	CodeAmbiguous  = "ambiguous"
 )
 
 // Exit codes for CLI tools.
 const (
-	ExitOK        = 0 // Success
-	ExitUsage     = 1 // Invalid arguments or flags
-	ExitNotFound  = 2 // Resource not found
-	ExitAuth      = 3 // Not authenticated
-	ExitForbidden = 4 // Access denied (scope issue)
-	ExitRateLimit = 5 // Rate limited (429)
-	ExitNetwork   = 6 // Connection/DNS/timeout error
-	ExitAPI       = 7 // Server returned error
-	ExitAmbiguous = 8 // Multiple matches for name
+	ExitOK         = 0 // Success
+	ExitUsage      = 1 // Invalid arguments or flags
+	ExitNotFound   = 2 // Resource not found
+	ExitAuth       = 3 // Not authenticated
+	ExitForbidden  = 4 // Access denied (scope issue)
+	ExitRateLimit  = 5 // Rate limited (429)
+	ExitNetwork    = 6 // Connection/DNS/timeout error
+	ExitAPI        = 7 // Server returned error
+	ExitAmbiguous  = 8 // Multiple matches for name
+	ExitValidation = 9 // Validation error (422)
 )
 
 // Error is a structured error with code, message, and optional hint.
@@ -86,6 +88,8 @@ func ExitCodeFor(code string) int {
 		return ExitNetwork
 	case CodeAPI:
 		return ExitAPI
+	case CodeValidation:
+		return ExitValidation
 	case CodeAmbiguous:
 		return ExitAmbiguous
 	default:
