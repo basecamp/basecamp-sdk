@@ -139,15 +139,17 @@ ifndef VERSION
 endif
 	@echo "Releasing v$(VERSION)..."
 	@# Verify version constants match
-	@grep -q 'Version = "$(VERSION)"' go/pkg/basecamp/version.go || \
+	@grep -qF 'Version = "$(VERSION)"' go/pkg/basecamp/version.go || \
 		{ echo "ERROR: Go version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@grep -q '"version": "$(VERSION)"' typescript/package.json || \
+	@grep -qF '"version": "$(VERSION)"' typescript/package.json || \
 		{ echo "ERROR: TypeScript version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@grep -q 'VERSION = "$(VERSION)"' ruby/lib/basecamp/version.rb || \
+	@grep -qF 'VERSION = "$(VERSION)"' ruby/lib/basecamp/version.rb || \
 		{ echo "ERROR: Ruby version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@grep -q 'const val VERSION = "$(VERSION)"' kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt || \
+	@grep -qF 'const val VERSION = "$(VERSION)"' kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt || \
 		{ echo "ERROR: Kotlin version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@grep -q 'public static let version = "$(VERSION)"' swift/Sources/Basecamp/BasecampConfig.swift || \
+	@grep -qF 'version = "$(VERSION)"' kotlin/sdk/build.gradle.kts || \
+		{ echo "ERROR: Kotlin Gradle project version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qF 'public static let version = "$(VERSION)"' swift/Sources/Basecamp/BasecampConfig.swift || \
 		{ echo "ERROR: Swift version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@git diff --quiet && git diff --cached --quiet || \
 		{ echo "ERROR: Working tree has uncommitted changes. Commit first."; exit 1; }
