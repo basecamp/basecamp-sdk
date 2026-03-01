@@ -37,21 +37,24 @@ jobs:
             STATUS_LINE=""
 
             for WF in "${WORKFLOWS[@]}"; do
+              # Fetch recent runs and find the one matching this tag push
               RUN_JSON=$(gh run list \
                 --repo "$GITHUB_REPOSITORY" \
                 --workflow "$WF" \
                 --branch "$TAG" \
-                --limit 1 \
+                --limit 5 \
                 --json conclusion,headSha \
-                --jq '.[0] // empty')
+                --jq "[.[] | select(.headSha == \"$GITHUB_SHA\")] | .[0] // empty")
 
-              RUN_SHA=$(echo "$RUN_JSON" | jq -r '.headSha // empty')
-              CONCLUSION=$(echo "$RUN_JSON" | jq -r '.conclusion // empty')
-
-              if [ -z "$RUN_JSON" ] || [ "$RUN_SHA" != "$GITHUB_SHA" ]; then
+              if [ -z "$RUN_JSON" ]; then
                 ALL_DONE=false
                 STATUS_LINE+="  ⏳ $WF: waiting for current run"$'\n'
-              elif [ -z "$CONCLUSION" ]; then
+                continue
+              fi
+
+              CONCLUSION=$(echo "$RUN_JSON" | jq -r '.conclusion // empty')
+
+              if [ -z "$CONCLUSION" ]; then
                 ALL_DONE=false
                 STATUS_LINE+="  ⏳ $WF: in progress"$'\n'
               elif [ "$CONCLUSION" = "success" ]; then
@@ -117,7 +120,7 @@ jobs:
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
           git fetch origin main
-          TAG_SHA=$(git rev-parse "refs/tags/$TAG" 2>/dev/null || git rev-parse "refs/tags/$TAG^{}" 2>/dev/null)
+          TAG_SHA=$(git rev-parse "refs/tags/${TAG}^{commit}" 2>/dev/null || git rev-parse "refs/tags/${TAG}^{}" 2>/dev/null)
           git merge-base --is-ancestor "$TAG_SHA" origin/main
 
       - name: Extract version
@@ -127,6 +130,10 @@ jobs:
           SEMVER="${VERSION#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "semver=$SEMVER" >> $GITHUB_OUTPUT
+
+      - name: Checkout tag
+        if: github.event_name == 'workflow_dispatch'
+        run: git checkout "refs/tags/${{ steps.tag.outputs.tag }}"
 
       - name: Build changelog prompt
         id: changelog-inputs
