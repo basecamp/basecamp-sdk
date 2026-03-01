@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Run actionlint
-        uses: rhysd/actionlint-action@v1
+        uses: rhysd/actionlint@v1
 
   smithy:
     uses: ./.github/workflows/smithy-verify.yml
