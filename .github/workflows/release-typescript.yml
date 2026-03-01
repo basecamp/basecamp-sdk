@@ -108,22 +108,23 @@ jobs:
             echo "tag=latest" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check if already published
+        id: check-published
+        if: github.event_name == 'push'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if npm view "@37signals/basecamp@${VERSION}" version 2>/dev/null; then
+            echo "already_published=true" >> $GITHUB_OUTPUT
+            echo "::notice::Version ${VERSION} already published to npm"
+          else
+            echo "already_published=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish to npm
-        shell: bash
+        if: steps.check-published.outputs.already_published != 'true'
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            set +e
-            output=$(npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --provenance 2>&1)
-            status=$?
-            set -e
-            echo "$output"
-            if [ "$status" -eq 0 ]; then
-              echo "Publish succeeded."
-            elif echo "$output" | grep -qi "cannot publish over the previously published versions"; then
-              echo "Version already published — treating as success for idempotency."
-            else
-              exit "$status"
-            fi
+            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --provenance
           else
             echo "::notice::Dry run mode - not actually publishing"
             npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --dry-run

@@ -7,6 +7,14 @@ on:
   workflow_dispatch:
 
 jobs:
+  actionlint:
+    name: Workflow Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run actionlint
+        uses: rhysd/actionlint@v1.7.11
+
   smithy:
     uses: ./.github/workflows/smithy-verify.yml
 
@@ -158,9 +166,10 @@ jobs:
       - name: Check generated code drift
         run: |
           ./gradlew :generator:run --args="--openapi ../openapi.json --behavior ../behavior-model.json --output sdk/src/commonMain/kotlin/com/basecamp/sdk/generated"
-          if ! git diff --quiet -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/; then
+          if [ -n "$(git status --porcelain -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/)" ]; then
             echo "::error::Generated Kotlin code is out of date. Run 'make kt-generate-services' and commit."
-            git diff --stat -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/
+            git status --short -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/
+            git diff --stat -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ || true
             exit 1
           fi
           echo "Generated code is up to date"

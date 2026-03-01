@@ -4,7 +4,11 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:  # Manual trigger skips publish gate, creates draft release
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.3.0). Required for manual runs.'
+        required: true
 
 permissions:
   contents: write
@@ -33,17 +37,26 @@ jobs:
             STATUS_LINE=""
 
             for WF in "${WORKFLOWS[@]}"; do
-              CONCLUSION=$(gh run list \
+              # Fetch recent runs and find the one matching this tag push
+              RUN_JSON=$(gh run list \
                 --repo "$GITHUB_REPOSITORY" \
                 --workflow "$WF" \
                 --branch "$TAG" \
-                --limit 1 \
-                --json conclusion \
-                --jq '.[0].conclusion // empty')
+                --limit 5 \
+                --json conclusion,headSha \
+                --jq "[.[] | select(.headSha == \"$GITHUB_SHA\")] | .[0] // empty")
+
+              if [ -z "$RUN_JSON" ]; then
+                ALL_DONE=false
+                STATUS_LINE+="  ⏳ $WF: waiting for current run"$'\n'
+                continue
+              fi
+
+              CONCLUSION=$(echo "$RUN_JSON" | jq -r '.conclusion // empty')
 
               if [ -z "$CONCLUSION" ]; then
                 ALL_DONE=false
-                STATUS_LINE+="  ⏳ $WF: pending"$'\n'
+                STATUS_LINE+="  ⏳ $WF: in progress"$'\n'
               elif [ "$CONCLUSION" = "success" ]; then
                 STATUS_LINE+="  ✅ $WF: success"$'\n'
               else
@@ -84,18 +97,43 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="${{ github.event.inputs.tag }}"
+            if [ -z "$TAG" ]; then
+              echo "::error::tag input is required for manual runs"
+              exit 1
+            fi
+            if [[ "$TAG" != v* ]]; then
+              echo "::error::tag must start with 'v' (e.g. v0.3.0), got: $TAG"
+              exit 1
+            fi
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Resolved tag: $TAG"
+
       - name: Verify tag is on main
         run: |
+          TAG="${{ steps.tag.outputs.tag }}"
           git fetch origin main
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          TAG_SHA=$(git rev-parse "refs/tags/${TAG}^{commit}" 2>/dev/null || git rev-parse "refs/tags/${TAG}^{}" 2>/dev/null)
+          git merge-base --is-ancestor "$TAG_SHA" origin/main
 
       - name: Extract version
         id: version
         run: |
-          VERSION="${GITHUB_REF#refs/tags/}"
+          VERSION="${{ steps.tag.outputs.tag }}"
           SEMVER="${VERSION#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "semver=$SEMVER" >> $GITHUB_OUTPUT
+
+      - name: Checkout tag
+        if: github.event_name == 'workflow_dispatch'
+        run: git checkout "refs/tags/${{ steps.tag.outputs.tag }}"
 
       - name: Build changelog prompt
         id: changelog-inputs
@@ -219,6 +257,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
           name: Basecamp SDK ${{ steps.version.outputs.version }}
           body_path: changelog.md
           draft: ${{ github.event_name == 'workflow_dispatch' }}
