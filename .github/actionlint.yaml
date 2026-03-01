@@ -1,0 +1,17 @@
+self-hosted-runner:
+  labels: []
+
+config-variables: null
+
+paths:
+  # ai-labeler.yml embeds Python in a YAML run block that actionlint
+  # can't parse as valid workflow YAML.
+  .github/workflows/ai-labeler.yml:
+    ignore:
+      - 'could not parse as YAML'
+
+  # SC2086 fires on ${{ }} expressions which are interpolated by GitHub
+  # Actions before the shell sees them. Safe to ignore repo-wide.
+  .github/workflows/**/*.yml:
+    ignore:
+      - 'SC2086'
