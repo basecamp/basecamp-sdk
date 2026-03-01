@@ -75,7 +75,7 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/}"
           GO_TAG="go/${TAG}"
 
-          REMOTE_SHA=$(git ls-remote --tags origin "$GO_TAG" | awk '{print $1}')
+          REMOTE_SHA=$(git ls-remote --tags --refs origin "$GO_TAG" | awk '{print $1}')
           if [ -n "$REMOTE_SHA" ]; then
             if [ "$REMOTE_SHA" = "$GITHUB_SHA" ]; then
               echo "Tag $GO_TAG already exists at $GITHUB_SHA — nothing to do."
