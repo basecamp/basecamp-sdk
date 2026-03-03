@@ -19,56 +19,56 @@ public struct ListForwardOptions: Sendable {
 
 
 public final class ForwardsService: BaseService, @unchecked Sendable {
-    public func createReply(projectId: Int, forwardId: Int, req: CreateForwardReplyRequest) async throws -> ForwardReply {
+    public func createReply(forwardId: Int, req: CreateForwardReplyRequest) async throws -> ForwardReply {
         return try await request(
-            OperationInfo(service: "Forwards", operation: "CreateForwardReply", resourceType: "forward_reply", isMutation: true, projectId: projectId, resourceId: forwardId),
+            OperationInfo(service: "Forwards", operation: "CreateForwardReply", resourceType: "forward_reply", isMutation: true, resourceId: forwardId),
             method: "POST",
-            path: "/buckets/\(projectId)/inbox_forwards/\(forwardId)/replies.json",
+            path: "/inbox_forwards/\(forwardId)/replies.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "CreateForwardReply")
         )
     }
 
-    public func get(projectId: Int, forwardId: Int) async throws -> Forward {
+    public func get(forwardId: Int) async throws -> Forward {
         return try await request(
-            OperationInfo(service: "Forwards", operation: "GetForward", resourceType: "forward", isMutation: false, projectId: projectId, resourceId: forwardId),
+            OperationInfo(service: "Forwards", operation: "GetForward", resourceType: "forward", isMutation: false, resourceId: forwardId),
             method: "GET",
-            path: "/buckets/\(projectId)/inbox_forwards/\(forwardId)",
+            path: "/inbox_forwards/\(forwardId)",
             retryConfig: Metadata.retryConfig(for: "GetForward")
         )
     }
 
-    public func getReply(projectId: Int, forwardId: Int, replyId: Int) async throws -> ForwardReply {
+    public func getReply(forwardId: Int, replyId: Int) async throws -> ForwardReply {
         return try await request(
-            OperationInfo(service: "Forwards", operation: "GetForwardReply", resourceType: "forward_reply", isMutation: false, projectId: projectId, resourceId: forwardId),
+            OperationInfo(service: "Forwards", operation: "GetForwardReply", resourceType: "forward_reply", isMutation: false, resourceId: forwardId),
             method: "GET",
-            path: "/buckets/\(projectId)/inbox_forwards/\(forwardId)/replies/\(replyId)",
+            path: "/inbox_forwards/\(forwardId)/replies/\(replyId)",
             retryConfig: Metadata.retryConfig(for: "GetForwardReply")
         )
     }
 
-    public func getInbox(projectId: Int, inboxId: Int) async throws -> Inbox {
+    public func getInbox(inboxId: Int) async throws -> Inbox {
         return try await request(
-            OperationInfo(service: "Forwards", operation: "GetInbox", resourceType: "inbox", isMutation: false, projectId: projectId, resourceId: inboxId),
+            OperationInfo(service: "Forwards", operation: "GetInbox", resourceType: "inbox", isMutation: false, resourceId: inboxId),
             method: "GET",
-            path: "/buckets/\(projectId)/inboxes/\(inboxId)",
+            path: "/inboxes/\(inboxId)",
             retryConfig: Metadata.retryConfig(for: "GetInbox")
         )
     }
 
-    public func listReplies(projectId: Int, forwardId: Int, options: ListRepliesForwardOptions? = nil) async throws -> ListResult<ForwardReply> {
+    public func listReplies(forwardId: Int, options: ListRepliesForwardOptions? = nil) async throws -> ListResult<ForwardReply> {
         return try await requestPaginated(
-            OperationInfo(service: "Forwards", operation: "ListForwardReplies", resourceType: "forward_reply", isMutation: false, projectId: projectId, resourceId: forwardId),
-            path: "/buckets/\(projectId)/inbox_forwards/\(forwardId)/replies.json",
+            OperationInfo(service: "Forwards", operation: "ListForwardReplies", resourceType: "forward_reply", isMutation: false, resourceId: forwardId),
+            path: "/inbox_forwards/\(forwardId)/replies.json",
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListForwardReplies")
         )
     }
 
-    public func list(projectId: Int, inboxId: Int, options: ListForwardOptions? = nil) async throws -> ListResult<Forward> {
+    public func list(inboxId: Int, options: ListForwardOptions? = nil) async throws -> ListResult<Forward> {
         return try await requestPaginated(
-            OperationInfo(service: "Forwards", operation: "ListForwards", resourceType: "forward", isMutation: false, projectId: projectId, resourceId: inboxId),
-            path: "/buckets/\(projectId)/inboxes/\(inboxId)/forwards.json",
+            OperationInfo(service: "Forwards", operation: "ListForwards", resourceType: "forward", isMutation: false, resourceId: inboxId),
+            path: "/inboxes/\(inboxId)/forwards.json",
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListForwards")
         )

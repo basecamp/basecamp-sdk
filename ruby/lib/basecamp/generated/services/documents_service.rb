@@ -41,10 +41,11 @@ module Basecamp
       # @param title [String] title
       # @param content [String, nil] content
       # @param status [String, nil] active|drafted
+      # @param subscriptions [Array, nil] subscriptions
       # @return [Hash] response data
-      def create(vault_id:, title:, content: nil, status: nil)
+      def create(vault_id:, title:, content: nil, status: nil, subscriptions: nil)
         with_operation(service: "documents", operation: "create", is_mutation: true, resource_id: vault_id) do
-          http_post("/vaults/#{vault_id}/documents.json", body: compact_params(title: title, content: content, status: status)).json
+          http_post("/vaults/#{vault_id}/documents.json", body: compact_params(title: title, content: content, status: status, subscriptions: subscriptions)).json
         end
       end
     end

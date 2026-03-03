@@ -43,6 +43,8 @@ export interface CreateDocumentRequest {
   content?: string;
   /** Status */
   status?: "active" | "drafted";
+  /** Subscriptions */
+  subscriptions?: number[];
 }
 
 
@@ -183,6 +185,7 @@ export class DocumentsService extends BaseService {
             title: req.title,
             content: req.content,
             status: req.status,
+            subscriptions: req.subscriptions,
           },
         })
     );

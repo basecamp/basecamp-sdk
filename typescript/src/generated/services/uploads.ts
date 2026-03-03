@@ -49,6 +49,8 @@ export interface CreateUploadRequest {
   description?: string;
   /** Base name */
   baseName?: string;
+  /** Subscriptions */
+  subscriptions?: number[];
 }
 
 
@@ -219,6 +221,7 @@ export class UploadsService extends BaseService {
             attachable_sgid: req.attachableSgid,
             description: req.description,
             base_name: req.baseName,
+            subscriptions: req.subscriptions,
           },
         })
     );

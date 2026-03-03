@@ -39,11 +39,11 @@ public struct ReportTimesheetOptions: Sendable {
 
 
 public final class TimesheetsService: BaseService, @unchecked Sendable {
-    public func create(projectId: Int, recordingId: Int, req: CreateTimesheetEntryRequest) async throws -> TimesheetEntry {
+    public func create(recordingId: Int, req: CreateTimesheetEntryRequest) async throws -> TimesheetEntry {
         return try await request(
-            OperationInfo(service: "Timesheets", operation: "CreateTimesheetEntry", resourceType: "timesheet_entry", isMutation: true, projectId: projectId, resourceId: recordingId),
+            OperationInfo(service: "Timesheets", operation: "CreateTimesheetEntry", resourceType: "timesheet_entry", isMutation: true, resourceId: recordingId),
             method: "POST",
-            path: "/projects/\(projectId)/recordings/\(recordingId)/timesheet/entries.json",
+            path: "/recordings/\(recordingId)/timesheet/entries.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "CreateTimesheetEntry")
         )
@@ -68,7 +68,7 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func forRecording(projectId: Int, recordingId: Int, options: ForRecordingTimesheetOptions? = nil) async throws -> [TimesheetEntry] {
+    public func forRecording(recordingId: Int, options: ForRecordingTimesheetOptions? = nil) async throws -> [TimesheetEntry] {
         var queryItems: [URLQueryItem] = []
         if let from = options?.from {
             queryItems.append(URLQueryItem(name: "from", value: from))
@@ -80,18 +80,18 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
             queryItems.append(URLQueryItem(name: "person_id", value: String(personId)))
         }
         return try await request(
-            OperationInfo(service: "Timesheets", operation: "GetRecordingTimesheet", resourceType: "recording_timesheet", isMutation: false, projectId: projectId, resourceId: recordingId),
+            OperationInfo(service: "Timesheets", operation: "GetRecordingTimesheet", resourceType: "recording_timesheet", isMutation: false, resourceId: recordingId),
             method: "GET",
-            path: "/projects/\(projectId)/recordings/\(recordingId)/timesheet.json" + queryString(queryItems),
+            path: "/recordings/\(recordingId)/timesheet.json" + queryString(queryItems),
             retryConfig: Metadata.retryConfig(for: "GetRecordingTimesheet")
         )
     }
 
-    public func get(projectId: Int, entryId: Int) async throws -> TimesheetEntry {
+    public func get(entryId: Int) async throws -> TimesheetEntry {
         return try await request(
-            OperationInfo(service: "Timesheets", operation: "GetTimesheetEntry", resourceType: "timesheet_entry", isMutation: false, projectId: projectId, resourceId: entryId),
+            OperationInfo(service: "Timesheets", operation: "GetTimesheetEntry", resourceType: "timesheet_entry", isMutation: false, resourceId: entryId),
             method: "GET",
-            path: "/projects/\(projectId)/timesheet/entries/\(entryId)",
+            path: "/timesheet_entries/\(entryId)",
             retryConfig: Metadata.retryConfig(for: "GetTimesheetEntry")
         )
     }
@@ -115,11 +115,11 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func update(projectId: Int, entryId: Int, req: UpdateTimesheetEntryRequest) async throws -> TimesheetEntry {
+    public func update(entryId: Int, req: UpdateTimesheetEntryRequest) async throws -> TimesheetEntry {
         return try await request(
-            OperationInfo(service: "Timesheets", operation: "UpdateTimesheetEntry", resourceType: "timesheet_entry", isMutation: true, projectId: projectId, resourceId: entryId),
+            OperationInfo(service: "Timesheets", operation: "UpdateTimesheetEntry", resourceType: "timesheet_entry", isMutation: true, resourceId: entryId),
             method: "PUT",
-            path: "/projects/\(projectId)/timesheet/entries/\(entryId)",
+            path: "/timesheet_entries/\(entryId)",
             body: req,
             retryConfig: Metadata.retryConfig(for: "UpdateTimesheetEntry")
         )

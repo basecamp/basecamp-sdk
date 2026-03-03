@@ -163,7 +163,8 @@ data class UpdateDocumentBody(
 data class CreateDocumentBody(
     val title: String,
     val content: String? = null,
-    val status: String? = null
+    val status: String? = null,
+    val subscriptions: List<Long>? = null
 )
 
 /** Request body for CreateForwardReply. */
@@ -200,7 +201,8 @@ data class CreateMessageBody(
     val subject: String,
     val content: String? = null,
     val status: String? = null,
-    val categoryId: Long? = null
+    val categoryId: Long? = null,
+    val subscriptions: List<Long>? = null
 )
 
 /** Request body for UpdateMessage. */
@@ -296,7 +298,8 @@ data class CreateScheduleEntryBody(
     val description: String? = null,
     val participantIds: List<Long>? = null,
     val allDay: Boolean? = null,
-    val notify: Boolean? = null
+    val notify: Boolean? = null,
+    val subscriptions: List<Long>? = null
 )
 
 /** Options for Search. */
@@ -472,7 +475,8 @@ data class UpdateUploadBody(
 data class CreateUploadBody(
     val attachableSgid: String,
     val description: String? = null,
-    val baseName: String? = null
+    val baseName: String? = null,
+    val subscriptions: List<Long>? = null
 )
 
 /** Request body for UpdateVault. */

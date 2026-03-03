@@ -35,6 +35,8 @@ export interface CreateMessageRequest {
   status?: "active" | "drafted";
   /** Category id */
   categoryId?: number;
+  /** Subscriptions */
+  subscriptions?: number[];
 }
 
 /**
@@ -125,6 +127,7 @@ export class MessagesService extends BaseService {
             content: req.content,
             status: req.status,
             category_id: req.categoryId,
+            subscriptions: req.subscriptions,
           },
         })
     );

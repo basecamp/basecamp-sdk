@@ -73,6 +73,8 @@ export interface CreateEntryScheduleRequest {
   allDay?: boolean;
   /** Whether to send notifications to relevant people */
   notify?: boolean;
+  /** Subscriptions */
+  subscriptions?: number[];
 }
 
 
@@ -327,6 +329,7 @@ export class SchedulesService extends BaseService {
             participant_ids: req.participantIds,
             all_day: req.allDay,
             notify: req.notify,
+            subscriptions: req.subscriptions,
           },
         })
     );

@@ -11,19 +11,19 @@ public struct ListClientCorrespondenceOptions: Sendable {
 
 
 public final class ClientCorrespondencesService: BaseService, @unchecked Sendable {
-    public func get(projectId: Int, correspondenceId: Int) async throws -> ClientCorrespondence {
+    public func get(correspondenceId: Int) async throws -> ClientCorrespondence {
         return try await request(
-            OperationInfo(service: "ClientCorrespondences", operation: "GetClientCorrespondence", resourceType: "client_correspondence", isMutation: false, projectId: projectId, resourceId: correspondenceId),
+            OperationInfo(service: "ClientCorrespondences", operation: "GetClientCorrespondence", resourceType: "client_correspondence", isMutation: false, resourceId: correspondenceId),
             method: "GET",
-            path: "/buckets/\(projectId)/client/correspondences/\(correspondenceId)",
+            path: "/client/correspondences/\(correspondenceId)",
             retryConfig: Metadata.retryConfig(for: "GetClientCorrespondence")
         )
     }
 
-    public func list(projectId: Int, options: ListClientCorrespondenceOptions? = nil) async throws -> ListResult<ClientCorrespondence> {
+    public func list(options: ListClientCorrespondenceOptions? = nil) async throws -> ListResult<ClientCorrespondence> {
         return try await requestPaginated(
-            OperationInfo(service: "ClientCorrespondences", operation: "ListClientCorrespondences", resourceType: "client_correspondence", isMutation: false, projectId: projectId),
-            path: "/buckets/\(projectId)/client/correspondences.json",
+            OperationInfo(service: "ClientCorrespondences", operation: "ListClientCorrespondences", resourceType: "client_correspondence", isMutation: false),
+            path: "/client/correspondences.json",
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListClientCorrespondences")
         )

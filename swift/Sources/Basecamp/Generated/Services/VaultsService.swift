@@ -11,39 +11,39 @@ public struct ListVaultOptions: Sendable {
 
 
 public final class VaultsService: BaseService, @unchecked Sendable {
-    public func create(projectId: Int, vaultId: Int, req: CreateVaultRequest) async throws -> Vault {
+    public func create(vaultId: Int, req: CreateVaultRequest) async throws -> Vault {
         return try await request(
-            OperationInfo(service: "Vaults", operation: "CreateVault", resourceType: "vault", isMutation: true, projectId: projectId, resourceId: vaultId),
+            OperationInfo(service: "Vaults", operation: "CreateVault", resourceType: "vault", isMutation: true, resourceId: vaultId),
             method: "POST",
-            path: "/buckets/\(projectId)/vaults/\(vaultId)/vaults.json",
+            path: "/vaults/\(vaultId)/vaults.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "CreateVault")
         )
     }
 
-    public func get(projectId: Int, vaultId: Int) async throws -> Vault {
+    public func get(vaultId: Int) async throws -> Vault {
         return try await request(
-            OperationInfo(service: "Vaults", operation: "GetVault", resourceType: "vault", isMutation: false, projectId: projectId, resourceId: vaultId),
+            OperationInfo(service: "Vaults", operation: "GetVault", resourceType: "vault", isMutation: false, resourceId: vaultId),
             method: "GET",
-            path: "/buckets/\(projectId)/vaults/\(vaultId)",
+            path: "/vaults/\(vaultId)",
             retryConfig: Metadata.retryConfig(for: "GetVault")
         )
     }
 
-    public func list(projectId: Int, vaultId: Int, options: ListVaultOptions? = nil) async throws -> ListResult<Vault> {
+    public func list(vaultId: Int, options: ListVaultOptions? = nil) async throws -> ListResult<Vault> {
         return try await requestPaginated(
-            OperationInfo(service: "Vaults", operation: "ListVaults", resourceType: "vault", isMutation: false, projectId: projectId, resourceId: vaultId),
-            path: "/buckets/\(projectId)/vaults/\(vaultId)/vaults.json",
+            OperationInfo(service: "Vaults", operation: "ListVaults", resourceType: "vault", isMutation: false, resourceId: vaultId),
+            path: "/vaults/\(vaultId)/vaults.json",
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListVaults")
         )
     }
 
-    public func update(projectId: Int, vaultId: Int, req: UpdateVaultRequest) async throws -> Vault {
+    public func update(vaultId: Int, req: UpdateVaultRequest) async throws -> Vault {
         return try await request(
-            OperationInfo(service: "Vaults", operation: "UpdateVault", resourceType: "vault", isMutation: true, projectId: projectId, resourceId: vaultId),
+            OperationInfo(service: "Vaults", operation: "UpdateVault", resourceType: "vault", isMutation: true, resourceId: vaultId),
             method: "PUT",
-            path: "/buckets/\(projectId)/vaults/\(vaultId)",
+            path: "/vaults/\(vaultId)",
             body: req,
             retryConfig: Metadata.retryConfig(for: "UpdateVault")
         )

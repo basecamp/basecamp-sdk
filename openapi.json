@@ -19270,6 +19270,14 @@
           "status": {
             "type": "string",
             "description": "active|drafted"
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -19338,6 +19346,14 @@
           "category_id": {
             "type": "integer",
             "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
             "x-go-type-skip-optional-pointer": false
           }
         },
@@ -19496,6 +19512,14 @@
           "notify": {
             "type": "boolean",
             "x-go-type-skip-optional-pointer": false
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -19643,6 +19667,14 @@
           },
           "base_name": {
             "type": "string"
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [

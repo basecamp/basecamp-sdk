@@ -50,10 +50,11 @@ module Basecamp
       # @param attachable_sgid [String] attachable sgid
       # @param description [String, nil] description
       # @param base_name [String, nil] base name
+      # @param subscriptions [Array, nil] subscriptions
       # @return [Hash] response data
-      def create(vault_id:, attachable_sgid:, description: nil, base_name: nil)
+      def create(vault_id:, attachable_sgid:, description: nil, base_name: nil, subscriptions: nil)
         with_operation(service: "uploads", operation: "create", is_mutation: true, resource_id: vault_id) do
-          http_post("/vaults/#{vault_id}/uploads.json", body: compact_params(attachable_sgid: attachable_sgid, description: description, base_name: base_name)).json
+          http_post("/vaults/#{vault_id}/uploads.json", body: compact_params(attachable_sgid: attachable_sgid, description: description, base_name: base_name, subscriptions: subscriptions)).json
         end
       end
     end

@@ -8,6 +8,7 @@ public struct CreateScheduleEntryRequest: Codable, Sendable {
     public var notify: Bool?
     public var participantIds: [Int]?
     public let startsAt: String
+    public var subscriptions: [Int]?
     public let summary: String
 
     public init(
@@ -17,6 +18,7 @@ public struct CreateScheduleEntryRequest: Codable, Sendable {
         notify: Bool? = nil,
         participantIds: [Int]? = nil,
         startsAt: String,
+        subscriptions: [Int]? = nil,
         summary: String
     ) {
         self.allDay = allDay
@@ -25,6 +27,7 @@ public struct CreateScheduleEntryRequest: Codable, Sendable {
         self.notify = notify
         self.participantIds = participantIds
         self.startsAt = startsAt
+        self.subscriptions = subscriptions
         self.summary = summary
     }
 }
