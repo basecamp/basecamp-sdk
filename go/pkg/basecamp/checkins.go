@@ -631,21 +631,21 @@ func questionnaireFromGenerated(gq generated.Questionnaire) Questionnaire {
 		Name:             gq.Name,
 	}
 
-	if derefInt64(gq.Id) != 0 {
-		q.ID = derefInt64(gq.Id)
+	if gq.Id != 0 {
+		q.ID = gq.Id
 	}
 
-	if derefInt64(gq.Bucket.Id) != 0 || gq.Bucket.Name != "" {
+	if gq.Bucket.Id != 0 || gq.Bucket.Name != "" {
 		q.Bucket = &Bucket{
-			ID:   derefInt64(gq.Bucket.Id),
+			ID:   gq.Bucket.Id,
 			Name: gq.Bucket.Name,
 			Type: gq.Bucket.Type,
 		}
 	}
 
-	if derefInt64(gq.Creator.Id) != 0 || gq.Creator.Name != "" {
+	if gq.Creator.Id != 0 || gq.Creator.Name != "" {
 		q.Creator = &Person{
-			ID:           derefInt64(gq.Creator.Id),
+			ID:           gq.Creator.Id,
 			Name:         gq.Creator.Name,
 			EmailAddress: gq.Creator.EmailAddress,
 			AvatarURL:    gq.Creator.AvatarUrl,
@@ -676,8 +676,8 @@ func questionFromGenerated(gq generated.Question) Question {
 		AnswersURL:       gq.AnswersUrl,
 	}
 
-	if derefInt64(gq.Id) != 0 {
-		q.ID = derefInt64(gq.Id)
+	if gq.Id != 0 {
+		q.ID = gq.Id
 	}
 
 	if gq.Schedule.Frequency != "" {
@@ -707,9 +707,9 @@ func questionFromGenerated(gq generated.Question) Question {
 		}
 	}
 
-	if derefInt64(gq.Parent.Id) != 0 || gq.Parent.Title != "" {
+	if gq.Parent.Id != 0 || gq.Parent.Title != "" {
 		q.Parent = &Parent{
-			ID:     derefInt64(gq.Parent.Id),
+			ID:     gq.Parent.Id,
 			Title:  gq.Parent.Title,
 			Type:   gq.Parent.Type,
 			URL:    gq.Parent.Url,
@@ -717,17 +717,17 @@ func questionFromGenerated(gq generated.Question) Question {
 		}
 	}
 
-	if derefInt64(gq.Bucket.Id) != 0 || gq.Bucket.Name != "" {
+	if gq.Bucket.Id != 0 || gq.Bucket.Name != "" {
 		q.Bucket = &Bucket{
-			ID:   derefInt64(gq.Bucket.Id),
+			ID:   gq.Bucket.Id,
 			Name: gq.Bucket.Name,
 			Type: gq.Bucket.Type,
 		}
 	}
 
-	if derefInt64(gq.Creator.Id) != 0 || gq.Creator.Name != "" {
+	if gq.Creator.Id != 0 || gq.Creator.Name != "" {
 		q.Creator = &Person{
-			ID:           derefInt64(gq.Creator.Id),
+			ID:           gq.Creator.Id,
 			Name:         gq.Creator.Name,
 			EmailAddress: gq.Creator.EmailAddress,
 			AvatarURL:    gq.Creator.AvatarUrl,
@@ -758,8 +758,8 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 		Content:          ga.Content,
 	}
 
-	if derefInt64(ga.Id) != 0 {
-		a.ID = derefInt64(ga.Id)
+	if ga.Id != 0 {
+		a.ID = ga.Id
 	}
 
 	// Convert date fields to strings
@@ -767,9 +767,9 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 		a.GroupOn = ga.GroupOn.String()
 	}
 
-	if derefInt64(ga.Parent.Id) != 0 || ga.Parent.Title != "" {
+	if ga.Parent.Id != 0 || ga.Parent.Title != "" {
 		a.Parent = &Parent{
-			ID:     derefInt64(ga.Parent.Id),
+			ID:     ga.Parent.Id,
 			Title:  ga.Parent.Title,
 			Type:   ga.Parent.Type,
 			URL:    ga.Parent.Url,
@@ -777,17 +777,17 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 		}
 	}
 
-	if derefInt64(ga.Bucket.Id) != 0 || ga.Bucket.Name != "" {
+	if ga.Bucket.Id != 0 || ga.Bucket.Name != "" {
 		a.Bucket = &Bucket{
-			ID:   derefInt64(ga.Bucket.Id),
+			ID:   ga.Bucket.Id,
 			Name: ga.Bucket.Name,
 			Type: ga.Bucket.Type,
 		}
 	}
 
-	if derefInt64(ga.Creator.Id) != 0 || ga.Creator.Name != "" {
+	if ga.Creator.Id != 0 || ga.Creator.Name != "" {
 		a.Creator = &Person{
-			ID:           derefInt64(ga.Creator.Id),
+			ID:           ga.Creator.Id,
 			Name:         ga.Creator.Name,
 			EmailAddress: ga.Creator.EmailAddress,
 			AvatarURL:    ga.Creator.AvatarUrl,

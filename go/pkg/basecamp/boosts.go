@@ -263,11 +263,11 @@ func boostFromGenerated(gb generated.Boost) Boost {
 		CreatedAt: gb.CreatedAt,
 	}
 
-	b.ID = derefInt64(gb.Id)
+	b.ID = gb.Id
 
-	if derefInt64(gb.Booster.Id) != 0 || gb.Booster.Name != "" {
+	if gb.Booster.Id != 0 || gb.Booster.Name != "" {
 		b.Booster = &Person{
-			ID:           derefInt64(gb.Booster.Id),
+			ID:           gb.Booster.Id,
 			Name:         gb.Booster.Name,
 			EmailAddress: gb.Booster.EmailAddress,
 			AvatarURL:    gb.Booster.AvatarUrl,
@@ -276,9 +276,9 @@ func boostFromGenerated(gb generated.Boost) Boost {
 		}
 	}
 
-	if derefInt64(gb.Recording.Id) != 0 || gb.Recording.Title != "" {
+	if gb.Recording.Id != 0 || gb.Recording.Title != "" {
 		b.Recording = &Parent{
-			ID:     derefInt64(gb.Recording.Id),
+			ID:     gb.Recording.Id,
 			Title:  gb.Recording.Title,
 			Type:   gb.Recording.Type,
 			URL:    gb.Recording.Url,

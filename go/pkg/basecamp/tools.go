@@ -268,8 +268,8 @@ func toolFromGenerated(gt generated.Tool) Tool {
 		AppURL:    gt.AppUrl,
 	}
 
-	if derefInt64(gt.Id) != 0 {
-		t.ID = derefInt64(gt.Id)
+	if gt.Id != 0 {
+		t.ID = gt.Id
 	}
 
 	if gt.Position != 0 {
@@ -277,9 +277,9 @@ func toolFromGenerated(gt generated.Tool) Tool {
 		t.Position = &pos
 	}
 
-	if derefInt64(gt.Bucket.Id) != 0 || gt.Bucket.Name != "" {
+	if gt.Bucket.Id != 0 || gt.Bucket.Name != "" {
 		t.Bucket = &Bucket{
-			ID:   derefInt64(gt.Bucket.Id),
+			ID:   gt.Bucket.Id,
 			Name: gt.Bucket.Name,
 			Type: gt.Bucket.Type,
 		}
