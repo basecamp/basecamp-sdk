@@ -280,6 +280,74 @@ func TestCreateMessageRequest_MarshalMinimal(t *testing.T) {
 	if _, ok := data["category_id"]; ok {
 		t.Error("expected category_id to be omitted")
 	}
+	if _, ok := data["subscriptions"]; ok {
+		t.Error("expected subscriptions to be omitted")
+	}
+}
+
+// TestCreateMessageRequest_Subscriptions tests that Subscriptions
+// field serializes correctly with specific person IDs.
+func TestCreateMessageRequest_Subscriptions(t *testing.T) {
+	req := CreateMessageRequest{
+		Subject:       "Quiet Post",
+		Subscriptions: &[]int64{111, 222},
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateMessageRequest: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	subs, ok := data["subscriptions"]
+	if !ok {
+		t.Fatal("expected subscriptions to be present")
+	}
+	arr, ok := subs.([]any)
+	if !ok {
+		t.Fatalf("expected subscriptions to be an array, got %T", subs)
+	}
+	if len(arr) != 2 {
+		t.Fatalf("expected 2 subscriptions, got %d", len(arr))
+	}
+	if int64(arr[0].(float64)) != 111 || int64(arr[1].(float64)) != 222 {
+		t.Errorf("expected subscriptions [111, 222], got %v", arr)
+	}
+}
+
+// TestCreateMessageRequest_SubscriptionsEmpty tests that an empty
+// Subscriptions slice serializes as an empty JSON array (not omitted).
+func TestCreateMessageRequest_SubscriptionsEmpty(t *testing.T) {
+	req := CreateMessageRequest{
+		Subject:       "Silent Post",
+		Subscriptions: &[]int64{},
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateMessageRequest: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	subs, ok := data["subscriptions"]
+	if !ok {
+		t.Fatal("expected subscriptions to be present (empty array)")
+	}
+	arr, ok := subs.([]any)
+	if !ok {
+		t.Fatalf("expected subscriptions to be an array, got %T", subs)
+	}
+	if len(arr) != 0 {
+		t.Errorf("expected empty subscriptions array, got %v", arr)
+	}
 }
 
 func TestUpdateMessageRequest_Marshal(t *testing.T) {

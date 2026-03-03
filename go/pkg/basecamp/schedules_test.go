@@ -332,6 +332,42 @@ func TestCreateScheduleEntryRequest_Marshal(t *testing.T) {
 	}
 }
 
+// TestCreateScheduleEntryRequest_Subscriptions tests that Subscriptions
+// field serializes correctly with specific person IDs.
+func TestCreateScheduleEntryRequest_Subscriptions(t *testing.T) {
+	req := CreateScheduleEntryRequest{
+		Summary:       "Quiet Event",
+		StartsAt:      "2022-11-10T14:00:00.000Z",
+		EndsAt:        "2022-11-10T15:00:00.000Z",
+		Subscriptions: &[]int64{111, 222},
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateScheduleEntryRequest: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	subs, ok := data["subscriptions"]
+	if !ok {
+		t.Fatal("expected subscriptions to be present")
+	}
+	arr, ok := subs.([]any)
+	if !ok {
+		t.Fatalf("expected subscriptions to be an array, got %T", subs)
+	}
+	if len(arr) != 2 {
+		t.Fatalf("expected 2 subscriptions, got %d", len(arr))
+	}
+	if int64(arr[0].(float64)) != 111 || int64(arr[1].(float64)) != 222 {
+		t.Errorf("expected subscriptions [111, 222], got %v", arr)
+	}
+}
+
 func TestCreateScheduleEntryRequest_MarshalMinimal(t *testing.T) {
 	// Test with only required fields
 	req := CreateScheduleEntryRequest{

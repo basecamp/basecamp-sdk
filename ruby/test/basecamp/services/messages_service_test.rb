@@ -74,6 +74,18 @@ class MessagesServiceTest < Minitest::Test
     assert_equal "Announcement", result["subject"]
   end
 
+  def test_create_with_subscriptions
+    new_message = sample_message(id: 1001, subject: "Quiet Post")
+    stub_post("/12345/message_boards/456/messages.json", response_body: new_message)
+
+    @account.messages.create(
+      board_id: 456, subject: "Quiet Post", subscriptions: [ 111, 222 ]
+    )
+
+    assert_requested(:post, "#{BASE_URL}/12345/message_boards/456/messages.json",
+      body: hash_including("subscriptions" => [ 111, 222 ]))
+  end
+
   def test_update
     # Generated service: /messages/{id} without .json
     updated_message = sample_message(subject: "Updated Subject")

@@ -104,6 +104,24 @@ describe("MessagesService", () => {
       });
       expect(message.id).toBe(99);
     });
+
+    it("should pass subscriptions in request body", async () => {
+      const boardId = 200;
+
+      server.use(
+        http.post(`${BASE_URL}/message_boards/${boardId}/messages.json`, async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          expect(body.subscriptions).toEqual([111, 222]);
+          return HttpResponse.json(sampleMessage(99), { status: 201 });
+        })
+      );
+
+      const message = await client.messages.create(boardId, {
+        subject: "Test",
+        subscriptions: [111, 222],
+      });
+      expect(message.id).toBe(99);
+    });
   });
 
   describe("update", () => {

@@ -89,6 +89,9 @@ type CreateScheduleEntryRequest struct {
 	AllDay bool `json:"all_day,omitempty"`
 	// Notify triggers participant notifications when true (optional).
 	Notify bool `json:"notify,omitempty"`
+	// Subscriptions controls who gets notified and subscribed.
+	// nil: field omitted (server default). &[]int64{}: subscribe nobody. &[]int64{1,2}: those people.
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
 }
 
 // UpdateScheduleEntryRequest specifies the parameters for updating a schedule entry.
@@ -333,6 +336,7 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, scheduleID int64, re
 		ParticipantIds: req.ParticipantIDs,
 		AllDay:         &req.AllDay,
 		Notify:         &req.Notify,
+		Subscriptions:  req.Subscriptions,
 	}
 
 	resp, err := s.client.parent.gen.CreateScheduleEntryWithResponse(ctx, s.client.accountID, scheduleID, body)
@@ -538,21 +542,21 @@ func scheduleFromGenerated(gs generated.Schedule) Schedule {
 		EntriesURL:            gs.EntriesUrl,
 	}
 
-	if derefInt64(gs.Id) != 0 {
-		s.ID = derefInt64(gs.Id)
+	if gs.Id != 0 {
+		s.ID = gs.Id
 	}
 
-	if derefInt64(gs.Bucket.Id) != 0 || gs.Bucket.Name != "" {
+	if gs.Bucket.Id != 0 || gs.Bucket.Name != "" {
 		s.Bucket = &Bucket{
-			ID:   derefInt64(gs.Bucket.Id),
+			ID:   gs.Bucket.Id,
 			Name: gs.Bucket.Name,
 			Type: gs.Bucket.Type,
 		}
 	}
 
-	if derefInt64(gs.Creator.Id) != 0 || gs.Creator.Name != "" {
+	if gs.Creator.Id != 0 || gs.Creator.Name != "" {
 		s.Creator = &Person{
-			ID:           derefInt64(gs.Creator.Id),
+			ID:           gs.Creator.Id,
 			Name:         gs.Creator.Name,
 			EmailAddress: gs.Creator.EmailAddress,
 			AvatarURL:    gs.Creator.AvatarUrl,
@@ -587,13 +591,13 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 		Description:      ge.Description,
 	}
 
-	if derefInt64(ge.Id) != 0 {
-		e.ID = derefInt64(ge.Id)
+	if ge.Id != 0 {
+		e.ID = ge.Id
 	}
 
-	if derefInt64(ge.Parent.Id) != 0 || ge.Parent.Title != "" {
+	if ge.Parent.Id != 0 || ge.Parent.Title != "" {
 		e.Parent = &Parent{
-			ID:     derefInt64(ge.Parent.Id),
+			ID:     ge.Parent.Id,
 			Title:  ge.Parent.Title,
 			Type:   ge.Parent.Type,
 			URL:    ge.Parent.Url,
@@ -601,17 +605,17 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 		}
 	}
 
-	if derefInt64(ge.Bucket.Id) != 0 || ge.Bucket.Name != "" {
+	if ge.Bucket.Id != 0 || ge.Bucket.Name != "" {
 		e.Bucket = &Bucket{
-			ID:   derefInt64(ge.Bucket.Id),
+			ID:   ge.Bucket.Id,
 			Name: ge.Bucket.Name,
 			Type: ge.Bucket.Type,
 		}
 	}
 
-	if derefInt64(ge.Creator.Id) != 0 || ge.Creator.Name != "" {
+	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
 		e.Creator = &Person{
-			ID:           derefInt64(ge.Creator.Id),
+			ID:           ge.Creator.Id,
 			Name:         ge.Creator.Name,
 			EmailAddress: ge.Creator.EmailAddress,
 			AvatarURL:    ge.Creator.AvatarUrl,
@@ -631,8 +635,8 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 				Admin:        gp.Admin,
 				Owner:        gp.Owner,
 			}
-			if derefInt64(gp.Id) != 0 {
-				p.ID = derefInt64(gp.Id)
+			if gp.Id != 0 {
+				p.ID = gp.Id
 			}
 			e.Participants = append(e.Participants, p)
 		}

@@ -40,6 +40,9 @@ type CreateMessageRequest struct {
 	Status string `json:"status,omitempty"`
 	// CategoryID is the message type ID (optional).
 	CategoryID int64 `json:"category_id,omitempty"`
+	// Subscriptions controls who gets notified and subscribed.
+	// nil: field omitted (server default). &[]int64{}: subscribe nobody. &[]int64{1,2}: those people.
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
 }
 
 // UpdateMessageRequest specifies the parameters for updating a message.
@@ -222,9 +225,10 @@ func (s *MessagesService) Create(ctx context.Context, boardID int64, req *Create
 	}
 
 	body := generated.CreateMessageJSONRequestBody{
-		Subject: req.Subject,
-		Content: req.Content,
-		Status:  req.Status,
+		Subject:       req.Subject,
+		Content:       req.Content,
+		Status:        req.Status,
+		Subscriptions: req.Subscriptions,
 	}
 	if req.CategoryID != 0 {
 		body.CategoryId = &req.CategoryID
@@ -425,14 +429,14 @@ func messageFromGenerated(gm generated.Message) Message {
 		BoostsCount: int(gm.BoostsCount),
 	}
 
-	if derefInt64(gm.Id) != 0 {
-		m.ID = derefInt64(gm.Id)
+	if gm.Id != 0 {
+		m.ID = gm.Id
 	}
 
 	// Convert nested types
-	if derefInt64(gm.Parent.Id) != 0 || gm.Parent.Title != "" {
+	if gm.Parent.Id != 0 || gm.Parent.Title != "" {
 		m.Parent = &Parent{
-			ID:     derefInt64(gm.Parent.Id),
+			ID:     gm.Parent.Id,
 			Title:  gm.Parent.Title,
 			Type:   gm.Parent.Type,
 			URL:    gm.Parent.Url,
@@ -440,17 +444,17 @@ func messageFromGenerated(gm generated.Message) Message {
 		}
 	}
 
-	if derefInt64(gm.Bucket.Id) != 0 || gm.Bucket.Name != "" {
+	if gm.Bucket.Id != 0 || gm.Bucket.Name != "" {
 		m.Bucket = &Bucket{
-			ID:   derefInt64(gm.Bucket.Id),
+			ID:   gm.Bucket.Id,
 			Name: gm.Bucket.Name,
 			Type: gm.Bucket.Type,
 		}
 	}
 
-	if derefInt64(gm.Creator.Id) != 0 || gm.Creator.Name != "" {
+	if gm.Creator.Id != 0 || gm.Creator.Name != "" {
 		m.Creator = &Person{
-			ID:           derefInt64(gm.Creator.Id),
+			ID:           gm.Creator.Id,
 			Name:         gm.Creator.Name,
 			EmailAddress: gm.Creator.EmailAddress,
 			AvatarURL:    gm.Creator.AvatarUrl,
@@ -459,9 +463,9 @@ func messageFromGenerated(gm generated.Message) Message {
 		}
 	}
 
-	if derefInt64(gm.Category.Id) != 0 || gm.Category.Name != "" {
+	if gm.Category.Id != 0 || gm.Category.Name != "" {
 		m.Category = &MessageType{
-			ID:        derefInt64(gm.Category.Id),
+			ID:        gm.Category.Id,
 			Name:      gm.Category.Name,
 			Icon:      gm.Category.Icon,
 			CreatedAt: gm.Category.CreatedAt,
