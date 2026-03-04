@@ -40,6 +40,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: 'go/go.mod'
+          cache-dependency-path: 'go/go.sum'
 
       - name: Build
         run: go build ./...
@@ -188,6 +189,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: 'conformance/runner/go/go.mod'
+          cache-dependency-path: 'conformance/runner/go/go.sum'
 
       - name: Build conformance runner
         run: go build -o conformance-runner .
@@ -248,6 +250,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: 'go/go.mod'
+          cache-dependency-path: 'go/go.sum'
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
@@ -269,6 +272,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: 'go/go.mod'
+          cache-dependency-path: 'go/go.sum'
 
       - name: Test with race detector
         run: go test -race -v ./...
@@ -289,6 +293,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: 'go/go.mod'
+          cache-dependency-path: 'go/go.sum'
 
       - name: Cache Go tools
         uses: actions/cache@v5

@@ -92,6 +92,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: 'go/go.mod'
+          cache-dependency-path: 'go/go.sum'
 
       - name: Set up Java
         if: matrix.language == 'java-kotlin'
