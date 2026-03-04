@@ -1127,21 +1127,21 @@ func cardTableFromGenerated(gc generated.CardTable) CardTable {
 		UpdatedAt:        gc.UpdatedAt,
 	}
 
-	if derefInt64(gc.Id) != 0 {
-		ct.ID = derefInt64(gc.Id)
+	if gc.Id != 0 {
+		ct.ID = gc.Id
 	}
 
-	if derefInt64(gc.Bucket.Id) != 0 || gc.Bucket.Name != "" {
+	if gc.Bucket.Id != 0 || gc.Bucket.Name != "" {
 		ct.Bucket = &Bucket{
-			ID:   derefInt64(gc.Bucket.Id),
+			ID:   gc.Bucket.Id,
 			Name: gc.Bucket.Name,
 			Type: gc.Bucket.Type,
 		}
 	}
 
-	if derefInt64(gc.Creator.Id) != 0 || gc.Creator.Name != "" {
+	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
 		ct.Creator = &Person{
-			ID:           derefInt64(gc.Creator.Id),
+			ID:           gc.Creator.Id,
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -1188,13 +1188,13 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 		UpdatedAt:        gc.UpdatedAt,
 	}
 
-	if derefInt64(gc.Id) != 0 {
-		cc.ID = derefInt64(gc.Id)
+	if gc.Id != 0 {
+		cc.ID = gc.Id
 	}
 
-	if derefInt64(gc.Parent.Id) != 0 || gc.Parent.Title != "" {
+	if gc.Parent.Id != 0 || gc.Parent.Title != "" {
 		cc.Parent = &Parent{
-			ID:     derefInt64(gc.Parent.Id),
+			ID:     gc.Parent.Id,
 			Title:  gc.Parent.Title,
 			Type:   gc.Parent.Type,
 			URL:    gc.Parent.Url,
@@ -1202,17 +1202,17 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 		}
 	}
 
-	if derefInt64(gc.Bucket.Id) != 0 || gc.Bucket.Name != "" {
+	if gc.Bucket.Id != 0 || gc.Bucket.Name != "" {
 		cc.Bucket = &Bucket{
-			ID:   derefInt64(gc.Bucket.Id),
+			ID:   gc.Bucket.Id,
 			Name: gc.Bucket.Name,
 			Type: gc.Bucket.Type,
 		}
 	}
 
-	if derefInt64(gc.Creator.Id) != 0 || gc.Creator.Name != "" {
+	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
 		cc.Creator = &Person{
-			ID:           derefInt64(gc.Creator.Id),
+			ID:           gc.Creator.Id,
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -1255,8 +1255,8 @@ func cardFromGenerated(gc generated.Card) Card {
 		UpdatedAt:        gc.UpdatedAt,
 	}
 
-	if derefInt64(gc.Id) != 0 {
-		c.ID = derefInt64(gc.Id)
+	if gc.Id != 0 {
+		c.ID = gc.Id
 	}
 
 	// Handle due_on - it's types.Date in generated, string in SDK
@@ -1269,9 +1269,9 @@ func cardFromGenerated(gc generated.Card) Card {
 		c.CompletedAt = &gc.CompletedAt
 	}
 
-	if derefInt64(gc.Parent.Id) != 0 || gc.Parent.Title != "" {
+	if gc.Parent.Id != 0 || gc.Parent.Title != "" {
 		c.Parent = &Parent{
-			ID:     derefInt64(gc.Parent.Id),
+			ID:     gc.Parent.Id,
 			Title:  gc.Parent.Title,
 			Type:   gc.Parent.Type,
 			URL:    gc.Parent.Url,
@@ -1279,17 +1279,17 @@ func cardFromGenerated(gc generated.Card) Card {
 		}
 	}
 
-	if derefInt64(gc.Bucket.Id) != 0 || gc.Bucket.Name != "" {
+	if gc.Bucket.Id != 0 || gc.Bucket.Name != "" {
 		c.Bucket = &Bucket{
-			ID:   derefInt64(gc.Bucket.Id),
+			ID:   gc.Bucket.Id,
 			Name: gc.Bucket.Name,
 			Type: gc.Bucket.Type,
 		}
 	}
 
-	if derefInt64(gc.Creator.Id) != 0 || gc.Creator.Name != "" {
+	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
 		c.Creator = &Person{
-			ID:           derefInt64(gc.Creator.Id),
+			ID:           gc.Creator.Id,
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -1298,9 +1298,9 @@ func cardFromGenerated(gc generated.Card) Card {
 		}
 	}
 
-	if derefInt64(gc.Completer.Id) != 0 || gc.Completer.Name != "" {
+	if gc.Completer.Id != 0 || gc.Completer.Name != "" {
 		c.Completer = &Person{
-			ID:           derefInt64(gc.Completer.Id),
+			ID:           gc.Completer.Id,
 			Name:         gc.Completer.Name,
 			EmailAddress: gc.Completer.EmailAddress,
 			AvatarURL:    gc.Completer.AvatarUrl,
@@ -1350,8 +1350,8 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		UpdatedAt:        gs.UpdatedAt,
 	}
 
-	if derefInt64(gs.Id) != 0 {
-		s.ID = derefInt64(gs.Id)
+	if gs.Id != 0 {
+		s.ID = gs.Id
 	}
 
 	// Handle due_on - it's types.Date in generated, string in SDK
@@ -1364,9 +1364,9 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		s.CompletedAt = &gs.CompletedAt
 	}
 
-	if derefInt64(gs.Parent.Id) != 0 || gs.Parent.Title != "" {
+	if gs.Parent.Id != 0 || gs.Parent.Title != "" {
 		s.Parent = &Parent{
-			ID:     derefInt64(gs.Parent.Id),
+			ID:     gs.Parent.Id,
 			Title:  gs.Parent.Title,
 			Type:   gs.Parent.Type,
 			URL:    gs.Parent.Url,
@@ -1374,17 +1374,17 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		}
 	}
 
-	if derefInt64(gs.Bucket.Id) != 0 || gs.Bucket.Name != "" {
+	if gs.Bucket.Id != 0 || gs.Bucket.Name != "" {
 		s.Bucket = &Bucket{
-			ID:   derefInt64(gs.Bucket.Id),
+			ID:   gs.Bucket.Id,
 			Name: gs.Bucket.Name,
 			Type: gs.Bucket.Type,
 		}
 	}
 
-	if derefInt64(gs.Creator.Id) != 0 || gs.Creator.Name != "" {
+	if gs.Creator.Id != 0 || gs.Creator.Name != "" {
 		s.Creator = &Person{
-			ID:           derefInt64(gs.Creator.Id),
+			ID:           gs.Creator.Id,
 			Name:         gs.Creator.Name,
 			EmailAddress: gs.Creator.EmailAddress,
 			AvatarURL:    gs.Creator.AvatarUrl,
@@ -1393,9 +1393,9 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		}
 	}
 
-	if derefInt64(gs.Completer.Id) != 0 || gs.Completer.Name != "" {
+	if gs.Completer.Id != 0 || gs.Completer.Name != "" {
 		s.Completer = &Person{
-			ID:           derefInt64(gs.Completer.Id),
+			ID:           gs.Completer.Id,
 			Name:         gs.Completer.Name,
 			EmailAddress: gs.Completer.EmailAddress,
 			AvatarURL:    gs.Completer.AvatarUrl,

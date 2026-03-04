@@ -43,6 +43,22 @@ class UploadsServiceTest < Minitest::Test
     assert_equal "new-report.pdf", result["filename"]
   end
 
+  def test_create_with_subscriptions
+    response = { "id" => 2, "filename" => "report.pdf" }
+
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/vaults/\d+/uploads\.json})
+      .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    @account.uploads.create(
+      vault_id: 2,
+      attachable_sgid: "BAh7CEkiCGdpZAY6BkVUSSIvZ2lk...",
+      subscriptions: [ 111, 222 ]
+    )
+
+    assert_requested(:post, %r{https://3\.basecampapi\.com/12345/vaults/\d+/uploads\.json},
+      body: hash_including("subscriptions" => [ 111, 222 ]))
+  end
+
   def test_update
     response = { "id" => 1, "description" => "Updated description" }
 

@@ -95,6 +95,22 @@ class SchedulesServiceTest < Minitest::Test
     assert_equal "Full Event", result["summary"]
   end
 
+  def test_create_entry_with_subscriptions
+    new_entry = sample_entry(id: 1001, summary: "Quiet Event")
+    stub_post("/12345/schedules/456/entries.json", response_body: new_entry)
+
+    @account.schedules.create_entry(
+      schedule_id: 456,
+      summary: "Quiet Event",
+      starts_at: "2024-12-20T14:00:00Z",
+      ends_at: "2024-12-20T15:00:00Z",
+      subscriptions: [ 111, 222 ]
+    )
+
+    assert_requested(:post, "#{BASE_URL}/12345/schedules/456/entries.json",
+      body: hash_including("subscriptions" => [ 111, 222 ]))
+  end
+
   def test_update_entry
     updated_entry = sample_entry(summary: "Updated Meeting")
     stub_put("/12345/schedule_entries/789", response_body: updated_entry)

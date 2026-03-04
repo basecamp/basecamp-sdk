@@ -48,61 +48,61 @@ type BadRequestErrorResponseContent struct {
 type Boost struct {
 	Booster   Person          `json:"booster,omitempty"`
 	Content   string          `json:"content,omitempty"`
-	CreatedAt time.Time       `json:"created_at,omitempty"`
-	Id        *int64          `json:"id,omitempty"`
+	CreatedAt time.Time       `json:"created_at"`
+	Id        int64           `json:"id"`
 	Recording RecordingParent `json:"recording,omitempty"`
 }
 
 // Campfire defines model for Campfire.
 type Campfire struct {
-	AppUrl           string     `json:"app_url,omitempty"`
+	AppUrl           string     `json:"app_url"`
 	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket `json:"bucket,omitempty"`
-	CreatedAt        time.Time  `json:"created_at,omitempty"`
-	Creator          Person     `json:"creator,omitempty"`
-	Id               *int64     `json:"id,omitempty"`
-	InheritsStatus   bool       `json:"inherits_status,omitempty"`
+	Bucket           TodoBucket `json:"bucket"`
+	CreatedAt        time.Time  `json:"created_at"`
+	Creator          Person     `json:"creator"`
+	Id               int64      `json:"id"`
+	InheritsStatus   bool       `json:"inherits_status"`
 	LinesUrl         string     `json:"lines_url,omitempty"`
 	Position         int32      `json:"position,omitempty"`
-	Status           string     `json:"status,omitempty"`
+	Status           string     `json:"status"`
 	SubscriptionUrl  string     `json:"subscription_url,omitempty"`
-	Title            string     `json:"title,omitempty"`
+	Title            string     `json:"title"`
 	Topic            string     `json:"topic,omitempty"`
-	Type             string     `json:"type,omitempty"`
-	UpdatedAt        time.Time  `json:"updated_at,omitempty"`
-	Url              string     `json:"url,omitempty"`
-	VisibleToClients bool       `json:"visible_to_clients,omitempty"`
+	Type             string     `json:"type"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	Url              string     `json:"url"`
+	VisibleToClients bool       `json:"visible_to_clients"`
 }
 
 // CampfireLine defines model for CampfireLine.
 type CampfireLine struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
 	BoostsCount      int32           `json:"boosts_count,omitempty"`
 	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
+	Content          string          `json:"content"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
+	Status           string          `json:"status"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // Card defines model for Card.
 type Card struct {
-	AppUrl                string          `json:"app_url,omitempty"`
+	AppUrl                string          `json:"app_url"`
 	Assignees             []Person        `json:"assignees,omitempty"`
 	BookmarkUrl           string          `json:"bookmark_url,omitempty"`
 	BoostsCount           int32           `json:"boosts_count,omitempty"`
 	BoostsUrl             string          `json:"boosts_url,omitempty"`
-	Bucket                TodoBucket      `json:"bucket,omitempty"`
+	Bucket                TodoBucket      `json:"bucket"`
 	CommentsCount         int32           `json:"comments_count,omitempty"`
 	CommentsUrl           string          `json:"comments_url,omitempty"`
 	Completed             bool            `json:"completed,omitempty"`
@@ -111,131 +111,131 @@ type Card struct {
 	CompletionSubscribers []Person        `json:"completion_subscribers,omitempty"`
 	CompletionUrl         string          `json:"completion_url,omitempty"`
 	Content               string          `json:"content,omitempty"`
-	CreatedAt             time.Time       `json:"created_at,omitempty"`
-	Creator               Person          `json:"creator,omitempty"`
+	CreatedAt             time.Time       `json:"created_at"`
+	Creator               Person          `json:"creator"`
 	Description           string          `json:"description,omitempty"`
 	DueOn                 types.Date      `json:"due_on,omitempty"`
-	Id                    *int64          `json:"id,omitempty"`
-	InheritsStatus        bool            `json:"inherits_status,omitempty"`
-	Parent                RecordingParent `json:"parent,omitempty"`
+	Id                    int64           `json:"id"`
+	InheritsStatus        bool            `json:"inherits_status"`
+	Parent                RecordingParent `json:"parent"`
 	Position              int32           `json:"position,omitempty"`
-	Status                string          `json:"status,omitempty"`
+	Status                string          `json:"status"`
 	Steps                 []CardStep      `json:"steps,omitempty"`
 	SubscriptionUrl       string          `json:"subscription_url,omitempty"`
-	Title                 string          `json:"title,omitempty"`
-	Type                  string          `json:"type,omitempty"`
-	UpdatedAt             time.Time       `json:"updated_at,omitempty"`
-	Url                   string          `json:"url,omitempty"`
-	VisibleToClients      bool            `json:"visible_to_clients,omitempty"`
+	Title                 string          `json:"title"`
+	Type                  string          `json:"type"`
+	UpdatedAt             time.Time       `json:"updated_at"`
+	Url                   string          `json:"url"`
+	VisibleToClients      bool            `json:"visible_to_clients"`
 }
 
 // CardColumn defines model for CardColumn.
 type CardColumn struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
 	CardsCount       int32           `json:"cards_count,omitempty"`
 	CardsUrl         string          `json:"cards_url,omitempty"`
 	Color            string          `json:"color,omitempty"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
 	Description      string          `json:"description,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
 	Position         int32           `json:"position,omitempty"`
-	Status           string          `json:"status,omitempty"`
+	Status           string          `json:"status"`
 	Subscribers      []Person        `json:"subscribers,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // CardStep defines model for CardStep.
 type CardStep struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	Assignees        []Person        `json:"assignees,omitempty"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
 	Completed        bool            `json:"completed,omitempty"`
 	CompletedAt      time.Time       `json:"completed_at,omitempty"`
 	Completer        Person          `json:"completer,omitempty"`
 	CompletionUrl    string          `json:"completion_url,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
 	DueOn            types.Date      `json:"due_on,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
 	Position         int32           `json:"position,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Status           string          `json:"status"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // CardTable defines model for CardTable.
 type CardTable struct {
-	AppUrl           string       `json:"app_url,omitempty"`
+	AppUrl           string       `json:"app_url"`
 	BookmarkUrl      string       `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket   `json:"bucket,omitempty"`
-	CreatedAt        time.Time    `json:"created_at,omitempty"`
-	Creator          Person       `json:"creator,omitempty"`
-	Id               *int64       `json:"id,omitempty"`
-	InheritsStatus   bool         `json:"inherits_status,omitempty"`
+	Bucket           TodoBucket   `json:"bucket"`
+	CreatedAt        time.Time    `json:"created_at"`
+	Creator          Person       `json:"creator"`
+	Id               int64        `json:"id"`
+	InheritsStatus   bool         `json:"inherits_status"`
 	Lists            []CardColumn `json:"lists,omitempty"`
-	Status           string       `json:"status,omitempty"`
+	Status           string       `json:"status"`
 	Subscribers      []Person     `json:"subscribers,omitempty"`
 	SubscriptionUrl  string       `json:"subscription_url,omitempty"`
-	Title            string       `json:"title,omitempty"`
-	Type             string       `json:"type,omitempty"`
-	UpdatedAt        time.Time    `json:"updated_at,omitempty"`
-	Url              string       `json:"url,omitempty"`
-	VisibleToClients bool         `json:"visible_to_clients,omitempty"`
+	Title            string       `json:"title"`
+	Type             string       `json:"type"`
+	UpdatedAt        time.Time    `json:"updated_at"`
+	Url              string       `json:"url"`
+	VisibleToClients bool         `json:"visible_to_clients"`
 }
 
 // Chatbot defines model for Chatbot.
 type Chatbot struct {
 	AppUrl      string    `json:"app_url,omitempty"`
 	CommandUrl  string    `json:"command_url,omitempty"`
-	CreatedAt   time.Time `json:"created_at,omitempty"`
-	Id          *int64    `json:"id,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	Id          int64     `json:"id"`
 	LinesUrl    string    `json:"lines_url,omitempty"`
-	ServiceName string    `json:"service_name,omitempty"`
-	UpdatedAt   time.Time `json:"updated_at,omitempty"`
+	ServiceName string    `json:"service_name"`
+	UpdatedAt   time.Time `json:"updated_at"`
 	Url         string    `json:"url,omitempty"`
 }
 
 // ClientApproval defines model for ClientApproval.
 type ClientApproval struct {
-	AppUrl           string                   `json:"app_url,omitempty"`
+	AppUrl           string                   `json:"app_url"`
 	ApprovalStatus   string                   `json:"approval_status,omitempty"`
 	Approver         Person                   `json:"approver,omitempty"`
 	BookmarkUrl      string                   `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket          `json:"bucket,omitempty"`
+	Bucket           RecordingBucket          `json:"bucket"`
 	Content          string                   `json:"content,omitempty"`
-	CreatedAt        time.Time                `json:"created_at,omitempty"`
-	Creator          Person                   `json:"creator,omitempty"`
+	CreatedAt        time.Time                `json:"created_at"`
+	Creator          Person                   `json:"creator"`
 	DueOn            types.Date               `json:"due_on,omitempty"`
-	Id               *int64                   `json:"id,omitempty"`
-	InheritsStatus   bool                     `json:"inherits_status,omitempty"`
-	Parent           RecordingParent          `json:"parent,omitempty"`
+	Id               int64                    `json:"id"`
+	InheritsStatus   bool                     `json:"inherits_status"`
+	Parent           RecordingParent          `json:"parent"`
 	RepliesCount     int32                    `json:"replies_count,omitempty"`
 	RepliesUrl       string                   `json:"replies_url,omitempty"`
 	Responses        []ClientApprovalResponse `json:"responses,omitempty"`
-	Status           string                   `json:"status,omitempty"`
+	Status           string                   `json:"status"`
 	Subject          string                   `json:"subject,omitempty"`
 	SubscriptionUrl  string                   `json:"subscription_url,omitempty"`
-	Title            string                   `json:"title,omitempty"`
-	Type             string                   `json:"type,omitempty"`
-	UpdatedAt        time.Time                `json:"updated_at,omitempty"`
-	Url              string                   `json:"url,omitempty"`
-	VisibleToClients bool                     `json:"visible_to_clients,omitempty"`
+	Title            string                   `json:"title"`
+	Type             string                   `json:"type"`
+	UpdatedAt        time.Time                `json:"updated_at"`
+	Url              string                   `json:"url"`
+	VisibleToClients bool                     `json:"visible_to_clients"`
 }
 
 // ClientApprovalResponse defines model for ClientApprovalResponse.
@@ -259,50 +259,50 @@ type ClientApprovalResponse struct {
 
 // ClientCompany defines model for ClientCompany.
 type ClientCompany struct {
-	Id   *int64 `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
 }
 
 // ClientCorrespondence defines model for ClientCorrespondence.
 type ClientCorrespondence struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket,omitempty"`
+	Bucket           RecordingBucket `json:"bucket"`
 	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
 	RepliesCount     int32           `json:"replies_count,omitempty"`
 	RepliesUrl       string          `json:"replies_url,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Subject          string          `json:"subject,omitempty"`
+	Status           string          `json:"status"`
+	Subject          string          `json:"subject"`
 	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // ClientReply defines model for ClientReply.
 type ClientReply struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket,omitempty"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Bucket           RecordingBucket `json:"bucket"`
+	Content          string          `json:"content"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
+	Status           string          `json:"status"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // ClientSide This shape is deprecated since 2024-01: Use Client Visibility feature instead
@@ -321,23 +321,23 @@ type CloneToolResponseContent = Tool
 
 // Comment defines model for Comment.
 type Comment struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
 	BoostsCount      int32           `json:"boosts_count,omitempty"`
 	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
+	Content          string          `json:"content"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
+	Status           string          `json:"status"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // CreateAnswerResponseContent defines model for CreateAnswerResponseContent.
@@ -412,8 +412,9 @@ type CreateDocumentRequestContent struct {
 	Content string `json:"content,omitempty"`
 
 	// Status active|drafted
-	Status string `json:"status,omitempty"`
-	Title  string `json:"title"`
+	Status        string   `json:"status,omitempty"`
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	Title         string   `json:"title"`
 }
 
 // CreateDocumentResponseContent defines model for CreateDocumentResponseContent.
@@ -447,8 +448,9 @@ type CreateMessageRequestContent struct {
 	Content    string `json:"content,omitempty"`
 
 	// Status active|drafted
-	Status  string `json:"status,omitempty"`
-	Subject string `json:"subject"`
+	Status        string   `json:"status,omitempty"`
+	Subject       string   `json:"subject"`
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
 }
 
 // CreateMessageResponseContent defines model for CreateMessageResponseContent.
@@ -514,6 +516,7 @@ type CreateScheduleEntryRequestContent struct {
 	Notify         *bool     `json:"notify,omitempty"`
 	ParticipantIds []int64   `json:"participant_ids,omitempty"`
 	StartsAt       time.Time `json:"starts_at"`
+	Subscriptions  *[]int64  `json:"subscriptions,omitempty"`
 	Summary        string    `json:"summary"`
 }
 
@@ -573,9 +576,10 @@ type CreateTodolistResponseContent = Todolist
 
 // CreateUploadRequestContent defines model for CreateUploadRequestContent.
 type CreateUploadRequestContent struct {
-	AttachableSgid string `json:"attachable_sgid"`
-	BaseName       string `json:"base_name,omitempty"`
-	Description    string `json:"description,omitempty"`
+	AttachableSgid string   `json:"attachable_sgid"`
+	BaseName       string   `json:"base_name,omitempty"`
+	Description    string   `json:"description,omitempty"`
+	Subscriptions  *[]int64 `json:"subscriptions,omitempty"`
 }
 
 // CreateUploadResponseContent defines model for CreateUploadResponseContent.
@@ -604,38 +608,38 @@ type DisableCardColumnOnHoldResponseContent = CardColumn
 
 // DockItem defines model for DockItem.
 type DockItem struct {
-	AppUrl   string `json:"app_url,omitempty"`
-	Enabled  bool   `json:"enabled,omitempty"`
-	Id       *int64 `json:"id,omitempty"`
-	Name     string `json:"name,omitempty"`
+	AppUrl   string `json:"app_url"`
+	Enabled  bool   `json:"enabled"`
+	Id       int64  `json:"id"`
+	Name     string `json:"name"`
 	Position int32  `json:"position,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Url      string `json:"url,omitempty"`
+	Title    string `json:"title"`
+	Url      string `json:"url"`
 }
 
 // Document defines model for Document.
 type Document struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
 	BoostsCount      int32           `json:"boosts_count,omitempty"`
 	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
 	CommentsUrl      string          `json:"comments_url,omitempty"`
 	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
 	Position         int32           `json:"position,omitempty"`
-	Status           string          `json:"status,omitempty"`
+	Status           string          `json:"status"`
 	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // EnableCardColumnOnHoldResponseContent defines model for EnableCardColumnOnHoldResponseContent.
@@ -643,14 +647,14 @@ type EnableCardColumnOnHoldResponseContent = CardColumn
 
 // Event defines model for Event.
 type Event struct {
-	Action      string       `json:"action,omitempty"`
+	Action      string       `json:"action"`
 	BoostsCount int32        `json:"boosts_count,omitempty"`
 	BoostsUrl   string       `json:"boosts_url,omitempty"`
-	CreatedAt   time.Time    `json:"created_at,omitempty"`
-	Creator     Person       `json:"creator,omitempty"`
+	CreatedAt   time.Time    `json:"created_at"`
+	Creator     Person       `json:"creator"`
 	Details     EventDetails `json:"details,omitempty"`
-	Id          *int64       `json:"id,omitempty"`
-	RecordingId *int64       `json:"recording_id,omitempty"`
+	Id          int64        `json:"id"`
+	RecordingId int64        `json:"recording_id"`
 }
 
 // EventDetails defines model for EventDetails.
@@ -668,47 +672,47 @@ type ForbiddenErrorResponseContent struct {
 
 // Forward defines model for Forward.
 type Forward struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
 	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
 	From             string          `json:"from,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
 	RepliesCount     int32           `json:"replies_count,omitempty"`
 	RepliesUrl       string          `json:"replies_url,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Subject          string          `json:"subject,omitempty"`
+	Status           string          `json:"status"`
+	Subject          string          `json:"subject"`
 	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // ForwardReply defines model for ForwardReply.
 type ForwardReply struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
 	BoostsCount      int32           `json:"boosts_count,omitempty"`
 	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
+	Content          string          `json:"content"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
+	Status           string          `json:"status"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // GetAnswerResponseContent defines model for GetAnswerResponseContent.
@@ -882,22 +886,22 @@ type GetWebhookResponseContent = Webhook
 
 // Inbox defines model for Inbox.
 type Inbox struct {
-	AppUrl           string     `json:"app_url,omitempty"`
+	AppUrl           string     `json:"app_url"`
 	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket `json:"bucket,omitempty"`
-	CreatedAt        time.Time  `json:"created_at,omitempty"`
-	Creator          Person     `json:"creator,omitempty"`
+	Bucket           TodoBucket `json:"bucket"`
+	CreatedAt        time.Time  `json:"created_at"`
+	Creator          Person     `json:"creator"`
 	ForwardsCount    int32      `json:"forwards_count,omitempty"`
 	ForwardsUrl      string     `json:"forwards_url,omitempty"`
-	Id               *int64     `json:"id,omitempty"`
-	InheritsStatus   bool       `json:"inherits_status,omitempty"`
+	Id               int64      `json:"id"`
+	InheritsStatus   bool       `json:"inherits_status"`
 	Position         int32      `json:"position,omitempty"`
-	Status           string     `json:"status,omitempty"`
-	Title            string     `json:"title,omitempty"`
-	Type             string     `json:"type,omitempty"`
-	UpdatedAt        time.Time  `json:"updated_at,omitempty"`
-	Url              string     `json:"url,omitempty"`
-	VisibleToClients bool       `json:"visible_to_clients,omitempty"`
+	Status           string     `json:"status"`
+	Title            string     `json:"title"`
+	Type             string     `json:"type"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	Url              string     `json:"url"`
+	VisibleToClients bool       `json:"visible_to_clients"`
 }
 
 // InternalServerErrorResponseContent defines model for InternalServerErrorResponseContent.
@@ -1010,58 +1014,58 @@ type ListWebhooksResponseContent = []Webhook
 
 // Message defines model for Message.
 type Message struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
 	BoostsCount      int32           `json:"boosts_count,omitempty"`
 	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
 	Category         MessageType     `json:"category,omitempty"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
 	CommentsUrl      string          `json:"comments_url,omitempty"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Subject          string          `json:"subject,omitempty"`
+	Content          string          `json:"content"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
+	Status           string          `json:"status"`
+	Subject          string          `json:"subject"`
 	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // MessageBoard defines model for MessageBoard.
 type MessageBoard struct {
 	AppMessagesUrl   string     `json:"app_messages_url,omitempty"`
-	AppUrl           string     `json:"app_url,omitempty"`
+	AppUrl           string     `json:"app_url"`
 	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket `json:"bucket,omitempty"`
-	CreatedAt        time.Time  `json:"created_at,omitempty"`
-	Creator          Person     `json:"creator,omitempty"`
-	Id               *int64     `json:"id,omitempty"`
-	InheritsStatus   bool       `json:"inherits_status,omitempty"`
+	Bucket           TodoBucket `json:"bucket"`
+	CreatedAt        time.Time  `json:"created_at"`
+	Creator          Person     `json:"creator"`
+	Id               int64      `json:"id"`
+	InheritsStatus   bool       `json:"inherits_status"`
 	MessagesCount    int32      `json:"messages_count,omitempty"`
 	MessagesUrl      string     `json:"messages_url,omitempty"`
 	Position         int32      `json:"position,omitempty"`
-	Status           string     `json:"status,omitempty"`
-	Title            string     `json:"title,omitempty"`
-	Type             string     `json:"type,omitempty"`
-	UpdatedAt        time.Time  `json:"updated_at,omitempty"`
-	Url              string     `json:"url,omitempty"`
-	VisibleToClients bool       `json:"visible_to_clients,omitempty"`
+	Status           string     `json:"status"`
+	Title            string     `json:"title"`
+	Type             string     `json:"type"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	Url              string     `json:"url"`
+	VisibleToClients bool       `json:"visible_to_clients"`
 }
 
 // MessageType defines model for MessageType.
 type MessageType struct {
-	CreatedAt time.Time `json:"created_at,omitempty"`
-	Icon      string    `json:"icon,omitempty"`
-	Id        *int64    `json:"id,omitempty"`
-	Name      string    `json:"name,omitempty"`
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	Icon      string    `json:"icon"`
+	Id        int64     `json:"id"`
+	Name      string    `json:"name"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // MoveCardColumnRequestContent defines model for MoveCardColumnRequestContent.
@@ -1103,9 +1107,9 @@ type Person struct {
 	CreatedAt           time.Time     `json:"created_at,omitempty"`
 	EmailAddress        string        `json:"email_address,omitempty"`
 	Employee            bool          `json:"employee,omitempty"`
-	Id                  *int64        `json:"id,omitempty"`
+	Id                  int64         `json:"id"`
 	Location            string        `json:"location,omitempty"`
-	Name                string        `json:"name,omitempty"`
+	Name                string        `json:"name"`
 	Owner               bool          `json:"owner,omitempty"`
 	PersonableType      string        `json:"personable_type,omitempty"`
 	TimeZone            string        `json:"time_zone,omitempty"`
@@ -1115,13 +1119,13 @@ type Person struct {
 
 // PersonCompany defines model for PersonCompany.
 type PersonCompany struct {
-	Id   *int64 `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
 }
 
 // Project defines model for Project.
 type Project struct {
-	AppUrl         string        `json:"app_url,omitempty"`
+	AppUrl         string        `json:"app_url"`
 	BookmarkUrl    string        `json:"bookmark_url,omitempty"`
 	Bookmarked     bool          `json:"bookmarked,omitempty"`
 	ClientCompany  ClientCompany `json:"client_company,omitempty"`
@@ -1130,17 +1134,17 @@ type Project struct {
 	// Clientside This shape is deprecated since 2024-01: Use Client Visibility feature instead
 	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	Clientside  ClientSide `json:"clientside,omitempty"`
-	CreatedAt   time.Time  `json:"created_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
 	Description string     `json:"description,omitempty"`
 	Dock        []DockItem `json:"dock,omitempty"`
-	Id          *int64     `json:"id,omitempty"`
-	Name        string     `json:"name,omitempty"`
+	Id          int64      `json:"id"`
+	Name        string     `json:"name"`
 	Purpose     string     `json:"purpose,omitempty"`
 
 	// Status active|archived|trashed
-	Status    string    `json:"status,omitempty"`
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	Url       string    `json:"url,omitempty"`
+	Status    string    `json:"status"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Url       string    `json:"url"`
 }
 
 // ProjectAccessResult defines model for ProjectAccessResult.
@@ -1151,9 +1155,9 @@ type ProjectAccessResult struct {
 
 // ProjectConstruction defines model for ProjectConstruction.
 type ProjectConstruction struct {
-	Id      *int64  `json:"id,omitempty"`
+	Id      int64   `json:"id"`
 	Project Project `json:"project,omitempty"`
-	Status  string  `json:"status,omitempty"`
+	Status  string  `json:"status"`
 	Url     string  `json:"url,omitempty"`
 }
 
@@ -1161,48 +1165,48 @@ type ProjectConstruction struct {
 type Question struct {
 	AnswersCount     int32            `json:"answers_count,omitempty"`
 	AnswersUrl       string           `json:"answers_url,omitempty"`
-	AppUrl           string           `json:"app_url,omitempty"`
+	AppUrl           string           `json:"app_url"`
 	BookmarkUrl      string           `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket  `json:"bucket,omitempty"`
-	CreatedAt        time.Time        `json:"created_at,omitempty"`
-	Creator          Person           `json:"creator,omitempty"`
-	Id               *int64           `json:"id,omitempty"`
-	InheritsStatus   bool             `json:"inherits_status,omitempty"`
-	Parent           RecordingParent  `json:"parent,omitempty"`
+	Bucket           RecordingBucket  `json:"bucket"`
+	CreatedAt        time.Time        `json:"created_at"`
+	Creator          Person           `json:"creator"`
+	Id               int64            `json:"id"`
+	InheritsStatus   bool             `json:"inherits_status"`
+	Parent           RecordingParent  `json:"parent"`
 	Paused           bool             `json:"paused,omitempty"`
 	Schedule         QuestionSchedule `json:"schedule,omitempty"`
-	Status           string           `json:"status,omitempty"`
+	Status           string           `json:"status"`
 	SubscriptionUrl  string           `json:"subscription_url,omitempty"`
-	Title            string           `json:"title,omitempty"`
-	Type             string           `json:"type,omitempty"`
-	UpdatedAt        time.Time        `json:"updated_at,omitempty"`
-	Url              string           `json:"url,omitempty"`
-	VisibleToClients bool             `json:"visible_to_clients,omitempty"`
+	Title            string           `json:"title"`
+	Type             string           `json:"type"`
+	UpdatedAt        time.Time        `json:"updated_at"`
+	Url              string           `json:"url"`
+	VisibleToClients bool             `json:"visible_to_clients"`
 }
 
 // QuestionAnswer defines model for QuestionAnswer.
 type QuestionAnswer struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
 	BoostsCount      int32           `json:"boosts_count,omitempty"`
 	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket,omitempty"`
+	Bucket           RecordingBucket `json:"bucket"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
 	CommentsUrl      string          `json:"comments_url,omitempty"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
+	Content          string          `json:"content"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
 	GroupOn          types.Date      `json:"group_on,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
-	Status           string          `json:"status,omitempty"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
+	Status           string          `json:"status"`
 	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // QuestionAnswerPayload defines model for QuestionAnswerPayload.
@@ -1239,22 +1243,22 @@ type QuestionSchedule struct {
 
 // Questionnaire defines model for Questionnaire.
 type Questionnaire struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Name             string          `json:"name,omitempty"`
+	Bucket           RecordingBucket `json:"bucket"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Name             string          `json:"name"`
 	QuestionsCount   int32           `json:"questions_count,omitempty"`
 	QuestionsUrl     string          `json:"questions_url,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Status           string          `json:"status"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // RateLimitErrorResponseContent defines model for RateLimitErrorResponseContent.
@@ -1266,40 +1270,40 @@ type RateLimitErrorResponseContent struct {
 
 // Recording defines model for Recording.
 type Recording struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket,omitempty"`
+	Bucket           RecordingBucket `json:"bucket"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
 	CommentsUrl      string          `json:"comments_url,omitempty"`
 	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
-	Status           string          `json:"status,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
+	Status           string          `json:"status"`
 	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // RecordingBucket defines model for RecordingBucket.
 type RecordingBucket struct {
-	Id   *int64 `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
-	Type string `json:"type,omitempty"`
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 // RecordingParent defines model for RecordingParent.
 type RecordingParent struct {
-	AppUrl string `json:"app_url,omitempty"`
-	Id     *int64 `json:"id,omitempty"`
-	Title  string `json:"title,omitempty"`
-	Type   string `json:"type,omitempty"`
-	Url    string `json:"url,omitempty"`
+	AppUrl string `json:"app_url"`
+	Id     int64  `json:"id"`
+	Title  string `json:"title"`
+	Type   string `json:"type"`
+	Url    string `json:"url"`
 }
 
 // RepositionCardStepRequestContent defines model for RepositionCardStepRequestContent.
@@ -1333,23 +1337,23 @@ type ResumeQuestionResponseContent struct {
 
 // Schedule defines model for Schedule.
 type Schedule struct {
-	AppUrl                string     `json:"app_url,omitempty"`
+	AppUrl                string     `json:"app_url"`
 	BookmarkUrl           string     `json:"bookmark_url,omitempty"`
-	Bucket                TodoBucket `json:"bucket,omitempty"`
-	CreatedAt             time.Time  `json:"created_at,omitempty"`
-	Creator               Person     `json:"creator,omitempty"`
+	Bucket                TodoBucket `json:"bucket"`
+	CreatedAt             time.Time  `json:"created_at"`
+	Creator               Person     `json:"creator"`
 	EntriesCount          int32      `json:"entries_count,omitempty"`
 	EntriesUrl            string     `json:"entries_url,omitempty"`
-	Id                    *int64     `json:"id,omitempty"`
+	Id                    int64      `json:"id"`
 	IncludeDueAssignments bool       `json:"include_due_assignments,omitempty"`
-	InheritsStatus        bool       `json:"inherits_status,omitempty"`
+	InheritsStatus        bool       `json:"inherits_status"`
 	Position              int32      `json:"position,omitempty"`
-	Status                string     `json:"status,omitempty"`
-	Title                 string     `json:"title,omitempty"`
-	Type                  string     `json:"type,omitempty"`
-	UpdatedAt             time.Time  `json:"updated_at,omitempty"`
-	Url                   string     `json:"url,omitempty"`
-	VisibleToClients      bool       `json:"visible_to_clients,omitempty"`
+	Status                string     `json:"status"`
+	Title                 string     `json:"title"`
+	Type                  string     `json:"type"`
+	UpdatedAt             time.Time  `json:"updated_at"`
+	Url                   string     `json:"url"`
+	VisibleToClients      bool       `json:"visible_to_clients"`
 }
 
 // ScheduleAttributes defines model for ScheduleAttributes.
@@ -1361,30 +1365,30 @@ type ScheduleAttributes struct {
 // ScheduleEntry defines model for ScheduleEntry.
 type ScheduleEntry struct {
 	AllDay           bool            `json:"all_day,omitempty"`
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
 	BoostsCount      int32           `json:"boosts_count,omitempty"`
 	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
 	CommentsUrl      string          `json:"comments_url,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
 	Description      string          `json:"description,omitempty"`
 	EndsAt           time.Time       `json:"ends_at,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
 	Participants     []Person        `json:"participants,omitempty"`
 	StartsAt         time.Time       `json:"starts_at,omitempty"`
-	Status           string          `json:"status,omitempty"`
+	Status           string          `json:"status"`
 	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Summary          string          `json:"summary,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Summary          string          `json:"summary"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // SearchMetadata defines model for SearchMetadata.
@@ -1403,22 +1407,22 @@ type SearchResponseContent = []SearchResult
 
 // SearchResult defines model for SearchResult.
 type SearchResult struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
 	Bucket           RecordingBucket `json:"bucket,omitempty"`
 	Content          string          `json:"content,omitempty"`
 	CreatedAt        time.Time       `json:"created_at,omitempty"`
 	Creator          Person          `json:"creator,omitempty"`
 	Description      string          `json:"description,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
+	Id               int64           `json:"id"`
 	InheritsStatus   bool            `json:"inherits_status,omitempty"`
 	Parent           RecordingParent `json:"parent,omitempty"`
 	Status           string          `json:"status,omitempty"`
 	Subject          string          `json:"subject,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
 	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
+	Url              string          `json:"url"`
 	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
 }
 
@@ -1453,22 +1457,22 @@ type SubscribeResponseContent = Subscription
 
 // Subscription defines model for Subscription.
 type Subscription struct {
-	Count       int32    `json:"count,omitempty"`
-	Subscribed  bool     `json:"subscribed,omitempty"`
+	Count       int32    `json:"count"`
+	Subscribed  bool     `json:"subscribed"`
 	Subscribers []Person `json:"subscribers,omitempty"`
-	Url         string   `json:"url,omitempty"`
+	Url         string   `json:"url"`
 }
 
 // Template defines model for Template.
 type Template struct {
 	AppUrl      string     `json:"app_url,omitempty"`
-	CreatedAt   time.Time  `json:"created_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
 	Description string     `json:"description,omitempty"`
 	Dock        []DockItem `json:"dock,omitempty"`
-	Id          *int64     `json:"id,omitempty"`
-	Name        string     `json:"name,omitempty"`
+	Id          int64      `json:"id"`
+	Name        string     `json:"name"`
 	Status      string     `json:"status,omitempty"`
-	UpdatedAt   time.Time  `json:"updated_at,omitempty"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 	Url         string     `json:"url,omitempty"`
 }
 
@@ -1490,134 +1494,134 @@ type TimelineEvent struct {
 
 // TimesheetEntry defines model for TimesheetEntry.
 type TimesheetEntry struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
 	Date             string          `json:"date,omitempty"`
 	Description      string          `json:"description,omitempty"`
 	Hours            string          `json:"hours,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
 	Person           Person          `json:"person,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Status           string          `json:"status"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // Todo defines model for Todo.
 type Todo struct {
-	AppUrl                string     `json:"app_url,omitempty"`
+	AppUrl                string     `json:"app_url"`
 	Assignees             []Person   `json:"assignees,omitempty"`
 	BookmarkUrl           string     `json:"bookmark_url,omitempty"`
 	BoostsCount           int32      `json:"boosts_count,omitempty"`
 	BoostsUrl             string     `json:"boosts_url,omitempty"`
-	Bucket                TodoBucket `json:"bucket,omitempty"`
+	Bucket                TodoBucket `json:"bucket"`
 	CommentsCount         int32      `json:"comments_count,omitempty"`
 	CommentsUrl           string     `json:"comments_url,omitempty"`
 	Completed             bool       `json:"completed,omitempty"`
 	CompletionSubscribers []Person   `json:"completion_subscribers,omitempty"`
 	CompletionUrl         string     `json:"completion_url,omitempty"`
-	Content               string     `json:"content,omitempty"`
-	CreatedAt             time.Time  `json:"created_at,omitempty"`
-	Creator               Person     `json:"creator,omitempty"`
+	Content               string     `json:"content"`
+	CreatedAt             time.Time  `json:"created_at"`
+	Creator               Person     `json:"creator"`
 	Description           string     `json:"description,omitempty"`
 	DueOn                 types.Date `json:"due_on,omitempty"`
-	Id                    *int64     `json:"id,omitempty"`
-	InheritsStatus        bool       `json:"inherits_status,omitempty"`
-	Parent                TodoParent `json:"parent,omitempty"`
+	Id                    int64      `json:"id"`
+	InheritsStatus        bool       `json:"inherits_status"`
+	Parent                TodoParent `json:"parent"`
 	Position              int32      `json:"position,omitempty"`
 	StartsOn              types.Date `json:"starts_on,omitempty"`
 
 	// Status active|archived|trashed
-	Status           string    `json:"status,omitempty"`
+	Status           string    `json:"status"`
 	SubscriptionUrl  string    `json:"subscription_url,omitempty"`
-	Title            string    `json:"title,omitempty"`
-	Type             string    `json:"type,omitempty"`
-	UpdatedAt        time.Time `json:"updated_at,omitempty"`
-	Url              string    `json:"url,omitempty"`
-	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
+	Title            string    `json:"title"`
+	Type             string    `json:"type"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Url              string    `json:"url"`
+	VisibleToClients bool      `json:"visible_to_clients"`
 }
 
 // TodoBucket defines model for TodoBucket.
 type TodoBucket struct {
-	Id   *int64 `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
-	Type string `json:"type,omitempty"`
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 // TodoParent defines model for TodoParent.
 type TodoParent struct {
-	AppUrl string `json:"app_url,omitempty"`
-	Id     *int64 `json:"id,omitempty"`
-	Title  string `json:"title,omitempty"`
-	Type   string `json:"type,omitempty"`
-	Url    string `json:"url,omitempty"`
+	AppUrl string `json:"app_url"`
+	Id     int64  `json:"id"`
+	Title  string `json:"title"`
+	Type   string `json:"type"`
+	Url    string `json:"url"`
 }
 
 // Todolist defines model for Todolist.
 type Todolist struct {
 	AppTodosUrl    string     `json:"app_todos_url,omitempty"`
-	AppUrl         string     `json:"app_url,omitempty"`
+	AppUrl         string     `json:"app_url"`
 	BookmarkUrl    string     `json:"bookmark_url,omitempty"`
 	BoostsCount    int32      `json:"boosts_count,omitempty"`
 	BoostsUrl      string     `json:"boosts_url,omitempty"`
-	Bucket         TodoBucket `json:"bucket,omitempty"`
+	Bucket         TodoBucket `json:"bucket"`
 	CommentsCount  int32      `json:"comments_count,omitempty"`
 	CommentsUrl    string     `json:"comments_url,omitempty"`
 	Completed      bool       `json:"completed,omitempty"`
 	CompletedRatio string     `json:"completed_ratio,omitempty"`
-	CreatedAt      time.Time  `json:"created_at,omitempty"`
-	Creator        Person     `json:"creator,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	Creator        Person     `json:"creator"`
 	Description    string     `json:"description,omitempty"`
 	GroupsUrl      string     `json:"groups_url,omitempty"`
-	Id             *int64     `json:"id,omitempty"`
-	InheritsStatus bool       `json:"inherits_status,omitempty"`
-	Name           string     `json:"name,omitempty"`
-	Parent         TodoParent `json:"parent,omitempty"`
+	Id             int64      `json:"id"`
+	InheritsStatus bool       `json:"inherits_status"`
+	Name           string     `json:"name"`
+	Parent         TodoParent `json:"parent"`
 	Position       int32      `json:"position,omitempty"`
 
 	// Status active|archived|trashed
-	Status           string    `json:"status,omitempty"`
+	Status           string    `json:"status"`
 	SubscriptionUrl  string    `json:"subscription_url,omitempty"`
-	Title            string    `json:"title,omitempty"`
+	Title            string    `json:"title"`
 	TodosUrl         string    `json:"todos_url,omitempty"`
-	Type             string    `json:"type,omitempty"`
-	UpdatedAt        time.Time `json:"updated_at,omitempty"`
-	Url              string    `json:"url,omitempty"`
-	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
+	Type             string    `json:"type"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Url              string    `json:"url"`
+	VisibleToClients bool      `json:"visible_to_clients"`
 }
 
 // TodolistGroup defines model for TodolistGroup.
 type TodolistGroup struct {
 	AppTodosUrl      string     `json:"app_todos_url,omitempty"`
-	AppUrl           string     `json:"app_url,omitempty"`
+	AppUrl           string     `json:"app_url"`
 	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket `json:"bucket,omitempty"`
+	Bucket           TodoBucket `json:"bucket"`
 	CommentsCount    int32      `json:"comments_count,omitempty"`
 	CommentsUrl      string     `json:"comments_url,omitempty"`
 	Completed        bool       `json:"completed,omitempty"`
 	CompletedRatio   string     `json:"completed_ratio,omitempty"`
-	CreatedAt        time.Time  `json:"created_at,omitempty"`
-	Creator          Person     `json:"creator,omitempty"`
-	Id               *int64     `json:"id,omitempty"`
-	InheritsStatus   bool       `json:"inherits_status,omitempty"`
-	Name             string     `json:"name,omitempty"`
-	Parent           TodoParent `json:"parent,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	Creator          Person     `json:"creator"`
+	Id               int64      `json:"id"`
+	InheritsStatus   bool       `json:"inherits_status"`
+	Name             string     `json:"name"`
+	Parent           TodoParent `json:"parent"`
 	Position         int32      `json:"position,omitempty"`
-	Status           string     `json:"status,omitempty"`
+	Status           string     `json:"status"`
 	SubscriptionUrl  string     `json:"subscription_url,omitempty"`
-	Title            string     `json:"title,omitempty"`
+	Title            string     `json:"title"`
 	TodosUrl         string     `json:"todos_url,omitempty"`
-	Type             string     `json:"type,omitempty"`
-	UpdatedAt        time.Time  `json:"updated_at,omitempty"`
-	Url              string     `json:"url,omitempty"`
-	VisibleToClients bool       `json:"visible_to_clients,omitempty"`
+	Type             string     `json:"type"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	Url              string     `json:"url"`
+	VisibleToClients bool       `json:"visible_to_clients"`
 }
 
 // TodolistOrGroup Union type for polymorphic todolist endpoint
@@ -1638,42 +1642,42 @@ type TodolistOrGroup1 struct {
 // Todoset defines model for Todoset.
 type Todoset struct {
 	AppTodolistsUrl   string     `json:"app_todolists_url,omitempty"`
-	AppUrl            string     `json:"app_url,omitempty"`
+	AppUrl            string     `json:"app_url"`
 	BookmarkUrl       string     `json:"bookmark_url,omitempty"`
-	Bucket            TodoBucket `json:"bucket,omitempty"`
+	Bucket            TodoBucket `json:"bucket"`
 	Completed         bool       `json:"completed,omitempty"`
 	CompletedCount    int32      `json:"completed_count,omitempty"`
 	CompletedRatio    string     `json:"completed_ratio,omitempty"`
-	CreatedAt         time.Time  `json:"created_at,omitempty"`
-	Creator           Person     `json:"creator,omitempty"`
-	Id                *int64     `json:"id,omitempty"`
-	InheritsStatus    bool       `json:"inherits_status,omitempty"`
-	Name              string     `json:"name,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+	Creator           Person     `json:"creator"`
+	Id                int64      `json:"id"`
+	InheritsStatus    bool       `json:"inherits_status"`
+	Name              string     `json:"name"`
 	OnScheduleCount   int32      `json:"on_schedule_count,omitempty"`
 	OverScheduleCount int32      `json:"over_schedule_count,omitempty"`
 	Position          int32      `json:"position,omitempty"`
-	Status            string     `json:"status,omitempty"`
-	Title             string     `json:"title,omitempty"`
+	Status            string     `json:"status"`
+	Title             string     `json:"title"`
 	TodolistsCount    int32      `json:"todolists_count,omitempty"`
 	TodolistsUrl      string     `json:"todolists_url,omitempty"`
-	Type              string     `json:"type,omitempty"`
-	UpdatedAt         time.Time  `json:"updated_at,omitempty"`
-	Url               string     `json:"url,omitempty"`
-	VisibleToClients  bool       `json:"visible_to_clients,omitempty"`
+	Type              string     `json:"type"`
+	UpdatedAt         time.Time  `json:"updated_at"`
+	Url               string     `json:"url"`
+	VisibleToClients  bool       `json:"visible_to_clients"`
 }
 
 // Tool defines model for Tool.
 type Tool struct {
 	AppUrl    string          `json:"app_url,omitempty"`
 	Bucket    RecordingBucket `json:"bucket,omitempty"`
-	CreatedAt time.Time       `json:"created_at,omitempty"`
-	Enabled   bool            `json:"enabled,omitempty"`
-	Id        *int64          `json:"id,omitempty"`
-	Name      string          `json:"name,omitempty"`
+	CreatedAt time.Time       `json:"created_at"`
+	Enabled   bool            `json:"enabled"`
+	Id        int64           `json:"id"`
+	Name      string          `json:"name"`
 	Position  int32           `json:"position,omitempty"`
 	Status    string          `json:"status,omitempty"`
-	Title     string          `json:"title,omitempty"`
-	UpdatedAt time.Time       `json:"updated_at,omitempty"`
+	Title     string          `json:"title"`
+	UpdatedAt time.Time       `json:"updated_at"`
 	Url       string          `json:"url,omitempty"`
 }
 
@@ -1928,32 +1932,32 @@ type UpdateWebhookResponseContent = Webhook
 
 // Upload defines model for Upload.
 type Upload struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
 	BoostsCount      int32           `json:"boosts_count,omitempty"`
 	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
 	ByteSize         int64           `json:"byte_size,omitempty"`
 	CommentsCount    int32           `json:"comments_count,omitempty"`
 	CommentsUrl      string          `json:"comments_url,omitempty"`
 	ContentType      string          `json:"content_type,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
 	Description      string          `json:"description,omitempty"`
 	DownloadUrl      string          `json:"download_url,omitempty"`
 	Filename         string          `json:"filename,omitempty"`
 	Height           int32           `json:"height,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
 	Position         int32           `json:"position,omitempty"`
-	Status           string          `json:"status,omitempty"`
+	Status           string          `json:"status"`
 	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 	Width            int32           `json:"width,omitempty"`
 }
 
@@ -1965,40 +1969,40 @@ type ValidationErrorResponseContent struct {
 
 // Vault defines model for Vault.
 type Vault struct {
-	AppUrl           string          `json:"app_url,omitempty"`
+	AppUrl           string          `json:"app_url"`
 	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
 	DocumentsCount   int32           `json:"documents_count,omitempty"`
 	DocumentsUrl     string          `json:"documents_url,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
 	Parent           RecordingParent `json:"parent,omitempty"`
 	Position         int32           `json:"position,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
+	Status           string          `json:"status"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
 	UploadsCount     int32           `json:"uploads_count,omitempty"`
 	UploadsUrl       string          `json:"uploads_url,omitempty"`
-	Url              string          `json:"url,omitempty"`
+	Url              string          `json:"url"`
 	VaultsCount      int32           `json:"vaults_count,omitempty"`
 	VaultsUrl        string          `json:"vaults_url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // Webhook defines model for Webhook.
 type Webhook struct {
 	Active           bool              `json:"active,omitempty"`
-	AppUrl           string            `json:"app_url,omitempty"`
-	CreatedAt        time.Time         `json:"created_at,omitempty"`
-	Id               *int64            `json:"id,omitempty"`
-	PayloadUrl       string            `json:"payload_url,omitempty"`
+	AppUrl           string            `json:"app_url"`
+	CreatedAt        time.Time         `json:"created_at"`
+	Id               int64             `json:"id"`
+	PayloadUrl       string            `json:"payload_url"`
 	RecentDeliveries []WebhookDelivery `json:"recent_deliveries,omitempty"`
 	Types            []string          `json:"types,omitempty"`
-	UpdatedAt        time.Time         `json:"updated_at,omitempty"`
-	Url              string            `json:"url,omitempty"`
+	UpdatedAt        time.Time         `json:"updated_at"`
+	Url              string            `json:"url"`
 }
 
 // WebhookCopy Reference to a copied/moved recording in copy events.
@@ -2110,6 +2114,13 @@ type ListRecordingsParams struct {
 	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
+// GetProjectTimesheetParams defines parameters for GetProjectTimesheet.
+type GetProjectTimesheetParams struct {
+	From     string `form:"from,omitempty" json:"from,omitempty"`
+	To       string `form:"to,omitempty" json:"to,omitempty"`
+	PersonId int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
+}
+
 // GetRecordingTimesheetParams defines parameters for GetRecordingTimesheet.
 type GetRecordingTimesheetParams struct {
 	From     string `form:"from,omitempty" json:"from,omitempty"`
@@ -2157,13 +2168,6 @@ type ListTemplatesParams struct {
 	Status string `form:"status,omitempty" json:"status,omitempty"`
 }
 
-// GetProjectTimesheetParams defines parameters for GetProjectTimesheet.
-type GetProjectTimesheetParams struct {
-	From     string `form:"from,omitempty" json:"from,omitempty"`
-	To       string `form:"to,omitempty" json:"to,omitempty"`
-	PersonId int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
-}
-
 // ListTodosParams defines parameters for ListTodos.
 type ListTodosParams struct {
 	// Status active|archived|trashed
@@ -2176,6 +2180,9 @@ type ListTodolistsParams struct {
 	// Status active|archived|trashed
 	Status string `form:"status,omitempty" json:"status,omitempty"`
 }
+
+// CreateWebhookJSONRequestBody defines body for CreateWebhook for application/json ContentType.
+type CreateWebhookJSONRequestBody = CreateWebhookRequestContent
 
 // UpdateCardJSONRequestBody defines body for UpdateCard for application/json ContentType.
 type UpdateCardJSONRequestBody = UpdateCardRequestContent
@@ -2353,9 +2360,6 @@ type CreateUploadJSONRequestBody = CreateUploadRequestContent
 
 // CreateVaultJSONRequestBody defines body for CreateVault for application/json ContentType.
 type CreateVaultJSONRequestBody = CreateVaultRequestContent
-
-// CreateWebhookJSONRequestBody defines body for CreateWebhook for application/json ContentType.
-type CreateWebhookJSONRequestBody = CreateWebhookRequestContent
 
 // UpdateWebhookJSONRequestBody defines body for UpdateWebhook for application/json ContentType.
 type UpdateWebhookJSONRequestBody = UpdateWebhookRequestContent
@@ -2659,6 +2663,14 @@ type ClientInterface interface {
 	// GetBoost request
 	GetBoost(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListWebhooks request
+	ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateWebhookWithBody request with any body
+	CreateWebhookWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateWebhook(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetCard request
 	GetCard(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2943,6 +2955,12 @@ type ClientInterface interface {
 
 	UpdateProjectAccess(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetProjectTimeline request
+	GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetProjectTimesheet request
+	GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetAnswer request
 	GetAnswer(ctx context.Context, accountId string, answerId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3159,12 +3177,6 @@ type ClientInterface interface {
 	// GetProjectConstruction request
 	GetProjectConstruction(ctx context.Context, accountId string, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetProjectTimeline request
-	GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetProjectTimesheet request
-	GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetTimesheetEntry request
 	GetTimesheetEntry(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3278,14 +3290,6 @@ type ClientInterface interface {
 
 	CreateVault(ctx context.Context, accountId string, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListWebhooks request
-	ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateWebhookWithBody request with any body
-	CreateWebhookWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CreateWebhook(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// DeleteWebhook request
 	DeleteWebhook(ctx context.Context, accountId string, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3331,6 +3335,46 @@ func (c *Client) GetBoost(ctx context.Context, accountId string, boostId int64, 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetBoostRequest(c.Server, accountId, boostId)
 	}, true, "GetBoost", reqEditors...)
+
+}
+
+// ListWebhooks is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListWebhooksRequest(c.Server, accountId, bucketId)
+	}, true, "ListWebhooks", reqEditors...)
+
+}
+
+// CreateWebhookWithBody executes the CreateWebhook operation.
+
+func (c *Client) CreateWebhookWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateWebhookRequestWithBody(c.Server, accountId, bucketId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateWebhook(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateWebhookRequest(c.Server, accountId, bucketId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 
 }
 
@@ -4492,6 +4536,26 @@ func (c *Client) UpdateProjectAccess(ctx context.Context, accountId string, proj
 
 }
 
+// GetProjectTimeline is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetProjectTimelineRequest(c.Server, accountId, projectId)
+	}, true, "GetProjectTimeline", reqEditors...)
+
+}
+
+// GetProjectTimesheet is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetProjectTimesheetRequest(c.Server, accountId, projectId, params)
+	}, true, "GetProjectTimesheet", reqEditors...)
+
+}
+
 // GetAnswer is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetAnswer(ctx context.Context, accountId string, answerId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5362,26 +5426,6 @@ func (c *Client) GetProjectConstruction(ctx context.Context, accountId string, t
 
 }
 
-// GetProjectTimeline is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProjectTimelineRequest(c.Server, accountId, projectId)
-	}, true, "GetProjectTimeline", reqEditors...)
-
-}
-
-// GetProjectTimesheet is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProjectTimesheetRequest(c.Server, accountId, projectId, params)
-	}, true, "GetProjectTimesheet", reqEditors...)
-
-}
-
 // GetTimesheetEntry is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetTimesheetEntry(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5848,46 +5892,6 @@ func (c *Client) CreateVault(ctx context.Context, accountId string, vaultId int6
 
 }
 
-// ListWebhooks is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListWebhooksRequest(c.Server, accountId, bucketId)
-	}, true, "ListWebhooks", reqEditors...)
-
-}
-
-// CreateWebhookWithBody executes the CreateWebhook operation.
-
-func (c *Client) CreateWebhookWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCreateWebhookRequestWithBody(c.Server, accountId, bucketId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-func (c *Client) CreateWebhook(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCreateWebhookRequest(c.Server, accountId, bucketId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
 // DeleteWebhook is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) DeleteWebhook(ctx context.Context, accountId string, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -6058,6 +6062,101 @@ func NewGetBoostRequest(server string, accountId string, boostId int64) (*http.R
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewListWebhooksRequest generates requests for ListWebhooks
+func NewListWebhooksRequest(server string, accountId string, bucketId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/webhooks.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateWebhookRequest calls the generic CreateWebhook builder with application/json body
+func NewCreateWebhookRequest(server string, accountId string, bucketId int64, body CreateWebhookJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateWebhookRequestWithBody(server, accountId, bucketId, "application/json", bodyReader)
+}
+
+// NewCreateWebhookRequestWithBody generates requests for CreateWebhook with any type of body
+func NewCreateWebhookRequestWithBody(server string, accountId string, bucketId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/webhooks.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -9577,6 +9676,130 @@ func NewUpdateProjectAccessRequestWithBody(server string, accountId string, proj
 	return req, nil
 }
 
+// NewGetProjectTimelineRequest generates requests for GetProjectTimeline
+func NewGetProjectTimelineRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/timeline.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetProjectTimesheetRequest generates requests for GetProjectTimesheet
+func NewGetProjectTimesheetRequest(server string, accountId string, projectId int64, params *GetProjectTimesheetParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/timesheet.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, params.From); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, params.To); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, params.PersonId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetAnswerRequest generates requests for GetAnswer
 func NewGetAnswerRequest(server string, accountId string, answerId int64) (*http.Request, error) {
 	var err error
@@ -12453,130 +12676,6 @@ func NewGetProjectConstructionRequest(server string, accountId string, templateI
 	return req, nil
 }
 
-// NewGetProjectTimelineRequest generates requests for GetProjectTimeline
-func NewGetProjectTimelineRequest(server string, accountId string, projectId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/projects/%s/timeline.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetProjectTimesheetRequest generates requests for GetProjectTimesheet
-func NewGetProjectTimesheetRequest(server string, accountId string, projectId int64, params *GetProjectTimesheetParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/projects/%s/timesheet.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, params.From); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, params.To); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, params.PersonId); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetTimesheetEntryRequest generates requests for GetTimesheetEntry
 func NewGetTimesheetEntryRequest(server string, accountId string, entryId int64) (*http.Request, error) {
 	var err error
@@ -13983,101 +14082,6 @@ func NewCreateVaultRequestWithBody(server string, accountId string, vaultId int6
 	return req, nil
 }
 
-// NewListWebhooksRequest generates requests for ListWebhooks
-func NewListWebhooksRequest(server string, accountId string, bucketId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/webhooks.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewCreateWebhookRequest calls the generic CreateWebhook builder with application/json body
-func NewCreateWebhookRequest(server string, accountId string, bucketId int64, body CreateWebhookJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateWebhookRequestWithBody(server, accountId, bucketId, "application/json", bodyReader)
-}
-
-// NewCreateWebhookRequestWithBody generates requests for CreateWebhook with any type of body
-func NewCreateWebhookRequestWithBody(server string, accountId string, bucketId int64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/buckets/%s/webhooks.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewDeleteWebhookRequest generates requests for DeleteWebhook
 func NewDeleteWebhookRequest(server string, accountId string, webhookId int64) (*http.Request, error) {
 	var err error
@@ -14243,6 +14247,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateAttachment":                   {Idempotent: false, HasSensitiveParams: false},
 	"DeleteBoost":                        {Idempotent: true, HasSensitiveParams: false},
 	"GetBoost":                           {Idempotent: true, HasSensitiveParams: false},
+	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
 	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
 	"UpdateCard":                         {Idempotent: true, HasSensitiveParams: false},
 	"MoveCard":                           {Idempotent: false, HasSensitiveParams: false},
@@ -14319,6 +14325,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateProject":                      {Idempotent: true, HasSensitiveParams: false},
 	"ListProjectPeople":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProjectAccess":                {Idempotent: true, HasSensitiveParams: false},
+	"GetProjectTimeline":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetProjectTimesheet":                {Idempotent: true, HasSensitiveParams: false},
 	"GetAnswer":                          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateAnswer":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetQuestionnaire":                   {Idempotent: true, HasSensitiveParams: false},
@@ -14379,8 +14387,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateTemplate":                     {Idempotent: true, HasSensitiveParams: false},
 	"CreateProjectFromTemplate":          {Idempotent: false, HasSensitiveParams: false},
 	"GetProjectConstruction":             {Idempotent: true, HasSensitiveParams: false},
-	"GetProjectTimeline":                 {Idempotent: true, HasSensitiveParams: false},
-	"GetProjectTimesheet":                {Idempotent: true, HasSensitiveParams: false},
 	"GetTimesheetEntry":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTimesheetEntry":               {Idempotent: true, HasSensitiveParams: false},
 	"RepositionTodolistGroup":            {Idempotent: true, HasSensitiveParams: false},
@@ -14410,8 +14416,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateUpload":                       {Idempotent: false, HasSensitiveParams: false},
 	"ListVaults":                         {Idempotent: true, HasSensitiveParams: false},
 	"CreateVault":                        {Idempotent: false, HasSensitiveParams: false},
-	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
-	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
 	"DeleteWebhook":                      {Idempotent: true, HasSensitiveParams: false},
 	"GetWebhook":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateWebhook":                      {Idempotent: true, HasSensitiveParams: false},
@@ -14835,8 +14839,7 @@ func AsAPIError(err error) *APIError {
 	if err == nil {
 		return nil
 	}
-	var apiErr *APIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*APIError](err); ok {
 		return apiErr
 	}
 	return &APIError{
@@ -14977,6 +14980,18 @@ type CampfiresService struct{ client *Client }
 func (c *Client) Campfires() *CampfiresService { return &CampfiresService{client: c} }
 
 // Generate service methods by delegating to client methods
+
+func (s *WebhooksService) List(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListWebhooks(ctx, accountId, bucketId, reqEditors...)
+}
+
+func (s *WebhooksService) CreateWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateWebhookWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
+}
+
+func (s *WebhooksService) Create(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateWebhook(ctx, accountId, bucketId, body, reqEditors...)
+}
 
 func (s *CardsService) Get(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.GetCard(ctx, accountId, cardId, reqEditors...)
@@ -15294,18 +15309,6 @@ func (s *VaultsService) Create(ctx context.Context, accountId string, vaultId in
 	return s.client.CreateVault(ctx, accountId, vaultId, body, reqEditors...)
 }
 
-func (s *WebhooksService) List(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListWebhooks(ctx, accountId, bucketId, reqEditors...)
-}
-
-func (s *WebhooksService) CreateWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateWebhookWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
-}
-
-func (s *WebhooksService) Create(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.CreateWebhook(ctx, accountId, bucketId, body, reqEditors...)
-}
-
 func (s *WebhooksService) Delete(ctx context.Context, accountId string, webhookId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.DeleteWebhook(ctx, accountId, webhookId, reqEditors...)
 }
@@ -15359,6 +15362,14 @@ type ClientWithResponsesInterface interface {
 
 	// GetBoostWithResponse request
 	GetBoostWithResponse(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*GetBoostResponse, error)
+
+	// ListWebhooksWithResponse request
+	ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
+
+	// CreateWebhookWithBodyWithResponse request with any body
+	CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
+
+	CreateWebhookWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
 
 	// GetCardWithResponse request
 	GetCardWithResponse(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error)
@@ -15644,6 +15655,12 @@ type ClientWithResponsesInterface interface {
 
 	UpdateProjectAccessWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
 
+	// GetProjectTimelineWithResponse request
+	GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
+
+	// GetProjectTimesheetWithResponse request
+	GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
+
 	// GetAnswerWithResponse request
 	GetAnswerWithResponse(ctx context.Context, accountId string, answerId int64, reqEditors ...RequestEditorFn) (*GetAnswerResponse, error)
 
@@ -15860,12 +15877,6 @@ type ClientWithResponsesInterface interface {
 	// GetProjectConstructionWithResponse request
 	GetProjectConstructionWithResponse(ctx context.Context, accountId string, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*GetProjectConstructionResponse, error)
 
-	// GetProjectTimelineWithResponse request
-	GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
-
-	// GetProjectTimesheetWithResponse request
-	GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
-
 	// GetTimesheetEntryWithResponse request
 	GetTimesheetEntryWithResponse(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*GetTimesheetEntryResponse, error)
 
@@ -15979,14 +15990,6 @@ type ClientWithResponsesInterface interface {
 
 	CreateVaultWithResponse(ctx context.Context, accountId string, vaultId int64, body CreateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error)
 
-	// ListWebhooksWithResponse request
-	ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
-
-	// CreateWebhookWithBodyWithResponse request with any body
-	CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
-
-	CreateWebhookWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
-
 	// DeleteWebhookWithResponse request
 	DeleteWebhookWithResponse(ctx context.Context, accountId string, webhookId int64, reqEditors ...RequestEditorFn) (*DeleteWebhookResponse, error)
 
@@ -16071,6 +16074,60 @@ func (r GetBoostResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetBoostResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListWebhooksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListWebhooksResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListWebhooksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListWebhooksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateWebhookResponseContent
+	JSON400      *BadRequestErrorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+	JSON507      *WebhookLimitErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateWebhookResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -18071,6 +18128,59 @@ func (r UpdateProjectAccessResponse) StatusCode() int {
 	return 0
 }
 
+type GetProjectTimelineResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetProjectTimelineResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProjectTimelineResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProjectTimelineResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetProjectTimesheetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetProjectTimesheetResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProjectTimesheetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProjectTimesheetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetAnswerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19649,59 +19759,6 @@ func (r GetProjectConstructionResponse) StatusCode() int {
 	return 0
 }
 
-type GetProjectTimelineResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *GetProjectTimelineResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r GetProjectTimelineResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetProjectTimelineResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetProjectTimesheetResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *GetProjectTimesheetResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r GetProjectTimesheetResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetProjectTimesheetResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetTimesheetEntryResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20465,60 +20522,6 @@ func (r CreateVaultResponse) StatusCode() int {
 	return 0
 }
 
-type ListWebhooksResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ListWebhooksResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r ListWebhooksResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListWebhooksResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type CreateWebhookResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *CreateWebhookResponseContent
-	JSON400      *BadRequestErrorResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-	JSON507      *WebhookLimitErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateWebhookResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateWebhookResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type DeleteWebhookResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20623,6 +20626,32 @@ func (c *ClientWithResponses) GetBoostWithResponse(ctx context.Context, accountI
 		return nil, err
 	}
 	return ParseGetBoostResponse(rsp)
+}
+
+// ListWebhooksWithResponse request returning *ListWebhooksResponse
+func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
+	rsp, err := c.ListWebhooks(ctx, accountId, bucketId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListWebhooksResponse(rsp)
+}
+
+// CreateWebhookWithBodyWithResponse request with arbitrary body returning *CreateWebhookResponse
+func (c *ClientWithResponses) CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
+	rsp, err := c.CreateWebhookWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWebhookResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
+	rsp, err := c.CreateWebhook(ctx, accountId, bucketId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWebhookResponse(rsp)
 }
 
 // GetCardWithResponse request returning *GetCardResponse
@@ -21533,6 +21562,24 @@ func (c *ClientWithResponses) UpdateProjectAccessWithResponse(ctx context.Contex
 	return ParseUpdateProjectAccessResponse(rsp)
 }
 
+// GetProjectTimelineWithResponse request returning *GetProjectTimelineResponse
+func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error) {
+	rsp, err := c.GetProjectTimeline(ctx, accountId, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProjectTimelineResponse(rsp)
+}
+
+// GetProjectTimesheetWithResponse request returning *GetProjectTimesheetResponse
+func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error) {
+	rsp, err := c.GetProjectTimesheet(ctx, accountId, projectId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProjectTimesheetResponse(rsp)
+}
+
 // GetAnswerWithResponse request returning *GetAnswerResponse
 func (c *ClientWithResponses) GetAnswerWithResponse(ctx context.Context, accountId string, answerId int64, reqEditors ...RequestEditorFn) (*GetAnswerResponse, error) {
 	rsp, err := c.GetAnswer(ctx, accountId, answerId, reqEditors...)
@@ -22217,24 +22264,6 @@ func (c *ClientWithResponses) GetProjectConstructionWithResponse(ctx context.Con
 	return ParseGetProjectConstructionResponse(rsp)
 }
 
-// GetProjectTimelineWithResponse request returning *GetProjectTimelineResponse
-func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error) {
-	rsp, err := c.GetProjectTimeline(ctx, accountId, projectId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetProjectTimelineResponse(rsp)
-}
-
-// GetProjectTimesheetWithResponse request returning *GetProjectTimesheetResponse
-func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error) {
-	rsp, err := c.GetProjectTimesheet(ctx, accountId, projectId, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetProjectTimesheetResponse(rsp)
-}
-
 // GetTimesheetEntryWithResponse request returning *GetTimesheetEntryResponse
 func (c *ClientWithResponses) GetTimesheetEntryWithResponse(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*GetTimesheetEntryResponse, error) {
 	rsp, err := c.GetTimesheetEntry(ctx, accountId, entryId, reqEditors...)
@@ -22600,32 +22629,6 @@ func (c *ClientWithResponses) CreateVaultWithResponse(ctx context.Context, accou
 	return ParseCreateVaultResponse(rsp)
 }
 
-// ListWebhooksWithResponse request returning *ListWebhooksResponse
-func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
-	rsp, err := c.ListWebhooks(ctx, accountId, bucketId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListWebhooksResponse(rsp)
-}
-
-// CreateWebhookWithBodyWithResponse request with arbitrary body returning *CreateWebhookResponse
-func (c *ClientWithResponses) CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
-	rsp, err := c.CreateWebhookWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateWebhookResponse(rsp)
-}
-
-func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error) {
-	rsp, err := c.CreateWebhook(ctx, accountId, bucketId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateWebhookResponse(rsp)
-}
-
 // DeleteWebhookWithResponse request returning *DeleteWebhookResponse
 func (c *ClientWithResponses) DeleteWebhookWithResponse(ctx context.Context, accountId string, webhookId int64, reqEditors ...RequestEditorFn) (*DeleteWebhookResponse, error) {
 	rsp, err := c.DeleteWebhook(ctx, accountId, webhookId, reqEditors...)
@@ -22817,6 +22820,128 @@ func ParseGetBoostResponse(rsp *http.Response) (*GetBoostResponse, error) {
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListWebhooksResponse parses an HTTP response from a ListWebhooksWithResponse call
+func ParseListWebhooksResponse(rsp *http.Response) (*ListWebhooksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListWebhooksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListWebhooksResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateWebhookResponse parses an HTTP response from a CreateWebhookWithResponse call
+func ParseCreateWebhookResponse(rsp *http.Response) (*CreateWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateWebhookResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 507:
+		var dest WebhookLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON507 = &dest
 
 	}
 
@@ -27053,6 +27178,121 @@ func ParseUpdateProjectAccessResponse(rsp *http.Response) (*UpdateProjectAccessR
 	return response, nil
 }
 
+// ParseGetProjectTimelineResponse parses an HTTP response from a GetProjectTimelineWithResponse call
+func ParseGetProjectTimelineResponse(rsp *http.Response) (*GetProjectTimelineResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProjectTimelineResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetProjectTimelineResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetProjectTimesheetResponse parses an HTTP response from a GetProjectTimesheetWithResponse call
+func ParseGetProjectTimesheetResponse(rsp *http.Response) (*GetProjectTimesheetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProjectTimesheetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetProjectTimesheetResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetAnswerResponse parses an HTTP response from a GetAnswerWithResponse call
 func ParseGetAnswerResponse(rsp *http.Response) (*GetAnswerResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -30419,121 +30659,6 @@ func ParseGetProjectConstructionResponse(rsp *http.Response) (*GetProjectConstru
 	return response, nil
 }
 
-// ParseGetProjectTimelineResponse parses an HTTP response from a GetProjectTimelineWithResponse call
-func ParseGetProjectTimelineResponse(rsp *http.Response) (*GetProjectTimelineResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetProjectTimelineResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetProjectTimelineResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetProjectTimesheetResponse parses an HTTP response from a GetProjectTimesheetWithResponse call
-func ParseGetProjectTimesheetResponse(rsp *http.Response) (*GetProjectTimesheetResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetProjectTimesheetResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetProjectTimesheetResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGetTimesheetEntryResponse parses an HTTP response from a GetTimesheetEntryWithResponse call
 func ParseGetTimesheetEntryResponse(rsp *http.Response) (*GetTimesheetEntryResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -32157,128 +32282,6 @@ func ParseCreateVaultResponse(rsp *http.Response) (*CreateVaultResponse, error) 
 			return nil, err
 		}
 		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseListWebhooksResponse parses an HTTP response from a ListWebhooksWithResponse call
-func ParseListWebhooksResponse(rsp *http.Response) (*ListWebhooksResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListWebhooksResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ListWebhooksResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateWebhookResponse parses an HTTP response from a CreateWebhookWithResponse call
-func ParseCreateWebhookResponse(rsp *http.Response) (*CreateWebhookResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateWebhookResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest CreateWebhookResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 507:
-		var dest WebhookLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON507 = &dest
 
 	}
 

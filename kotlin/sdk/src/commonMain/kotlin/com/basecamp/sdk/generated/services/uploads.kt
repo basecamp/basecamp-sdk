@@ -117,6 +117,7 @@ class UploadsService(client: AccountClient) : BaseService(client) {
                 put("attachable_sgid", kotlinx.serialization.json.JsonPrimitive(body.attachableSgid))
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.baseName?.let { put("base_name", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.subscriptions?.let { put("subscriptions", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Upload>(body)

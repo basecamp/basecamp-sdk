@@ -123,6 +123,22 @@ describe("DocumentsService", () => {
       expect(result.title).toBe("New Document");
     });
 
+    it("should pass subscriptions in request body", async () => {
+      server.use(
+        http.post(`${BASE_URL}/vaults/1001/documents.json`, async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          expect(body.subscriptions).toEqual([111, 222]);
+          return HttpResponse.json({ id: 6002, title: "Test" });
+        })
+      );
+
+      const result = await service.create(1001, {
+        title: "Quiet Doc",
+        subscriptions: [111, 222],
+      });
+      expect(result.id).toBe(6002);
+    });
+
     it("should send all fields in request body", async () => {
       let capturedBody: { title?: string; content?: string; status?: string } | null = null;
 

@@ -1523,6 +1523,8 @@ structure CreateMessageInput {
   status: String
 
   category_id: MessageTypeId
+
+  subscriptions: PersonIdList
 }
 
 structure CreateMessageOutput {
@@ -1960,6 +1962,8 @@ structure CreateDocumentInput {
 
   @documentation("active|drafted")
   status: String
+
+  subscriptions: PersonIdList
 }
 
 structure CreateDocumentOutput {
@@ -2077,6 +2081,8 @@ structure CreateUploadInput {
 
   description: UploadDescription
   base_name: UploadBaseName
+
+  subscriptions: PersonIdList
 }
 
 structure CreateUploadOutput {
@@ -2348,6 +2354,8 @@ structure CreateScheduleEntryInput {
   participant_ids: PersonIdList
   all_day: Boolean
   notify: Boolean
+
+  subscriptions: PersonIdList
 }
 
 structure CreateScheduleEntryOutput {

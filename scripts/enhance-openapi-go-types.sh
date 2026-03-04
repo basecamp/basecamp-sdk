@@ -82,6 +82,23 @@ walk(
     .
   end
 )
+|
+# Third pass: mark subscriptions arrays in Create* request schemas as pointer
+# Distinguishes nil (omit → server default) from [] (subscribe nobody)
+.components.schemas |= with_entries(
+  if .key | test("^Create.*RequestContent$") then
+    .value |= (
+      if type == "object" and .type == "object" and .properties
+         and .properties.subscriptions then
+        .properties.subscriptions += { "x-go-type-skip-optional-pointer": false }
+      else
+        .
+      end
+    )
+  else
+    .
+  end
+)
 ' "$INPUT_FILE" > "${OUTPUT_FILE}.tmp"
 
 mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
@@ -89,11 +106,13 @@ mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 # Count enhancements
 timestamp_count=$(jq '[.. | objects | select(.["x-go-type"] == "time.Time")] | length' "$OUTPUT_FILE")
 date_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.Date")] | length' "$OUTPUT_FILE")
-id_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
+id_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == false and (.type == "integer" or .type == "number"))] | length' "$OUTPUT_FILE")
 nullable_bool_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("RequestContent$")) | .value.properties // {} | to_entries[] | select(.value.type == "boolean" and .value["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
+subscription_ptr_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("^Create.*RequestContent$")) | .value.properties // {} | .subscriptions // empty | select(.["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
 
 echo "Enhanced OpenAPI spec with Go type extensions:"
 echo "  Timestamp fields (time.Time): $timestamp_count"
 echo "  Date fields (types.Date): $date_count"
 echo "  Id fields (keeping pointers): $id_count"
 echo "  Nullable booleans (*bool): $nullable_bool_count"
+echo "  Subscription pointers (*[]int64): $subscription_ptr_count"

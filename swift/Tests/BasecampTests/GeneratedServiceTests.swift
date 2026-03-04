@@ -48,7 +48,7 @@ final class GeneratedServiceTests: XCTestCase {
         let account = makeTestAccountClient(transport: transport)
 
         let req = CreateTodoRequest(content: "Buy milk", dueOn: "2026-03-01")
-        let todo = try await account.todos.create(projectId: 1, todolistId: 2, req: req)
+        let todo = try await account.todos.create(todolistId: 2, req: req)
 
         XCTAssertEqual(todo.id, 99)
         XCTAssertEqual(todo.content, "Buy milk")
@@ -160,14 +160,14 @@ final class GeneratedServiceTests: XCTestCase {
         let account = makeTestAccountClient(transport: transport)
 
         let req = UpdateWebhookRequest(active: true, payloadUrl: "https://hooks.example.com/updated")
-        let webhook = try await account.webhooks.update(projectId: 1, webhookId: 5, req: req)
+        let webhook = try await account.webhooks.update(webhookId: 5, req: req)
 
         XCTAssertEqual(webhook.id, 5)
         XCTAssertEqual(webhook.payloadUrl, "https://hooks.example.com/updated")
 
         let sentReq = transport.lastRequest!.request
         XCTAssertEqual(sentReq.httpMethod, "PUT")
-        XCTAssertTrue(sentReq.url!.absoluteString.hasSuffix("/buckets/1/webhooks/5"))
+        XCTAssertTrue(sentReq.url!.absoluteString.hasSuffix("/webhooks/5"))
     }
 
     func testUpdateCommentSendsPUT() async throws {
@@ -188,7 +188,7 @@ final class GeneratedServiceTests: XCTestCase {
         let account = makeTestAccountClient(transport: transport)
 
         let req = UpdateCommentRequest(content: "Updated comment")
-        let comment = try await account.comments.update(projectId: 1, commentId: 10, req: req)
+        let comment = try await account.comments.update(commentId: 10, req: req)
 
         XCTAssertEqual(comment.id, 10)
         XCTAssertEqual(comment.content, "Updated comment")
@@ -273,7 +273,7 @@ final class GeneratedServiceTests: XCTestCase {
 
         do {
             let req = CreateTodoRequest(content: "")
-            _ = try await account.todos.create(projectId: 1, todolistId: 2, req: req)
+            _ = try await account.todos.create(todolistId: 2, req: req)
             XCTFail("Expected 422 error")
         } catch let error as BasecampError {
             if case .validation(let message, let status, _, _) = error {
@@ -299,7 +299,7 @@ final class GeneratedServiceTests: XCTestCase {
         let account = makeTestAccountClient(transport: transport)
 
         let req = CreateWebhookRequest(payloadUrl: "https://hooks.example.com/bc", types: ["Comment"])
-        let webhook = try await account.webhooks.create(projectId: 1, req: req)
+        let webhook = try await account.webhooks.create(bucketId: 1, req: req)
         XCTAssertEqual(webhook.id, 1)
         XCTAssertEqual(transport.lastRequest!.request.httpMethod, "POST")
     }
@@ -322,7 +322,7 @@ final class GeneratedServiceTests: XCTestCase {
         let transport = MockTransport(statusCode: 200, data: data)
         let account = makeTestAccountClient(transport: transport)
 
-        let comment = try await account.comments.get(projectId: 1, commentId: 7)
+        let comment = try await account.comments.get(commentId: 7)
         XCTAssertEqual(comment.id, 7)
         XCTAssertEqual(comment.content, "Great idea!")
     }
@@ -345,7 +345,7 @@ final class GeneratedServiceTests: XCTestCase {
         let transport = MockTransport(statusCode: 200, data: data)
         let account = makeTestAccountClient(transport: transport)
 
-        let message = try await account.messages.get(projectId: 1, messageId: 3)
+        let message = try await account.messages.get(messageId: 3)
         XCTAssertEqual(message.id, 3)
         XCTAssertEqual(message.subject, "Weekly Update")
     }

@@ -336,6 +336,89 @@ func TestCreateDocumentRequest_Marshal(t *testing.T) {
 	}
 }
 
+// TestCreateDocumentRequest_Subscriptions tests that Subscriptions
+// field serializes correctly with specific person IDs.
+func TestCreateDocumentRequest_Subscriptions(t *testing.T) {
+	req := CreateDocumentRequest{
+		Title:         "Quiet Doc",
+		Subscriptions: &[]int64{111, 222},
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateDocumentRequest: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	subs, ok := data["subscriptions"]
+	if !ok {
+		t.Fatal("expected subscriptions to be present")
+	}
+	arr, ok := subs.([]any)
+	if !ok {
+		t.Fatalf("expected subscriptions to be an array, got %T", subs)
+	}
+	if len(arr) != 2 {
+		t.Fatalf("expected 2 subscriptions, got %d", len(arr))
+	}
+	if int64(arr[0].(float64)) != 111 || int64(arr[1].(float64)) != 222 {
+		t.Errorf("expected subscriptions [111, 222], got %v", arr)
+	}
+}
+
+func TestCreateDocumentRequest_SubscriptionsEmpty(t *testing.T) {
+	req := CreateDocumentRequest{
+		Title:         "Silent Doc",
+		Subscriptions: &[]int64{},
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateDocumentRequest: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	subs, ok := data["subscriptions"]
+	if !ok {
+		t.Fatal("expected subscriptions to be present (empty array)")
+	}
+	arr, ok := subs.([]any)
+	if !ok {
+		t.Fatalf("expected subscriptions to be an array, got %T", subs)
+	}
+	if len(arr) != 0 {
+		t.Errorf("expected empty subscriptions array, got %v", arr)
+	}
+}
+
+func TestCreateDocumentRequest_SubscriptionsNil(t *testing.T) {
+	req := CreateDocumentRequest{
+		Title: "Default Doc",
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateDocumentRequest: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if _, ok := data["subscriptions"]; ok {
+		t.Error("expected subscriptions to be omitted when nil")
+	}
+}
+
 func TestUpdateDocumentRequest_Marshal(t *testing.T) {
 	data := loadDocumentsFixture(t, "update-request.json")
 
@@ -511,6 +594,89 @@ func TestUpdateUploadRequest_Marshal(t *testing.T) {
 
 	if roundtrip.Description != req.Description || roundtrip.BaseName != req.BaseName {
 		t.Error("round-trip mismatch")
+	}
+}
+
+// TestCreateUploadRequest_Subscriptions tests that Subscriptions
+// field serializes correctly with specific person IDs.
+func TestCreateUploadRequest_Subscriptions(t *testing.T) {
+	req := CreateUploadRequest{
+		AttachableSGID: "BAh7CEkiCGdpZAY6BkVU",
+		Subscriptions:  &[]int64{111, 222},
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateUploadRequest: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	subs, ok := data["subscriptions"]
+	if !ok {
+		t.Fatal("expected subscriptions to be present")
+	}
+	arr, ok := subs.([]any)
+	if !ok {
+		t.Fatalf("expected subscriptions to be an array, got %T", subs)
+	}
+	if len(arr) != 2 {
+		t.Fatalf("expected 2 subscriptions, got %d", len(arr))
+	}
+	if int64(arr[0].(float64)) != 111 || int64(arr[1].(float64)) != 222 {
+		t.Errorf("expected subscriptions [111, 222], got %v", arr)
+	}
+}
+
+func TestCreateUploadRequest_SubscriptionsEmpty(t *testing.T) {
+	req := CreateUploadRequest{
+		AttachableSGID: "BAh7CEkiCGdpZAY6BkVU",
+		Subscriptions:  &[]int64{},
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateUploadRequest: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	subs, ok := data["subscriptions"]
+	if !ok {
+		t.Fatal("expected subscriptions to be present (empty array)")
+	}
+	arr, ok := subs.([]any)
+	if !ok {
+		t.Fatalf("expected subscriptions to be an array, got %T", subs)
+	}
+	if len(arr) != 0 {
+		t.Errorf("expected empty subscriptions array, got %v", arr)
+	}
+}
+
+func TestCreateUploadRequest_SubscriptionsNil(t *testing.T) {
+	req := CreateUploadRequest{
+		AttachableSGID: "BAh7CEkiCGdpZAY6BkVU",
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CreateUploadRequest: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if _, ok := data["subscriptions"]; ok {
+		t.Error("expected subscriptions to be omitted when nil")
 	}
 }
 

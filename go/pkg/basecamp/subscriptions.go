@@ -184,8 +184,8 @@ func subscriptionFromGenerated(gs generated.Subscription) Subscription {
 				Admin:        gp.Admin,
 				Owner:        gp.Owner,
 			}
-			if derefInt64(gp.Id) != 0 {
-				p.ID = derefInt64(gp.Id)
+			if gp.Id != 0 {
+				p.ID = gp.Id
 			}
 			s.Subscribers = append(s.Subscribers, p)
 		}

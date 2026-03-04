@@ -359,13 +359,13 @@ func timesheetEntryFromGenerated(ge generated.TimesheetEntry) TimesheetEntry {
 		UpdatedAt:   ge.UpdatedAt,
 	}
 
-	if derefInt64(ge.Id) != 0 {
-		e.ID = derefInt64(ge.Id)
+	if ge.Id != 0 {
+		e.ID = ge.Id
 	}
 
-	if derefInt64(ge.Creator.Id) != 0 || ge.Creator.Name != "" {
+	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
 		e.Creator = &Person{
-			ID:           derefInt64(ge.Creator.Id),
+			ID:           ge.Creator.Id,
 			Name:         ge.Creator.Name,
 			EmailAddress: ge.Creator.EmailAddress,
 			AvatarURL:    ge.Creator.AvatarUrl,
@@ -374,9 +374,9 @@ func timesheetEntryFromGenerated(ge generated.TimesheetEntry) TimesheetEntry {
 		}
 	}
 
-	if derefInt64(ge.Person.Id) != 0 || ge.Person.Name != "" {
+	if ge.Person.Id != 0 || ge.Person.Name != "" {
 		e.Person = &Person{
-			ID:           derefInt64(ge.Person.Id),
+			ID:           ge.Person.Id,
 			Name:         ge.Person.Name,
 			EmailAddress: ge.Person.EmailAddress,
 			AvatarURL:    ge.Person.AvatarUrl,
@@ -385,9 +385,9 @@ func timesheetEntryFromGenerated(ge generated.TimesheetEntry) TimesheetEntry {
 		}
 	}
 
-	if derefInt64(ge.Parent.Id) != 0 || ge.Parent.Title != "" {
+	if ge.Parent.Id != 0 || ge.Parent.Title != "" {
 		e.Parent = &Parent{
-			ID:     derefInt64(ge.Parent.Id),
+			ID:     ge.Parent.Id,
 			Title:  ge.Parent.Title,
 			Type:   ge.Parent.Type,
 			URL:    ge.Parent.Url,
@@ -395,9 +395,9 @@ func timesheetEntryFromGenerated(ge generated.TimesheetEntry) TimesheetEntry {
 		}
 	}
 
-	if derefInt64(ge.Bucket.Id) != 0 || ge.Bucket.Name != "" {
+	if ge.Bucket.Id != 0 || ge.Bucket.Name != "" {
 		e.Bucket = &Bucket{
-			ID:   derefInt64(ge.Bucket.Id),
+			ID:   ge.Bucket.Id,
 			Name: ge.Bucket.Name,
 			Type: ge.Bucket.Type,
 		}

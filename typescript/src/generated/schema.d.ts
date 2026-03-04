@@ -2536,6 +2536,7 @@ export interface components {
             content?: string;
             /** @description active|drafted */
             status?: string;
+            subscriptions?: number[];
         };
         CreateDocumentResponseContent: components["schemas"]["Document"];
         CreateEventBoostRequestContent: {
@@ -2557,6 +2558,7 @@ export interface components {
             status?: string;
             /** Format: int64 */
             category_id?: number;
+            subscriptions?: number[];
         };
         CreateMessageResponseContent: components["schemas"]["Message"];
         CreateMessageTypeRequestContent: {
@@ -2601,6 +2603,7 @@ export interface components {
             participant_ids?: number[];
             all_day?: boolean;
             notify?: boolean;
+            subscriptions?: number[];
         };
         CreateScheduleEntryResponseContent: components["schemas"]["ScheduleEntry"];
         CreateTemplateRequestContent: {
@@ -2639,6 +2642,7 @@ export interface components {
             attachable_sgid: string;
             description?: string;
             base_name?: string;
+            subscriptions?: number[];
         };
         CreateUploadResponseContent: components["schemas"]["Upload"];
         CreateVaultRequestContent: {

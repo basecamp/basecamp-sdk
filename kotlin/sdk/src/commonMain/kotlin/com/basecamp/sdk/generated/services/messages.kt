@@ -53,6 +53,7 @@ class MessagesService(client: AccountClient) : BaseService(client) {
                 body.content?.let { put("content", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.status?.let { put("status", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.categoryId?.let { put("category_id", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.subscriptions?.let { put("subscriptions", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Message>(body)

@@ -25,20 +25,20 @@ public struct ListRecordingOptions: Sendable {
 
 
 public final class RecordingsService: BaseService, @unchecked Sendable {
-    public func archive(projectId: Int, recordingId: Int) async throws {
+    public func archive(recordingId: Int) async throws {
         try await requestVoid(
-            OperationInfo(service: "Recordings", operation: "ArchiveRecording", resourceType: "recording", isMutation: true, projectId: projectId, resourceId: recordingId),
+            OperationInfo(service: "Recordings", operation: "ArchiveRecording", resourceType: "recording", isMutation: true, resourceId: recordingId),
             method: "PUT",
-            path: "/buckets/\(projectId)/recordings/\(recordingId)/status/archived.json",
+            path: "/recordings/\(recordingId)/status/archived.json",
             retryConfig: Metadata.retryConfig(for: "ArchiveRecording")
         )
     }
 
-    public func get(projectId: Int, recordingId: Int) async throws -> Recording {
+    public func get(recordingId: Int) async throws -> Recording {
         return try await request(
-            OperationInfo(service: "Recordings", operation: "GetRecording", resourceType: "recording", isMutation: false, projectId: projectId, resourceId: recordingId),
+            OperationInfo(service: "Recordings", operation: "GetRecording", resourceType: "recording", isMutation: false, resourceId: recordingId),
             method: "GET",
-            path: "/buckets/\(projectId)/recordings/\(recordingId)",
+            path: "/recordings/\(recordingId)",
             retryConfig: Metadata.retryConfig(for: "GetRecording")
         )
     }
@@ -67,20 +67,20 @@ public final class RecordingsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func trash(projectId: Int, recordingId: Int) async throws {
+    public func trash(recordingId: Int) async throws {
         try await requestVoid(
-            OperationInfo(service: "Recordings", operation: "TrashRecording", resourceType: "recording", isMutation: true, projectId: projectId, resourceId: recordingId),
+            OperationInfo(service: "Recordings", operation: "TrashRecording", resourceType: "recording", isMutation: true, resourceId: recordingId),
             method: "PUT",
-            path: "/buckets/\(projectId)/recordings/\(recordingId)/status/trashed.json",
+            path: "/recordings/\(recordingId)/status/trashed.json",
             retryConfig: Metadata.retryConfig(for: "TrashRecording")
         )
     }
 
-    public func unarchive(projectId: Int, recordingId: Int) async throws {
+    public func unarchive(recordingId: Int) async throws {
         try await requestVoid(
-            OperationInfo(service: "Recordings", operation: "UnarchiveRecording", resourceType: "recording", isMutation: true, projectId: projectId, resourceId: recordingId),
+            OperationInfo(service: "Recordings", operation: "UnarchiveRecording", resourceType: "recording", isMutation: true, resourceId: recordingId),
             method: "PUT",
-            path: "/buckets/\(projectId)/recordings/\(recordingId)/status/active.json",
+            path: "/recordings/\(recordingId)/status/active.json",
             retryConfig: Metadata.retryConfig(for: "UnarchiveRecording")
         )
     }

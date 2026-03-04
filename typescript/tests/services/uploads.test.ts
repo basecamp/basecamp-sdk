@@ -126,6 +126,22 @@ describe("UploadsService", () => {
       expect(result.description).toBe("Q4 Presentation");
     });
 
+    it("should pass subscriptions in request body", async () => {
+      server.use(
+        http.post(`${BASE_URL}/vaults/1001/uploads.json`, async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          expect(body.subscriptions).toEqual([111, 222]);
+          return HttpResponse.json({ id: 8002, title: "Test" });
+        })
+      );
+
+      const result = await service.create(1001, {
+        attachableSgid: "BAh7CEkiCGdpZAY6BkVUSSI...",
+        subscriptions: [111, 222],
+      });
+      expect(result.id).toBe(8002);
+    });
+
     it("should send all fields in request body", async () => {
       let capturedBody: { attachable_sgid?: string; description?: string; base_name?: string } | null = null;
 

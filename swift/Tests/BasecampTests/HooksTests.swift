@@ -57,7 +57,7 @@ final class HooksTests: XCTestCase {
         let account = makeTestAccountClient(transport: transport, hooks: spy)
 
         do {
-            let _: Todo = try await account.todos.get(projectId: 1, todoId: 2)
+            let _: Todo = try await account.todos.get(todoId: 2)
             XCTFail("Expected error")
         } catch {
             // Expected
@@ -75,7 +75,7 @@ final class HooksTests: XCTestCase {
         let account = makeTestAccountClient(transport: transport, hooks: spy)
 
         do {
-            try await account.todos.complete(projectId: 1, todoId: 2)
+            try await account.todos.complete(todoId: 2)
             XCTFail("Expected error")
         } catch {
             // Expected
@@ -93,7 +93,7 @@ final class HooksTests: XCTestCase {
         let account = makeTestAccountClient(transport: transport, hooks: spy)
 
         do {
-            let _: ListResult<Todo> = try await account.todos.list(projectId: 1, todolistId: 2)
+            let _: ListResult<Todo> = try await account.todos.list(todolistId: 2)
             XCTFail("Expected error")
         } catch {
             // Expected
@@ -121,7 +121,7 @@ final class HooksTests: XCTestCase {
         let transport = MockTransport(statusCode: 200, data: data)
         let account = makeTestAccountClient(transport: transport, hooks: spy)
 
-        let _: Todo = try await account.todos.get(projectId: 1, todoId: 1)
+        let _: Todo = try await account.todos.get(todoId: 1)
 
         XCTAssertEqual(spy.operationStarts.count, 1)
         XCTAssertEqual(spy.operationEnds.count, 1, "onOperationEnd should fire exactly once on success")
@@ -267,12 +267,12 @@ final class HooksTests: XCTestCase {
         let account = client.forAccount("999999999")
 
         // First request: populate cache
-        let first: Todo = try await account.todos.get(projectId: 1, todoId: 1)
+        let first: Todo = try await account.todos.get(todoId: 1)
         XCTAssertEqual(first.id, 1)
         XCTAssertEqual(first.content, "Cached")
 
         // Second request: should use cache, not throw a 304 error
-        let second: Todo = try await account.todos.get(projectId: 1, todoId: 1)
+        let second: Todo = try await account.todos.get(todoId: 1)
         XCTAssertEqual(second.id, 1)
         XCTAssertEqual(second.content, "Cached")
 

@@ -11,57 +11,57 @@ public struct ListMessageOptions: Sendable {
 
 
 public final class MessagesService: BaseService, @unchecked Sendable {
-    public func create(projectId: Int, boardId: Int, req: CreateMessageRequest) async throws -> Message {
+    public func create(boardId: Int, req: CreateMessageRequest) async throws -> Message {
         return try await request(
-            OperationInfo(service: "Messages", operation: "CreateMessage", resourceType: "message", isMutation: true, projectId: projectId, resourceId: boardId),
+            OperationInfo(service: "Messages", operation: "CreateMessage", resourceType: "message", isMutation: true, resourceId: boardId),
             method: "POST",
-            path: "/buckets/\(projectId)/message_boards/\(boardId)/messages.json",
+            path: "/message_boards/\(boardId)/messages.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "CreateMessage")
         )
     }
 
-    public func get(projectId: Int, messageId: Int) async throws -> Message {
+    public func get(messageId: Int) async throws -> Message {
         return try await request(
-            OperationInfo(service: "Messages", operation: "GetMessage", resourceType: "message", isMutation: false, projectId: projectId, resourceId: messageId),
+            OperationInfo(service: "Messages", operation: "GetMessage", resourceType: "message", isMutation: false, resourceId: messageId),
             method: "GET",
-            path: "/buckets/\(projectId)/messages/\(messageId)",
+            path: "/messages/\(messageId)",
             retryConfig: Metadata.retryConfig(for: "GetMessage")
         )
     }
 
-    public func list(projectId: Int, boardId: Int, options: ListMessageOptions? = nil) async throws -> ListResult<Message> {
+    public func list(boardId: Int, options: ListMessageOptions? = nil) async throws -> ListResult<Message> {
         return try await requestPaginated(
-            OperationInfo(service: "Messages", operation: "ListMessages", resourceType: "message", isMutation: false, projectId: projectId, resourceId: boardId),
-            path: "/buckets/\(projectId)/message_boards/\(boardId)/messages.json",
+            OperationInfo(service: "Messages", operation: "ListMessages", resourceType: "message", isMutation: false, resourceId: boardId),
+            path: "/message_boards/\(boardId)/messages.json",
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListMessages")
         )
     }
 
-    public func pin(projectId: Int, messageId: Int) async throws {
+    public func pin(messageId: Int) async throws {
         try await requestVoid(
-            OperationInfo(service: "Messages", operation: "PinMessage", resourceType: "message", isMutation: true, projectId: projectId, resourceId: messageId),
+            OperationInfo(service: "Messages", operation: "PinMessage", resourceType: "message", isMutation: true, resourceId: messageId),
             method: "POST",
-            path: "/buckets/\(projectId)/recordings/\(messageId)/pin.json",
+            path: "/recordings/\(messageId)/pin.json",
             retryConfig: Metadata.retryConfig(for: "PinMessage")
         )
     }
 
-    public func unpin(projectId: Int, messageId: Int) async throws {
+    public func unpin(messageId: Int) async throws {
         try await requestVoid(
-            OperationInfo(service: "Messages", operation: "UnpinMessage", resourceType: "message", isMutation: true, projectId: projectId, resourceId: messageId),
+            OperationInfo(service: "Messages", operation: "UnpinMessage", resourceType: "message", isMutation: true, resourceId: messageId),
             method: "DELETE",
-            path: "/buckets/\(projectId)/recordings/\(messageId)/pin.json",
+            path: "/recordings/\(messageId)/pin.json",
             retryConfig: Metadata.retryConfig(for: "UnpinMessage")
         )
     }
 
-    public func update(projectId: Int, messageId: Int, req: UpdateMessageRequest) async throws -> Message {
+    public func update(messageId: Int, req: UpdateMessageRequest) async throws -> Message {
         return try await request(
-            OperationInfo(service: "Messages", operation: "UpdateMessage", resourceType: "message", isMutation: true, projectId: projectId, resourceId: messageId),
+            OperationInfo(service: "Messages", operation: "UpdateMessage", resourceType: "message", isMutation: true, resourceId: messageId),
             method: "PUT",
-            path: "/buckets/\(projectId)/messages/\(messageId)",
+            path: "/messages/\(messageId)",
             body: req,
             retryConfig: Metadata.retryConfig(for: "UpdateMessage")
         )

@@ -150,6 +150,24 @@ describe("SchedulesService", () => {
       expect(result.summary).toBe("New Event");
     });
 
+    it("should pass subscriptions in request body", async () => {
+      server.use(
+        http.post(`${BASE_URL}/schedules/4001/entries.json`, async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          expect(body.subscriptions).toEqual([111, 222]);
+          return HttpResponse.json({ id: 4202, summary: "Test" });
+        })
+      );
+
+      const result = await service.createEntry(4001, {
+        summary: "Quiet Event",
+        startsAt: "2024-12-20T14:00:00Z",
+        endsAt: "2024-12-20T15:00:00Z",
+        subscriptions: [111, 222],
+      });
+      expect(result.id).toBe(4202);
+    });
+
     it("should send all fields in request body", async () => {
       let capturedBody: Record<string, unknown> | null = null;
 

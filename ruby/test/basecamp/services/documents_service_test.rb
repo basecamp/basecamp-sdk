@@ -75,6 +75,18 @@ class DocumentsServiceTest < Minitest::Test
     assert_equal "drafted", document["status"]
   end
 
+  def test_create_with_subscriptions
+    new_document = sample_document(id: 999, title: "Quiet Doc")
+    stub_post("/12345/vaults/200/documents.json", response_body: new_document)
+
+    @account.documents.create(
+      vault_id: 200, title: "Quiet Doc", subscriptions: [ 111, 222 ]
+    )
+
+    assert_requested(:post, "#{BASE_URL}/12345/vaults/200/documents.json",
+      body: hash_including("subscriptions" => [ 111, 222 ]))
+  end
+
   def test_update_document
     # Generated service: /documents/{id} without .json
     updated_document = sample_document(id: 200, title: "Updated Title")
