@@ -106,7 +106,7 @@ mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 # Count enhancements
 timestamp_count=$(jq '[.. | objects | select(.["x-go-type"] == "time.Time")] | length' "$OUTPUT_FILE")
 date_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.Date")] | length' "$OUTPUT_FILE")
-id_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
+id_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == false and (.type == "integer" or .type == "number"))] | length' "$OUTPUT_FILE")
 nullable_bool_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("RequestContent$")) | .value.properties // {} | to_entries[] | select(.value.type == "boolean" and .value["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
 subscription_ptr_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("^Create.*RequestContent$")) | .value.properties // {} | .subscriptions // empty | select(.["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
 

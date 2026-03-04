@@ -368,6 +368,59 @@ func TestCreateScheduleEntryRequest_Subscriptions(t *testing.T) {
 	}
 }
 
+func TestCreateScheduleEntryRequest_SubscriptionsEmpty(t *testing.T) {
+	req := CreateScheduleEntryRequest{
+		Summary:       "Silent Event",
+		StartsAt:      "2022-11-10T14:00:00.000Z",
+		EndsAt:        "2022-11-10T15:00:00.000Z",
+		Subscriptions: &[]int64{},
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	subs, ok := data["subscriptions"]
+	if !ok {
+		t.Fatal("expected subscriptions to be present for empty slice")
+	}
+	arr, ok := subs.([]any)
+	if !ok {
+		t.Fatalf("expected subscriptions to be an array, got %T", subs)
+	}
+	if len(arr) != 0 {
+		t.Fatalf("expected empty subscriptions array, got %d items", len(arr))
+	}
+}
+
+func TestCreateScheduleEntryRequest_SubscriptionsNil(t *testing.T) {
+	req := CreateScheduleEntryRequest{
+		Summary:  "Default Event",
+		StartsAt: "2022-11-10T14:00:00.000Z",
+		EndsAt:   "2022-11-10T15:00:00.000Z",
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if _, ok := data["subscriptions"]; ok {
+		t.Error("expected subscriptions to be omitted when nil")
+	}
+}
+
 func TestCreateScheduleEntryRequest_MarshalMinimal(t *testing.T) {
 	// Test with only required fields
 	req := CreateScheduleEntryRequest{
