@@ -131,11 +131,11 @@ func (s *CommentsService) List(ctx context.Context, recordingID int64, opts *Com
 
 	// Check if we already have enough items
 	if limit > 0 && len(comments) >= limit {
-		return &CommentListResult{Comments: comments[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &CommentListResult{Comments: comments[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(comments), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(comments), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(comments), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (s *CommentsService) List(ctx context.Context, recordingID int64, opts *Com
 		comments = append(comments, commentFromGenerated(gc))
 	}
 
-	return &CommentListResult{Comments: comments, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &CommentListResult{Comments: comments, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a comment by ID.

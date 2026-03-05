@@ -184,11 +184,11 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 
 	// Check if we already have enough items
 	if limit > 0 && len(projects) >= limit {
-		return &ProjectListResult{Projects: projects[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &ProjectListResult{Projects: projects[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(projects), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(projects), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(projects), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 		projects = append(projects, projectFromGenerated(gp))
 	}
 
-	return &ProjectListResult{Projects: projects, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &ProjectListResult{Projects: projects, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a project by ID.

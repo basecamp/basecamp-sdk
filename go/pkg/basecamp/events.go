@@ -125,11 +125,11 @@ func (s *EventsService) List(ctx context.Context, recordingID int64, opts *Event
 
 	// Check if we already have enough items
 	if limit > 0 && len(events) >= limit {
-		return &EventListResult{Events: events[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &EventListResult{Events: events[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(events), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(events), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(events), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (s *EventsService) List(ctx context.Context, recordingID int64, opts *Event
 		events = append(events, eventFromGenerated(ge))
 	}
 
-	return &EventListResult{Events: events, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &EventListResult{Events: events, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // eventFromGenerated converts a generated Event to our clean type.

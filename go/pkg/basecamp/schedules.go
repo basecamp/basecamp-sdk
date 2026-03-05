@@ -234,11 +234,11 @@ func (s *SchedulesService) ListEntries(ctx context.Context, scheduleID int64, op
 
 	// Check if we already have enough items
 	if limit > 0 && len(entries) >= limit {
-		return &ScheduleEntryListResult{Entries: entries[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &ScheduleEntryListResult{Entries: entries[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(entries), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(entries), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(entries), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +252,7 @@ func (s *SchedulesService) ListEntries(ctx context.Context, scheduleID int64, op
 		entries = append(entries, scheduleEntryFromGenerated(ge))
 	}
 
-	return &ScheduleEntryListResult{Entries: entries, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &ScheduleEntryListResult{Entries: entries, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // GetEntry returns a schedule entry by ID.

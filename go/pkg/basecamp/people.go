@@ -124,11 +124,11 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 
 	// Check if we already have enough items
 	if limit > 0 && len(people) >= limit {
-		return &PeopleListResult{People: people[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &PeopleListResult{People: people[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(people), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(people), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(people), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 		people = append(people, personFromGenerated(gp))
 	}
 
-	return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a person by ID.
@@ -263,11 +263,11 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, 
 
 	// Check if we already have enough items
 	if limit > 0 && len(people) >= limit {
-		return &PeopleListResult{People: people[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &PeopleListResult{People: people[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(people), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(people), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(people), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +281,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, 
 		people = append(people, personFromGenerated(gp))
 	}
 
-	return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Pingable returns all account users who can be pinged.
