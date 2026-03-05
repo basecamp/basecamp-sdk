@@ -17,6 +17,11 @@ const mockDiscoveryResponse = {
   token_endpoint: "https://launchpad.37signals.com/authorization/token",
 };
 
+const mockDiscoveryResponseWithPKCE = {
+  ...mockDiscoveryResponse,
+  code_challenge_methods_supported: ["S256"],
+};
+
 const mockTokenResponse = {
   access_token: "new_access_token",
   refresh_token: "new_refresh_token",
@@ -172,7 +177,7 @@ describe("performInteractiveLogin", () => {
     server.use(
       mswHttp.get(
         "https://launchpad.37signals.com/.well-known/oauth-authorization-server",
-        () => HttpResponse.json(mockDiscoveryResponse)
+        () => HttpResponse.json(mockDiscoveryResponseWithPKCE)
       ),
       mswHttp.post(
         "https://launchpad.37signals.com/authorization/token",
@@ -194,6 +199,79 @@ describe("performInteractiveLogin", () => {
       const redirectUri = authUrl.searchParams.get("redirect_uri")!;
       const state = authUrl.searchParams.get("state")!;
       await fetch(`${redirectUri}?code=pkce_code&state=${state}`);
+    });
+
+    await performInteractiveLogin({
+      clientId: "test_client_id",
+      store,
+      openBrowser,
+    });
+  });
+
+  it("omits PKCE when server does not advertise S256", async () => {
+    server.use(
+      mswHttp.get(
+        "https://launchpad.37signals.com/.well-known/oauth-authorization-server",
+        () => HttpResponse.json(mockDiscoveryResponse)
+      ),
+      mswHttp.post(
+        "https://launchpad.37signals.com/authorization/token",
+        async ({ request }) => {
+          const body = await request.text();
+          const params = new URLSearchParams(body);
+          expect(params.has("code_verifier")).toBe(false);
+          return HttpResponse.json(mockTokenResponse);
+        }
+      ),
+    );
+
+    const store = createMockStore();
+    const openBrowser = vi.fn(async (url: string) => {
+      const authUrl = new URL(url);
+      expect(authUrl.searchParams.has("code_challenge")).toBe(false);
+      expect(authUrl.searchParams.has("code_challenge_method")).toBe(false);
+
+      const redirectUri = authUrl.searchParams.get("redirect_uri")!;
+      const state = authUrl.searchParams.get("state")!;
+      await fetch(`${redirectUri}?code=no_pkce_code&state=${state}`);
+    });
+
+    await performInteractiveLogin({
+      clientId: "test_client_id",
+      store,
+      openBrowser,
+    });
+  });
+
+  it("omits PKCE when server advertises only unsupported methods", async () => {
+    server.use(
+      mswHttp.get(
+        "https://launchpad.37signals.com/.well-known/oauth-authorization-server",
+        () => HttpResponse.json({
+          ...mockDiscoveryResponse,
+          code_challenge_methods_supported: ["plain"],
+        })
+      ),
+      mswHttp.post(
+        "https://launchpad.37signals.com/authorization/token",
+        async ({ request }) => {
+          const body = await request.text();
+          const params = new URLSearchParams(body);
+          expect(params.has("code_verifier")).toBe(false);
+          return HttpResponse.json(mockTokenResponse);
+        }
+      ),
+    );
+
+    const store = createMockStore();
+    const openBrowser = vi.fn(async (url: string) => {
+      const authUrl = new URL(url);
+      expect(authUrl.searchParams.has("code_challenge")).toBe(false);
+      expect(authUrl.searchParams.has("code_challenge_method")).toBe(false);
+
+      const redirectUri = authUrl.searchParams.get("redirect_uri")!;
+      const state = authUrl.searchParams.get("state")!;
+      await fetch(`${redirectUri}?code=plain_only_code&state=${state}`);
     });
 
     await performInteractiveLogin({

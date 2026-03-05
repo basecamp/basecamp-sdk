@@ -88,7 +88,8 @@ export async function performInteractiveLogin(
 
   // 2. Generate PKCE and state
   const state = generateState();
-  const pkce = await generatePKCE();
+  const serverSupportsPKCE = config.codeChallengeMethodsSupported?.includes("S256") ?? false;
+  const pkce = serverSupportsPKCE ? await generatePKCE() : undefined;
 
   // 3. Start callback server
   onStatus?.("Starting callback server...");
@@ -137,7 +138,7 @@ export async function performInteractiveLogin(
       redirectUri,
       clientId,
       clientSecret,
-      codeVerifier: pkce.verifier,
+      codeVerifier: pkce?.verifier,
       useLegacyFormat,
     });
 
