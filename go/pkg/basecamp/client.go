@@ -567,6 +567,9 @@ func (c *Client) followPagination(ctx context.Context, httpResp *http.Response, 
 		}
 	}
 
+	// page exceeds MaxPages only when the for-loop post-increment fires,
+	// which means the last iteration did NOT break (i.e., it found a Link
+	// header pointing to another page we chose not to follow).
 	if page > c.httpOpts.MaxPages {
 		hasMore = true
 		c.logger.Warn("pagination capped", "maxPages", c.httpOpts.MaxPages)

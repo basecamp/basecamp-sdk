@@ -9,6 +9,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -518,7 +519,7 @@ func checkAssertion(
 			return fail(tc, fmt.Sprintf("Failed to marshal result for responseBody assertion: %v", err))
 		}
 		var resultMap map[string]interface{}
-		dec := json.NewDecoder(strings.NewReader(string(data)))
+		dec := json.NewDecoder(bytes.NewReader(data))
 		dec.UseNumber()
 		if err := dec.Decode(&resultMap); err != nil {
 			return fail(tc, fmt.Sprintf("Failed to unmarshal result for responseBody assertion: %v", err))
