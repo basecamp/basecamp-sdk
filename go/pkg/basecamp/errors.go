@@ -50,6 +50,7 @@ type Error struct {
 	Hint       string
 	HTTPStatus int
 	Retryable  bool
+	RequestID  string
 	Cause      error
 }
 

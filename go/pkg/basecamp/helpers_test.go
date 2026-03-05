@@ -31,8 +31,8 @@ func TestCheckResponse_ErrorCodes(t *testing.T) {
 		{404, CodeNotFound, false},
 		{422, CodeValidation, false},
 		{429, CodeRateLimit, true},
-		{500, CodeAPI, false},
-		{502, CodeAPI, false},
+		{500, CodeAPI, true},
+		{502, CodeAPI, true},
 	}
 
 	for _, tt := range tests {

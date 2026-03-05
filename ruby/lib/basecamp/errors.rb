@@ -56,6 +56,9 @@ module Basecamp
     # @return [Integer, nil] seconds to wait before retrying (for rate limits)
     attr_reader :retry_after
 
+    # @return [String, nil] X-Request-Id from the response
+    attr_reader :request_id
+
     # @return [Exception, nil] original error that caused this error
     attr_reader :cause
 
@@ -65,14 +68,16 @@ module Basecamp
     # @param http_status [Integer, nil] HTTP status code
     # @param retryable [Boolean] whether operation can be retried
     # @param retry_after [Integer, nil] seconds to wait before retry
+    # @param request_id [String, nil] X-Request-Id from response
     # @param cause [Exception, nil] underlying cause
-    def initialize(code:, message:, hint: nil, http_status: nil, retryable: false, retry_after: nil, cause: nil)
+    def initialize(code:, message:, hint: nil, http_status: nil, retryable: false, retry_after: nil, request_id: nil, cause: nil)
       super(message)
       @code = code
       @hint = hint
       @http_status = http_status
       @retryable = retryable
       @retry_after = retry_after
+      @request_id = request_id
       @cause = cause
     end
 
