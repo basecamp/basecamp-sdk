@@ -89,13 +89,37 @@ const client = createBasecampClient({
 
 ## OAuth 2.0
 
-The SDK includes utilities for implementing OAuth 2.0 with PKCE support.
+The SDK includes utilities for implementing OAuth 2.0 with automatic PKCE negotiation.
+PKCE parameters are included only when the server's discovery metadata advertises
+`code_challenge_methods_supported: ["S256"]` (per [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414)
+and [RFC 7636](https://www.rfc-editor.org/rfc/rfc7636)).
 
-### Authorization Flow
+### Interactive Login (CLI / Desktop)
+
+`performInteractiveLogin` handles the full flow — discovery, PKCE negotiation, local
+callback server, browser launch, code exchange, and token storage:
+
+```ts
+import { performInteractiveLogin } from "@37signals/basecamp";
+import open from "open";
+
+const token = await performInteractiveLogin({
+  clientId: CLIENT_ID,
+  clientSecret: CLIENT_SECRET,
+  store: myTokenStore,
+  openBrowser: (url) => open(url),
+  onStatus: (msg) => console.log(msg),
+});
+```
+
+### Manual Authorization Flow
+
+For web apps or custom flows, use the lower-level helpers directly:
 
 ```ts
 import {
   discoverLaunchpad,
+  buildAuthorizationUrl,
   generatePKCE,
   generateState,
   exchangeCode,
@@ -106,20 +130,21 @@ import {
 // 1. Discover OAuth endpoints
 const config = await discoverLaunchpad();
 
-// 2. Generate PKCE challenge and state
-const pkce = await generatePKCE();
+// 2. Generate PKCE (only if the server supports S256) and state
+const supportsPKCE = config.codeChallengeMethodsSupported?.includes("S256") ?? false;
+const pkce = supportsPKCE ? await generatePKCE() : undefined;
 const state = generateState();
 
-// Store pkce.verifier and state in session for later
+// Store pkce?.verifier and state in session for later
 
-// 3. Build authorization URL with PKCE challenge
-const authUrl = new URL(config.authorizationEndpoint);
-authUrl.searchParams.set("type", "web_server");
-authUrl.searchParams.set("client_id", CLIENT_ID);
-authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
-authUrl.searchParams.set("state", state);
-authUrl.searchParams.set("code_challenge", pkce.challenge);
-authUrl.searchParams.set("code_challenge_method", "S256");
+// 3. Build authorization URL
+const authUrl = buildAuthorizationUrl({
+  authorizationEndpoint: config.authorizationEndpoint,
+  clientId: CLIENT_ID,
+  redirectUri: REDIRECT_URI,
+  state,
+  pkce,
+});
 // Redirect user to authUrl.toString()
 
 // 4. Exchange code for tokens (in callback handler)
@@ -129,7 +154,7 @@ const token = await exchangeCode({
   redirectUri: REDIRECT_URI,
   clientId: CLIENT_ID,
   clientSecret: CLIENT_SECRET,
-  codeVerifier: pkce.verifier, // PKCE verifier from step 2
+  codeVerifier: pkce?.verifier,
   useLegacyFormat: true, // Required for Basecamp Launchpad
 });
 
