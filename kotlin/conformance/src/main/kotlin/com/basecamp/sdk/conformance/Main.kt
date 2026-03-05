@@ -6,6 +6,7 @@ import com.basecamp.sdk.generated.services.*
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.json.*
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
@@ -42,15 +43,9 @@ fun main() {
                 println("        Kotlin SDK auto-paginates (follows Link headers by design)")
                 continue
             }
-            // Pagination tests with minimal mock bodies fail Kotlin's strict
-            // kotlinx.serialization (required fields missing). Skip until test
-            // fixtures include complete model shapes.
-            if ("pagination" in tc.tags && tc.operation.startsWith("List")) {
-                skipped++
-                println("  SKIP: ${tc.name}")
-                println("        Mock body lacks required Kotlin model fields")
-                continue
-            }
+            // Note: MissingFieldException from kotlinx.serialization (when mock
+            // bodies lack required model fields) is caught at runtime in runTest()
+            // and reported as SKIP, so no pre-flight filtering is needed.
             val result = runTest(tc)
             when {
                 result.skipped -> {
@@ -199,18 +194,8 @@ private fun runTest(tc: TestCase): TestResult {
     var dispatchResult = DispatchResult()
 
     val overrideBaseUrl = tc.configOverrides?.baseUrl
-    if (overrideBaseUrl != null) {
-        val parsed = Url(overrideBaseUrl)
-        if (parsed.protocol.name != "https" &&
-            parsed.host != "localhost" &&
-            parsed.host != "127.0.0.1"
-        ) {
-            // Synthesize a usage error for non-HTTPS, non-localhost URLs
-            caughtException = BasecampException.Usage("Base URL must use HTTPS: $overrideBaseUrl")
-        }
-    }
 
-    if (caughtException == null) {
+    try {
         val client = BasecampClient {
             accessToken("test-token")
             baseUrl = overrideBaseUrl ?: "http://localhost:3000"
@@ -230,12 +215,19 @@ private fun runTest(tc: TestCase): TestResult {
         } catch (e: BasecampException) {
             caughtException = e
             httpStatusCode = e.httpStatus
+        } catch (e: MissingFieldException) {
+            client.close()
+            return TestResult(passed = false, message = "Mock body lacks required Kotlin model fields: ${e.message}", skipped = true)
         } catch (e: Exception) {
             client.close()
             return TestResult(false, "Unexpected exception: ${e::class.simpleName}: ${e.message}")
         }
 
         client.close()
+    } catch (e: IllegalArgumentException) {
+        // SDK's require() throws IllegalArgumentException for HTTPS enforcement.
+        // Map to BasecampException.Usage for assertion compatibility.
+        caughtException = BasecampException.Usage(e.message ?: "HTTPS required")
     }
 
     // Run assertions

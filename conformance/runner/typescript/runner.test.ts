@@ -402,8 +402,8 @@ function checkAssertions(
         const actual = headers[0]![headerName.toLowerCase()];
         expect(
           actual,
-          `[${tc.name}] expected header ${headerName} to be present, but it was missing`,
-        ).toBeDefined();
+          `[${tc.name}] expected header ${headerName} to be present, but it was empty or missing`,
+        ).toBeTruthy();
         break;
       }
 
@@ -542,6 +542,31 @@ function checkAssertions(
           actual,
           `[${tc.name}] expected meta.${fieldPath} = ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
         ).toEqual(expected);
+        break;
+      }
+
+      case "responseStatus": {
+        const expected = Number(assertion.expected);
+        if (result.error) {
+          if (
+            result.error instanceof BasecampError &&
+            result.error.httpStatus !== undefined &&
+            result.error.httpStatus !== expected
+          ) {
+            throw new Error(
+              `[${tc.name}] expected response status ${expected}, got ${result.error.httpStatus}`,
+            );
+          }
+        } else if (expected >= 400) {
+          throw new Error(
+            `[${tc.name}] expected error with status ${expected}, but operation succeeded`,
+          );
+        }
+        break;
+      }
+
+      case "responseBody": {
+        // Reserved assertion type — no conformance tests use it yet.
         break;
       }
 

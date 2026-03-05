@@ -124,12 +124,7 @@ func main() {
 }
 
 // Tests where the Go SDK's behavior intentionally differs.
-var goSDKSkips = map[string]string{
-	// Go SDK does not auto-paginate; pagination is consumer-driven via
-	// explicit Link-header following. Tests requiring requestCount > 1
-	// from automatic page-following are not applicable.
-	"Same-origin validation for pagination URLs": "Go SDK does not auto-paginate; pagination is consumer-driven",
-}
+var goSDKSkips = map[string]string{}
 
 func loadTests(filename string) ([]TestCase, error) {
 	data, err := os.ReadFile(filename)
@@ -466,8 +461,12 @@ func checkAssertion(
 		expected := int(assertion.Expected.(float64))
 		if sdkErr != nil {
 			var sdkError *basecamp.Error
-			if errors.As(sdkErr, &sdkError) && sdkError.HTTPStatus != expected {
-				return fail(tc, fmt.Sprintf("Expected status code %d, got %d", expected, sdkError.HTTPStatus))
+			if errors.As(sdkErr, &sdkError) {
+				if sdkError.HTTPStatus != expected {
+					return fail(tc, fmt.Sprintf("Expected status code %d, got %d", expected, sdkError.HTTPStatus))
+				}
+			} else {
+				return fail(tc, fmt.Sprintf("Expected status code %d, but error is not *basecamp.Error: %v", expected, sdkErr))
 			}
 		} else if expected >= 400 {
 			return fail(tc, fmt.Sprintf("Expected error with status %d, but operation succeeded", expected))
@@ -477,8 +476,12 @@ func checkAssertion(
 		expected := int(assertion.Expected.(float64))
 		if sdkErr != nil {
 			var sdkError *basecamp.Error
-			if errors.As(sdkErr, &sdkError) && sdkError.HTTPStatus != expected {
-				return fail(tc, fmt.Sprintf("Expected response status %d, got %d", expected, sdkError.HTTPStatus))
+			if errors.As(sdkErr, &sdkError) {
+				if sdkError.HTTPStatus != expected {
+					return fail(tc, fmt.Sprintf("Expected response status %d, got %d", expected, sdkError.HTTPStatus))
+				}
+			} else {
+				return fail(tc, fmt.Sprintf("Expected response status %d, but error is not *basecamp.Error: %v", expected, sdkErr))
 			}
 		} else if expected >= 400 {
 			return fail(tc, fmt.Sprintf("Expected error with status %d, but operation succeeded", expected))
