@@ -19,6 +19,8 @@ export interface OAuthConfig {
   registrationEndpoint?: string;
   /** List of OAuth 2.0 scopes supported (optional) */
   scopesSupported?: string[];
+  /** PKCE code challenge methods supported by the server (optional) */
+  codeChallengeMethodsSupported?: string[];
 }
 
 /**

@@ -51,6 +51,35 @@ describe("OAuth Discovery", () => {
       expect(config.scopesSupported).toEqual(["read", "write"]);
     });
 
+    it("parses code_challenge_methods_supported from discovery", async () => {
+      server.use(
+        http.get(
+          "https://launchpad.37signals.com/.well-known/oauth-authorization-server",
+          () => HttpResponse.json({
+            ...mockDiscoveryResponse,
+            code_challenge_methods_supported: ["S256"],
+          })
+        )
+      );
+
+      const config = await discover("https://launchpad.37signals.com");
+
+      expect(config.codeChallengeMethodsSupported).toEqual(["S256"]);
+    });
+
+    it("leaves codeChallengeMethodsSupported undefined when not in response", async () => {
+      server.use(
+        http.get(
+          "https://launchpad.37signals.com/.well-known/oauth-authorization-server",
+          () => HttpResponse.json(mockDiscoveryResponse)
+        )
+      );
+
+      const config = await discover("https://launchpad.37signals.com");
+
+      expect(config.codeChallengeMethodsSupported).toBeUndefined();
+    });
+
     it("normalizes trailing slash in base URL", async () => {
       server.use(
         http.get(

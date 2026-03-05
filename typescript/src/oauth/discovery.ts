@@ -17,6 +17,7 @@ interface RawDiscoveryResponse {
   token_endpoint: string;
   registration_endpoint?: string;
   scopes_supported?: string[];
+  code_challenge_methods_supported?: string[];
 }
 
 /**
@@ -106,6 +107,7 @@ export async function discover(
       tokenEndpoint: data.token_endpoint,
       registrationEndpoint: data.registration_endpoint,
       scopesSupported: data.scopes_supported,
+      codeChallengeMethodsSupported: data.code_challenge_methods_supported,
     };
   } catch (err) {
     if (err instanceof BasecampError) {
