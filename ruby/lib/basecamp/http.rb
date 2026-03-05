@@ -328,27 +328,27 @@ module Basecamp
       request_id = headers["X-Request-Id"] || headers["x-request-id"]
 
       err = case status
-            when 401
-              # Try token refresh; flag for caller to retry
-              @token_refreshed = @token_provider&.refreshable? && @token_provider.refresh
-              Basecamp::AuthError.new("Authentication failed")
-            when 403
-              Basecamp::ForbiddenError.new("Access denied")
-            when 404
-              Basecamp::NotFoundError.new("Resource", "unknown")
-            when 429
-              Basecamp::RateLimitError.new(retry_after: retry_after)
-            when 400, 422
-              message = Security.truncate(Basecamp.parse_error_message(body) || "Validation failed")
-              Basecamp::ValidationError.new(message, http_status: status)
-            when 500
-              Basecamp::APIError.new("Server error (500)", http_status: 500, retryable: true)
-            when 502, 503, 504
-              Basecamp::APIError.new("Gateway error (#{status})", http_status: status, retryable: true)
-            else
-              message = Security.truncate(Basecamp.parse_error_message(body) || "Request failed (HTTP #{status})")
-              Basecamp::APIError.from_status(status || 0, message)
-            end
+      when 401
+        # Try token refresh; flag for caller to retry
+        @token_refreshed = @token_provider&.refreshable? && @token_provider.refresh
+        Basecamp::AuthError.new("Authentication failed")
+      when 403
+        Basecamp::ForbiddenError.new("Access denied")
+      when 404
+        Basecamp::NotFoundError.new("Resource", "unknown")
+      when 429
+        Basecamp::RateLimitError.new(retry_after: retry_after)
+      when 400, 422
+        message = Security.truncate(Basecamp.parse_error_message(body) || "Validation failed")
+        Basecamp::ValidationError.new(message, http_status: status)
+      when 500
+        Basecamp::APIError.new("Server error (500)", http_status: 500, retryable: true)
+      when 502, 503, 504
+        Basecamp::APIError.new("Gateway error (#{status})", http_status: status, retryable: true)
+      else
+        message = Security.truncate(Basecamp.parse_error_message(body) || "Request failed (HTTP #{status})")
+        Basecamp::APIError.from_status(status || 0, message)
+      end
 
       err.instance_variable_set(:@request_id, request_id) if request_id
       err

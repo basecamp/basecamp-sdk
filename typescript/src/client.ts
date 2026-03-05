@@ -641,6 +641,14 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   retryOn: [429, 503],
 };
 
+/** No-retry config for non-idempotent POST operations */
+const NO_RETRY_CONFIG: RetryConfig = {
+  maxAttempts: 1,
+  baseDelayMs: 0,
+  backoff: "constant",
+  retryOn: [],
+};
+
 const MAX_JITTER_MS = 100;
 
 // PATH_TO_OPERATION is imported from generated/path-mapping.js
@@ -766,17 +774,32 @@ export function normalizeUrlPath(url: string): string {
 
 /**
  * Gets the retry config for a specific request based on operation metadata.
+ *
+ * POST operations are NOT retried unless explicitly marked idempotent in
+ * metadata (idempotent.natural === true). This prevents duplicate resource
+ * creation on transient failures. GET, PUT, DELETE are naturally idempotent
+ * and use the operation's retry config or the default.
  */
 function getRetryConfigForRequest(method: string, url: string): RetryConfig {
+  const upperMethod = method.toUpperCase();
   const normalizedPath = normalizeUrlPath(url);
-  const key = `${method.toUpperCase()}:${normalizedPath}`;
+  const key = `${upperMethod}:${normalizedPath}`;
   const operationName = PATH_TO_OPERATION[key];
 
-  if (operationName) {
-    const opMeta = metadata.operations[operationName as keyof typeof metadata.operations];
-    if (opMeta?.retry) {
-      return opMeta.retry as RetryConfig;
+  const opMeta = operationName
+    ? metadata.operations[operationName as keyof typeof metadata.operations]
+    : undefined;
+
+  // POST operations must not be retried unless explicitly marked idempotent
+  if (upperMethod === "POST") {
+    if (opMeta?.idempotent?.natural) {
+      return (opMeta.retry as RetryConfig) ?? DEFAULT_RETRY_CONFIG;
     }
+    return NO_RETRY_CONFIG;
+  }
+
+  if (opMeta?.retry) {
+    return opMeta.retry as RetryConfig;
   }
 
   return DEFAULT_RETRY_CONFIG;

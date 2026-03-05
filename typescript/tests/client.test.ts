@@ -115,10 +115,10 @@ describe("BasecampClient", () => {
       expect(data).toEqual([]);
     });
 
-    it("should retry POST requests based on operation-specific metadata config", async () => {
-      // Unlike the Go SDK which is conservative, the TypeScript SDK uses per-operation
-      // retry configs from metadata.json. This allows safe retry of idempotent POST
-      // operations like CreateTodo (which has maxAttempts: 3 in metadata).
+    it("should not retry non-idempotent POST requests", async () => {
+      // POST operations are NOT retried unless explicitly marked idempotent
+      // in metadata (idempotent.natural === true). CreateTodo is not marked
+      // idempotent, so it should make exactly 1 request.
       let attempts = 0;
 
       server.use(
@@ -141,8 +141,7 @@ describe("BasecampClient", () => {
         }
       );
 
-      // CreateTodo has maxAttempts: 3 in metadata, so we expect retries
-      expect(attempts).toBe(2); // Initial request + 1 retry before giving up
+      expect(attempts).toBe(1); // Single request, no retry
       expect(error).toBeDefined();
     });
 
