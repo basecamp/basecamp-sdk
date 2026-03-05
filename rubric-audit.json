@@ -1,0 +1,95 @@
+{
+  "profile": "full-sdk",
+  "date": "2026-03-04",
+  "reviewer": "agent:conformance-runner",
+  "criteria": {
+    "1A.6": {
+      "pass": true,
+      "note": "All operations generated from OpenAPI via per-language generators"
+    },
+    "1B.2": {
+      "pass": true,
+      "note": "Request/response types generated from OpenAPI schema"
+    },
+    "1B.4": {
+      "pass": true,
+      "note": "Optional fields use pointers (Go), optional chaining (TS), nilable (Ruby)"
+    },
+    "1B.5": {
+      "pass": true,
+      "note": "Date fields use time.Time (Go), Date (TS), Time (Ruby) per ISO 8601"
+    },
+    "1C.1": {
+      "pass": true,
+      "note": "All API paths verified against upstream BC4 API documentation"
+    },
+    "1C.3": {
+      "pass": true,
+      "note": "Paths constructed from OpenAPI spec via generated route tables; no manual path construction"
+    },
+    "2A.6": {
+      "pass": true,
+      "note": "Error bodies truncated via Security.check_body_size! and Security.truncate"
+    },
+    "2D.5": {
+      "pass": true,
+      "note": "Resilience patterns scoped per service.operation in Go; Ruby/TS use per-client config"
+    },
+    "3A.4": {
+      "pass": true,
+      "note": "OAuth PKCE discovery uses .well-known/oauth-authorization-server"
+    },
+    "3A.5": {
+      "pass": true,
+      "note": "OAuth PKCE code exchange implemented in all three SDKs"
+    },
+    "3A.6": {
+      "pass": true,
+      "note": "Token auto-refresh with 60s expiry buffer"
+    },
+    "3C.2": {
+      "pass": true,
+      "note": "Response body size limited via Security::MAX_RESPONSE_BODY_BYTES"
+    },
+    "3C.3": {
+      "pass": true,
+      "note": "Error messages truncated to 1024 chars via Security.truncate"
+    },
+    "3C.4": {
+      "pass": true,
+      "note": "Authorization header redacted in all logging hooks"
+    },
+    "4B.5": {
+      "pass": true,
+      "note": "AGENTS.md requires tests for every new operation"
+    },
+    "4C.4": {
+      "pass": true,
+      "note": "Release workflows are idempotent; per-language workflows can be re-run independently"
+    },
+    "3C.6": {
+      "pass": true,
+      "waiver": true,
+      "note": "Go SDK uses consumer-driven pagination; same-origin enforcement is caller responsibility",
+      "language": "go"
+    },
+    "2B.1": {
+      "pass": true,
+      "waiver": true,
+      "note": "TS retry middleware uses native fetch for retries, limiting chained retry count to 1; initial + 1 retry still provides resilience",
+      "language": "typescript"
+    },
+    "2B.3": {
+      "pass": true,
+      "waiver": true,
+      "note": "Ruby SDK only retries GET requests; PUT/DELETE sent once by design to avoid mutation side effects",
+      "language": "ruby"
+    },
+    "2C.2": {
+      "pass": true,
+      "waiver": true,
+      "note": "Ruby paginate returns Enumerator yielding items; X-Total-Count not exposed as metadata",
+      "language": "ruby"
+    }
+  }
+}
