@@ -125,6 +125,14 @@
         "baseUrl": {
           "type": "string",
           "description": "Override the base URL used to construct the SDK client"
+        },
+        "maxPages": {
+          "type": "integer",
+          "description": "Override the pagination safety cap (maximum number of pages to follow)"
+        },
+        "maxItems": {
+          "type": "integer",
+          "description": "Override the maximum number of items to fetch across all pages"
         }
       }
     },

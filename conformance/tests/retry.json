@@ -66,5 +66,54 @@
       {"type": "statusCode", "expected": 404}
     ],
     "tags": ["retry", "404"]
+  },
+  {
+    "name": "Retry-After HTTP-date format respected",
+    "description": "Verifies that Retry-After header with HTTP-date format is parsed and the SDK retries (2A.5). Uses a past date; the SDK should parse the date format, compute a non-positive delay, fall back to standard backoff, and still retry.",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 429, "headers": {"Retry-After": "Wed, 09 Jun 2021 10:18:14 GMT"}},
+      {"status": 200, "body": {"id": 12345, "name": "Test Project", "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/projects/12345.json", "app_url": "https://3.basecamp.com/999/projects/12345"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "noError"}
+    ],
+    "tags": ["retry", "retry-after-date"]
+  },
+  {
+    "name": "POST with 429 is not retried",
+    "description": "Verifies that POST operations receiving 429 are NOT retried since POST is not idempotent (2B.4)",
+    "operation": "CreateProject",
+    "method": "POST",
+    "path": "/projects.json",
+    "requestBody": {"name": "New Project"},
+    "mockResponses": [
+      {"status": 429, "headers": {"Retry-After": "1"}, "body": {"error": "Rate limit exceeded"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 429}
+    ],
+    "tags": ["no-retry", "post", "429"]
+  },
+  {
+    "name": "403 Forbidden is not retried",
+    "description": "Verifies that 403 Forbidden errors are not retried since they lack @retryable (2B.5)",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 403, "body": {"error": "Forbidden"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "errorCode", "expected": "forbidden"}
+    ],
+    "tags": ["retry", "non-retryable", "403"]
   }
 ]

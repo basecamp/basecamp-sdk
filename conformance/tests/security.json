@@ -12,7 +12,9 @@
           "Link": "<https://evil.example.com/projects.json?page=2>; rel=\"next\"",
           "X-Total-Count": "100"
         },
-        "body": [{"id": 1}]
+        "body": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"}
+        ]
       }
     ],
     "assertions": [
@@ -64,11 +66,15 @@
           "Link": "</projects.json?page=2>; rel=\"next\"",
           "X-Total-Count": "50"
         },
-        "body": [{"id": 1}]
+        "body": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"}
+        ]
       },
       {
         "status": 200,
-        "body": [{"id": 2}]
+        "body": [
+          {"id": 2, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 2", "url": "https://3.basecampapi.com/999/projects/2.json", "app_url": "https://3.basecamp.com/999/projects/2"}
+        ]
       }
     ],
     "assertions": [
@@ -90,7 +96,9 @@
           "Link": "<http://3.basecampapi.com/projects.json?page=2>; rel=\"next\"",
           "X-Total-Count": "100"
         },
-        "body": [{"id": 1}]
+        "body": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"}
+        ]
       }
     ],
     "assertions": [

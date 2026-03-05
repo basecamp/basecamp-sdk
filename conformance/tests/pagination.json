@@ -12,7 +12,10 @@
           "Link": "</projects.json?page=2>; rel=\"next\"",
           "X-Total-Count": "75"
         },
-        "body": {"projects": [{"id": 1}, {"id": 2}]}
+        "body": {"projects": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"},
+          {"id": 2, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 2", "url": "https://3.basecampapi.com/999/projects/2.json", "app_url": "https://3.basecamp.com/999/projects/2"}
+        ]}
       }
     ],
     "assertions": [
@@ -43,5 +46,153 @@
       {"type": "noError"}
     ],
     "tags": ["pagination", "total-count"]
+  },
+  {
+    "name": "Auto-pagination follows Link headers across multiple pages",
+    "description": "Verifies that the SDK automatically follows Link rel=next headers to fetch all pages (2C.1, 2C.3)",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": "</projects.json?page=2>; rel=\"next\""
+        },
+        "body": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"},
+          {"id": 2, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 2", "url": "https://3.basecampapi.com/999/projects/2.json", "app_url": "https://3.basecamp.com/999/projects/2"}
+        ]
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Link": "</projects.json?page=3>; rel=\"next\""
+        },
+        "body": [
+          {"id": 3, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 3", "url": "https://3.basecampapi.com/999/projects/3.json", "app_url": "https://3.basecamp.com/999/projects/3"},
+          {"id": 4, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 4", "url": "https://3.basecampapi.com/999/projects/4.json", "app_url": "https://3.basecamp.com/999/projects/4"}
+        ]
+      },
+      {
+        "status": 200,
+        "body": [
+          {"id": 5, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 5", "url": "https://3.basecampapi.com/999/projects/5.json", "app_url": "https://3.basecamp.com/999/projects/5"}
+        ]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 3},
+      {"type": "noError"}
+    ],
+    "tags": ["pagination", "auto-follow"]
+  },
+  {
+    "name": "Pagination stops at maxPages safety cap",
+    "description": "Verifies that pagination stops after maxPages even when more pages are available (2C.3, 2C.6)",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "configOverrides": {
+      "maxPages": 2
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": "</projects.json?page=2>; rel=\"next\""
+        },
+        "body": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"},
+          {"id": 2, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 2", "url": "https://3.basecampapi.com/999/projects/2.json", "app_url": "https://3.basecamp.com/999/projects/2"}
+        ]
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Link": "</projects.json?page=3>; rel=\"next\""
+        },
+        "body": [
+          {"id": 3, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 3", "url": "https://3.basecampapi.com/999/projects/3.json", "app_url": "https://3.basecamp.com/999/projects/3"},
+          {"id": 4, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 4", "url": "https://3.basecampapi.com/999/projects/4.json", "app_url": "https://3.basecamp.com/999/projects/4"}
+        ]
+      },
+      {
+        "status": 200,
+        "body": [
+          {"id": 5, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 5", "url": "https://3.basecampapi.com/999/projects/5.json", "app_url": "https://3.basecamp.com/999/projects/5"}
+        ]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "noError"},
+      {"type": "responseMeta", "path": "truncated", "expected": true}
+    ],
+    "tags": ["pagination", "safety-cap"]
+  },
+  {
+    "name": "Missing X-Total-Count returns zero",
+    "description": "Verifies that missing X-Total-Count header results in zero total count (2C.2)",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"}
+        ]
+      }
+    ],
+    "assertions": [
+      {"type": "responseMeta", "path": "totalCount", "expected": 0},
+      {"type": "noError"}
+    ],
+    "tags": ["pagination", "total-count"]
+  },
+  {
+    "name": "maxItems caps results across pages",
+    "description": "Verifies that maxItems option caps the total items returned, stopping pagination early when enough items are collected (2C.4, 2C.6)",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "configOverrides": {
+      "maxItems": 3
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": "</projects.json?page=2>; rel=\"next\""
+        },
+        "body": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"},
+          {"id": 2, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 2", "url": "https://3.basecampapi.com/999/projects/2.json", "app_url": "https://3.basecamp.com/999/projects/2"}
+        ]
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Link": "</projects.json?page=3>; rel=\"next\""
+        },
+        "body": [
+          {"id": 3, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 3", "url": "https://3.basecampapi.com/999/projects/3.json", "app_url": "https://3.basecamp.com/999/projects/3"},
+          {"id": 4, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 4", "url": "https://3.basecampapi.com/999/projects/4.json", "app_url": "https://3.basecamp.com/999/projects/4"}
+        ]
+      },
+      {
+        "status": 200,
+        "body": [
+          {"id": 5, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 5", "url": "https://3.basecampapi.com/999/projects/5.json", "app_url": "https://3.basecamp.com/999/projects/5"}
+        ]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "noError"},
+      {"type": "responseMeta", "path": "truncated", "expected": true}
+    ],
+    "tags": ["pagination", "max-items"]
   }
 ]
