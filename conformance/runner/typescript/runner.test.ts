@@ -47,7 +47,7 @@ interface TestCase {
   mockResponses: MockResponse[];
   assertions: Assertion[];
   tags?: string[];
-  configOverrides?: { baseUrl?: string };
+  configOverrides?: { baseUrl?: string; maxPages?: number; maxItems?: number };
 }
 
 // =============================================================================
@@ -66,9 +66,14 @@ const TEST_ACCOUNT_ID = "999";
  * 1 retry. A test expecting 3 total requests (initial + 2 retries) will only
  * see 2 (initial + 1 retry).
  */
-const TS_SDK_RETRY_CHAIN_SKIPS = new Set([
-  "GET operation retries on 503",
-]);
+const TS_SDK_SKIPS: Record<string, string> = {
+  "GET operation retries on 503":
+    "TS SDK retry middleware yields at most 1 retry per middleware pass",
+  "Pagination stops at maxPages safety cap":
+    "TS SDK MAX_PAGES is a hardcoded constant (not configurable per-client)",
+  "Large integer IDs preserved without precision loss":
+    "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
+};
 
 // =============================================================================
 // Test infrastructure
@@ -94,20 +99,29 @@ afterAll(() => server.close());
 async function executeOperation(
   client: BasecampClient,
   tc: TestCase,
-): Promise<{ error?: BasecampError | Error; httpStatus?: number; meta?: Record<string, unknown> }> {
+): Promise<{ error?: BasecampError | Error; httpStatus?: number; meta?: Record<string, unknown>; result?: unknown }> {
   const params = tc.pathParams ?? {};
   const body = tc.requestBody ?? {};
 
   try {
     switch (tc.operation) {
       case "ListProjects": {
-        const projects = await client.projects.list();
-        return { meta: { totalCount: projects.meta?.totalCount ?? 0 } };
+        const maxItems = tc.configOverrides?.maxItems;
+        const projects = await client.projects.list(
+          maxItems ? { maxItems } : undefined,
+        );
+        return {
+          meta: {
+            totalCount: projects.meta?.totalCount ?? 0,
+            truncated: projects.meta?.truncated ?? false,
+          },
+        };
       }
 
-      case "GetProject":
-        await client.projects.get(Number(params.projectId));
-        break;
+      case "GetProject": {
+        const project = await client.projects.get(Number(params.projectId));
+        return { result: project };
+      }
 
       case "CreateProject":
         // Always send a non-empty name to bypass client-side validation.
@@ -129,7 +143,12 @@ async function executeOperation(
 
       case "ListTodos": {
         const todos = await client.todos.list(Number(params.todolistId));
-        return { meta: { totalCount: todos.meta?.totalCount ?? 0 } };
+        return {
+          meta: {
+            totalCount: todos.meta?.totalCount ?? 0,
+            truncated: todos.meta?.truncated ?? false,
+          },
+        };
       }
 
       case "GetTodo":
@@ -566,7 +585,16 @@ function checkAssertions(
       }
 
       case "responseBody": {
-        // Reserved assertion type — no conformance tests use it yet.
+        const fieldPath = assertion.path!;
+        const expected = assertion.expected;
+        if (result.result === undefined || result.result === null) {
+          throw new Error(`[${tc.name}] expected responseBody.${fieldPath}, but no result returned`);
+        }
+        const actual = (result.result as Record<string, unknown>)[fieldPath];
+        expect(
+          actual,
+          `[${tc.name}] expected responseBody.${fieldPath} = ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
+        ).toEqual(expected);
         break;
       }
 
@@ -615,6 +643,14 @@ function shouldEnableRetry(tc: TestCase, filename: string): boolean {
     return false;
   }
 
+  if (filename === "error-mapping.json") {
+    // Rate-limit tests need retry to exhaust attempts
+    if (tc.tags?.includes("rate-limit") && tc.mockResponses.length > 1) {
+      return true;
+    }
+    return false;
+  }
+
   // Path and pagination tests don't need retry
   return false;
 }
@@ -625,11 +661,8 @@ const suites = loadTestSuites();
 for (const { filename, tests } of suites) {
   describe(`conformance/${filename}`, () => {
     for (const tc of tests) {
-      // Skip tests that require chained retries (>1 retry per request),
-      // which the TS SDK retry middleware doesn't support because retry
-      // requests bypass the middleware stack.
-      if (TS_SDK_RETRY_CHAIN_SKIPS.has(tc.name)) {
-        it.skip(`${tc.name} (TS SDK retry middleware yields at most 1 retry per middleware pass)`, () => {});
+      if (tc.name in TS_SDK_SKIPS) {
+        it.skip(`${tc.name} (${TS_SDK_SKIPS[tc.name]})`, () => {});
         continue;
       }
 

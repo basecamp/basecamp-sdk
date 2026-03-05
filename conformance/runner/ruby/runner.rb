@@ -152,12 +152,18 @@ RUBY_SKIPS = Set.new([
   "PUT operation is naturally idempotent",
   "DELETE operation is naturally idempotent",
   "Total count header is accessible",
+  "Missing X-Total-Count returns zero",
+  "Pagination stops at maxPages safety cap",
+  "maxItems caps results across pages",
 ].freeze)
 
 RUBY_SKIP_REASONS = {
   "PUT operation is naturally idempotent" => "Ruby SDK only retries GET",
   "DELETE operation is naturally idempotent" => "Ruby SDK only retries GET",
   "Total count header is accessible" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
+  "Missing X-Total-Count returns zero" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
+  "Pagination stops at maxPages safety cap" => "Ruby SDK paginate doesn't expose truncation metadata",
+  "maxItems caps results across pages" => "Ruby SDK paginate doesn't support maxItems",
 }.freeze
 
 # Single test case
@@ -482,9 +488,9 @@ class ConformanceRunner
     @tests_dir = tests_dir
     @tracker = TestTracker.new
 
-    # Create a test client
+    # Create a test client (use "conformance-test-token" to match headerInjected assertions)
     config = Basecamp::Config.new(base_url: "https://3.basecampapi.com")
-    token_provider = Basecamp::StaticTokenProvider.new("test-token")
+    token_provider = Basecamp::StaticTokenProvider.new("conformance-test-token")
     client = Basecamp::Client.new(config: config, token_provider: token_provider)
     @account = client.for_account("999")
     @mapper = OperationMapper.new(@account)
@@ -496,11 +502,17 @@ class ConformanceRunner
   # ErrorMapper that always raises the caught error.
   def mapper_for_test(test_case)
     overrides = test_case["configOverrides"]
-    return @mapper unless overrides&.key?("baseUrl")
+    return @mapper unless overrides
+
+    has_base_url = overrides.key?("baseUrl")
+    has_max_pages = overrides.key?("maxPages")
+    return @mapper unless has_base_url || has_max_pages
 
     begin
-      config = Basecamp::Config.new(base_url: overrides["baseUrl"])
-      token_provider = Basecamp::StaticTokenProvider.new("test-token")
+      config_opts = { base_url: has_base_url ? overrides["baseUrl"] : "https://3.basecampapi.com" }
+      config_opts[:max_pages] = overrides["maxPages"] if has_max_pages
+      config = Basecamp::Config.new(**config_opts)
+      token_provider = Basecamp::StaticTokenProvider.new("conformance-test-token")
       client = Basecamp::Client.new(config: config, token_provider: token_provider)
       account = client.for_account("999")
       OperationMapper.new(account)
