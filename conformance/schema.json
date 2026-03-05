@@ -90,7 +90,14 @@
               "headerValue",
               "errorType",
               "noError",
-              "requestPath"
+              "requestPath",
+              "errorCode",
+              "errorMessage",
+              "errorField",
+              "headerInjected",
+              "requestScheme",
+              "urlOrigin",
+              "responseMeta"
             ]
           },
           "expected": {
@@ -108,6 +115,16 @@
             "type": "string",
             "description": "JSONPath or dot-notation path for nested value assertions"
           }
+        }
+      }
+    },
+    "configOverrides": {
+      "type": "object",
+      "description": "Override client configuration for this test case (e.g., non-localhost baseUrl for HTTPS enforcement)",
+      "properties": {
+        "baseUrl": {
+          "type": "string",
+          "description": "Override the base URL used to construct the SDK client"
         }
       }
     },

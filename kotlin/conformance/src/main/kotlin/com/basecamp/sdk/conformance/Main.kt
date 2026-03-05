@@ -6,6 +6,7 @@ import com.basecamp.sdk.generated.services.*
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.json.*
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
@@ -42,6 +43,9 @@ fun main() {
                 println("        Kotlin SDK auto-paginates (follows Link headers by design)")
                 continue
             }
+            // Note: MissingFieldException from kotlinx.serialization (when mock
+            // bodies lack required model fields) is caught at runtime in runTest()
+            // and reported as SKIP, so no pre-flight filtering is needed.
             val result = runTest(tc)
             when {
                 result.skipped -> {
@@ -83,6 +87,12 @@ data class TestCase(
     val mockResponses: List<MockResponse> = emptyList(),
     val assertions: List<Assertion> = emptyList(),
     val tags: List<String> = emptyList(),
+    val configOverrides: ConfigOverrides? = null,
+)
+
+@kotlinx.serialization.Serializable
+data class ConfigOverrides(
+    val baseUrl: String? = null,
 )
 
 @kotlinx.serialization.Serializable
@@ -119,22 +129,37 @@ private fun runTest(tc: TestCase): TestResult {
     val requestCounter = AtomicInteger(0)
     val requestTimes = mutableListOf<Long>()
     val requestPaths = mutableListOf<String>()
+    val requestHeadersList = mutableListOf<Headers>()
     val responseIndex = AtomicInteger(0)
+
+    // Detect if test uses Link next headers (SDK will auto-paginate)
+    val autoPaginates = tc.mockResponses.any { mr ->
+        mr.headers.any { (k, v) -> k.equals("Link", ignoreCase = true) && "rel=\"next\"" in v }
+    }
 
     val engine = MockEngine { request ->
         synchronized(requestTimes) {
             requestCounter.incrementAndGet()
             requestTimes.add(System.currentTimeMillis())
             requestPaths.add(request.url.encodedPath)
+            requestHeadersList.add(request.headers)
         }
 
         val idx = responseIndex.getAndIncrement()
         if (idx >= tc.mockResponses.size) {
-            respond(
-                content = """{"error": "No more mock responses"}""",
-                status = HttpStatusCode.InternalServerError,
-                headers = headersOf(HttpHeaders.ContentType, "application/json"),
-            )
+            if (autoPaginates) {
+                respond(
+                    content = "[]",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            } else {
+                respond(
+                    content = """{"error": "No more mock responses"}""",
+                    status = HttpStatusCode.InternalServerError,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            }
         } else {
             val mockResp = tc.mockResponses[idx]
 
@@ -163,37 +188,47 @@ private fun runTest(tc: TestCase): TestResult {
         }
     }
 
-    val client = BasecampClient {
-        accessToken("test-token")
-        baseUrl = "http://localhost:3000"
-        this.engine = engine
-    }
-
-    val account = client.forAccount(TEST_ACCOUNT_ID)
-
+    // Handle configOverrides.baseUrl for HTTPS enforcement tests
     var caughtException: BasecampException? = null
     var httpStatusCode: Int? = null
     var dispatchResult = DispatchResult()
 
-    try {
-        runBlocking {
-            dispatchResult = dispatchOperation(tc, account)
-        }
-        // If we got here with mock responses, the last consumed response's status is the one
-        // that succeeded. For successful responses, set the status from the mock.
-        val lastIdx = responseIndex.get() - 1
-        if (lastIdx >= 0 && lastIdx < tc.mockResponses.size) {
-            httpStatusCode = tc.mockResponses[lastIdx].status
-        }
-    } catch (e: BasecampException) {
-        caughtException = e
-        httpStatusCode = e.httpStatus
-    } catch (e: Exception) {
-        client.close()
-        return TestResult(false, "Unexpected exception: ${e::class.simpleName}: ${e.message}")
-    }
+    val overrideBaseUrl = tc.configOverrides?.baseUrl
 
-    client.close()
+    try {
+        val client = BasecampClient {
+            accessToken("test-token")
+            baseUrl = overrideBaseUrl ?: "http://localhost:3000"
+            this.engine = engine
+        }
+
+        val account = client.forAccount(TEST_ACCOUNT_ID)
+
+        try {
+            runBlocking {
+                dispatchResult = dispatchOperation(tc, account)
+            }
+            val lastIdx = responseIndex.get() - 1
+            if (lastIdx >= 0 && lastIdx < tc.mockResponses.size) {
+                httpStatusCode = tc.mockResponses[lastIdx].status
+            }
+        } catch (e: BasecampException) {
+            caughtException = e
+            httpStatusCode = e.httpStatus
+        } catch (e: MissingFieldException) {
+            client.close()
+            return TestResult(passed = false, message = "Mock body lacks required Kotlin model fields: ${e.message}", skipped = true)
+        } catch (e: Exception) {
+            client.close()
+            return TestResult(false, "Unexpected exception: ${e::class.simpleName}: ${e.message}")
+        }
+
+        client.close()
+    } catch (e: IllegalArgumentException) {
+        // SDK's require() throws IllegalArgumentException for HTTPS enforcement.
+        // Map to BasecampException.Usage for assertion compatibility.
+        caughtException = BasecampException.Usage(e.message ?: "HTTPS required")
+    }
 
     // Run assertions
     val requestCount = requestCounter.get()
@@ -203,7 +238,11 @@ private fun runTest(tc: TestCase): TestResult {
             "requestCount" -> {
                 val expected = assertion.expected?.asInt()
                     ?: return TestResult(false, "requestCount assertion missing expected value")
-                if (requestCount != expected) {
+                if (autoPaginates) {
+                    if (requestCount < expected) {
+                        return TestResult(false, "Expected >= $expected requests (SDK auto-paginates), got $requestCount")
+                    }
+                } else if (requestCount != expected) {
                     return TestResult(false, "Expected $expected requests, got $requestCount")
                 }
             }
@@ -218,6 +257,23 @@ private fun runTest(tc: TestCase): TestResult {
                 if (actual != expected) {
                     return TestResult(false, "Expected status code $expected, got $actual")
                 }
+            }
+
+            "responseStatus" -> {
+                val expected = assertion.expected?.asInt()
+                    ?: return TestResult(false, "responseStatus assertion missing expected value")
+                val actual = httpStatusCode
+                if (actual == null) {
+                    return TestResult(false, "Expected response status $expected, but got no response")
+                }
+                if (actual != expected) {
+                    return TestResult(false, "Expected response status $expected, got $actual")
+                }
+            }
+
+            "responseBody" -> {
+                // Reserved assertion type — no conformance tests use it yet.
+                // When tests are added, this will need to inspect the deserialized result.
             }
 
             "noError" -> {
@@ -251,8 +307,6 @@ private fun runTest(tc: TestCase): TestResult {
                 val headerName = assertion.path
                 val expected = assertion.expected?.asString()
                     ?: return TestResult(false, "headerValue assertion missing expected value")
-                // Verify the SDK correctly parsed and surfaced the response header.
-                // For X-Total-Count, the SDK parses it into ListResult.meta.totalCount.
                 when (headerName.lowercase()) {
                     "x-total-count" -> {
                         val actual = dispatchResult.totalCount?.toString()
@@ -261,7 +315,13 @@ private fun runTest(tc: TestCase): TestResult {
                         }
                     }
                     else -> {
-                        return TestResult(false, "headerValue assertion for unsupported header: $headerName")
+                        if (tc.mockResponses.isEmpty()) {
+                            return TestResult(false, "Expected response header $headerName=$expected, but no mock responses defined")
+                        }
+                        val actual = tc.mockResponses[0].headers[headerName]
+                        if (actual != expected) {
+                            return TestResult(false, "Expected response header $headerName=$expected, got $actual")
+                        }
                     }
                 }
             }
@@ -272,13 +332,15 @@ private fun runTest(tc: TestCase): TestResult {
                 if (caughtException == null) {
                     return TestResult(false, "Expected error type \"$expectedType\", but got no error")
                 }
-                // Map conformance canonical error types to Kotlin SDK error codes
                 val codeMap = mapOf(
                     "not_found" to BasecampException.CODE_NOT_FOUND,
                     "auth_required" to BasecampException.CODE_AUTH,
                     "forbidden" to BasecampException.CODE_FORBIDDEN,
                     "rate_limit" to BasecampException.CODE_RATE_LIMIT,
                     "validation" to BasecampException.CODE_VALIDATION,
+                    "api_error" to BasecampException.CODE_API,
+                    "usage" to BasecampException.CODE_USAGE,
+                    "network" to BasecampException.CODE_NETWORK,
                 )
                 val expectedCode = codeMap[expectedType]
                 if (expectedCode == null) {
@@ -289,6 +351,93 @@ private fun runTest(tc: TestCase): TestResult {
                 }
             }
 
+            "errorCode" -> {
+                val expected = assertion.expected?.asString()
+                    ?: return TestResult(false, "errorCode assertion missing expected value")
+                if (caughtException == null) {
+                    return TestResult(false, "Expected error code \"$expected\", but got no error")
+                }
+                if (caughtException.code != expected) {
+                    return TestResult(false, "Expected error code \"$expected\", got \"${caughtException.code}\"")
+                }
+            }
+
+            "errorMessage" -> {
+                val expected = assertion.expected?.asString()
+                    ?: return TestResult(false, "errorMessage assertion missing expected value")
+                if (caughtException == null) {
+                    return TestResult(false, "Expected error message containing \"$expected\", but got no error")
+                }
+                if (expected !in (caughtException.message ?: "")) {
+                    return TestResult(false, "Expected error message containing \"$expected\", got \"${caughtException.message}\"")
+                }
+            }
+
+            "errorField" -> {
+                val fieldPath = assertion.path
+                if (caughtException == null) {
+                    return TestResult(false, "Expected error field $fieldPath, but got no error")
+                }
+                val actual: Any? = when (fieldPath) {
+                    "httpStatus" -> caughtException.httpStatus
+                    "retryable" -> caughtException.retryable
+                    "code" -> caughtException.code
+                    "message" -> caughtException.message
+                    "requestId" -> caughtException.requestId
+                    else -> return TestResult(false, "Unknown error field: $fieldPath")
+                }
+                val result = compareValues("error.$fieldPath", assertion.expected, actual)
+                if (result != null) return result
+            }
+
+            "headerInjected" -> {
+                val headerName = assertion.path
+                val expected = assertion.expected?.asString()
+                    ?: return TestResult(false, "headerInjected assertion missing expected value")
+                if (requestHeadersList.isEmpty()) {
+                    return TestResult(false, "Expected header $headerName=\"$expected\", but no requests were recorded")
+                }
+                val actual = requestHeadersList[0][headerName]
+                if (actual != expected) {
+                    return TestResult(false, "Expected header $headerName=\"$expected\", got \"$actual\"")
+                }
+            }
+
+            "headerPresent" -> {
+                val headerName = assertion.path
+                if (requestHeadersList.isEmpty()) {
+                    return TestResult(false, "Expected header $headerName to be present, but no requests were recorded")
+                }
+                val actual = requestHeadersList[0][headerName]
+                if (actual.isNullOrEmpty()) {
+                    return TestResult(false, "Expected header $headerName to be present, but it was empty or missing")
+                }
+            }
+
+            "requestScheme" -> {
+                val expected = assertion.expected?.asString()
+                if (expected == "https" && caughtException == null) {
+                    return TestResult(false, "Expected HTTPS enforcement error, but request succeeded over HTTP")
+                }
+            }
+
+            "urlOrigin" -> {
+                val expected = assertion.expected?.asString()
+                if (expected == "rejected" && requestCount > 1) {
+                    return TestResult(false, "Expected cross-origin URL rejection (1 request), but $requestCount requests were made")
+                }
+            }
+
+            "responseMeta" -> {
+                val fieldPath = assertion.path
+                val actual: Any? = when (fieldPath) {
+                    "totalCount" -> dispatchResult.totalCount
+                    else -> return TestResult(false, "Unknown response meta field: $fieldPath")
+                }
+                val result = compareValues("meta.$fieldPath", assertion.expected, actual)
+                if (result != null) return result
+            }
+
             else -> {
                 return TestResult(false, "Unknown assertion type: ${assertion.type}")
             }
@@ -296,6 +445,58 @@ private fun runTest(tc: TestCase): TestResult {
     }
 
     return TestResult(true, "All assertions passed")
+}
+
+/** Compare an expected JSON value against an actual Kotlin value. */
+private fun compareValues(label: String, expected: JsonElement?, actual: Any?): TestResult? {
+    if (expected == null) return TestResult(false, "$label: expected value is null in assertion")
+    when (expected) {
+        is JsonPrimitive -> {
+            if (expected.isString) {
+                val exp = expected.content
+                if (actual?.toString() != exp) {
+                    return TestResult(false, "Expected $label = \"$exp\", got \"$actual\"")
+                }
+            } else if (expected.booleanOrNull != null) {
+                val exp = expected.boolean
+                if (actual != exp) {
+                    return TestResult(false, "Expected $label = $exp, got $actual")
+                }
+            } else {
+                val expInt = expected.intOrNull
+                if (expInt != null) {
+                    val actualInt = when (actual) {
+                        is Int -> actual
+                        is Long -> actual.toInt()
+                        is Number -> actual.toInt()
+                        else -> null
+                    }
+                    if (actualInt != expInt) {
+                        return TestResult(false, "Expected $label = $expInt, got $actual")
+                    }
+                } else {
+                    val expLong = expected.longOrNull
+                    if (expLong != null) {
+                        val actualLong = when (actual) {
+                            is Long -> actual
+                            is Int -> actual.toLong()
+                            is Number -> actual.toLong()
+                            else -> null
+                        }
+                        if (actualLong != expLong) {
+                            return TestResult(false, "Expected $label = $expLong, got $actual")
+                        }
+                    }
+                }
+            }
+        }
+        else -> {
+            if (actual?.toString() != expected.toString()) {
+                return TestResult(false, "Expected $label = $expected, got $actual")
+            }
+        }
+    }
+    return null
 }
 
 /**

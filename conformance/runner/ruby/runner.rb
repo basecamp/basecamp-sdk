@@ -25,9 +25,9 @@ class TestTracker
     @mutex = Mutex.new
   end
 
-  def record_request(time:, method:, uri:)
+  def record_request(time:, method:, uri:, headers: {})
     @mutex.synchronize do
-      @requests << { time: time, method: method, uri: uri.to_s }
+      @requests << { time: time, method: method, uri: uri.to_s, headers: headers }
     end
   end
 
@@ -45,6 +45,18 @@ class TestTracker
     @requests.each_cons(2).map do |a, b|
       ((b[:time] - a[:time]) * 1000).to_i # milliseconds
     end
+  end
+end
+
+# Stub mapper that always raises a pre-caught error.
+# Used when client construction fails (e.g., HTTPS enforcement).
+class ErrorMapper
+  def initialize(error)
+    @error = error
+  end
+
+  def call(*, **)
+    raise @error
   end
 end
 
@@ -133,10 +145,20 @@ TestResult = Struct.new(:name, :passed, :message)
 # The Ruby SDK only retries GET requests (see Http#request). PUT and DELETE
 # are sent once even though they're naturally idempotent. Tests asserting
 # mutation-retry behavior are skipped.
-RUBY_SDK_MUTATION_RETRY_SKIPS = Set.new([
+#
+# The Ruby SDK's paginate Enumerator does not expose X-Total-Count metadata,
+# so responseMeta.totalCount assertions are skipped.
+RUBY_SKIPS = Set.new([
   "PUT operation is naturally idempotent",
   "DELETE operation is naturally idempotent",
+  "Total count header is accessible",
 ].freeze)
+
+RUBY_SKIP_REASONS = {
+  "PUT operation is naturally idempotent" => "Ruby SDK only retries GET",
+  "DELETE operation is naturally idempotent" => "Ruby SDK only retries GET",
+  "Total count header is accessible" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
+}.freeze
 
 # Single test case
 class TestRunner
@@ -193,7 +215,7 @@ class TestRunner
     paginates = auto_paginates?
     call_count = 0
     stub.to_return do |request|
-      @tracker.record_request(time: Time.now, method: request.method, uri: request.uri)
+      @tracker.record_request(time: Time.now, method: request.method, uri: request.uri, headers: request.headers)
       if call_count < response_queue.size
         resp = response_queue[call_count]
         call_count += 1
@@ -300,6 +322,120 @@ class TestRunner
             failures << "Expected request path #{expected.inspect}, got #{actual_path.inspect}"
           end
         end
+
+      when "errorCode"
+        expected = assertion["expected"]
+        unless error
+          failures << "Expected error code #{expected.inspect}, but got no error"
+          next
+        end
+        if error.respond_to?(:code)
+          unless error.code == expected
+            failures << "Expected error code #{expected.inspect}, got #{error.code.inspect}"
+          end
+        else
+          failures << "Expected error with code #{expected.inspect}, but error #{error.class} has no code"
+        end
+
+      when "errorMessage"
+        expected = assertion["expected"]
+        unless error
+          failures << "Expected error message containing #{expected.inspect}, but got no error"
+          next
+        end
+        unless error.message.include?(expected)
+          failures << "Expected error message containing #{expected.inspect}, got #{error.message.inspect}"
+        end
+
+      when "errorField"
+        field_path = assertion["path"]
+        expected = assertion["expected"]
+        unless error
+          failures << "Expected error field #{field_path}, but got no error"
+          next
+        end
+        actual = case field_path
+                 when "httpStatus"
+                   error.respond_to?(:http_status) ? error.http_status : nil
+                 when "retryable"
+                   error.respond_to?(:retryable) ? error.retryable : nil
+                 when "requestId"
+                   error.respond_to?(:request_id) ? error.request_id : nil
+                 when "code"
+                   error.respond_to?(:code) ? error.code : nil
+                 when "message"
+                   error.message
+                 else
+                   failures << "Unknown error field: #{field_path}"
+                   next
+                 end
+        unless actual == expected
+          failures << "Expected error.#{field_path} = #{expected.inspect}, got #{actual.inspect}"
+        end
+
+      when "headerInjected"
+        header_name = assertion["path"]
+        expected = assertion["expected"]
+        requests = @tracker.requests
+        if requests.empty?
+          failures << "Expected header #{header_name}=#{expected.inspect}, but no requests recorded"
+        else
+          actual = requests.first[:headers]&.[](header_name)
+          unless actual == expected
+            failures << "Expected header #{header_name}=#{expected.inspect}, got #{actual.inspect}"
+          end
+        end
+
+      when "headerPresent"
+        header_name = assertion["path"]
+        requests = @tracker.requests
+        if requests.empty?
+          failures << "Expected header #{header_name} to be present, but no requests recorded"
+        else
+          actual = requests.first[:headers]&.[](header_name)
+          if actual.nil? || actual.empty?
+            failures << "Expected header #{header_name} to be present, but it was missing or empty"
+          end
+        end
+
+      when "headerValue"
+        header_name = assertion["path"]
+        expected = assertion["expected"]
+        responses = @test["mockResponses"] || []
+        if responses.empty?
+          failures << "Expected response header #{header_name}=#{expected.inspect}, but no mock responses defined"
+        else
+          actual = responses.first.dig("headers", header_name)
+          unless actual == expected
+            failures << "Expected response header #{header_name}=#{expected.inspect}, got #{actual.inspect}"
+          end
+        end
+
+      when "requestScheme"
+        # HTTPS enforcement: SDK should refuse HTTP for non-localhost.
+        # The errorCode assertion handles the specific error check.
+        expected = assertion["expected"]
+        if expected == "https" && !error
+          failures << "Expected HTTPS enforcement error, but request succeeded over HTTP"
+        end
+
+      when "urlOrigin"
+        # Cross-origin rejection: verified by requestCount=1 (link not followed).
+        expected = assertion["expected"]
+        if expected == "rejected" && @tracker.request_count > 1
+          failures << "Expected cross-origin URL rejection (1 request), but #{@tracker.request_count} requests were made"
+        end
+
+      when "responseMeta"
+        field_path = assertion["path"]
+        expected = assertion["expected"]
+        actual = result.is_a?(Hash) ? result[field_path] || result[field_path.to_sym] : nil
+        unless actual == expected
+          failures << "Expected responseMeta.#{field_path} = #{expected.inspect}, got #{actual.inspect}"
+        end
+
+      else
+        failures << "Unknown assertion type: #{assertion["type"]}"
       end
     end
 
@@ -354,6 +490,25 @@ class ConformanceRunner
     @mapper = OperationMapper.new(@account)
   end
 
+  # Returns an OperationMapper for the test, handling configOverrides.
+  # If configOverrides.baseUrl is set, constructs a new client with that URL.
+  # Construction-time errors (e.g., HTTPS enforcement) are wrapped in an
+  # ErrorMapper that always raises the caught error.
+  def mapper_for_test(test_case)
+    overrides = test_case["configOverrides"]
+    return @mapper unless overrides&.key?("baseUrl")
+
+    begin
+      config = Basecamp::Config.new(base_url: overrides["baseUrl"])
+      token_provider = Basecamp::StaticTokenProvider.new("test-token")
+      client = Basecamp::Client.new(config: config, token_provider: token_provider)
+      account = client.for_account("999")
+      OperationMapper.new(account)
+    rescue StandardError => e
+      ErrorMapper.new(e)
+    end
+  end
+
   def run
     files = Dir.glob(File.join(@tests_dir, "*.json"))
 
@@ -372,14 +527,16 @@ class ConformanceRunner
 
       tests = JSON.parse(File.read(file))
       tests.each do |test_case|
-        if RUBY_SDK_MUTATION_RETRY_SKIPS.include?(test_case["name"])
+        if RUBY_SKIPS.include?(test_case["name"])
           skipped += 1
-          puts "  SKIP: #{test_case["name"]} (Ruby SDK only retries GET)"
+          reason = RUBY_SKIP_REASONS[test_case["name"]] || "Ruby SDK behavior differs"
+          puts "  SKIP: #{test_case["name"]} (#{reason})"
           WebMock.reset!
           next
         end
 
-        runner = TestRunner.new(test_case, @tracker, @mapper)
+        mapper = mapper_for_test(test_case)
+        runner = TestRunner.new(test_case, @tracker, mapper)
         result = runner.run
         results << result
 

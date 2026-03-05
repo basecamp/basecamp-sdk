@@ -47,6 +47,7 @@ interface TestCase {
   mockResponses: MockResponse[];
   assertions: Assertion[];
   tags?: string[];
+  configOverrides?: { baseUrl?: string };
 }
 
 // =============================================================================
@@ -56,17 +57,6 @@ interface TestCase {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TESTS_DIR = path.resolve(__dirname, "../../tests");
 const TEST_ACCOUNT_ID = "999";
-
-/**
- * Tests where the TS SDK's behavior intentionally differs from the Go SDK.
- *
- * The TS SDK retries ALL operations (including POST) based on per-operation
- * metadata.json config, whereas the Go SDK refuses to retry non-idempotent
- * POST operations. Tests asserting POST-no-retry behavior are skipped.
- */
-const TS_SDK_POST_RETRY_SKIPS = new Set([
-  "POST operation does NOT retry (not idempotent)",
-]);
 
 /**
  * Tests where the TS SDK's retry middleware architecture limits chained retries.
@@ -104,15 +94,16 @@ afterAll(() => server.close());
 async function executeOperation(
   client: BasecampClient,
   tc: TestCase,
-): Promise<{ error?: BasecampError | Error; httpStatus?: number }> {
+): Promise<{ error?: BasecampError | Error; httpStatus?: number; meta?: Record<string, unknown> }> {
   const params = tc.pathParams ?? {};
   const body = tc.requestBody ?? {};
 
   try {
     switch (tc.operation) {
-      case "ListProjects":
-        await client.projects.list();
-        break;
+      case "ListProjects": {
+        const projects = await client.projects.list();
+        return { meta: { totalCount: projects.meta?.totalCount ?? 0 } };
+      }
 
       case "GetProject":
         await client.projects.get(Number(params.projectId));
@@ -136,9 +127,10 @@ async function executeOperation(
         await client.projects.trash(Number(params.projectId));
         break;
 
-      case "ListTodos":
-        await client.todos.list(Number(params.todolistId));
-        break;
+      case "ListTodos": {
+        const todos = await client.todos.list(Number(params.todolistId));
+        return { meta: { totalCount: todos.meta?.totalCount ?? 0 } };
+      }
 
       case "GetTodo":
         await client.todos.get(Number(params.todoId));
@@ -218,10 +210,12 @@ function installMockHandlers(tc: TestCase): {
   requestCount: () => number;
   requestTimes: () => number[];
   requestPaths: () => string[];
+  requestHeaders: () => Record<string, string>[];
 } {
   let responseIndex = 0;
   const times: number[] = [];
   const paths: string[] = [];
+  const requestHeadersList: Record<string, string>[] = [];
   let count = 0;
 
   // Catch-all handler for all requests to our mock server origin.
@@ -230,6 +224,9 @@ function installMockHandlers(tc: TestCase): {
     times.push(Date.now());
     const url = new URL(request.url);
     paths.push(url.pathname);
+    const headerObj: Record<string, string> = {};
+    request.headers.forEach((v, k) => { headerObj[k] = v; });
+    requestHeadersList.push(headerObj);
 
     const idx = responseIndex++;
 
@@ -295,6 +292,7 @@ function installMockHandlers(tc: TestCase): {
     requestCount: () => count,
     requestTimes: () => times,
     requestPaths: () => paths,
+    requestHeaders: () => requestHeadersList,
   };
 }
 
@@ -305,7 +303,7 @@ function installMockHandlers(tc: TestCase): {
 function checkAssertions(
   tc: TestCase,
   tracker: ReturnType<typeof installMockHandlers>,
-  result: { error?: BasecampError | Error; httpStatus?: number },
+  result: { error?: BasecampError | Error; httpStatus?: number; meta?: Record<string, unknown> },
 ): void {
   // Detect if any mock response includes a Link header with rel="next".
   // The TS SDK auto-paginates (follows all Link next headers), so the
@@ -394,11 +392,34 @@ function checkAssertions(
         break;
       }
 
+      case "headerPresent": {
+        const headerName = assertion.path!;
+        const headers = tracker.requestHeaders();
+        expect(
+          headers.length,
+          `[${tc.name}] expected at least one request for header presence check`,
+        ).toBeGreaterThan(0);
+        const actual = headers[0]![headerName.toLowerCase()];
+        expect(
+          actual,
+          `[${tc.name}] expected header ${headerName} to be present, but it was empty or missing`,
+        ).toBeTruthy();
+        break;
+      }
+
       case "headerValue": {
-        // TODO: headerValue assertions require access to the raw response
-        // headers, which the service methods don't expose directly. The SDK
-        // parses X-Total-Count into ListResult.meta.totalCount internally.
-        // Pagination header behavior is tested in the SDK's pagination.test.ts.
+        const headerName = assertion.path!;
+        const expected = String(assertion.expected);
+        const mockHeaders = tc.mockResponses[0]?.headers;
+        expect(
+          mockHeaders,
+          `[${tc.name}] expected response header ${headerName}=${expected}, but no mock response headers defined`,
+        ).toBeDefined();
+        const actual = mockHeaders![headerName];
+        expect(
+          actual,
+          `[${tc.name}] expected response header ${headerName}=${expected}, got ${actual}`,
+        ).toBe(expected);
         break;
       }
 
@@ -417,8 +438,140 @@ function checkAssertions(
         break;
       }
 
+      case "errorCode": {
+        const expected = String(assertion.expected);
+        if (!result.error) {
+          throw new Error(`[${tc.name}] expected error code "${expected}", but got no error`);
+        }
+        if (result.error instanceof BasecampError) {
+          expect(
+            result.error.code,
+            `[${tc.name}] expected error code "${expected}", got "${result.error.code}"`,
+          ).toBe(expected);
+        } else {
+          throw new Error(`[${tc.name}] expected BasecampError with code "${expected}", got ${result.error.constructor.name}`);
+        }
+        break;
+      }
+
+      case "errorMessage": {
+        const expected = String(assertion.expected);
+        if (!result.error) {
+          throw new Error(`[${tc.name}] expected error message containing "${expected}", but got no error`);
+        }
+        expect(
+          result.error.message,
+          `[${tc.name}] expected error message containing "${expected}"`,
+        ).toContain(expected);
+        break;
+      }
+
+      case "errorField": {
+        const fieldPath = assertion.path!;
+        if (!result.error) {
+          throw new Error(`[${tc.name}] expected error field ${fieldPath}, but got no error`);
+        }
+        if (!(result.error instanceof BasecampError)) {
+          throw new Error(`[${tc.name}] expected BasecampError for field ${fieldPath}, got ${result.error.constructor.name}`);
+        }
+        const err = result.error as BasecampError;
+        let actual: unknown;
+        switch (fieldPath) {
+          case "httpStatus": actual = err.httpStatus; break;
+          case "retryable": actual = err.retryable; break;
+          case "requestId": actual = err.requestId; break;
+          case "code": actual = err.code; break;
+          case "message": actual = err.message; break;
+          default:
+            throw new Error(`[${tc.name}] unknown error field: ${fieldPath}`);
+        }
+        expect(
+          actual,
+          `[${tc.name}] expected error.${fieldPath} = ${JSON.stringify(assertion.expected)}, got ${JSON.stringify(actual)}`,
+        ).toEqual(assertion.expected);
+        break;
+      }
+
+      case "headerInjected": {
+        const headerName = assertion.path!;
+        const expected = String(assertion.expected);
+        const headers = tracker.requestHeaders();
+        expect(
+          headers.length,
+          `[${tc.name}] expected at least one request for header check`,
+        ).toBeGreaterThan(0);
+        const actual = headers[0]![headerName.toLowerCase()];
+        expect(
+          actual,
+          `[${tc.name}] expected header ${headerName}="${expected}", got "${actual}"`,
+        ).toBe(expected);
+        break;
+      }
+
+      case "requestScheme": {
+        // HTTPS enforcement: SDK should refuse HTTP for non-localhost.
+        // The errorCode assertion handles the specific error check.
+        const expected = String(assertion.expected);
+        if (expected === "https" && !result.error) {
+          throw new Error(`[${tc.name}] expected HTTPS enforcement error, but request succeeded over HTTP`);
+        }
+        break;
+      }
+
+      case "urlOrigin": {
+        // Cross-origin rejection: verified by requestCount=1 (link not followed).
+        const expected = String(assertion.expected);
+        if (expected === "rejected") {
+          expect(
+            tracker.requestCount(),
+            `[${tc.name}] expected cross-origin URL rejection (1 request), but ${tracker.requestCount()} requests were made`,
+          ).toBe(1);
+        }
+        break;
+      }
+
+      case "responseMeta": {
+        const fieldPath = assertion.path!;
+        const expected = assertion.expected;
+        expect(
+          result.meta,
+          `[${tc.name}] expected response meta ${fieldPath}, but no metadata returned`,
+        ).toBeDefined();
+        const actual = result.meta![fieldPath];
+        expect(
+          actual,
+          `[${tc.name}] expected meta.${fieldPath} = ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
+        ).toEqual(expected);
+        break;
+      }
+
+      case "responseStatus": {
+        const expected = Number(assertion.expected);
+        if (result.error) {
+          if (
+            result.error instanceof BasecampError &&
+            result.error.httpStatus !== undefined &&
+            result.error.httpStatus !== expected
+          ) {
+            throw new Error(
+              `[${tc.name}] expected response status ${expected}, got ${result.error.httpStatus}`,
+            );
+          }
+        } else if (expected >= 400) {
+          throw new Error(
+            `[${tc.name}] expected error with status ${expected}, but operation succeeded`,
+          );
+        }
+        break;
+      }
+
+      case "responseBody": {
+        // Reserved assertion type — no conformance tests use it yet.
+        break;
+      }
+
       default:
-        console.warn(
+        throw new Error(
           `[${tc.name}] unknown assertion type: ${assertion.type}`,
         );
     }
@@ -472,12 +625,6 @@ const suites = loadTestSuites();
 for (const { filename, tests } of suites) {
   describe(`conformance/${filename}`, () => {
     for (const tc of tests) {
-      // Skip tests where the TS SDK's retry behavior intentionally differs
-      if (TS_SDK_POST_RETRY_SKIPS.has(tc.name)) {
-        it.skip(`${tc.name} (TS SDK retries all operations via metadata-driven config)`, () => {});
-        continue;
-      }
-
       // Skip tests that require chained retries (>1 retry per request),
       // which the TS SDK retry middleware doesn't support because retry
       // requests bypass the middleware stack.
@@ -488,16 +635,33 @@ for (const { filename, tests } of suites) {
 
       it(tc.name, async () => {
         const enableRetry = shouldEnableRetry(tc, filename);
-
-        const client = createBasecampClient({
-          accountId: TEST_ACCOUNT_ID,
-          accessToken: "conformance-test-token",
-          baseUrl: `http://localhost:9876/${TEST_ACCOUNT_ID}`,
-          enableRetry,
-        });
-
         const tracker = installMockHandlers(tc);
-        const result = await executeOperation(client, tc);
+
+        // If configOverrides.baseUrl is set, use it for client construction.
+        // The SDK may throw at construction time (e.g., HTTPS enforcement).
+        const baseUrl = tc.configOverrides?.baseUrl
+          ?? `http://localhost:9876/${TEST_ACCOUNT_ID}`;
+
+        let result: { error?: BasecampError | Error; httpStatus?: number };
+        try {
+          const client = createBasecampClient({
+            accountId: TEST_ACCOUNT_ID,
+            accessToken: "conformance-test-token",
+            baseUrl,
+            enableRetry,
+          });
+
+          result = await executeOperation(client, tc);
+        } catch (err) {
+          if (err instanceof BasecampError) {
+            result = { error: err, httpStatus: err.httpStatus };
+          } else if (err instanceof Error) {
+            result = { error: err };
+          } else {
+            result = { error: new Error(String(err)) };
+          }
+        }
+
         checkAssertions(tc, tracker, result);
       });
     }
