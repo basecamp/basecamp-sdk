@@ -1,0 +1,119 @@
+[
+  {
+    "name": "401 maps to auth_required error code",
+    "description": "Verifies that 401 Unauthorized maps to structured error with code 'auth_required'",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {"status": 401, "headers": {"X-Request-Id": "req-abc-123"}, "body": {"error": "Unauthorized"}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "auth_required"},
+      {"type": "errorField", "path": "httpStatus", "expected": 401},
+      {"type": "errorField", "path": "retryable", "expected": false}
+    ],
+    "tags": ["error-mapping", "auth", "structured-error"]
+  },
+  {
+    "name": "403 maps to forbidden error code",
+    "description": "Verifies that 403 Forbidden maps to structured error with code 'forbidden'",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 403, "headers": {"X-Request-Id": "req-def-456"}, "body": {"error": "Forbidden"}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "forbidden"},
+      {"type": "errorField", "path": "httpStatus", "expected": 403},
+      {"type": "errorField", "path": "retryable", "expected": false}
+    ],
+    "tags": ["error-mapping", "forbidden", "structured-error"]
+  },
+  {
+    "name": "404 maps to not_found error code",
+    "description": "Verifies that 404 Not Found maps to structured error with code 'not_found'",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 99999},
+    "mockResponses": [
+      {"status": 404, "body": {"error": "Not found"}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "not_found"},
+      {"type": "errorField", "path": "httpStatus", "expected": 404},
+      {"type": "errorField", "path": "retryable", "expected": false}
+    ],
+    "tags": ["error-mapping", "not-found", "structured-error"]
+  },
+  {
+    "name": "422 maps to validation error code",
+    "description": "Verifies that 422 Unprocessable Entity maps to structured error with code 'validation'",
+    "operation": "CreateProject",
+    "method": "POST",
+    "path": "/projects.json",
+    "requestBody": {"name": ""},
+    "mockResponses": [
+      {"status": 422, "body": {"error": "Name can't be blank"}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorField", "path": "httpStatus", "expected": 422},
+      {"type": "errorField", "path": "retryable", "expected": false}
+    ],
+    "tags": ["error-mapping", "validation", "structured-error"]
+  },
+  {
+    "name": "429 maps to rate_limit error code",
+    "description": "Verifies that 429 Too Many Requests maps to structured error with code 'rate_limit' and retryable=true",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {"status": 429, "headers": {"Retry-After": "0", "X-Request-Id": "req-rate-789"}, "body": {"error": "Rate limit exceeded"}},
+      {"status": 429, "headers": {"Retry-After": "0"}, "body": {"error": "Rate limit exceeded"}},
+      {"status": 429, "headers": {"Retry-After": "0"}, "body": {"error": "Rate limit exceeded"}},
+      {"status": 429, "headers": {"Retry-After": "0"}, "body": {"error": "Rate limit exceeded"}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "rate_limit"},
+      {"type": "errorField", "path": "retryable", "expected": true}
+    ],
+    "tags": ["error-mapping", "rate-limit", "structured-error"]
+  },
+  {
+    "name": "500 maps to api_error error code",
+    "description": "Verifies that 500 Internal Server Error maps to structured error with code 'api_error'",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 500, "body": {"error": "Internal server error"}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "api_error"},
+      {"type": "errorField", "path": "httpStatus", "expected": 500},
+      {"type": "errorField", "path": "retryable", "expected": true}
+    ],
+    "tags": ["error-mapping", "server-error", "structured-error"]
+  },
+  {
+    "name": "X-Request-Id header extracted into error",
+    "description": "Verifies that X-Request-Id from response headers is captured in the structured error",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 99999},
+    "mockResponses": [
+      {"status": 404, "headers": {"X-Request-Id": "req-unique-abc"}, "body": {"error": "Not found"}}
+    ],
+    "assertions": [
+      {"type": "errorField", "path": "requestId", "expected": "req-unique-abc"}
+    ],
+    "tags": ["error-mapping", "request-id", "structured-error"]
+  }
+]

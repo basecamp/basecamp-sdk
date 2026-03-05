@@ -38,7 +38,7 @@
     "path": "/reports/users/progress/{personId}",
     "pathParams": {"personId": 45678},
     "mockResponses": [
-      {"status": 200, "body": []}
+      {"status": 200, "body": {"person": {"id": 45678, "name": "Test"}, "events": []}}
     ],
     "assertions": [
       {"type": "requestPath", "expected": "/999/reports/users/progress/45678"},

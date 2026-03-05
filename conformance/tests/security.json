@@ -1,0 +1,102 @@
+[
+  {
+    "name": "Cross-origin Link header rejected",
+    "description": "Verifies that pagination Link headers pointing to a different origin are rejected to prevent SSRF",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": "<https://evil.example.com/projects.json?page=2>; rel=\"next\"",
+          "X-Total-Count": "100"
+        },
+        "body": [{"id": 1}]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "urlOrigin", "expected": "rejected"}
+    ],
+    "tags": ["security", "ssrf", "cross-origin", "pagination"]
+  },
+  {
+    "name": "HTTPS enforced for non-localhost requests",
+    "description": "Verifies that the SDK refuses to construct a client with a plain HTTP base URL for non-localhost hosts. Runners should attempt client construction with configOverrides.baseUrl and catch the resulting error.",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "configOverrides": {
+      "baseUrl": "http://evil.example.com"
+    },
+    "mockResponses": [],
+    "assertions": [
+      {"type": "requestCount", "expected": 0},
+      {"type": "errorCode", "expected": "usage"}
+    ],
+    "tags": ["security", "https", "tls"]
+  },
+  {
+    "name": "HTTP allowed for localhost",
+    "description": "Verifies that the SDK permits plain HTTP for localhost (development/testing)",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {"status": 200, "body": []}
+    ],
+    "assertions": [
+      {"type": "noError"}
+    ],
+    "tags": ["security", "https", "localhost"]
+  },
+  {
+    "name": "Same-origin validation for pagination URLs",
+    "description": "Verifies that pagination only follows URLs matching the original request origin",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": "</projects.json?page=2>; rel=\"next\"",
+          "X-Total-Count": "50"
+        },
+        "body": [{"id": 1}]
+      },
+      {
+        "status": 200,
+        "body": [{"id": 2}]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "noError"}
+    ],
+    "tags": ["security", "same-origin", "pagination"]
+  },
+  {
+    "name": "Protocol downgrade in Link header rejected",
+    "description": "Verifies that pagination Link headers downgrading from HTTPS to HTTP are rejected",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": "<http://3.basecampapi.com/projects.json?page=2>; rel=\"next\"",
+          "X-Total-Count": "100"
+        },
+        "body": [{"id": 1}]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "urlOrigin", "expected": "rejected"}
+    ],
+    "tags": ["security", "https-downgrade", "pagination"]
+  }
+]

@@ -39,7 +39,7 @@
       }
     ],
     "assertions": [
-      {"type": "headerValue", "path": "X-Total-Count", "expected": "42"},
+      {"type": "responseMeta", "path": "totalCount", "expected": 42},
       {"type": "noError"}
     ],
     "tags": ["pagination", "total-count"]
