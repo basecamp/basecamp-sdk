@@ -51,8 +51,9 @@ type ListMeta struct {
 	// TotalCount is the total number of items available (from X-Total-Count header).
 	// Zero if the header was not present or could not be parsed.
 	TotalCount int
-	// Truncated is true when results were capped by MaxPages or Limit with more
-	// pages available on the server.
+	// Truncated is true when results were capped by MaxPages or Limit, either
+	// because more pages are available on the server or because items were
+	// dropped within a page due to the limit.
 	Truncated bool
 }
 
@@ -61,6 +62,9 @@ type ListMeta struct {
 func isFirstPageTruncated(resp *http.Response, itemCount, limit int) bool {
 	if itemCount > limit {
 		return true
+	}
+	if resp == nil {
+		return false
 	}
 	return parseNextLink(resp.Header.Get("Link")) != ""
 }
