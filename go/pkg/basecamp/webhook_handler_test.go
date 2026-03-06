@@ -551,7 +551,7 @@ func TestWebhookReceiver_ServeHTTP_ValidPost(t *testing.T) {
 	receiver.OnAny(func(event *WebhookEvent) error { return nil })
 
 	data := loadWebhooksFixture(t, "event-todo-created.json")
-	req := httptest.NewRequest(http.MethodPost, "/webhooks", strings.NewReader(string(data)))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/webhooks", strings.NewReader(string(data)))
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
@@ -565,7 +565,7 @@ func TestWebhookReceiver_ServeHTTP_ValidPost(t *testing.T) {
 func TestWebhookReceiver_ServeHTTP_MethodNotAllowed(t *testing.T) {
 	receiver := NewWebhookReceiver(WebhookReceiverConfig{})
 
-	req := httptest.NewRequest(http.MethodGet, "/webhooks", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/webhooks", nil)
 	rr := httptest.NewRecorder()
 	receiver.ServeHTTP(rr, req)
 
@@ -581,7 +581,7 @@ func TestWebhookReceiver_ServeHTTP_UnauthorizedBadSig(t *testing.T) {
 	})
 
 	data := loadWebhooksFixture(t, "event-todo-created.json")
-	req := httptest.NewRequest(http.MethodPost, "/webhooks", strings.NewReader(string(data)))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/webhooks", strings.NewReader(string(data)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Basecamp-Signature", "wrong-sig")
 
@@ -603,7 +603,7 @@ func TestWebhookReceiver_ServeHTTP_InternalServerError(t *testing.T) {
 	})
 
 	data := loadWebhooksFixture(t, "event-todo-created.json")
-	req := httptest.NewRequest(http.MethodPost, "/webhooks", strings.NewReader(string(data)))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/webhooks", strings.NewReader(string(data)))
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
@@ -625,7 +625,7 @@ func TestWebhookReceiver_ServeHTTP_OversizedBody(t *testing.T) {
 	// Body that is valid JSON in the first 50 bytes but exceeds the limit
 	body := `{"id":1,"kind":"a","created_at":"2022-01-01T00:00:00Z","recording":{"id":1},"creator":{"id":1}}`
 
-	req := httptest.NewRequest(http.MethodPost, "/webhooks", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/webhooks", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
