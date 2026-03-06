@@ -339,7 +339,11 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 
 	case "ListTodos":
 		todolistID := getInt64Param(tc.PathParams, "todolistId")
-		result, err := account.Todos().List(ctx, todolistID, nil)
+		var todoOpts *basecamp.TodoListOptions
+		if tc.ConfigOverrides != nil && tc.ConfigOverrides.MaxItems > 0 {
+			todoOpts = &basecamp.TodoListOptions{Limit: tc.ConfigOverrides.MaxItems}
+		}
+		result, err := account.Todos().List(ctx, todolistID, todoOpts)
 		if err != nil {
 			return operationResult{err: err}
 		}

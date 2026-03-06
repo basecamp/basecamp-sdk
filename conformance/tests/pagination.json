@@ -12,10 +12,10 @@
           "Link": "</projects.json?page=2>; rel=\"next\"",
           "X-Total-Count": "75"
         },
-        "body": {"projects": [
+        "body": [
           {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"},
           {"id": 2, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 2", "url": "https://3.basecampapi.com/999/projects/2.json", "app_url": "https://3.basecamp.com/999/projects/2"}
-        ]}
+        ]
       }
     ],
     "assertions": [
@@ -38,7 +38,7 @@
         "headers": {
           "X-Total-Count": "42"
         },
-        "body": {"todos": []}
+        "body": []
       }
     ],
     "assertions": [
