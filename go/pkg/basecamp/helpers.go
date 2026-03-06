@@ -60,6 +60,12 @@ type ListMeta struct {
 // isFirstPageTruncated returns true when items were capped on the first page
 // (either the page had more items than limit, or more pages are available).
 func isFirstPageTruncated(resp *http.Response, itemCount, limit int) bool {
+	if limit <= 0 {
+		if resp == nil {
+			return false
+		}
+		return parseNextLink(resp.Header.Get("Link")) != ""
+	}
 	if itemCount > limit {
 		return true
 	}
