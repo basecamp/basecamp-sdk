@@ -115,5 +115,65 @@
       {"type": "errorField", "path": "requestId", "expected": "req-unique-abc"}
     ],
     "tags": ["error-mapping", "request-id", "structured-error"]
+  },
+  {
+    "name": "502 Bad Gateway maps to api_error with retryable",
+    "description": "Verifies that 502 Bad Gateway maps to structured error with code 'api_error' and retryable=true (2A.3, 2A.4)",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 502, "body": {"error": "Bad Gateway"}},
+      {"status": 502, "body": {"error": "Bad Gateway"}},
+      {"status": 502, "body": {"error": "Bad Gateway"}},
+      {"status": 502, "body": {"error": "Bad Gateway"}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "api_error"},
+      {"type": "errorField", "path": "httpStatus", "expected": 502},
+      {"type": "errorField", "path": "retryable", "expected": true}
+    ],
+    "tags": ["error-mapping", "5xx", "structured-error"]
+  },
+  {
+    "name": "503 Service Unavailable maps to api_error with retryable",
+    "description": "Verifies that 503 Service Unavailable maps to structured error with code 'api_error' and retryable=true (2A.3, 2A.4)",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 503, "body": {"error": "Service Unavailable"}},
+      {"status": 503, "body": {"error": "Service Unavailable"}},
+      {"status": 503, "body": {"error": "Service Unavailable"}},
+      {"status": 503, "body": {"error": "Service Unavailable"}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "api_error"},
+      {"type": "errorField", "path": "httpStatus", "expected": 503},
+      {"type": "errorField", "path": "retryable", "expected": true}
+    ],
+    "tags": ["error-mapping", "5xx", "structured-error"]
+  },
+  {
+    "name": "504 Gateway Timeout maps to api_error with retryable",
+    "description": "Verifies that 504 Gateway Timeout maps to structured error with code 'api_error' and retryable=true (2A.3, 2A.4)",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 504, "body": {"error": "Gateway Timeout"}},
+      {"status": 504, "body": {"error": "Gateway Timeout"}},
+      {"status": 504, "body": {"error": "Gateway Timeout"}},
+      {"status": 504, "body": {"error": "Gateway Timeout"}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "api_error"},
+      {"type": "errorField", "path": "httpStatus", "expected": 504},
+      {"type": "errorField", "path": "retryable", "expected": true}
+    ],
+    "tags": ["error-mapping", "5xx", "structured-error"]
   }
 ]

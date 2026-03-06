@@ -201,11 +201,11 @@ func (s *ForwardsService) List(ctx context.Context, inboxID int64, opts *Forward
 
 	// Check if we already have enough items
 	if limit > 0 && len(forwards) >= limit {
-		return &ForwardListResult{Forwards: forwards[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &ForwardListResult{Forwards: forwards[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(forwards), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(forwards), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(forwards), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func (s *ForwardsService) List(ctx context.Context, inboxID int64, opts *Forward
 		forwards = append(forwards, forwardFromGenerated(gf))
 	}
 
-	return &ForwardListResult{Forwards: forwards, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &ForwardListResult{Forwards: forwards, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a forward by ID.
@@ -312,11 +312,11 @@ func (s *ForwardsService) ListReplies(ctx context.Context, forwardID int64, opts
 
 	// Check if we already have enough items
 	if limit > 0 && len(replies) >= limit {
-		return &ForwardReplyListResult{Replies: replies[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &ForwardReplyListResult{Replies: replies[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(replies), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(replies), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(replies), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +330,7 @@ func (s *ForwardsService) ListReplies(ctx context.Context, forwardID int64, opts
 		replies = append(replies, forwardReplyFromGenerated(gr))
 	}
 
-	return &ForwardReplyListResult{Replies: replies, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &ForwardReplyListResult{Replies: replies, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // GetReply returns a forward reply by ID.

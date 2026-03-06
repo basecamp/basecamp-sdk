@@ -9,6 +9,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -42,7 +43,9 @@ type TestCase struct {
 
 // ConfigOverrides allows per-test client configuration (e.g., non-localhost baseUrl).
 type ConfigOverrides struct {
-	BaseURL string `json:"baseUrl"`
+	BaseURL  string `json:"baseUrl"`
+	MaxPages int    `json:"maxPages"`
+	MaxItems int    `json:"maxItems"`
 }
 
 // MockResponse defines a single mock HTTP response.
@@ -127,13 +130,16 @@ func main() {
 var goSDKSkips = map[string]string{}
 
 func loadTests(filename string) ([]TestCase, error) {
-	data, err := os.ReadFile(filename)
+	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
 	var tests []TestCase
-	if err := json.Unmarshal(data, &tests); err != nil {
+	dec := json.NewDecoder(f)
+	dec.UseNumber() // Preserve large integer precision in Expected values
+	if err := dec.Decode(&tests); err != nil {
 		return nil, err
 	}
 
@@ -145,8 +151,9 @@ const testAccountID = "999"
 
 // operationResult holds the outcome of an SDK operation call.
 type operationResult struct {
-	err  error
-	meta map[string]interface{} // SDK-parsed metadata (e.g., "totalCount")
+	err    error
+	meta   map[string]interface{} // SDK-parsed metadata (e.g., "totalCount")
+	result interface{}            // Deserialized SDK response for responseBody assertions
 }
 
 func runTest(tc TestCase) TestResult {
@@ -256,10 +263,14 @@ func runTest(tc TestCase) TestResult {
 
 		cfg := &basecamp.Config{BaseURL: baseURL}
 		tp := &basecamp.StaticTokenProvider{Token: "conformance-test-token"}
-		client := basecamp.NewClient(cfg, tp,
+		opts := []basecamp.ClientOption{
 			basecamp.WithMaxRetries(3),
-			basecamp.WithTimeout(10*time.Second),
-		)
+			basecamp.WithTimeout(10 * time.Second),
+		}
+		if tc.ConfigOverrides != nil && tc.ConfigOverrides.MaxPages > 0 {
+			opts = append(opts, basecamp.WithMaxPages(tc.ConfigOverrides.MaxPages))
+		}
+		client := basecamp.NewClient(cfg, tp, opts...)
 		account := client.ForAccount(testAccountID)
 
 		opResult = executeOperation(context.Background(), account, tc)
@@ -284,18 +295,25 @@ func runTest(tc TestCase) TestResult {
 func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc TestCase) operationResult {
 	switch tc.Operation {
 	case "ListProjects":
-		result, err := account.Projects().List(ctx, nil)
+		var opts *basecamp.ProjectListOptions
+		if tc.ConfigOverrides != nil && tc.ConfigOverrides.MaxItems > 0 {
+			opts = &basecamp.ProjectListOptions{Limit: tc.ConfigOverrides.MaxItems}
+		}
+		result, err := account.Projects().List(ctx, opts)
 		if err != nil {
 			return operationResult{err: err}
 		}
 		return operationResult{
-			meta: map[string]interface{}{"totalCount": result.Meta.TotalCount},
+			meta: map[string]interface{}{
+				"totalCount": result.Meta.TotalCount,
+				"truncated":  result.Meta.Truncated,
+			},
 		}
 
 	case "GetProject":
 		projectID := getInt64Param(tc.PathParams, "projectId")
-		_, err := account.Projects().Get(ctx, projectID)
-		return operationResult{err: err}
+		project, err := account.Projects().Get(ctx, projectID)
+		return operationResult{err: err, result: project}
 
 	case "CreateProject":
 		name := getStringParam(tc.RequestBody, "name")
@@ -321,12 +339,19 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 
 	case "ListTodos":
 		todolistID := getInt64Param(tc.PathParams, "todolistId")
-		result, err := account.Todos().List(ctx, todolistID, nil)
+		var todoOpts *basecamp.TodoListOptions
+		if tc.ConfigOverrides != nil && tc.ConfigOverrides.MaxItems > 0 {
+			todoOpts = &basecamp.TodoListOptions{Limit: tc.ConfigOverrides.MaxItems}
+		}
+		result, err := account.Todos().List(ctx, todolistID, todoOpts)
 		if err != nil {
 			return operationResult{err: err}
 		}
 		return operationResult{
-			meta: map[string]interface{}{"totalCount": result.Meta.TotalCount},
+			meta: map[string]interface{}{
+				"totalCount": result.Meta.TotalCount,
+				"truncated":  result.Meta.Truncated,
+			},
 		}
 
 	case "GetTodo":
@@ -429,7 +454,7 @@ func checkAssertion(
 
 	switch assertion.Type {
 	case "requestCount":
-		expected := int(assertion.Expected.(float64))
+		expected := expectedInt(assertion.Expected)
 		if hasLinkNextHeader {
 			if requestCount < expected {
 				return fail(tc, fmt.Sprintf("Expected >= %d requests (SDK auto-paginates), got %d", expected, requestCount))
@@ -458,7 +483,7 @@ func checkAssertion(
 		}
 
 	case "statusCode":
-		expected := int(assertion.Expected.(float64))
+		expected := expectedInt(assertion.Expected)
 		if sdkErr != nil {
 			var sdkError *basecamp.Error
 			if errors.As(sdkErr, &sdkError) {
@@ -473,7 +498,7 @@ func checkAssertion(
 		}
 
 	case "responseStatus":
-		expected := int(assertion.Expected.(float64))
+		expected := expectedInt(assertion.Expected)
 		if sdkErr != nil {
 			var sdkError *basecamp.Error
 			if errors.As(sdkErr, &sdkError) {
@@ -488,10 +513,32 @@ func checkAssertion(
 		}
 
 	case "responseBody":
-		// Reserved assertion type — no conformance tests use it yet.
+		fieldPath := assertion.Path
+		if opResult.result == nil {
+			return fail(tc, fmt.Sprintf("Expected responseBody.%s, but no result returned", fieldPath))
+		}
+		// Marshal the result to JSON, then decode with UseNumber to preserve integer precision.
+		data, err := json.Marshal(opResult.result)
+		if err != nil {
+			return fail(tc, fmt.Sprintf("Failed to marshal result for responseBody assertion: %v", err))
+		}
+		var resultMap map[string]interface{}
+		dec := json.NewDecoder(bytes.NewReader(data))
+		dec.UseNumber()
+		if err := dec.Decode(&resultMap); err != nil {
+			return fail(tc, fmt.Sprintf("Failed to unmarshal result for responseBody assertion: %v", err))
+		}
+		actual, ok := resultMap[fieldPath]
+		if !ok {
+			return fail(tc, fmt.Sprintf("Expected responseBody.%s, but field not present", fieldPath))
+		}
+		// Compare: both expected and actual are json.Number (preserving precision).
+		if result := compareValues(tc, fmt.Sprintf("responseBody.%s", fieldPath), assertion.Expected, actual); result != nil {
+			return result
+		}
 
 	case "requestPath":
-		expected := assertion.Expected.(string)
+		expected := expectedString(assertion.Expected)
 		if len(requestPaths) == 0 {
 			return fail(tc, "Expected a request to be made, but no requests were recorded")
 		}
@@ -500,7 +547,7 @@ func checkAssertion(
 		}
 
 	case "errorCode":
-		expected := assertion.Expected.(string)
+		expected := expectedString(assertion.Expected)
 		if sdkErr == nil {
 			return fail(tc, fmt.Sprintf("Expected error code %q, but got no error", expected))
 		}
@@ -513,7 +560,7 @@ func checkAssertion(
 		}
 
 	case "errorMessage":
-		expected := assertion.Expected.(string)
+		expected := expectedString(assertion.Expected)
 		if sdkErr == nil {
 			return fail(tc, fmt.Sprintf("Expected error message containing %q, but got no error", expected))
 		}
@@ -551,7 +598,7 @@ func checkAssertion(
 
 	case "headerInjected":
 		headerName := assertion.Path
-		expected := assertion.Expected.(string)
+		expected := expectedString(assertion.Expected)
 		if len(requestHeaders) == 0 {
 			return fail(tc, fmt.Sprintf("Expected header %s=%q, but no requests were recorded", headerName, expected))
 		}
@@ -575,7 +622,7 @@ func checkAssertion(
 		// Note: this checks the test fixture, not SDK-observed output.
 		// Use responseMeta for SDK-parsed values.
 		headerName := assertion.Path
-		expected := assertion.Expected.(string)
+		expected := expectedString(assertion.Expected)
 		if len(tc.MockResponses) == 0 {
 			return fail(tc, fmt.Sprintf("Expected response header %s=%q, but no mock responses defined", headerName, expected))
 		}
@@ -599,13 +646,13 @@ func checkAssertion(
 		}
 
 	case "requestScheme":
-		expected := assertion.Expected.(string)
+		expected := expectedString(assertion.Expected)
 		if expected == "https" && sdkErr == nil {
 			return fail(tc, "Expected HTTPS enforcement error, but request succeeded over HTTP")
 		}
 
 	case "urlOrigin":
-		expected := assertion.Expected.(string)
+		expected := expectedString(assertion.Expected)
 		if expected == "rejected" && requestCount > 1 {
 			return fail(tc, fmt.Sprintf("Expected cross-origin URL rejection (1 request), but %d requests were made", requestCount))
 		}
@@ -618,10 +665,52 @@ func checkAssertion(
 }
 
 // compareValues compares an expected JSON value against an actual Go value.
+// Handles json.Number (from UseNumber), float64, bool, and string.
 func compareValues(tc TestCase, label string, expected, actual interface{}) *TestResult {
 	switch exp := expected.(type) {
+	case json.Number:
+		// Compare as int64 first (preserves large integer precision), then float64.
+		if expInt, err := exp.Int64(); err == nil {
+			switch act := actual.(type) {
+			case json.Number:
+				if actInt, err := act.Int64(); err == nil {
+					if actInt != expInt {
+						return fail(tc, fmt.Sprintf("Expected %s = %d, got %d", label, expInt, actInt))
+					}
+					return nil
+				}
+			case int:
+				if int64(act) != expInt {
+					return fail(tc, fmt.Sprintf("Expected %s = %d, got %d", label, expInt, act))
+				}
+				return nil
+			case int64:
+				if act != expInt {
+					return fail(tc, fmt.Sprintf("Expected %s = %d, got %d", label, expInt, act))
+				}
+				return nil
+			}
+		}
+		if expFloat, err := exp.Float64(); err == nil {
+			switch act := actual.(type) {
+			case json.Number:
+				if actFloat, err := act.Float64(); err == nil {
+					if actFloat != expFloat {
+						return fail(tc, fmt.Sprintf("Expected %s = %v, got %v", label, expFloat, actFloat))
+					}
+					return nil
+				}
+			case float64:
+				if act != expFloat {
+					return fail(tc, fmt.Sprintf("Expected %s = %v, got %v", label, expFloat, act))
+				}
+				return nil
+			}
+		}
+		if fmt.Sprintf("%v", actual) != exp.String() {
+			return fail(tc, fmt.Sprintf("Expected %s = %s, got %v", label, exp.String(), actual))
+		}
 	case float64:
-		// JSON numbers are float64; compare as int when the expected value is integral
 		expInt := int(exp)
 		switch act := actual.(type) {
 		case int:
@@ -649,11 +738,38 @@ func fail(tc TestCase, msg string) *TestResult {
 	return &TestResult{Name: tc.Name, Passed: false, Message: msg}
 }
 
-// getInt64Param extracts an int64 parameter from a map (JSON numbers are float64)
+// expectedInt extracts an int from an expected value (json.Number or float64).
+func expectedInt(v interface{}) int {
+	switch n := v.(type) {
+	case json.Number:
+		i, _ := n.Int64()
+		return int(i)
+	case float64:
+		return int(n)
+	}
+	return 0
+}
+
+// expectedString extracts a string from an expected value.
+func expectedString(v interface{}) string {
+	switch s := v.(type) {
+	case string:
+		return s
+	case json.Number:
+		return s.String()
+	}
+	return fmt.Sprintf("%v", v)
+}
+
+// getInt64Param extracts an int64 parameter from a map (JSON numbers are json.Number or float64)
 func getInt64Param(params map[string]interface{}, key string) int64 {
 	if val, ok := params[key]; ok {
-		if f, ok := val.(float64); ok {
-			return int64(f)
+		switch n := val.(type) {
+		case json.Number:
+			i, _ := n.Int64()
+			return i
+		case float64:
+			return int64(n)
 		}
 	}
 	return 0

@@ -51,6 +51,28 @@ type ListMeta struct {
 	// TotalCount is the total number of items available (from X-Total-Count header).
 	// Zero if the header was not present or could not be parsed.
 	TotalCount int
+	// Truncated is true when results were capped by MaxPages or Limit, either
+	// because more pages are available on the server or because items were
+	// dropped within a page due to the limit.
+	Truncated bool
+}
+
+// isFirstPageTruncated returns true when items were capped on the first page
+// (either the page had more items than limit, or more pages are available).
+func isFirstPageTruncated(resp *http.Response, itemCount, limit int) bool {
+	if limit <= 0 {
+		if resp == nil {
+			return false
+		}
+		return parseNextLink(resp.Header.Get("Link")) != ""
+	}
+	if itemCount > limit {
+		return true
+	}
+	if resp == nil {
+		return false
+	}
+	return parseNextLink(resp.Header.Get("Link")) != ""
 }
 
 // parseTotalCount extracts the total count from X-Total-Count header.

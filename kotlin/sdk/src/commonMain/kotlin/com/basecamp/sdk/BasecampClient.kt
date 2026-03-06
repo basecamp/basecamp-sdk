@@ -38,6 +38,9 @@ class BasecampClientBuilder {
     /** Enable automatic retry on 429/503. */
     var enableRetry: Boolean = true
 
+    /** Maximum pages to follow during pagination (safety cap). */
+    var maxPages: Int = BasecampConfig.DEFAULT_MAX_PAGES
+
     /** Observability hooks. */
     var hooks: BasecampHooks = NoopHooks
 
@@ -81,6 +84,7 @@ class BasecampClientBuilder {
             userAgent = userAgent,
             enableCache = enableCache,
             enableRetry = enableRetry,
+            maxPages = maxPages,
         )
 
         // Validate HTTPS (allow localhost for testing)

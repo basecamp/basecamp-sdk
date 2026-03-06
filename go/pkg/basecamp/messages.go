@@ -149,11 +149,11 @@ func (s *MessagesService) List(ctx context.Context, boardID int64, opts *Message
 
 	// Check if we already have enough items
 	if limit > 0 && len(messages) >= limit {
-		return &MessageListResult{Messages: messages[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &MessageListResult{Messages: messages[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(messages), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(messages), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(messages), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func (s *MessagesService) List(ctx context.Context, boardID int64, opts *Message
 		messages = append(messages, messageFromGenerated(gm))
 	}
 
-	return &MessageListResult{Messages: messages, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &MessageListResult{Messages: messages, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a message by ID.

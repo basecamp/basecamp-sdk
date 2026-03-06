@@ -305,11 +305,11 @@ func (s *VaultsService) List(ctx context.Context, vaultID int64, opts *VaultList
 
 	// Check if we already have enough items
 	if limit > 0 && len(vaults) >= limit {
-		return &VaultListResult{Vaults: vaults[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &VaultListResult{Vaults: vaults[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(vaults), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(vaults), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(vaults), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func (s *VaultsService) List(ctx context.Context, vaultID int64, opts *VaultList
 		vaults = append(vaults, vaultFromGenerated(gv))
 	}
 
-	return &VaultListResult{Vaults: vaults, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &VaultListResult{Vaults: vaults, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Create creates a new subfolder (child vault) in a vault.
@@ -510,11 +510,11 @@ func (s *DocumentsService) List(ctx context.Context, vaultID int64, opts *Docume
 
 	// Check if we already have enough items
 	if limit > 0 && len(documents) >= limit {
-		return &DocumentListResult{Documents: documents[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &DocumentListResult{Documents: documents[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(documents), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(documents), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(documents), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -528,7 +528,7 @@ func (s *DocumentsService) List(ctx context.Context, vaultID int64, opts *Docume
 		documents = append(documents, documentFromGenerated(gd))
 	}
 
-	return &DocumentListResult{Documents: documents, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &DocumentListResult{Documents: documents, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Create creates a new document in a vault.
@@ -743,11 +743,11 @@ func (s *UploadsService) List(ctx context.Context, vaultID int64, opts *UploadLi
 
 	// Check if we already have enough items
 	if limit > 0 && len(uploads) >= limit {
-		return &UploadListResult{Uploads: uploads[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &UploadListResult{Uploads: uploads[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(uploads), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(uploads), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(uploads), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -761,7 +761,7 @@ func (s *UploadsService) List(ctx context.Context, vaultID int64, opts *UploadLi
 		uploads = append(uploads, uploadFromGenerated(gu))
 	}
 
-	return &UploadListResult{Uploads: uploads, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &UploadListResult{Uploads: uploads, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Update updates an existing upload.

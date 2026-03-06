@@ -43,8 +43,8 @@ export interface FetchResponse<T> {
   response: Response;
 }
 
-/** Maximum pages to follow as a safety cap against infinite loops. */
-const MAX_PAGES = 10_000;
+/** Default maximum pages to follow as a safety cap against infinite loops. */
+const DEFAULT_MAX_PAGES = 10_000;
 
 /**
  * Abstract base class for all Basecamp API services.
@@ -73,14 +73,19 @@ export abstract class BaseService {
    */
   protected readonly fetchPage: (url: string) => Promise<Response>;
 
+  /** Maximum pages to follow before stopping (safety cap). */
+  protected readonly maxPages: number;
+
   constructor(
     client: RawClient,
     hooks?: BasecampHooks,
     fetchPage?: (url: string) => Promise<Response>,
+    maxPages?: number,
   ) {
     this.client = client;
     this.hooks = hooks;
     this.fetchPage = fetchPage ?? ((url) => fetch(url, { headers: { Accept: "application/json" } }));
+    this.maxPages = maxPages ?? DEFAULT_MAX_PAGES;
   }
 
   /**
@@ -237,7 +242,7 @@ export abstract class BaseService {
     let response = initialResponse;
     const initialUrl = initialResponse.url;
 
-    for (let page = 1; page < MAX_PAGES; page++) {
+    for (let page = 1; page < this.maxPages; page++) {
       const rawNextUrl = parseNextLink(response.headers.get("Link"));
       if (!rawNextUrl) break;
 

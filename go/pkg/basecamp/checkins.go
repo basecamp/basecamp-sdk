@@ -273,11 +273,11 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, questionnaireID int
 
 	// Check if we already have enough items
 	if limit > 0 && len(questions) >= limit {
-		return &QuestionListResult{Questions: questions[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &QuestionListResult{Questions: questions[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(questions), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(questions), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(questions), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +291,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, questionnaireID int
 		questions = append(questions, questionFromGenerated(gq))
 	}
 
-	return &QuestionListResult{Questions: questions, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &QuestionListResult{Questions: questions, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // GetQuestion returns a question by ID.
@@ -480,11 +480,11 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 
 	// Check if we already have enough items
 	if limit > 0 && len(answers) >= limit {
-		return &AnswerListResult{Answers: answers[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &AnswerListResult{Answers: answers[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(answers), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(answers), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(answers), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -498,7 +498,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 		answers = append(answers, questionAnswerFromGenerated(ga))
 	}
 
-	return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // GetAnswer returns a question answer by ID.

@@ -2,6 +2,7 @@ package com.basecamp.sdk.conformance
 
 import com.basecamp.sdk.*
 import com.basecamp.sdk.generated.*
+import com.basecamp.sdk.generated.models.*
 import com.basecamp.sdk.generated.services.*
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
@@ -93,6 +94,8 @@ data class TestCase(
 @kotlinx.serialization.Serializable
 data class ConfigOverrides(
     val baseUrl: String? = null,
+    val maxPages: Int? = null,
+    val maxItems: Int? = null,
 )
 
 @kotlinx.serialization.Serializable
@@ -122,6 +125,10 @@ data class TestResult(
 data class DispatchResult(
     /** X-Total-Count as parsed by the SDK into ListResult.meta.totalCount */
     val totalCount: Long? = null,
+    /** True when the SDK truncated results (maxPages/maxItems cap hit). */
+    val truncated: Boolean? = null,
+    /** The deserialized SDK response re-serialized to JSON (for responseBody assertions). */
+    val resultJson: JsonElement? = null,
 )
 
 private fun runTest(tc: TestCase): TestResult {
@@ -130,6 +137,7 @@ private fun runTest(tc: TestCase): TestResult {
     val requestTimes = mutableListOf<Long>()
     val requestPaths = mutableListOf<String>()
     val requestHeadersList = mutableListOf<Headers>()
+    val requestContentTypes = mutableListOf<String?>()
     val responseIndex = AtomicInteger(0)
 
     // Detect if test uses Link next headers (SDK will auto-paginate)
@@ -143,6 +151,7 @@ private fun runTest(tc: TestCase): TestResult {
             requestTimes.add(System.currentTimeMillis())
             requestPaths.add(request.url.encodedPath)
             requestHeadersList.add(request.headers)
+            requestContentTypes.add(request.body.contentType?.toString())
         }
 
         val idx = responseIndex.getAndIncrement()
@@ -197,9 +206,10 @@ private fun runTest(tc: TestCase): TestResult {
 
     try {
         val client = BasecampClient {
-            accessToken("test-token")
+            accessToken("conformance-test-token")
             baseUrl = overrideBaseUrl ?: "http://localhost:3000"
             this.engine = engine
+            tc.configOverrides?.maxPages?.let { maxPages = it }
         }
 
         val account = client.forAccount(TEST_ACCOUNT_ID)
@@ -272,8 +282,13 @@ private fun runTest(tc: TestCase): TestResult {
             }
 
             "responseBody" -> {
-                // Reserved assertion type — no conformance tests use it yet.
-                // When tests are added, this will need to inspect the deserialized result.
+                val fieldPath = assertion.path
+                val resultElement = dispatchResult.resultJson
+                    ?: return TestResult(false, "responseBody.$fieldPath: no result captured from operation")
+                val actual = navigateJsonPath(resultElement, fieldPath)
+                    ?: return TestResult(false, "responseBody.$fieldPath: field not found in result")
+                val result = compareJsonValues("responseBody.$fieldPath", assertion.expected, actual)
+                if (result != null) return result
             }
 
             "noError" -> {
@@ -397,8 +412,18 @@ private fun runTest(tc: TestCase): TestResult {
                 if (requestHeadersList.isEmpty()) {
                     return TestResult(false, "Expected header $headerName=\"$expected\", but no requests were recorded")
                 }
-                val actual = requestHeadersList[0][headerName]
-                if (actual != expected) {
+                var actual = requestHeadersList[0][headerName]
+                // Ktor stores Content-Type on the body OutgoingContent, not in headers
+                if (actual == null && headerName.equals("Content-Type", ignoreCase = true)) {
+                    actual = requestContentTypes.firstOrNull()
+                }
+                // Content-Type may include charset (e.g., "application/json; charset=UTF-8")
+                val matches = if (headerName.equals("Content-Type", ignoreCase = true)) {
+                    actual != null && actual.startsWith(expected, ignoreCase = true)
+                } else {
+                    actual == expected
+                }
+                if (!matches) {
                     return TestResult(false, "Expected header $headerName=\"$expected\", got \"$actual\"")
                 }
             }
@@ -432,6 +457,7 @@ private fun runTest(tc: TestCase): TestResult {
                 val fieldPath = assertion.path
                 val actual: Any? = when (fieldPath) {
                     "totalCount" -> dispatchResult.totalCount
+                    "truncated" -> dispatchResult.truncated
                     else -> return TestResult(false, "Unknown response meta field: $fieldPath")
                 }
                 val result = compareValues("meta.$fieldPath", assertion.expected, actual)
@@ -505,14 +531,19 @@ private fun compareValues(label: String, expected: JsonElement?, actual: Any?): 
 private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): DispatchResult {
     return when (tc.operation) {
         "ListProjects" -> {
-            val result = account.projects.list()
-            DispatchResult(totalCount = result.meta.totalCount)
+            val maxItems = tc.configOverrides?.maxItems
+            val opts = if (maxItems != null && maxItems > 0) {
+                ListProjectsOptions(maxItems = maxItems)
+            } else null
+            val result = account.projects.list(opts)
+            DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)
         }
 
         "GetProject" -> {
             val projectId = tc.pathParams.longParam("projectId")
-            account.projects.get(projectId)
-            DispatchResult()
+            val project = account.projects.get(projectId)
+            val resultJson = Json.encodeToJsonElement(Project.serializer(), project)
+            DispatchResult(resultJson = resultJson)
         }
 
         "CreateProject" -> {
@@ -537,7 +568,7 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         "ListTodos" -> {
             val todolistId = tc.pathParams.longParam("todolistId")
             val result = account.todos.list(todolistId)
-            DispatchResult(totalCount = result.meta.totalCount)
+            DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)
         }
 
         "CreateTodo" -> {
@@ -661,4 +692,33 @@ private fun JsonElement.asInt(): Int? = when (this) {
 private fun JsonElement.asString(): String? = when (this) {
     is JsonPrimitive -> content
     else -> null
+}
+
+/** Navigate a dot-separated path through a JsonElement. */
+private fun navigateJsonPath(element: JsonElement, path: String): JsonElement? {
+    var current = element
+    for (key in path.split(".")) {
+        current = (current as? JsonObject)?.get(key) ?: return null
+    }
+    return current
+}
+
+/** Compare two JsonElements for equality (handles large integers). */
+private fun compareJsonValues(label: String, expected: JsonElement?, actual: JsonElement): TestResult? {
+    if (expected == null) return TestResult(false, "$label: expected value is null in assertion")
+    if (expected is JsonPrimitive && actual is JsonPrimitive) {
+        // Compare as long to preserve large integer precision
+        val expLong = expected.longOrNull
+        val actLong = actual.longOrNull
+        if (expLong != null && actLong != null) {
+            if (expLong != actLong) {
+                return TestResult(false, "Expected $label = $expLong, got $actLong")
+            }
+            return null
+        }
+    }
+    if (expected != actual) {
+        return TestResult(false, "Expected $label = $expected, got $actual")
+    }
+    return null
 }

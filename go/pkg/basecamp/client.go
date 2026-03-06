@@ -474,27 +474,34 @@ func (c *Client) GetAllWithLimit(ctx context.Context, path string, limit int) ([
 //
 // Security: Link headers are resolved against the current page URL and validated
 // for same-origin against the original request to prevent SSRF and token leakage.
+// FollowPagination is the public API — returns items and error only.
 func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, firstPageCount, limit int) ([]json.RawMessage, error) {
+	items, _, err := c.followPagination(ctx, httpResp, firstPageCount, limit)
+	return items, err
+}
+
+// followPagination is the internal implementation that also reports truncation.
+func (c *Client) followPagination(ctx context.Context, httpResp *http.Response, firstPageCount, limit int) (items []json.RawMessage, truncated bool, err error) {
 	if httpResp == nil {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	// Check if we already have enough items
 	if limit > 0 && firstPageCount >= limit {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	// Get next page URL from Link header
 	nextLink := parseNextLink(httpResp.Header.Get("Link"))
 	if nextLink == "" {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	// Security: Require httpResp.Request.URL for same-origin validation.
 	// Without the original request URL, we cannot verify Link headers are same-origin,
 	// which could allow SSRF or token leakage to malicious servers.
 	if httpResp.Request == nil || httpResp.Request.URL == nil {
-		return nil, fmt.Errorf("cannot follow pagination: response has no request URL (required for same-origin validation)")
+		return nil, false, fmt.Errorf("cannot follow pagination: response has no request URL (required for same-origin validation)")
 	}
 	baseURL := httpResp.Request.URL.String()
 
@@ -504,17 +511,18 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 	// Guard against resolution failures (shouldn't happen with valid baseURL, but be safe)
 	parsedURL, err := url.Parse(nextURL)
 	if err != nil || !parsedURL.IsAbs() {
-		return nil, fmt.Errorf("failed to resolve Link header URL %q against %q", nextLink, baseURL)
+		return nil, false, fmt.Errorf("failed to resolve Link header URL %q against %q", nextLink, baseURL)
 	}
 
 	// Validate same-origin for the FIRST Link header before making any request.
 	// This prevents the first Link header from redirecting to a malicious origin.
 	if !isSameOrigin(baseURL, nextURL) {
-		return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
+		return nil, false, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
 	}
 
 	var allResults []json.RawMessage
 	currentCount := firstPageCount
+	hasMore := false
 	var page int
 
 	for page = 2; page <= c.httpOpts.MaxPages && nextURL != ""; page++ {
@@ -523,16 +531,16 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 
 		resp, err := c.doRequestURL(ctx, "GET", nextURL, nil)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		// Parse response as array
-		var items []json.RawMessage
-		if err := json.Unmarshal(resp.Data, &items); err != nil {
-			return nil, fmt.Errorf("failed to parse response: %w", err)
+		var pageItems []json.RawMessage
+		if err := json.Unmarshal(resp.Data, &pageItems); err != nil {
+			return nil, false, fmt.Errorf("failed to parse response: %w", err)
 		}
-		allResults = append(allResults, items...)
-		currentCount += len(items)
+		allResults = append(allResults, pageItems...)
+		currentCount += len(pageItems)
 
 		// Check if we've reached the limit
 		if limit > 0 && currentCount >= limit {
@@ -541,6 +549,8 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 			if excess > 0 && len(allResults) > excess {
 				allResults = allResults[:len(allResults)-excess]
 			}
+			// Truncated if we dropped items OR more pages exist
+			hasMore = excess > 0 || parseNextLink(resp.Headers.Get("Link")) != ""
 			break
 		}
 
@@ -553,15 +563,19 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 
 		// Validate same-origin against original request
 		if !isSameOrigin(baseURL, nextURL) {
-			return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
+			return nil, false, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
 		}
 	}
 
+	// page exceeds MaxPages only when the for-loop post-increment fires,
+	// which means the last iteration did NOT break (i.e., it found a Link
+	// header pointing to another page we chose not to follow).
 	if page > c.httpOpts.MaxPages {
+		hasMore = true
 		c.logger.Warn("pagination capped", "maxPages", c.httpOpts.MaxPages)
 	}
 
-	return allResults, nil
+	return allResults, hasMore, nil
 }
 
 func (c *Client) doRequest(ctx context.Context, method, path string, body any) (*Response, error) {

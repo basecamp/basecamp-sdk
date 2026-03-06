@@ -195,11 +195,11 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 
 	// Check if we already have enough items
 	if limit > 0 && len(recordings) >= limit {
-		return &RecordingListResult{Recordings: recordings[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &RecordingListResult{Recordings: recordings[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(recordings), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(recordings), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(recordings), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +213,7 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 		recordings = append(recordings, recordingFromGenerated(gr))
 	}
 
-	return &RecordingListResult{Recordings: recordings, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &RecordingListResult{Recordings: recordings, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a recording by ID.

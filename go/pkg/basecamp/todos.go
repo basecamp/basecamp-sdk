@@ -225,11 +225,11 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 
 	// Check if we already have enough items
 	if limit > 0 && len(todos) >= limit {
-		return &TodoListResult{Todos: todos[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &TodoListResult{Todos: todos[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(todos), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(todos), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(todos), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 		todos = append(todos, todoFromGenerated(gt))
 	}
 
-	return &TodoListResult{Todos: todos, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &TodoListResult{Todos: todos, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a todo by ID.

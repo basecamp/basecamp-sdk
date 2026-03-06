@@ -326,11 +326,11 @@ func (s *CardsService) List(ctx context.Context, columnID int64, opts *CardListO
 
 	// Check if we already have enough items
 	if limit > 0 && len(cards) >= limit {
-		return &CardListResult{Cards: cards[:limit], Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &CardListResult{Cards: cards[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(cards), limit)}}, nil
 	}
 
 	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, err := s.client.parent.FollowPagination(ctx, resp.HTTPResponse, len(cards), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(cards), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +344,7 @@ func (s *CardsService) List(ctx context.Context, columnID int64, opts *CardListO
 		cards = append(cards, cardFromGenerated(gc))
 	}
 
-	return &CardListResult{Cards: cards, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &CardListResult{Cards: cards, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a card by ID.
