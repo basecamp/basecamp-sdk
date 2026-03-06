@@ -271,7 +271,7 @@ export abstract class BaseService {
       }
     }
 
-    // If we exited the loop because page >= MAX_PAGES and there's still a next link,
+    // If we exited the loop because page >= maxPages and there's still a next link,
     // the results are truncated by the safety cap
     const hasMore = parseNextLink(response.headers.get("Link")) !== null;
     return { items: allItems, truncated: hasMore };
