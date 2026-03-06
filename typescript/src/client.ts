@@ -198,6 +198,8 @@ export interface BasecampClientOptions {
   requestTimeoutMs?: number;
   /** Hooks for observability (logging, metrics, tracing) */
   hooks?: BasecampHooks;
+  /** Maximum pages to follow during auto-pagination (defaults to 10,000) */
+  maxPages?: number;
 }
 
 export const VERSION = "0.2.2";
@@ -233,6 +235,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     enableRetry = true,
     requestTimeoutMs = 30000,
     hooks,
+    maxPages,
   } = options;
 
   // Validate auth options: exactly one of auth or accessToken must be provided
@@ -315,45 +318,45 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     });
   };
 
-  defineService("projects", () => new ProjectsService(client, hooks, fetchPage));
-  defineService("todos", () => new TodosService(client, hooks, fetchPage));
-  defineService("todolists", () => new TodolistsService(client, hooks, fetchPage));
-  defineService("todosets", () => new TodosetsService(client, hooks, fetchPage));
-  defineService("people", () => new PeopleService(client, hooks, fetchPage));
+  defineService("projects", () => new ProjectsService(client, hooks, fetchPage, maxPages));
+  defineService("todos", () => new TodosService(client, hooks, fetchPage, maxPages));
+  defineService("todolists", () => new TodolistsService(client, hooks, fetchPage, maxPages));
+  defineService("todosets", () => new TodosetsService(client, hooks, fetchPage, maxPages));
+  defineService("people", () => new PeopleService(client, hooks, fetchPage, maxPages));
   defineService("authorization", () => new AuthorizationService(client, hooks, authStrategy, userAgent));
-  defineService("messages", () => new MessagesService(client, hooks, fetchPage));
-  defineService("comments", () => new CommentsService(client, hooks, fetchPage));
-  defineService("campfires", () => new CampfiresService(client, hooks, fetchPage));
-  defineService("cardTables", () => new CardTablesService(client, hooks, fetchPage));
-  defineService("cards", () => new CardsService(client, hooks, fetchPage));
-  defineService("cardColumns", () => new CardColumnsService(client, hooks, fetchPage));
-  defineService("cardSteps", () => new CardStepsService(client, hooks, fetchPage));
-  defineService("messageBoards", () => new MessageBoardsService(client, hooks, fetchPage));
-  defineService("messageTypes", () => new MessageTypesService(client, hooks, fetchPage));
-  defineService("forwards", () => new ForwardsService(client, hooks, fetchPage));
-  defineService("checkins", () => new CheckinsService(client, hooks, fetchPage));
-  defineService("clientApprovals", () => new ClientApprovalsService(client, hooks, fetchPage));
-  defineService("clientCorrespondences", () => new ClientCorrespondencesService(client, hooks, fetchPage));
-  defineService("clientReplies", () => new ClientRepliesService(client, hooks, fetchPage));
-  defineService("webhooks", () => new WebhooksService(client, hooks, fetchPage));
-  defineService("subscriptions", () => new SubscriptionsService(client, hooks, fetchPage));
-  defineService("attachments", () => new AttachmentsService(client, hooks, fetchPage));
-  defineService("vaults", () => new VaultsService(client, hooks, fetchPage));
-  defineService("documents", () => new DocumentsService(client, hooks, fetchPage));
-  defineService("uploads", () => new UploadsService(client, hooks, fetchPage));
-  defineService("schedules", () => new SchedulesService(client, hooks, fetchPage));
-  defineService("events", () => new EventsService(client, hooks, fetchPage));
-  defineService("recordings", () => new RecordingsService(client, hooks, fetchPage));
-  defineService("search", () => new SearchService(client, hooks, fetchPage));
-  defineService("reports", () => new ReportsService(client, hooks, fetchPage));
-  defineService("templates", () => new TemplatesService(client, hooks, fetchPage));
-  defineService("lineup", () => new LineupService(client, hooks, fetchPage));
-  defineService("todolistGroups", () => new TodolistGroupsService(client, hooks, fetchPage));
-  defineService("tools", () => new ToolsService(client, hooks, fetchPage));
-  defineService("timesheets", () => new TimesheetsService(client, hooks, fetchPage));
-  defineService("timeline", () => new TimelineService(client, hooks, fetchPage));
-  defineService("clientVisibility", () => new ClientVisibilityService(client, hooks, fetchPage));
-  defineService("boosts", () => new BoostsService(client, hooks, fetchPage));
+  defineService("messages", () => new MessagesService(client, hooks, fetchPage, maxPages));
+  defineService("comments", () => new CommentsService(client, hooks, fetchPage, maxPages));
+  defineService("campfires", () => new CampfiresService(client, hooks, fetchPage, maxPages));
+  defineService("cardTables", () => new CardTablesService(client, hooks, fetchPage, maxPages));
+  defineService("cards", () => new CardsService(client, hooks, fetchPage, maxPages));
+  defineService("cardColumns", () => new CardColumnsService(client, hooks, fetchPage, maxPages));
+  defineService("cardSteps", () => new CardStepsService(client, hooks, fetchPage, maxPages));
+  defineService("messageBoards", () => new MessageBoardsService(client, hooks, fetchPage, maxPages));
+  defineService("messageTypes", () => new MessageTypesService(client, hooks, fetchPage, maxPages));
+  defineService("forwards", () => new ForwardsService(client, hooks, fetchPage, maxPages));
+  defineService("checkins", () => new CheckinsService(client, hooks, fetchPage, maxPages));
+  defineService("clientApprovals", () => new ClientApprovalsService(client, hooks, fetchPage, maxPages));
+  defineService("clientCorrespondences", () => new ClientCorrespondencesService(client, hooks, fetchPage, maxPages));
+  defineService("clientReplies", () => new ClientRepliesService(client, hooks, fetchPage, maxPages));
+  defineService("webhooks", () => new WebhooksService(client, hooks, fetchPage, maxPages));
+  defineService("subscriptions", () => new SubscriptionsService(client, hooks, fetchPage, maxPages));
+  defineService("attachments", () => new AttachmentsService(client, hooks, fetchPage, maxPages));
+  defineService("vaults", () => new VaultsService(client, hooks, fetchPage, maxPages));
+  defineService("documents", () => new DocumentsService(client, hooks, fetchPage, maxPages));
+  defineService("uploads", () => new UploadsService(client, hooks, fetchPage, maxPages));
+  defineService("schedules", () => new SchedulesService(client, hooks, fetchPage, maxPages));
+  defineService("events", () => new EventsService(client, hooks, fetchPage, maxPages));
+  defineService("recordings", () => new RecordingsService(client, hooks, fetchPage, maxPages));
+  defineService("search", () => new SearchService(client, hooks, fetchPage, maxPages));
+  defineService("reports", () => new ReportsService(client, hooks, fetchPage, maxPages));
+  defineService("templates", () => new TemplatesService(client, hooks, fetchPage, maxPages));
+  defineService("lineup", () => new LineupService(client, hooks, fetchPage, maxPages));
+  defineService("todolistGroups", () => new TodolistGroupsService(client, hooks, fetchPage, maxPages));
+  defineService("tools", () => new ToolsService(client, hooks, fetchPage, maxPages));
+  defineService("timesheets", () => new TimesheetsService(client, hooks, fetchPage, maxPages));
+  defineService("timeline", () => new TimelineService(client, hooks, fetchPage, maxPages));
+  defineService("clientVisibility", () => new ClientVisibilityService(client, hooks, fetchPage, maxPages));
+  defineService("boosts", () => new BoostsService(client, hooks, fetchPage, maxPages));
 
   return enhancedClient;
 }

@@ -1,6 +1,6 @@
 {
   "profile": "full-sdk",
-  "date": "2026-03-04",
+  "date": "2026-03-06",
   "reviewer": "agent:conformance-runner",
   "criteria": {
     "1A.6": {
@@ -89,6 +89,24 @@
       "pass": true,
       "waiver": true,
       "note": "Ruby paginate returns Enumerator yielding items; X-Total-Count not exposed as metadata",
+      "language": "ruby"
+    },
+    "1B.6": {
+      "pass": true,
+      "waiver": true,
+      "note": "JavaScript Number loses precision on integers > 2^53; no clean fix without breaking SDK API surface",
+      "language": "typescript"
+    },
+    "2C.4": {
+      "pass": true,
+      "waiver": true,
+      "note": "Ruby paginate returns lazy Enumerator; maxItems cap requires ListResult refactor (separate PR)",
+      "language": "ruby"
+    },
+    "2C.6": {
+      "pass": true,
+      "waiver": true,
+      "note": "Ruby paginate Enumerator does not expose truncation metadata; requires ListResult refactor (separate PR)",
       "language": "ruby"
     }
   }

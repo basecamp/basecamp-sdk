@@ -69,8 +69,6 @@ const TEST_ACCOUNT_ID = "999";
 const TS_SDK_SKIPS: Record<string, string> = {
   "GET operation retries on 503":
     "TS SDK retry middleware yields at most 1 retry per middleware pass",
-  "Pagination stops at maxPages safety cap":
-    "TS SDK MAX_PAGES is a hardcoded constant (not configurable per-client)",
   "Large integer IDs preserved without precision loss":
     "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
 };
@@ -682,6 +680,7 @@ for (const { filename, tests } of suites) {
             accessToken: "conformance-test-token",
             baseUrl,
             enableRetry,
+            maxPages: tc.configOverrides?.maxPages,
           });
 
           result = await executeOperation(client, tc);
