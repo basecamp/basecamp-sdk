@@ -1,0 +1,37 @@
+.github/workflows/scorecard.yml
+  165812755f1f6651 1-38
+.github/workflows/release-go.yml
+  165812755f1f6651 12-15
+.github/workflows/release-ruby.yml
+  165812755f1f6651 13-16
+.github/workflows/release-kotlin.yml
+  165812755f1f6651 13-16
+.github/workflows/release-github.yml
+  165812755f1f6651 17-20
+.github/workflows/release-typescript.yml
+  165812755f1f6651 13-16
+.github/CODEOWNERS
+  165812755f1f6651 1-2
+.github/workflows/smithy-verify.yml
+  165812755f1f6651 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "3421bcf7584617afc92a3b4ff94b92d7ccc8db47",
+  "prompts": {
+    "165812755f1f6651": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53851ff7-25d6-4cc9-8bcd-36a4a307b96f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 64,
+      "total_deletions": 1,
+      "accepted_lines": 63,
+      "overriden_lines": 0
+    }
+  }
+}
