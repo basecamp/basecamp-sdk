@@ -3,6 +3,9 @@ name: Verify Smithy spec
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   smithy:
     name: Verify Smithy spec
