@@ -1,0 +1,23 @@
+.github/workflows/ai-labeler.yml
+  d20090cea25bdbf5 19-27,30-58,85-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "1cf149faa58a7daa81d55ddcf92dc0f573a344d2",
+  "prompts": {
+    "d20090cea25bdbf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1948fb2-6c91-48c5-9588-171c3554e16e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 67,
+      "total_deletions": 166,
+      "accepted_lines": 67,
+      "overriden_lines": 0
+    }
+  }
+}
