@@ -16,170 +16,46 @@ permissions:
 
 jobs:
   classify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Build prompt
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          gh pr diff "$PR" > /tmp/pr.diff
-          gh pr view "$PR" --json title --jq .title > /tmp/pr-title.txt
-          gh pr view "$PR" --json body --jq '.body // ""' > /tmp/pr-body.txt
-
-          # Compose user message
-          {
-            printf 'PR #%s: %s\n' "$PR" "$(cat /tmp/pr-title.txt)"
-            echo ""
-            cat /tmp/pr-body.txt
-            echo ""
-            echo "Diff (truncated):"
-            head -c 100000 /tmp/pr.diff
-          } > /tmp/user-message.txt
-
-          # Build full prompt YAML: splice user message into the messages array
-          # (avoids yaml round-trip which reorders keys and changes scalar styles)
-          python3 .github/scripts/splice-prompt.py .github/prompts/classify-pr.prompt.yml /tmp/prompt.yml
-
-      - name: Classify
-        id: classify
-        uses: actions/ai-inference@e09e65981758de8b2fdab13c2bfb7c7d5493b0b6 # v2.0.7
-        with:
-          prompt-file: /tmp/prompt.yml
-
-      - name: Apply label
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RESPONSE_FILE: ${{ steps.classify.outputs.response-file }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          LABEL=$(jq -r '.label // empty' "$RESPONSE_FILE" 2>/dev/null || cat "$RESPONSE_FILE")
-          LABEL=$(printf '%s' "$LABEL" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
-          case "$LABEL" in
-            bug|enhancement|documentation) ;;
-            *) echo "Unexpected: $LABEL — skipping"; exit 0 ;;
-          esac
-          CURRENT=$(gh pr view "$PR" --json labels --jq '.labels[].name')
-          for L in bug enhancement documentation; do
-            if [ "$L" != "$LABEL" ] && echo "$CURRENT" | grep -qx "$L"; then
-              gh pr edit "$PR" --remove-label "$L" 2>/dev/null || true
-            fi
-          done
-          if ! echo "$CURRENT" | grep -qx "$LABEL"; then
-            gh pr edit "$PR" --add-label "$LABEL" 2>/dev/null || true
-          fi
+    uses: basecamp/.github/.github/workflows/ai-classify-pr.yml@fc560544cd2bb4e242530bde9b0d9deb7863ea45
+    with:
+      prompt-file: .github/prompts/classify-pr.prompt.yml
+      labels: "bug,enhancement,documentation"
+    permissions:
+      contents: read
+      issues: write
+      models: read
+      pull-requests: write
 
   breaking:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Build prompt
-        id: api-diff
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          # Public API surface files per SDK
-          PATTERNS=(
-            "go/pkg/basecamp/*.go"
-            "typescript/src/client.ts" "typescript/src/errors.ts" "typescript/src/index.ts" "typescript/src/pagination.ts"
-            "typescript/src/generated/services/**/*.ts" "typescript/src/generated/authorization.ts" "typescript/src/generated/schema.d.ts"
-            "ruby/lib/basecamp.rb" "ruby/lib/basecamp/client.rb" "ruby/lib/basecamp/config.rb" "ruby/lib/basecamp/errors.rb"
-            "ruby/lib/basecamp/services/**/*.rb" "ruby/lib/basecamp/generated/services/**/*.rb"
-            "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/*.kt"
-            "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/**/*.kt"
-            "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/**/*.kt"
-            "swift/Sources/Basecamp/*.swift" "swift/Sources/Basecamp/Services/*.swift" "swift/Sources/Basecamp/Generated/**/*.swift"
-          )
-          gh pr diff "$PR" > /tmp/full.diff
-
-          # Filter diff to only public API files
-          python3 -c "
-          import sys, re, fnmatch
-          diff = open('/tmp/full.diff').read()
-          patterns = sys.argv[1:]
-          sections = re.split(r'(?=^diff --git)', diff, flags=re.MULTILINE)
-          for s in sections:
-              m = re.match(r'diff --git a/(\S+)', s)
-              if m:
-                  path = m.group(1)
-                  if any(fnmatch.fnmatch(path, p) for p in patterns):
-                      sys.stdout.write(s)
-          " "${PATTERNS[@]}" > /tmp/api.diff
-
-          if [ ! -s /tmp/api.diff ]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            TITLE=$(gh pr view "$PR" --json title --jq .title)
-
-            # Compose user message
-            {
-              printf 'PR #%s: %s\n' "$PR" "$TITLE"
-              echo ""
-              echo "Diff of public API surface files:"
-              head -c 100000 /tmp/api.diff
-            } > /tmp/user-message.txt
-
-            # Build full prompt YAML: splice user message into the messages array
-            # (avoids yaml round-trip which reorders keys and changes scalar styles)
-            python3 .github/scripts/splice-prompt.py .github/prompts/detect-breaking.prompt.yml /tmp/prompt.yml
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Detect breaking changes
-        if: steps.api-diff.outputs.skip != 'true'
-        id: detect
-        uses: actions/ai-inference@e09e65981758de8b2fdab13c2bfb7c7d5493b0b6 # v2.0.7
-        with:
-          prompt-file: /tmp/prompt.yml
-
-      - name: Apply breaking label
-        if: steps.api-diff.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RESPONSE_FILE: ${{ steps.detect.outputs.response-file }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          if ! jq empty "$RESPONSE_FILE" 2>/dev/null; then
-            echo "::warning::Model response is not valid JSON; skipping breaking label. See step summary for details."
-            {
-              echo "## Breaking change detection failed"
-              echo "Model returned invalid JSON. Breaking label was **not** applied."
-              echo '```'
-              cat "$RESPONSE_FILE"
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          BREAKING=$(jq -r '.breaking' "$RESPONSE_FILE")
-
-          if [ "$BREAKING" = "true" ]; then
-            ITEMS=$(jq -r '.items[]' "$RESPONSE_FILE" | sed 's/^/- /')
-            gh label create breaking --color "B60205" 2>/dev/null || true
-            gh pr edit "$PR" --add-label "breaking"
-
-            # Build comment body
-            {
-              echo "⚠️ **Potential breaking changes detected:**"
-              echo ""
-              echo "$ITEMS"
-              echo ""
-              echo "_Review carefully before merging. Consider a major version bump._"
-            } > /tmp/breaking-comment.md
-
-            # Find existing bot comment or create new
-            EXISTING=$(gh pr view "$PR" --json comments --jq '.comments[] | select(.body | startswith("⚠️ **Potential breaking")) | .id' | head -1)
-            if [ -n "$EXISTING" ]; then
-              gh api graphql -f query="mutation { updateIssueComment(input: {id: \"$EXISTING\", body: $(jq -Rs . /tmp/breaking-comment.md)}) { issueComment { id } } }"
-            else
-              gh pr comment "$PR" --body-file /tmp/breaking-comment.md
-            fi
-          else
-            gh pr edit "$PR" --remove-label "breaking" 2>/dev/null || true
-          fi
+    uses: basecamp/.github/.github/workflows/ai-breaking-change.yml@fc560544cd2bb4e242530bde9b0d9deb7863ea45
+    with:
+      prompt-file: .github/prompts/detect-breaking.prompt.yml
+      file-patterns: |
+        go/pkg/basecamp/*.go
+        typescript/src/client.ts
+        typescript/src/errors.ts
+        typescript/src/index.ts
+        typescript/src/pagination.ts
+        typescript/src/generated/services/**/*.ts
+        typescript/src/generated/authorization.ts
+        typescript/src/generated/schema.d.ts
+        ruby/lib/basecamp.rb
+        ruby/lib/basecamp/client.rb
+        ruby/lib/basecamp/config.rb
+        ruby/lib/basecamp/errors.rb
+        ruby/lib/basecamp/services/**/*.rb
+        ruby/lib/basecamp/generated/services/**/*.rb
+        kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/*.kt
+        kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/**/*.kt
+        kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/**/*.kt
+        swift/Sources/Basecamp/*.swift
+        swift/Sources/Basecamp/Services/*.swift
+        swift/Sources/Basecamp/Generated/**/*.swift
+    permissions:
+      contents: read
+      issues: write
+      models: read
+      pull-requests: write
 
   spec-impact:
     runs-on: ubuntu-latest
@@ -199,7 +75,6 @@ jobs:
             gh pr diff "$PR" -- spec/ openapi.json behavior-model.json > /tmp/spec.diff 2>/dev/null || true
             TITLE=$(gh pr view "$PR" --json title --jq .title)
 
-            # Compose user message
             {
               printf 'PR #%s: %s\n' "$PR" "$TITLE"
               echo ""
@@ -207,9 +82,35 @@ jobs:
               head -c 100000 /tmp/spec.diff
             } > /tmp/user-message.txt
 
-            # Build full prompt YAML: splice user message into the messages array
-            # (avoids yaml round-trip which reorders keys and changes scalar styles)
-            python3 .github/scripts/splice-prompt.py .github/prompts/spec-impact.prompt.yml /tmp/prompt.yml
+            python3 << 'SPLICE'
+            with open('.github/prompts/spec-impact.prompt.yml') as f:
+                lines = f.readlines()
+            with open('/tmp/user-message.txt') as f:
+                user_msg = f.read()
+
+            insert_at = len(lines)
+            for i, line in enumerate(lines):
+                if i == 0:
+                    continue
+                if line.strip() and not line[0].isspace():
+                    insert_at = i
+                    break
+
+            entry = ['  - role: user\n', '    content: |\n']
+            for ln in user_msg.splitlines():
+                entry.append('      ' + ln + '\n')
+
+            lines[insert_at:insert_at] = entry
+            with open('/tmp/prompt.yml', 'w') as f:
+                f.writelines(lines)
+
+            try:
+                import yaml
+                doc = yaml.safe_load(open('/tmp/prompt.yml'))
+                assert doc['messages'][-1]['role'] == 'user', 'prompt splice failed'
+            except ImportError:
+                pass
+            SPLICE
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
