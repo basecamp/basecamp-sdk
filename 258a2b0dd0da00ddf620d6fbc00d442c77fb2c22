@@ -1,0 +1,33 @@
+.github/workflows/release-github.yml
+  2e0f542df67c3699 95,101-103,105,108,122-123,131-132,140-142,145-147,179
+.github/workflows/release-swift.yml
+  2e0f542df67c3699 23
+.github/workflows/release-kotlin.yml
+  2e0f542df67c3699 24,27,33,60,71,77,81-82,84
+.github/workflows/release-go.yml
+  2e0f542df67c3699 23,34,72
+.github/workflows/release-ruby.yml
+  2e0f542df67c3699 24,27,48,59,67-68,70,89,94-95,99,110,114-115,119
+.github/workflows/release-typescript.yml
+  2e0f542df67c3699 24,27,57,68,83-84,86,105-106,117-118,129-131,133-134,137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "258a2b0dd0da00ddf620d6fbc00d442c77fb2c22",
+  "prompts": {
+    "2e0f542df67c3699": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1721de05-e680-48dc-8692-3cc3e70bfe8b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 117,
+      "overriden_lines": 0
+    }
+  }
+}
