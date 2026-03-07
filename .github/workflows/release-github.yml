@@ -92,17 +92,20 @@ jobs:
     if: always() && (needs.wait-for-publishes.result == 'success' || needs.wait-for-publishes.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
       - name: Resolve tag
         id: tag
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
+          if [ "$EVENT_NAME" = "push" ]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
-            TAG="${{ github.event.inputs.tag }}"
+            TAG="$INPUT_TAG"
             if [ -z "$TAG" ]; then
               echo "::error::tag input is required for manual runs"
               exit 1
@@ -116,28 +119,33 @@ jobs:
           echo "Resolved tag: $TAG"
 
       - name: Verify tag is on main
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          TAG="${{ steps.tag.outputs.tag }}"
           git fetch origin main
           TAG_SHA=$(git rev-parse "refs/tags/${TAG}^{commit}" 2>/dev/null || git rev-parse "refs/tags/${TAG}^{}" 2>/dev/null)
           git merge-base --is-ancestor "$TAG_SHA" origin/main
 
       - name: Extract version
         id: version
+        env:
+          VERSION: ${{ steps.tag.outputs.tag }}
         run: |
-          VERSION="${{ steps.tag.outputs.tag }}"
           SEMVER="${VERSION#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "semver=$SEMVER" >> $GITHUB_OUTPUT
 
       - name: Checkout tag
         if: github.event_name == 'workflow_dispatch'
-        run: git checkout "refs/tags/${{ steps.tag.outputs.tag }}"
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: git checkout "refs/tags/$TAG"
 
       - name: Build installation body
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SEMVER: ${{ steps.version.outputs.semver }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          SEMVER="${{ steps.version.outputs.semver }}"
           {
             echo "## Installation"
             echo ""
@@ -168,7 +176,7 @@ jobs:
           } > body.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Basecamp SDK ${{ steps.version.outputs.version }}

@@ -21,10 +21,10 @@ jobs:
       run:
         working-directory: typescript
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -54,7 +54,7 @@ jobs:
       run:
         working-directory: typescript
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
@@ -65,7 +65,7 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
@@ -80,8 +80,10 @@ jobs:
 
       - name: Extract version
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             # Manual trigger (dry-run): read from package.json
             VERSION=$(node -p "require('./package.json').version")
             echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -100,8 +102,9 @@ jobs:
 
       - name: Determine npm tag
         id: npm-tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
           if [[ "$VERSION" == *-* ]]; then
             echo "tag=next" >> $GITHUB_OUTPUT
           else
@@ -111,8 +114,9 @@ jobs:
       - name: Check if already published
         id: check-published
         if: github.event_name == 'push'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
           if npm view "@37signals/basecamp@${VERSION}" version 2>/dev/null; then
             echo "already_published=true" >> $GITHUB_OUTPUT
             echo "::notice::Version ${VERSION} already published to npm"
@@ -122,10 +126,13 @@ jobs:
 
       - name: Publish to npm
         if: steps.check-published.outputs.already_published != 'true'
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          NPM_TAG: ${{ steps.npm-tag.outputs.tag }}
         run: |
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --provenance
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            npm publish --access public --tag "$NPM_TAG" --provenance
           else
             echo "::notice::Dry run mode - not actually publishing"
-            npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }} --dry-run
+            npm publish --access public --tag "$NPM_TAG" --dry-run
           fi

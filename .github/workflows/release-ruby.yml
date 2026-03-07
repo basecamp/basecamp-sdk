@@ -21,10 +21,10 @@ jobs:
       run:
         working-directory: ruby
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@6ca151fd1bfcfd6fe0c4eb6837eb0584d0134a0c # v1
         with:
           ruby-version: '3.3'
           bundler-cache: true
@@ -45,7 +45,7 @@ jobs:
       run:
         working-directory: ruby
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
@@ -56,7 +56,7 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@6ca151fd1bfcfd6fe0c4eb6837eb0584d0134a0c # v1
         with:
           ruby-version: '3.3'
           bundler-cache: true
@@ -64,8 +64,10 @@ jobs:
 
       - name: Extract version
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             # Manual trigger (dry-run): read from version.rb
             VERSION=$(ruby -e "require_relative 'lib/basecamp/version'; puts Basecamp::VERSION")
             echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -84,15 +86,17 @@ jobs:
 
       - name: Configure RubyGems credentials
         if: github.event_name == 'push'
-        uses: rubygems/configure-rubygems-credentials@v1.0.0
+        uses: rubygems/configure-rubygems-credentials@bc6dd217f8a4f919d6835fcfefd470ef821f5c44 # v1.0.0
 
       - name: Publish to RubyGems
         if: github.event_name == 'push'
         shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           gem build basecamp-sdk.gemspec
           set +e
-          output=$(gem push basecamp-sdk-${{ steps.version.outputs.version }}.gem 2>&1)
+          output=$(gem push "basecamp-sdk-${VERSION}.gem" 2>&1)
           status=$?
           set -e
           echo "$output"
@@ -103,11 +107,13 @@ jobs:
           else
             exit "$status"
           fi
-          gem exec rubygems-await basecamp-sdk-${{ steps.version.outputs.version }}.gem
+          gem exec rubygems-await "basecamp-sdk-${VERSION}.gem"
 
       - name: Dry-run build
         if: github.event_name == 'workflow_dispatch'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           gem build basecamp-sdk.gemspec
           echo "::notice::Dry run mode - not actually publishing"
-          echo "Would publish: basecamp-sdk-${{ steps.version.outputs.version }}.gem"
+          echo "Would publish: basecamp-sdk-${VERSION}.gem"
