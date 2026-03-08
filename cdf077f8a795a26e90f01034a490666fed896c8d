@@ -1,0 +1,33 @@
+.github/workflows/release-ruby.yml
+  165812755f1f6651 14
+.github/workflows/release-typescript.yml
+  165812755f1f6651 14
+.github/workflows/release-kotlin.yml
+  165812755f1f6651 14
+.github/workflows/release-github.yml
+  165812755f1f6651 18
+.github/workflows/release-swift.yml
+  165812755f1f6651 12-15
+.github/workflows/release-go.yml
+  165812755f1f6651 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "cdf077f8a795a26e90f01034a490666fed896c8d",
+  "prompts": {
+    "165812755f1f6651": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53851ff7-25d6-4cc9-8bcd-36a4a307b96f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 5,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  }
+}
