@@ -472,7 +472,7 @@ export class CampfiresService extends BaseService {
    * @param campfireId - The campfire ID
    * @param data - Binary file data to upload
    * @param contentType - MIME type of the file (e.g., "image/png", "application/pdf")
-   * @param name - name
+   * @param name - Filename for the uploaded file (e.g. "report.pdf").
    * @returns The CampfireLine
    * @throws {BasecampError} If required fields are missing or invalid
    *

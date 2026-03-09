@@ -273,7 +273,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
      * @param campfireId The campfire ID
      * @param data Binary file data to upload
      * @param contentType MIME type of the file
-     * @param name name
+     * @param name Filename for the uploaded file (e.g. "report.pdf").
      */
     suspend fun createUpload(campfireId: Long, data: ByteArray, contentType: String, name: String): CampfireLine {
         val info = OperationInfo(

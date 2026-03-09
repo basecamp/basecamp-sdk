@@ -2538,6 +2538,10 @@ export interface components {
             content_type?: string;
         };
         CreateCampfireLineResponseContent: components["schemas"]["CampfireLine"];
+        /**
+         * @description Raw binary content of the file. Set the Content-Type header to match
+         *     the file's media type (e.g. "image/png", "application/pdf").
+         */
         CreateCampfireUploadInputPayload: string;
         CreateCampfireUploadResponseContent: components["schemas"]["CampfireLine"];
         CreateCardColumnRequestContent: {
@@ -6473,6 +6477,7 @@ export interface operations {
     CreateCampfireUpload: {
         parameters: {
             query: {
+                /** @description Filename for the uploaded file (e.g. "report.pdf"). */
                 name: string;
             };
             header?: never;

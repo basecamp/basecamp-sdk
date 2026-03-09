@@ -3738,8 +3738,10 @@
           {
             "name": "name",
             "in": "query",
+            "description": "Filename for the uploaded file (e.g. \"report.pdf\").",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Filename for the uploaded file (e.g. \"report.pdf\")."
             },
             "required": true
           }
@@ -17196,6 +17198,7 @@
       },
       "CreateCampfireUploadInputPayload": {
         "type": "string",
+        "description": "Raw binary content of the file. Set the Content-Type header to match\nthe file's media type (e.g. \"image/png\", \"application/pdf\").",
         "contentEncoding": "byte"
       },
       "CreateCampfireUploadResponseContent": {

@@ -133,7 +133,7 @@ module Basecamp
       # @param campfire_id [Integer] campfire id ID
       # @param data [String] Binary file data to upload
       # @param content_type [String] MIME type of the file (e.g., "application/pdf", "image/png")
-      # @param name [String] name
+      # @param name [String] Filename for the uploaded file (e.g. "report.pdf").
       # @return [Hash] response data
       def create_upload(campfire_id:, data:, content_type:, name:)
         with_operation(service: "campfires", operation: "create_upload", is_mutation: true, resource_id: campfire_id) do

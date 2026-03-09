@@ -3251,10 +3251,13 @@ structure CreateCampfireUploadInput {
   @httpLabel
   campfireId: CampfireId
 
+  /// Filename for the uploaded file (e.g. "report.pdf").
   @required
   @httpQuery("name")
   name: String
 
+  /// Raw binary content of the file. Set the Content-Type header to match
+  /// the file's media type (e.g. "image/png", "application/pdf").
   @required
   @httpPayload
   data: Blob
