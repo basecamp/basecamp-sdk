@@ -48,7 +48,7 @@ describe("SearchService", () => {
       server.use(
         http.get(`${BASE_URL}/search.json`, ({ request }) => {
           const url = new URL(request.url);
-          expect(url.searchParams.get("query")).toBe("project");
+          expect(url.searchParams.get("q")).toBe("project");
           return HttpResponse.json(mockResults);
         })
       );
@@ -63,7 +63,7 @@ describe("SearchService", () => {
       server.use(
         http.get(`${BASE_URL}/search.json`, ({ request }) => {
           const url = new URL(request.url);
-          expect(url.searchParams.get("query")).toBe("test");
+          expect(url.searchParams.get("q")).toBe("test");
           expect(url.searchParams.get("sort")).toBe("updated_at");
           return HttpResponse.json([]);
         })

@@ -20,7 +20,7 @@ module Basecamp
       # @param sort [String, nil] sort order ("created_at" or "updated_at")
       # @return [Enumerator<Hash>] search results
       def search(query:, sort: nil)
-        params = compact_params(query: query, sort: sort)
+        params = compact_params(q: query, sort: sort)
         paginate("/search.json", params: params)
       end
 

@@ -7,9 +7,9 @@ import (
 )
 
 func TestZeroValueOptionalQueryParams_Omitted(t *testing.T) {
-	t.Run("search: string and int32 zero values omitted", func(t *testing.T) {
+	t.Run("search: string zero values omitted", func(t *testing.T) {
 		req, err := generated.NewSearchRequest("https://3.basecampapi.com", "12345", &generated.SearchParams{
-			Query: "omacon",
+			Q: "omacon",
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -17,14 +17,11 @@ func TestZeroValueOptionalQueryParams_Omitted(t *testing.T) {
 
 		q := req.URL.Query()
 
-		if got := q.Get("query"); got != "omacon" {
-			t.Errorf("expected query=omacon, got %q", got)
+		if got := q.Get("q"); got != "omacon" {
+			t.Errorf("expected q=omacon, got %q", got)
 		}
 		if q.Has("sort") {
 			t.Errorf("expected sort to be absent, got %q", q.Get("sort"))
-		}
-		if q.Has("page") {
-			t.Errorf("expected page to be absent, got %q", q.Get("page"))
 		}
 	})
 
@@ -77,9 +74,8 @@ func TestZeroValueOptionalQueryParams_Omitted(t *testing.T) {
 func TestNonZeroOptionalQueryParams_Included(t *testing.T) {
 	t.Run("search: all params present", func(t *testing.T) {
 		req, err := generated.NewSearchRequest("https://3.basecampapi.com", "12345", &generated.SearchParams{
-			Query: "omacon",
-			Sort:  "created_at",
-			Page:  2,
+			Q:    "omacon",
+			Sort: "created_at",
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -87,14 +83,11 @@ func TestNonZeroOptionalQueryParams_Included(t *testing.T) {
 
 		q := req.URL.Query()
 
-		if got := q.Get("query"); got != "omacon" {
-			t.Errorf("expected query=omacon, got %q", got)
+		if got := q.Get("q"); got != "omacon" {
+			t.Errorf("expected q=omacon, got %q", got)
 		}
 		if got := q.Get("sort"); got != "created_at" {
 			t.Errorf("expected sort=created_at, got %q", got)
-		}
-		if got := q.Get("page"); got != "2" {
-			t.Errorf("expected page=2, got %q", got)
 		}
 	})
 

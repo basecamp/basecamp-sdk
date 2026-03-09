@@ -79,7 +79,7 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 	}
 
 	params := &generated.SearchParams{
-		Query: query,
+		Q: query,
 	}
 	if opts != nil && opts.Sort != "" {
 		params.Sort = opts.Sort
