@@ -7,7 +7,7 @@ module Basecamp
     # Provides full-text search across all content in your Basecamp account.
     #
     # @example Search for content
-    #   results = account.search.search(query: "quarterly report")
+    #   results = account.search.search(q: "quarterly report")
     #   results.each { |r| puts r["title"] }
     #
     # @example Get search metadata
@@ -16,11 +16,11 @@ module Basecamp
     class SearchService < BaseService
       # Searches for content across the account.
       #
-      # @param query [String] the search query string
+      # @param q [String] the search query string
       # @param sort [String, nil] sort order ("created_at" or "updated_at")
       # @return [Enumerator<Hash>] search results
-      def search(query:, sort: nil)
-        params = compact_params(q: query, sort: sort)
+      def search(q:, sort: nil)
+        params = compact_params(q: q, sort: sort)
         paginate("/search.json", params: params)
       end
 
