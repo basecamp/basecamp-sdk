@@ -20,8 +20,6 @@ import type { PaginationOptions } from "../../pagination.js";
 export interface SearchSearchOptions extends PaginationOptions {
   /** Filter by sort */
   sort?: "created_at" | "updated_at";
-  /** Page */
-  page?: number;
 }
 
 
@@ -36,16 +34,16 @@ export class SearchService extends BaseService {
 
   /**
    * Search for content across the account
-   * @param query - query
+   * @param q - q
    * @param options - Optional query parameters
    * @returns All results across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.search.search("query");
+   * const result = await client.search.search("q");
    * ```
    */
-  async search(query: string, options?: SearchSearchOptions): Promise<components["schemas"]["SearchResponseContent"]> {
+  async search(q: string, options?: SearchSearchOptions): Promise<components["schemas"]["SearchResponseContent"]> {
     return this.requestPaginated(
       {
         service: "Search",
@@ -56,7 +54,7 @@ export class SearchService extends BaseService {
       () =>
         this.client.GET("/search.json", {
           params: {
-            query: { query: query, sort: options?.sort, page: options?.page },
+            query: { q: q, sort: options?.sort },
           },
         })
       , options

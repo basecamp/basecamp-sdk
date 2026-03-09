@@ -12449,10 +12449,9 @@ export interface operations {
     Search: {
         parameters: {
             query: {
-                query: string;
+                q: string;
                 /** @description created_at|updated_at */
                 sort?: string;
-                page?: number;
             };
             header?: never;
             path?: never;

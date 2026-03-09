@@ -3,12 +3,10 @@ import Foundation
 
 public struct SearchSearchOptions: Sendable {
     public var sort: String?
-    public var page: Int?
     public var maxItems: Int?
 
-    public init(sort: String? = nil, page: Int? = nil, maxItems: Int? = nil) {
+    public init(sort: String? = nil, maxItems: Int? = nil) {
         self.sort = sort
-        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -24,14 +22,11 @@ public final class SearchService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func search(query: String, options: SearchSearchOptions? = nil) async throws -> ListResult<SearchResult> {
+    public func search(q: String, options: SearchSearchOptions? = nil) async throws -> ListResult<SearchResult> {
         var queryItems: [URLQueryItem] = []
-        queryItems.append(URLQueryItem(name: "query", value: query))
+        queryItems.append(URLQueryItem(name: "q", value: q))
         if let sort = options?.sort {
             queryItems.append(URLQueryItem(name: "sort", value: sort))
-        }
-        if let page = options?.page {
-            queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
             OperationInfo(service: "Search", operation: "Search", resourceType: "resource", isMutation: false),

@@ -8,13 +8,12 @@ module Basecamp
     class SearchService < BaseService
 
       # Search for content across the account
-      # @param query [String] query
+      # @param q [String] q
       # @param sort [String, nil] created_at|updated_at
-      # @param page [Integer, nil] page
       # @return [Enumerator<Hash>] paginated results
-      def search(query:, sort: nil, page: nil)
+      def search(q:, sort: nil)
         wrap_paginated(service: "search", operation: "search", is_mutation: false) do
-          params = compact_params(query: query, sort: sort, page: page)
+          params = compact_params(q: q, sort: sort)
           paginate("/search.json", params: params)
         end
       end

@@ -13870,7 +13870,7 @@
             "required": true
           },
           {
-            "name": "query",
+            "name": "q",
             "in": "query",
             "schema": {
               "type": "string"
@@ -13884,14 +13884,6 @@
             "schema": {
               "type": "string",
               "description": "created_at|updated_at"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
             }
           }
         ],

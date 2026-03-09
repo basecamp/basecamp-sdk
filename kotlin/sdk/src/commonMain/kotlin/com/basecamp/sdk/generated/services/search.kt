@@ -14,10 +14,10 @@ class SearchService(client: AccountClient) : BaseService(client) {
 
     /**
      * Search for content across the account
-     * @param query query
+     * @param q q
      * @param options Optional query parameters and pagination control
      */
-    suspend fun search(query: String, options: SearchOptions? = null): ListResult<JsonElement> {
+    suspend fun search(q: String, options: SearchOptions? = null): ListResult<JsonElement> {
         val info = OperationInfo(
             service = "Search",
             operation = "Search",
@@ -27,9 +27,8 @@ class SearchService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
-            "query" to query,
+            "q" to q,
             "sort" to options?.sort,
-            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/search.json" + qs, operationName = info.operation)

@@ -6267,14 +6267,11 @@ structure SearchInput {
   accountId: AccountId
 
   @required
-  @httpQuery("query")
+  @httpQuery("q")
   query: String
 
   @httpQuery("sort")
   sort: SearchSortField
-
-  @httpQuery("page")
-  page: Integer
 }
 
 structure SearchOutput {

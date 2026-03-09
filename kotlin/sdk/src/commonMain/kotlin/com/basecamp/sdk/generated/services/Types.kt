@@ -305,7 +305,6 @@ data class CreateScheduleEntryBody(
 /** Options for Search. */
 data class SearchOptions(
     val sort: String? = null,
-    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)

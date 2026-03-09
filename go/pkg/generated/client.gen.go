@@ -372,7 +372,8 @@ type CreateCampfireLineRequestContent struct {
 // CreateCampfireLineResponseContent defines model for CreateCampfireLineResponseContent.
 type CreateCampfireLineResponseContent = CampfireLine
 
-// CreateCampfireUploadInputPayload defines model for CreateCampfireUploadInputPayload.
+// CreateCampfireUploadInputPayload Raw binary content of the file. Set the Content-Type header to match
+// the file's media type (e.g. "image/png", "application/pdf").
 type CreateCampfireUploadInputPayload = string
 
 // CreateCampfireUploadResponseContent defines model for CreateCampfireUploadResponseContent.
@@ -2115,6 +2116,7 @@ type CreateAttachmentParams struct {
 
 // CreateCampfireUploadParams defines parameters for CreateCampfireUpload.
 type CreateCampfireUploadParams struct {
+	// Name Filename for the uploaded file (e.g. "report.pdf").
 	Name string `form:"name" json:"name"`
 }
 
@@ -2181,11 +2183,10 @@ type ListScheduleEntriesParams struct {
 
 // SearchParams defines parameters for Search.
 type SearchParams struct {
-	Query string `form:"query" json:"query"`
+	Q string `form:"q" json:"q"`
 
 	// Sort created_at|updated_at
 	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
-	Page int32  `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListTemplatesParams defines parameters for ListTemplates.
@@ -12490,7 +12491,7 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "query", runtime.ParamLocationQuery, params.Query); err != nil {
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "q", runtime.ParamLocationQuery, params.Q); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err
@@ -12505,22 +12506,6 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 		if params.Sort != "" {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Page != 0 {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
