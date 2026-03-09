@@ -381,6 +381,11 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
         queryValues := queryURL.Query()
             {{range $paramIdx, $param := .QueryParams}}
             {{if .HasOptionalPointer}} if params.{{.GoName}} != nil { {{end}}
+            {{if and (not .Required) (not .HasOptionalPointer)}}
+            {{if eq .Schema.GoType "string"}}if params.{{.GoName}} != "" {
+            {{else if or (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}}if params.{{.GoName}} != 0 {
+            {{end}}
+            {{end}}
             {{if .IsPassThrough}}
             queryValues.Add("{{.ParamName}}", {{if .HasOptionalPointer}}*{{end}}params.{{.GoName}})
             {{end}}
@@ -405,6 +410,10 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
                }
             }
             {{end}}
+            {{if and (not .Required) (not .HasOptionalPointer)}}
+            {{if or (eq .Schema.GoType "string") (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}} }
+            {{end}}
+            {{end}}
             {{if .HasOptionalPointer}}}{{end}}
         {{end}}
         queryURL.RawQuery = queryValues.Encode()
@@ -420,6 +429,11 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
     if params != nil {
     {{range $paramIdx, $param := .HeaderParams}}
         {{if .HasOptionalPointer}} if params.{{.GoName}} != nil { {{end}}
+        {{if and (not .Required) (not .HasOptionalPointer)}}
+        {{if eq .Schema.GoType "string"}}if params.{{.GoName}} != "" {
+        {{else if or (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}}if params.{{.GoName}} != 0 {
+        {{end}}
+        {{end}}
         var headerParam{{$paramIdx}} string
         {{if .IsPassThrough}}
         headerParam{{$paramIdx}} = {{if .HasOptionalPointer}}*{{end}}params.{{.GoName}}
@@ -439,6 +453,10 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
         }
         {{end}}
         req.Header.Set("{{.ParamName}}", headerParam{{$paramIdx}})
+        {{if and (not .Required) (not .HasOptionalPointer)}}
+        {{if or (eq .Schema.GoType "string") (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}} }
+        {{end}}
+        {{end}}
         {{if .HasOptionalPointer}}}{{end}}
     {{end}}
     }
@@ -448,6 +466,11 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
     if params != nil {
     {{range $paramIdx, $param := .CookieParams}}
         {{if .HasOptionalPointer}} if params.{{.GoName}} != nil { {{end}}
+        {{if and (not .Required) (not .HasOptionalPointer)}}
+        {{if eq .Schema.GoType "string"}}if params.{{.GoName}} != "" {
+        {{else if or (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}}if params.{{.GoName}} != 0 {
+        {{end}}
+        {{end}}
         var cookieParam{{$paramIdx}} string
         {{if .IsPassThrough}}
         cookieParam{{$paramIdx}} = {{if .HasOptionalPointer}}*{{end}}params.{{.GoName}}
@@ -471,6 +494,10 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
             Value:cookieParam{{$paramIdx}},
         }
         req.AddCookie(cookie{{$paramIdx}})
+        {{if and (not .Required) (not .HasOptionalPointer)}}
+        {{if or (eq .Schema.GoType "string") (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}} }
+        {{end}}
+        {{end}}
         {{if .HasOptionalPointer}}}{{end}}
     {{ end -}}
     }
