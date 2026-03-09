@@ -1,0 +1,27 @@
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  74fc34381cab2730 32,204-205
+typescript/scripts/generate-services.ts
+  74fc34381cab2730 171,343-344
+ruby/scripts/generate-services.rb
+  74fc34381cab2730 48,192-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.9",
+  "base_commit_sha": "67a21666e14fb7970e14fcd960a3388894662d30",
+  "prompts": {
+    "74fc34381cab2730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f573773-e5b7-4682-8345-e3fe37f11fc2",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 198,
+      "overriden_lines": 0
+    }
+  }
+}
