@@ -108,7 +108,7 @@ jobs:
       # --- CodeQL init ---
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4
+        uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -131,7 +131,7 @@ jobs:
       # --- Analysis (fails build on real errors) ---
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4
+        uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         with:
           category: codeql-${{ matrix.language }}
           upload: never
@@ -164,7 +164,7 @@ jobs:
       # --- Upload (tolerates GHAS unavailability) ---
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4
+        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         continue-on-error: true  # Requires GitHub Advanced Security
         with:
           sarif_file: sarif-results
@@ -181,7 +181,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4
+        uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         with:
           languages: swift
           build-mode: manual
@@ -192,7 +192,7 @@ jobs:
         run: swift build
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4
+        uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         with:
           category: codeql-swift
           upload: never
@@ -217,7 +217,7 @@ jobs:
           done
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4
+        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         continue-on-error: true  # Requires GitHub Advanced Security
         with:
           sarif_file: sarif-results
