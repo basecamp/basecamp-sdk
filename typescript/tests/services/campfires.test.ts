@@ -6,6 +6,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import type { BasecampClient } from "../../src/client.js";
+import { BasecampError } from "../../src/errors.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -281,7 +282,9 @@ describe("CampfiresService", () => {
         })
       );
 
-      await expect(client.campfires.listUploads(42)).rejects.toThrow();
+      const error = await client.campfires.listUploads(42).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).httpStatus).toBe(403);
     });
   });
 
@@ -293,9 +296,11 @@ describe("CampfiresService", () => {
         })
       );
 
-      await expect(
-        client.campfires.createUpload(42, new Uint8Array([1]), "image/png", "test.png")
-      ).rejects.toThrow();
+      const error = await client.campfires
+        .createUpload(42, new Uint8Array([1]), "image/png", "test.png")
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).httpStatus).toBe(422);
     });
   });
 });

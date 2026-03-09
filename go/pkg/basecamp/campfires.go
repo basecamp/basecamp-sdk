@@ -429,6 +429,11 @@ func (s *CampfiresService) CreateUpload(ctx context.Context, campfireID int64, f
 		return nil, err
 	}
 
+	if data == nil {
+		err = ErrUsage("file data is required")
+		return nil, err
+	}
+
 	body, err := io.ReadAll(data)
 	if err != nil {
 		err = fmt.Errorf("failed to read file data: %w", err)

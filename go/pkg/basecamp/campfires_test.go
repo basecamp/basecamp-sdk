@@ -922,6 +922,18 @@ func TestCreateUpload_EmptyData(t *testing.T) {
 	}
 }
 
+func TestCreateUpload_NilData(t *testing.T) {
+	svc := newTestCampfiresService()
+	_, err := svc.CreateUpload(context.Background(), 200, "file.pdf", "application/pdf", nil)
+	if err == nil {
+		t.Fatal("expected error for nil data")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
 func TestUpdateChatbotRequest_Marshal(t *testing.T) {
 	req := UpdateChatbotRequest{
 		ServiceName: "updatedbot",
