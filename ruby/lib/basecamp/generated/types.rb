@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-03-03T21:53:53Z
+# Generated: 2026-03-09T19:39:33Z
 
 require "json"
 require "time"
@@ -136,7 +136,7 @@ module Basecamp
     # Campfire
     class Campfire
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :lines_url, :position, :subscription_url, :topic
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :files_url, :lines_url, :position, :subscription_url, :topic
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -157,6 +157,7 @@ module Basecamp
         @url = data["url"]
         @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @bookmark_url = data["bookmark_url"]
+        @files_url = data["files_url"]
         @lines_url = data["lines_url"]
         @position = parse_integer(data["position"])
         @subscription_url = data["subscription_url"]
@@ -178,6 +179,7 @@ module Basecamp
           "url" => @url,
           "visible_to_clients" => @visible_to_clients,
           "bookmark_url" => @bookmark_url,
+          "files_url" => @files_url,
           "lines_url" => @lines_url,
           "position" => @position,
           "subscription_url" => @subscription_url,
@@ -193,17 +195,16 @@ module Basecamp
     # CampfireLine
     class CampfireLine
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :attachments, :bookmark_url, :boosts_count, :boosts_url, :content
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
-        @content = data["content"]
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
@@ -215,16 +216,17 @@ module Basecamp
         @updated_at = parse_datetime(data["updated_at"])
         @url = data["url"]
         @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @attachments = parse_array(data["attachments"], "CampfireLineAttachment")
         @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @content = data["content"]
       end
 
       def to_h
         {
           "app_url" => @app_url,
           "bucket" => @bucket,
-          "content" => @content,
           "created_at" => @created_at,
           "creator" => @creator,
           "id" => @id,
@@ -236,9 +238,41 @@ module Basecamp
           "updated_at" => @updated_at,
           "url" => @url,
           "visible_to_clients" => @visible_to_clients,
+          "attachments" => @attachments,
           "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "content" => @content,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # CampfireLineAttachment
+    class CampfireLineAttachment
+      include TypeHelpers
+      attr_accessor :byte_size, :content_type, :download_url, :filename, :title, :url
+
+      def initialize(data = {})
+        @byte_size = parse_integer(data["byte_size"])
+        @content_type = data["content_type"]
+        @download_url = data["download_url"]
+        @filename = data["filename"]
+        @title = data["title"]
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "byte_size" => @byte_size,
+          "content_type" => @content_type,
+          "download_url" => @download_url,
+          "filename" => @filename,
+          "title" => @title,
+          "url" => @url,
         }.compact
       end
 

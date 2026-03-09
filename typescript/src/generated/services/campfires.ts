@@ -69,6 +69,12 @@ export interface CreateLineCampfireRequest {
   contentType?: string;
 }
 
+/**
+ * Options for listUploads.
+ */
+export interface ListUploadsCampfireOptions extends PaginationOptions {
+}
+
 
 // =============================================================================
 // Service
@@ -429,5 +435,74 @@ export class CampfiresService extends BaseService {
           },
         })
     );
+  }
+
+  /**
+   * List uploaded files in a campfire
+   * @param campfireId - The campfire ID
+   * @param options - Optional query parameters
+   * @returns All CampfireLine across all pages, with .meta.totalCount
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.listUploads(123);
+   * ```
+   */
+  async listUploads(campfireId: number, options?: ListUploadsCampfireOptions): Promise<ListResult<CampfireLine>> {
+    return this.requestPaginated(
+      {
+        service: "Campfires",
+        operation: "ListCampfireUploads",
+        resourceType: "campfire_upload",
+        isMutation: false,
+        resourceId: campfireId,
+      },
+      () =>
+        this.client.GET("/chats/{campfireId}/uploads.json", {
+          params: {
+            path: { campfireId },
+          },
+        })
+      , options
+    );
+  }
+
+  /**
+   * Upload a file to a campfire
+   * @param campfireId - The campfire ID
+   * @param data - Binary file data to upload
+   * @param contentType - MIME type of the file (e.g., "image/png", "application/pdf")
+   * @param name - name
+   * @returns The CampfireLine
+   * @throws {BasecampError} If required fields are missing or invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.createUpload(123, fileData, "image/png", "name");
+   * ```
+   */
+  async createUpload(campfireId: number, data: ArrayBuffer | Uint8Array | string, contentType: string, name: string): Promise<CampfireLine> {
+    const response = await this.request(
+      {
+        service: "Campfires",
+        operation: "CreateCampfireUpload",
+        resourceType: "campfire_upload",
+        isMutation: true,
+        resourceId: campfireId,
+      },
+      () =>
+        this.client.POST("/chats/{campfireId}/uploads.json", {
+          params: {
+            path: { campfireId },
+            query: { name: name },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            header: { "Content-Type": contentType } as any,
+          },
+          body: data as unknown as string,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          bodySerializer: (body: unknown) => body as any,
+        })
+    );
+    return response;
   }
 }

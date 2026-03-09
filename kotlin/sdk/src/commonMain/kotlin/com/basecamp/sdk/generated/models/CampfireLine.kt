@@ -22,11 +22,12 @@ data class CampfireLine(
     val type: String,
     val url: String,
     @SerialName("app_url") val appUrl: String,
-    val content: String,
     val parent: RecordingParent,
     val bucket: TodoBucket,
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
+    val content: String? = null,
+    val attachments: List<CampfireLineAttachment> = emptyList(),
     @SerialName("boosts_count") val boostsCount: Int = 0,
     @SerialName("boosts_url") val boostsUrl: String? = null
 )

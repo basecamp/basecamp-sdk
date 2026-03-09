@@ -49,6 +49,8 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/{accountId}/chats/{campfireId}/lines.json": "CreateCampfireLine",
   "DELETE:/{accountId}/chats/{campfireId}/lines/{lineId}": "DeleteCampfireLine",
   "GET:/{accountId}/chats/{campfireId}/lines/{lineId}": "GetCampfireLine",
+  "GET:/{accountId}/chats/{campfireId}/uploads.json": "ListCampfireUploads",
+  "POST:/{accountId}/chats/{campfireId}/uploads.json": "CreateCampfireUpload",
   "GET:/{accountId}/client/approvals.json": "ListClientApprovals",
   "GET:/{accountId}/client/approvals/{approvalId}": "GetClientApproval",
   "GET:/{accountId}/client/correspondences.json": "ListClientCorrespondences",

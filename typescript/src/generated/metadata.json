@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-03-03T21:53:52.180Z",
+  "generated": "2026-03-09T19:39:10.233Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -513,6 +513,33 @@
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "ListCampfireUploads": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "CreateCampfireUpload": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 2000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "ListPingablePeople": {

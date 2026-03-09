@@ -246,4 +246,51 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
             httpDelete("/chats/${campfireId}/lines/${lineId}", operationName = info.operation)
         }) { Unit }
     }
+
+    /**
+     * List uploaded files in a campfire
+     * @param campfireId The campfire ID
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun listUploads(campfireId: Long, options: PaginationOptions? = null): ListResult<CampfireLine> {
+        val info = OperationInfo(
+            service = "Campfires",
+            operation = "ListCampfireUploads",
+            resourceType = "campfire_upload",
+            isMutation = false,
+            projectId = null,
+            resourceId = campfireId,
+        )
+        return requestPaginated(info, options, {
+            httpGet("/chats/${campfireId}/uploads.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<CampfireLine>>(body)
+        }
+    }
+
+    /**
+     * Upload a file to a campfire
+     * @param campfireId The campfire ID
+     * @param data Binary file data to upload
+     * @param contentType MIME type of the file
+     * @param name name
+     */
+    suspend fun createUpload(campfireId: Long, data: ByteArray, contentType: String, name: String): CampfireLine {
+        val info = OperationInfo(
+            service = "Campfires",
+            operation = "CreateCampfireUpload",
+            resourceType = "campfire_upload",
+            isMutation = true,
+            projectId = null,
+            resourceId = campfireId,
+        )
+        val qs = buildQueryString(
+            "name" to name,
+        )
+        return request(info, {
+            httpPostBinary("/chats/${campfireId}/uploads.json" + qs, data, contentType)
+        }) { body ->
+            json.decodeFromString<CampfireLine>(body)
+        }
+    }
 }

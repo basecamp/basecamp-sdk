@@ -15,6 +15,7 @@ public struct Campfire: Codable, Sendable {
     public let url: String
     public let visibleToClients: Bool
     public var bookmarkUrl: String?
+    public var filesUrl: String?
     public var linesUrl: String?
     public var position: Int32?
     public var subscriptionUrl: String?
@@ -34,6 +35,7 @@ public struct Campfire: Codable, Sendable {
         url: String,
         visibleToClients: Bool,
         bookmarkUrl: String? = nil,
+        filesUrl: String? = nil,
         linesUrl: String? = nil,
         position: Int32? = nil,
         subscriptionUrl: String? = nil,
@@ -52,6 +54,7 @@ public struct Campfire: Codable, Sendable {
         self.url = url
         self.visibleToClients = visibleToClients
         self.bookmarkUrl = bookmarkUrl
+        self.filesUrl = filesUrl
         self.linesUrl = linesUrl
         self.position = position
         self.subscriptionUrl = subscriptionUrl

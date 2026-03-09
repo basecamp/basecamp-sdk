@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "uri"
+
 module Basecamp
   module Services
     # Service for Campfires operations
@@ -115,6 +117,27 @@ module Basecamp
         with_operation(service: "campfires", operation: "delete_line", is_mutation: true, resource_id: line_id) do
           http_delete("/chats/#{campfire_id}/lines/#{line_id}")
           nil
+        end
+      end
+
+      # List uploaded files in a campfire
+      # @param campfire_id [Integer] campfire id ID
+      # @return [Enumerator<Hash>] paginated results
+      def list_uploads(campfire_id:)
+        wrap_paginated(service: "campfires", operation: "list_uploads", is_mutation: false, resource_id: campfire_id) do
+          paginate("/chats/#{campfire_id}/uploads.json")
+        end
+      end
+
+      # Upload a file to a campfire
+      # @param campfire_id [Integer] campfire id ID
+      # @param data [String] Binary file data to upload
+      # @param content_type [String] MIME type of the file (e.g., "application/pdf", "image/png")
+      # @param name [String] name
+      # @return [Hash] response data
+      def create_upload(campfire_id:, data:, content_type:, name:)
+        with_operation(service: "campfires", operation: "create_upload", is_mutation: true, resource_id: campfire_id) do
+          http_post_raw("/chats/#{campfire_id}/uploads.json?name=#{URI.encode_www_form_component(name.to_s)}", body: data, content_type: content_type).json
         end
       end
     end

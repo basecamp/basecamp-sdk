@@ -9,6 +9,14 @@ public struct ListLinesCampfireOptions: Sendable {
     }
 }
 
+public struct ListCampfireUploadsCampfireOptions: Sendable {
+    public var maxItems: Int?
+
+    public init(maxItems: Int? = nil) {
+        self.maxItems = maxItems
+    }
+}
+
 public struct ListCampfireOptions: Sendable {
     public var maxItems: Int?
 
@@ -34,6 +42,19 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
             path: "/chats/\(campfireId)/lines.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "CreateCampfireLine")
+        )
+    }
+
+    public func createCampfireUpload(campfireId: Int, data: Data, contentType: String, name: String) async throws -> CampfireLine {
+        var queryItems: [URLQueryItem] = []
+        queryItems.append(URLQueryItem(name: "name", value: name))
+        return try await request(
+            OperationInfo(service: "Campfires", operation: "CreateCampfireUpload", resourceType: "campfire_upload", isMutation: true, resourceId: campfireId),
+            method: "POST",
+            path: "/chats/\(campfireId)/uploads.json" + queryString(queryItems),
+            body: data,
+            contentType: contentType,
+            retryConfig: Metadata.retryConfig(for: "CreateCampfireUpload")
         )
     }
 
@@ -98,6 +119,15 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
             path: "/chats/\(campfireId)/lines.json",
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListCampfireLines")
+        )
+    }
+
+    public func listCampfireUploads(campfireId: Int, options: ListCampfireUploadsCampfireOptions? = nil) async throws -> ListResult<CampfireLine> {
+        return try await requestPaginated(
+            OperationInfo(service: "Campfires", operation: "ListCampfireUploads", resourceType: "campfire_upload", isMutation: false, resourceId: campfireId),
+            path: "/chats/\(campfireId)/uploads.json",
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            retryConfig: Metadata.retryConfig(for: "ListCampfireUploads")
         )
     }
 

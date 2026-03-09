@@ -130,4 +130,99 @@ describe("CampfiresService", () => {
       await expect(client.campfires.deleteLine(42, 10)).resolves.toBeUndefined();
     });
   });
+
+  describe("listUploads", () => {
+    it("should list uploaded files in a campfire", async () => {
+      const campfireId = 42;
+      const uploadLine = {
+        id: 100,
+        title: "report.pdf",
+        type: "Chat::Lines::Upload",
+        created_at: "2024-01-15T10:00:00Z",
+        attachments: [
+          {
+            title: "report.pdf",
+            url: "https://3.basecampapi.com/12345/uploads/200.json",
+            filename: "report.pdf",
+            content_type: "application/pdf",
+            byte_size: 1048576,
+            download_url: "https://3.basecampapi.com/12345/uploads/200/download/report.pdf",
+          },
+        ],
+      };
+
+      server.use(
+        http.get(`${BASE_URL}/chats/${campfireId}/uploads.json`, () => {
+          return HttpResponse.json([uploadLine]);
+        })
+      );
+
+      const uploads = await client.campfires.listUploads(campfireId);
+      expect(uploads).toHaveLength(1);
+      expect(uploads[0]!.id).toBe(100);
+      expect(uploads[0]!.title).toBe("report.pdf");
+      expect(uploads[0]!.attachments).toHaveLength(1);
+      expect(uploads[0]!.attachments![0]!.filename).toBe("report.pdf");
+      expect(uploads[0]!.attachments![0]!.byte_size).toBe(1048576);
+      expect(uploads[0]!.attachments![0]!.download_url).toBe(
+        "https://3.basecampapi.com/12345/uploads/200/download/report.pdf"
+      );
+    });
+  });
+
+  describe("createUpload", () => {
+    it("should upload a file with correct path and query", async () => {
+      const campfireId = 42;
+      const uploadLine = {
+        id: 101,
+        title: "photo.png",
+        type: "Chat::Lines::Upload",
+        created_at: "2024-01-15T10:00:00Z",
+        attachments: [
+          {
+            filename: "photo.png",
+            content_type: "image/png",
+            byte_size: 2048,
+          },
+        ],
+      };
+
+      server.use(
+        http.post(`${BASE_URL}/chats/${campfireId}/uploads.json`, async ({ request }) => {
+          const url = new URL(request.url);
+          expect(url.searchParams.get("name")).toBe("photo.png");
+          expect(request.headers.get("content-type")).toBe("image/png");
+          return HttpResponse.json(uploadLine, { status: 201 });
+        })
+      );
+
+      const result = await client.campfires.createUpload(
+        campfireId,
+        new Uint8Array([1, 2, 3]),
+        "image/png",
+        "photo.png"
+      );
+      expect(result.id).toBe(101);
+      expect(result.attachments).toHaveLength(1);
+      expect(result.attachments![0]!.filename).toBe("photo.png");
+    });
+  });
+
+  describe("get with files_url", () => {
+    it("should return files_url on campfire", async () => {
+      const campfireId = 42;
+
+      server.use(
+        http.get(`${BASE_URL}/chats/${campfireId}`, () => {
+          return HttpResponse.json({
+            ...sampleCampfire(campfireId),
+            files_url: "https://3.basecampapi.com/12345/chats/42/uploads.json",
+          });
+        })
+      );
+
+      const campfire = await client.campfires.get(campfireId);
+      expect(campfire.files_url).toBe("https://3.basecampapi.com/12345/chats/42/uploads.json");
+    });
+  });
 });

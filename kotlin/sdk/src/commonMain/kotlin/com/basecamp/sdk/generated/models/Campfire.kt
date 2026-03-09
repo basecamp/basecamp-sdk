@@ -28,5 +28,6 @@ data class Campfire(
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
     val position: Int = 0,
     val topic: String? = null,
-    @SerialName("lines_url") val linesUrl: String? = null
+    @SerialName("lines_url") val linesUrl: String? = null,
+    @SerialName("files_url") val filesUrl: String? = null
 )

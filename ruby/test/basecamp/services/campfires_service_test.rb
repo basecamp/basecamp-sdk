@@ -170,4 +170,98 @@ class CampfiresServiceTest < Minitest::Test
 
     assert_nil result
   end
+
+  def test_list_uploads
+    upload_lines = [
+      sample_upload_line,
+      sample_upload_line(id: 2, filename: "screenshot.png", content_type: "image/png", byte_size: 2048)
+    ]
+    stub_get("/12345/chats/200/uploads.json", response_body: upload_lines)
+
+    uploads = @account.campfires.list_uploads(campfire_id: 200).to_a
+
+    assert_equal 2, uploads.length
+    assert_equal "report.pdf", uploads[0]["attachments"][0]["filename"]
+    assert_equal "application/pdf", uploads[0]["attachments"][0]["content_type"]
+    assert_equal 1_048_576, uploads[0]["attachments"][0]["byte_size"]
+    assert_equal "screenshot.png", uploads[1]["attachments"][0]["filename"]
+  end
+
+  def test_create_upload
+    upload_line = sample_upload_line(id: 999)
+
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/chats/200/uploads\.json\?name=report\.pdf})
+      .with(
+        headers: { "Content-Type" => "application/pdf" }
+      )
+      .to_return(
+        status: 201,
+        body: upload_line.to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    result = @account.campfires.create_upload(
+      campfire_id: 200,
+      name: "report.pdf",
+      content_type: "application/pdf",
+      data: "file data"
+    )
+
+    assert_equal 999, result["id"]
+    assert_equal "Chat::Lines::Upload", result["type"]
+    assert_equal "report.pdf", result["attachments"][0]["filename"]
+  end
+
+  def test_create_upload_encodes_filename
+    upload_line = sample_upload_line(id: 998)
+
+    stub_request(:post, "https://3.basecampapi.com/12345/chats/200/uploads.json?name=my+report+%281%29.pdf")
+      .to_return(
+        status: 201,
+        body: upload_line.to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    result = @account.campfires.create_upload(
+      campfire_id: 200,
+      name: "my report (1).pdf",
+      content_type: "application/pdf",
+      data: "file data"
+    )
+
+    assert_equal 998, result["id"]
+  end
+
+  def test_get_campfire_with_files_url
+    campfire = sample_campfire.merge(
+      "files_url" => "https://3.basecampapi.com/12345/chats/200/uploads.json"
+    )
+    stub_get("/12345/chats/200", response_body: campfire)
+
+    result = @account.campfires.get(campfire_id: 200)
+
+    assert_equal "https://3.basecampapi.com/12345/chats/200/uploads.json", result["files_url"]
+  end
+
+  private
+
+  def sample_upload_line(id: 1, filename: "report.pdf", content_type: "application/pdf", byte_size: 1_048_576)
+    {
+      "id" => id,
+      "title" => filename,
+      "type" => "Chat::Lines::Upload",
+      "created_at" => "2024-01-01T00:00:00Z",
+      "attachments" => [
+        {
+          "title" => filename,
+          "url" => "https://3.basecampapi.com/12345/uploads/#{id + 100}.json",
+          "filename" => filename,
+          "content_type" => content_type,
+          "byte_size" => byte_size,
+          "download_url" => "https://3.basecampapi.com/12345/uploads/#{id + 100}/download/#{filename}"
+        }
+      ],
+      "creator" => { "id" => 1, "name" => "Test User" }
+    }
+  end
 end

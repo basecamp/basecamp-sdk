@@ -474,6 +474,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chats/{campfireId}/uploads.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List uploaded files in a campfire
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages. X-Total-Count header provides total count.
+         */
+        get: operations["ListCampfireUploads"];
+        put?: never;
+        /** @description Upload a file to a campfire */
+        post: operations["CreateCampfireUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/circles/people.json": {
         parameters: {
             query?: never;
@@ -2229,6 +2252,7 @@ export interface components {
             creator: components["schemas"]["Person"];
             topic?: string;
             lines_url?: string;
+            files_url?: string;
         };
         CampfireLine: {
             /** Format: int64 */
@@ -2243,13 +2267,23 @@ export interface components {
             url: string;
             app_url: string;
             bookmark_url?: string;
-            content: string;
+            content?: string;
+            attachments?: components["schemas"]["CampfireLineAttachment"][];
             parent: components["schemas"]["RecordingParent"];
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
+        };
+        CampfireLineAttachment: {
+            title?: string;
+            url?: string;
+            filename?: string;
+            content_type?: string;
+            /** Format: int64 */
+            byte_size?: number;
+            download_url?: string;
         };
         Card: {
             /** Format: int64 */
@@ -2504,6 +2538,8 @@ export interface components {
             content_type?: string;
         };
         CreateCampfireLineResponseContent: components["schemas"]["CampfireLine"];
+        CreateCampfireUploadInputPayload: string;
+        CreateCampfireUploadResponseContent: components["schemas"]["CampfireLine"];
         CreateCardColumnRequestContent: {
             title: string;
             description?: string;
@@ -2857,6 +2893,7 @@ export interface components {
         ListAnswersResponseContent: components["schemas"]["QuestionAnswer"][];
         ListAssignablePeopleResponseContent: components["schemas"]["Person"][];
         ListCampfireLinesResponseContent: components["schemas"]["CampfireLine"][];
+        ListCampfireUploadsResponseContent: components["schemas"]["CampfireLine"][];
         ListCampfiresResponseContent: components["schemas"]["Campfire"][];
         ListCardsResponseContent: components["schemas"]["Card"][];
         ListChatbotsResponseContent: components["schemas"]["Chatbot"][];
@@ -6362,6 +6399,137 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListCampfireUploads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campfireId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListCampfireUploads 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListCampfireUploadsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateCampfireUpload: {
+        parameters: {
+            query: {
+                name: string;
+            };
+            header?: never;
+            path: {
+                campfireId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": components["schemas"]["CreateCampfireUploadInputPayload"];
+            };
+        };
+        responses: {
+            /** @description CreateCampfireUpload 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateCampfireUploadResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
