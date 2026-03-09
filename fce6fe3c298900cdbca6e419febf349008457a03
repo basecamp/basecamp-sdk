@@ -1,0 +1,25 @@
+go/templates/client.tmpl
+  b8d2e31a5fe54268 384-388,413-415,432-436,456-459,469-473,497-500
+go/pkg/basecamp/zero_value_params_test.go
+  b8d2e31a5fe54268 1-40,42-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.9",
+  "base_commit_sha": "fce6fe3c298900cdbca6e419febf349008457a03",
+  "prompts": {
+    "b8d2e31a5fe54268": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04dcedf5-921e-41a8-a353-9c9683de45bd",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 168,
+      "overriden_lines": 0
+    }
+  }
+}
