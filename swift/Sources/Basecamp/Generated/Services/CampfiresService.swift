@@ -9,7 +9,7 @@ public struct ListLinesCampfireOptions: Sendable {
     }
 }
 
-public struct ListCampfireUploadsCampfireOptions: Sendable {
+public struct ListUploadsCampfireOptions: Sendable {
     public var maxItems: Int?
 
     public init(maxItems: Int? = nil) {
@@ -45,7 +45,7 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func createCampfireUpload(campfireId: Int, data: Data, contentType: String, name: String) async throws -> CampfireLine {
+    public func createUpload(campfireId: Int, data: Data, contentType: String, name: String) async throws -> CampfireLine {
         var queryItems: [URLQueryItem] = []
         queryItems.append(URLQueryItem(name: "name", value: name))
         return try await request(
@@ -122,7 +122,7 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func listCampfireUploads(campfireId: Int, options: ListCampfireUploadsCampfireOptions? = nil) async throws -> ListResult<CampfireLine> {
+    public func listUploads(campfireId: Int, options: ListUploadsCampfireOptions? = nil) async throws -> ListResult<CampfireLine> {
         return try await requestPaginated(
             OperationInfo(service: "Campfires", operation: "ListCampfireUploads", resourceType: "campfire_upload", isMutation: false, resourceId: campfireId),
             path: "/chats/\(campfireId)/uploads.json",

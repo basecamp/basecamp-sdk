@@ -28,6 +28,7 @@ let serviceSplits: [String: [String: [String]]] = [
             "GetCampfire", "ListCampfires",
             "ListChatbots", "CreateChatbot", "GetChatbot", "UpdateChatbot", "DeleteChatbot",
             "ListCampfireLines", "CreateCampfireLine", "GetCampfireLine", "DeleteCampfireLine",
+            "ListCampfireUploads", "CreateCampfireUpload",
         ],
     ],
     "Card Tables": [
