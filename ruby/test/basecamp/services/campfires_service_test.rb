@@ -51,6 +51,17 @@ class CampfiresServiceTest < Minitest::Test
     assert_equal "General", campfires[1]["title"]
   end
 
+  def test_list_campfires_with_files_url
+    campfire = sample_campfire.merge(
+      "files_url" => "https://3.basecampapi.com/12345/chats/1/uploads.json"
+    )
+    stub_get("/12345/chats.json", response_body: [ campfire ])
+
+    campfires = @account.campfires.list.to_a
+
+    assert_equal "https://3.basecampapi.com/12345/chats/1/uploads.json", campfires[0]["files_url"]
+  end
+
   def test_get_campfire
     # Generated service: /chats/{id} without .json
     stub_get("/12345/chats/200", response_body: sample_campfire(id: 200))
@@ -70,6 +81,22 @@ class CampfiresServiceTest < Minitest::Test
     assert_equal 2, lines.length
     assert_equal "Hello!", lines[0]["content"]
     assert_equal "Hi there!", lines[1]["content"]
+  end
+
+  def test_list_lines_with_mixed_text_and_upload
+    upload = sample_upload_line(id: 3, filename: "photo.png", content_type: "image/png", byte_size: 2048)
+    stub_get("/12345/chats/200/lines.json",
+             response_body: [ sample_line, upload ])
+
+    lines = @account.campfires.list_lines(campfire_id: 200).to_a
+
+    assert_equal 2, lines.length
+    assert_equal "Hello!", lines[0]["content"]
+    assert_nil lines[1]["content"]
+    assert_equal "Chat::Lines::Upload", lines[1]["type"]
+    assert_equal 1, lines[1]["attachments"].length
+    assert_equal "photo.png", lines[1]["attachments"][0]["filename"]
+    assert_equal 2048, lines[1]["attachments"][0]["byte_size"]
   end
 
   def test_get_line
@@ -230,6 +257,33 @@ class CampfiresServiceTest < Minitest::Test
     )
 
     assert_equal 998, result["id"]
+  end
+
+  def test_list_uploads_forbidden
+    stub_get("/12345/chats/200/uploads.json",
+             response_body: { "error" => "Forbidden" }, status: 403)
+
+    assert_raises(Basecamp::ForbiddenError) do
+      @account.campfires.list_uploads(campfire_id: 200).to_a
+    end
+  end
+
+  def test_create_upload_validation_error
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/chats/200/uploads\.json})
+      .to_return(
+        status: 422,
+        body: { "error" => "Unprocessable" }.to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    assert_raises(Basecamp::ValidationError) do
+      @account.campfires.create_upload(
+        campfire_id: 200,
+        name: "bad.pdf",
+        content_type: "application/pdf",
+        data: "file data"
+      )
+    end
   end
 
   def test_get_campfire_with_files_url

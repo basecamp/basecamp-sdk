@@ -11,6 +11,7 @@
     "url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345.json",
     "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345",
     "lines_url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/lines.json",
+    "files_url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/uploads.json",
     "bucket": {
       "id": 2085958499,
       "name": "The Leto Laptop",
@@ -49,6 +50,7 @@
     "url": "https://3.basecampapi.com/195539477/buckets/2085958500/chats/1069479400.json",
     "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/chats/1069479400",
     "lines_url": "https://3.basecampapi.com/195539477/buckets/2085958500/chats/1069479400/lines.json",
+    "files_url": "https://3.basecampapi.com/195539477/buckets/2085958500/chats/1069479400/uploads.json",
     "bucket": {
       "id": 2085958500,
       "name": "Marketing Campaign",

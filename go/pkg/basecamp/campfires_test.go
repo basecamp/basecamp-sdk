@@ -65,6 +65,9 @@ func TestCampfire_UnmarshalList(t *testing.T) {
 	if c1.LinesURL != "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/lines.json" {
 		t.Errorf("unexpected LinesURL: %q", c1.LinesURL)
 	}
+	if c1.FilesURL != "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/uploads.json" {
+		t.Errorf("unexpected FilesURL: %q", c1.FilesURL)
+	}
 
 	// Verify bucket
 	if c1.Bucket == nil {
