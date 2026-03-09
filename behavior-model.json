@@ -71,6 +71,17 @@
         ]
       }
     },
+    "CreateCampfireUpload": {
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 2000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "CreateCard": {
       "retry": {
         "max": 2,
@@ -1134,6 +1145,22 @@
       }
     },
     "ListCampfireLines": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "ListCampfireUploads": {
       "readonly": true,
       "pagination": {
         "style": "link",

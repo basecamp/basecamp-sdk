@@ -440,6 +440,24 @@
       }
     },
     {
+      "pattern": "/{accountId}/chats/{campfireId}/uploads",
+      "resource": "Campfire",
+      "operations": {
+        "GET": "ListCampfireUploads",
+        "POST": "CreateCampfireUpload"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "campfireId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/circles/people",
       "resource": "People",
       "operations": {

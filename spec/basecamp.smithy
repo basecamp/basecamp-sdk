@@ -131,6 +131,8 @@ service Basecamp {
     GetCampfireLine,
     CreateCampfireLine,
     DeleteCampfireLine,
+    ListCampfireUploads,
+    CreateCampfireUpload,
     ListChatbots,
     GetChatbot,
     CreateChatbot,
@@ -3200,6 +3202,69 @@ structure DeleteCampfireLineInput {
 
 structure DeleteCampfireLineOutput {}
 
+// ===== Campfire Upload Operations =====
+
+/// List uploaded files in a campfire
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/chats/{campfireId}/uploads.json")
+operation ListCampfireUploads {
+  input: ListCampfireUploadsInput
+  output: ListCampfireUploadsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListCampfireUploadsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  campfireId: CampfireId
+}
+
+structure ListCampfireUploadsOutput {
+
+  uploads: CampfireLineList
+}
+
+/// Upload a file to a campfire
+@basecampRetry(maxAttempts: 3, baseDelayMs: 2000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/chats/{campfireId}/uploads.json", code: 201)
+operation CreateCampfireUpload {
+  input: CreateCampfireUploadInput
+  output: CreateCampfireUploadOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateCampfireUploadInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  campfireId: CampfireId
+
+  @required
+  @httpQuery("name")
+  name: String
+
+  @required
+  @httpPayload
+  data: Blob
+}
+
+structure CreateCampfireUploadOutput {
+
+  upload: CampfireLine
+}
+
 // ===== Chatbot Operations =====
 
 /// List all chatbots for a campfire
@@ -3559,6 +3624,7 @@ structure Campfire {
   creator: Person
   topic: String
   lines_url: String
+  files_url: String
 }
 
 list CampfireLineList {
@@ -3587,8 +3653,8 @@ structure CampfireLine {
   @required
   app_url: String
   bookmark_url: String
-  @required
   content: String
+  attachments: CampfireLineAttachmentList
   @required
   parent: RecordingParent
   @required
@@ -3597,6 +3663,19 @@ structure CampfireLine {
   creator: Person
   boosts_count: Integer
   boosts_url: String
+}
+
+list CampfireLineAttachmentList {
+  member: CampfireLineAttachment
+}
+
+structure CampfireLineAttachment {
+  title: String
+  url: String
+  filename: String
+  content_type: String
+  byte_size: Long
+  download_url: String
 }
 
 list ChatbotList {
