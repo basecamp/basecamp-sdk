@@ -1,0 +1,31 @@
+spec/fixtures/campfires/upload_line_get.json
+  74fc34381cab2730 1-58
+spec/overlays/tags.smithy
+  74fc34381cab2730 86-87
+spec/fixtures/campfires/get.json
+  74fc34381cab2730 13
+spec/basecamp.smithy
+  74fc34381cab2730 134-135,3205-3267,3627,3657,3668-3678
+spec/fixtures/campfires/uploads_list.json
+  74fc34381cab2730 1-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.9",
+  "base_commit_sha": "8f31d7b6ec8282c2e74cd094742b9a3b4dca6829",
+  "prompts": {
+    "74fc34381cab2730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f573773-e5b7-4682-8345-e3fe37f11fc2",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 815,
+      "total_deletions": 6,
+      "accepted_lines": 811,
+      "overriden_lines": 0
+    }
+  }
+}
