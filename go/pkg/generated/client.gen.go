@@ -60,6 +60,7 @@ type Campfire struct {
 	Bucket           TodoBucket `json:"bucket"`
 	CreatedAt        time.Time  `json:"created_at"`
 	Creator          Person     `json:"creator"`
+	FilesUrl         string     `json:"files_url,omitempty"`
 	Id               int64      `json:"id"`
 	InheritsStatus   bool       `json:"inherits_status"`
 	LinesUrl         string     `json:"lines_url,omitempty"`
@@ -76,23 +77,34 @@ type Campfire struct {
 
 // CampfireLine defines model for CampfireLine.
 type CampfireLine struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	BoostsCount      int32           `json:"boosts_count,omitempty"`
-	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	Content          string          `json:"content"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Status           string          `json:"status"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl           string                   `json:"app_url"`
+	Attachments      []CampfireLineAttachment `json:"attachments,omitempty"`
+	BookmarkUrl      string                   `json:"bookmark_url,omitempty"`
+	BoostsCount      int32                    `json:"boosts_count,omitempty"`
+	BoostsUrl        string                   `json:"boosts_url,omitempty"`
+	Bucket           TodoBucket               `json:"bucket"`
+	Content          string                   `json:"content,omitempty"`
+	CreatedAt        time.Time                `json:"created_at"`
+	Creator          Person                   `json:"creator"`
+	Id               int64                    `json:"id"`
+	InheritsStatus   bool                     `json:"inherits_status"`
+	Parent           RecordingParent          `json:"parent"`
+	Status           string                   `json:"status"`
+	Title            string                   `json:"title"`
+	Type             string                   `json:"type"`
+	UpdatedAt        time.Time                `json:"updated_at"`
+	Url              string                   `json:"url"`
+	VisibleToClients bool                     `json:"visible_to_clients"`
+}
+
+// CampfireLineAttachment defines model for CampfireLineAttachment.
+type CampfireLineAttachment struct {
+	ByteSize    int64  `json:"byte_size,omitempty"`
+	ContentType string `json:"content_type,omitempty"`
+	DownloadUrl string `json:"download_url,omitempty"`
+	Filename    string `json:"filename,omitempty"`
+	Title       string `json:"title,omitempty"`
+	Url         string `json:"url,omitempty"`
 }
 
 // Card defines model for Card.
@@ -359,6 +371,12 @@ type CreateCampfireLineRequestContent struct {
 
 // CreateCampfireLineResponseContent defines model for CreateCampfireLineResponseContent.
 type CreateCampfireLineResponseContent = CampfireLine
+
+// CreateCampfireUploadInputPayload defines model for CreateCampfireUploadInputPayload.
+type CreateCampfireUploadInputPayload = string
+
+// CreateCampfireUploadResponseContent defines model for CreateCampfireUploadResponseContent.
+type CreateCampfireUploadResponseContent = CampfireLine
 
 // CreateCardColumnRequestContent defines model for CreateCardColumnRequestContent.
 type CreateCardColumnRequestContent struct {
@@ -918,6 +936,9 @@ type ListAssignablePeopleResponseContent = []Person
 
 // ListCampfireLinesResponseContent defines model for ListCampfireLinesResponseContent.
 type ListCampfireLinesResponseContent = []CampfireLine
+
+// ListCampfireUploadsResponseContent defines model for ListCampfireUploadsResponseContent.
+type ListCampfireUploadsResponseContent = []CampfireLine
 
 // ListCampfiresResponseContent defines model for ListCampfiresResponseContent.
 type ListCampfiresResponseContent = []Campfire
@@ -2092,6 +2113,11 @@ type CreateAttachmentParams struct {
 	Name string `form:"name" json:"name"`
 }
 
+// CreateCampfireUploadParams defines parameters for CreateCampfireUpload.
+type CreateCampfireUploadParams struct {
+	Name string `form:"name" json:"name"`
+}
+
 // ListProjectsParams defines parameters for ListProjects.
 type ListProjectsParams struct {
 	// Status active|archived|trashed
@@ -2807,6 +2833,12 @@ type ClientInterface interface {
 
 	// GetCampfireLine request
 	GetCampfireLine(ctx context.Context, accountId string, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListCampfireUploads request
+	ListCampfireUploads(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCampfireUploadWithBody request with any body
+	CreateCampfireUploadWithBody(ctx context.Context, accountId string, campfireId int64, params *CreateCampfireUploadParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPingablePeople request
 	ListPingablePeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3967,6 +3999,32 @@ func (c *Client) GetCampfireLine(ctx context.Context, accountId string, campfire
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetCampfireLineRequest(c.Server, accountId, campfireId, lineId)
 	}, true, "GetCampfireLine", reqEditors...)
+
+}
+
+// ListCampfireUploads is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListCampfireUploads(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListCampfireUploadsRequest(c.Server, accountId, campfireId)
+	}, true, "ListCampfireUploads", reqEditors...)
+
+}
+
+// CreateCampfireUploadWithBody executes the CreateCampfireUpload operation.
+
+func (c *Client) CreateCampfireUploadWithBody(ctx context.Context, accountId string, campfireId int64, params *CreateCampfireUploadParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateCampfireUploadRequestWithBody(c.Server, accountId, campfireId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 
 }
 
@@ -7814,6 +7872,108 @@ func NewGetCampfireLineRequest(server string, accountId string, campfireId int64
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewListCampfireUploadsRequest generates requests for ListCampfireUploads
+func NewListCampfireUploadsRequest(server string, accountId string, campfireId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/chats/%s/uploads.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateCampfireUploadRequestWithBody generates requests for CreateCampfireUpload with any type of body
+func NewCreateCampfireUploadRequestWithBody(server string, accountId string, campfireId int64, params *CreateCampfireUploadParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/chats/%s/uploads.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -14284,6 +14444,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateCampfireLine":                 {Idempotent: false, HasSensitiveParams: false},
 	"DeleteCampfireLine":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetCampfireLine":                    {Idempotent: true, HasSensitiveParams: false},
+	"ListCampfireUploads":                {Idempotent: true, HasSensitiveParams: false},
+	"CreateCampfireUpload":               {Idempotent: false, HasSensitiveParams: false},
 	"ListPingablePeople":                 {Idempotent: true, HasSensitiveParams: false},
 	"ListClientApprovals":                {Idempotent: true, HasSensitiveParams: false},
 	"GetClientApproval":                  {Idempotent: true, HasSensitiveParams: false},
@@ -15507,6 +15669,12 @@ type ClientWithResponsesInterface interface {
 
 	// GetCampfireLineWithResponse request
 	GetCampfireLineWithResponse(ctx context.Context, accountId string, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*GetCampfireLineResponse, error)
+
+	// ListCampfireUploadsWithResponse request
+	ListCampfireUploadsWithResponse(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireUploadsResponse, error)
+
+	// CreateCampfireUploadWithBodyWithResponse request with any body
+	CreateCampfireUploadWithBodyWithResponse(ctx context.Context, accountId string, campfireId int64, params *CreateCampfireUploadParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireUploadResponse, error)
 
 	// ListPingablePeopleWithResponse request
 	ListPingablePeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPingablePeopleResponse, error)
@@ -17048,6 +17216,59 @@ func (r GetCampfireLineResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetCampfireLineResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListCampfireUploadsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListCampfireUploadsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListCampfireUploadsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListCampfireUploadsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateCampfireUploadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateCampfireUploadResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateCampfireUploadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateCampfireUploadResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -21097,6 +21318,24 @@ func (c *ClientWithResponses) GetCampfireLineWithResponse(ctx context.Context, a
 	return ParseGetCampfireLineResponse(rsp)
 }
 
+// ListCampfireUploadsWithResponse request returning *ListCampfireUploadsResponse
+func (c *ClientWithResponses) ListCampfireUploadsWithResponse(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireUploadsResponse, error) {
+	rsp, err := c.ListCampfireUploads(ctx, accountId, campfireId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListCampfireUploadsResponse(rsp)
+}
+
+// CreateCampfireUploadWithBodyWithResponse request with arbitrary body returning *CreateCampfireUploadResponse
+func (c *ClientWithResponses) CreateCampfireUploadWithBodyWithResponse(ctx context.Context, accountId string, campfireId int64, params *CreateCampfireUploadParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireUploadResponse, error) {
+	rsp, err := c.CreateCampfireUploadWithBody(ctx, accountId, campfireId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCampfireUploadResponse(rsp)
+}
+
 // ListPingablePeopleWithResponse request returning *ListPingablePeopleResponse
 func (c *ClientWithResponses) ListPingablePeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPingablePeopleResponse, error) {
 	rsp, err := c.ListPingablePeople(ctx, accountId, reqEditors...)
@@ -24895,6 +25134,121 @@ func ParseGetCampfireLineResponse(rsp *http.Response) (*GetCampfireLineResponse,
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListCampfireUploadsResponse parses an HTTP response from a ListCampfireUploadsWithResponse call
+func ParseListCampfireUploadsResponse(rsp *http.Response) (*ListCampfireUploadsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListCampfireUploadsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListCampfireUploadsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateCampfireUploadResponse parses an HTTP response from a CreateCampfireUploadWithResponse call
+func ParseCreateCampfireUploadResponse(rsp *http.Response) (*CreateCampfireUploadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateCampfireUploadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateCampfireUploadResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

@@ -1,6 +1,7 @@
 package basecamp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -311,6 +312,111 @@ func TestCampfireLine_UnmarshalGet(t *testing.T) {
 	}
 	if line.Creator.Location != "Chicago, IL" {
 		t.Errorf("expected Creator.Location 'Chicago, IL', got %q", line.Creator.Location)
+	}
+}
+
+func TestCampfire_UnmarshalGetWithFilesURL(t *testing.T) {
+	data := loadCampfiresFixture(t, "get.json")
+
+	var campfire Campfire
+	if err := json.Unmarshal(data, &campfire); err != nil {
+		t.Fatalf("failed to unmarshal get.json: %v", err)
+	}
+
+	if campfire.FilesURL != "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/uploads.json" {
+		t.Errorf("unexpected FilesURL: %q", campfire.FilesURL)
+	}
+}
+
+func TestCampfireUploadLine_UnmarshalGet(t *testing.T) {
+	data := loadCampfiresFixture(t, "upload_line_get.json")
+
+	var line CampfireLine
+	if err := json.Unmarshal(data, &line); err != nil {
+		t.Fatalf("failed to unmarshal upload_line_get.json: %v", err)
+	}
+
+	if line.ID != 1069479360 {
+		t.Errorf("expected ID 1069479360, got %d", line.ID)
+	}
+	if line.Type != "Chat::Lines::Upload" {
+		t.Errorf("expected type 'Chat::Lines::Upload', got %q", line.Type)
+	}
+	if line.Content != "" {
+		t.Errorf("expected empty content for upload line, got %q", line.Content)
+	}
+	if line.Title != "quarterly-report.pdf" {
+		t.Errorf("expected title 'quarterly-report.pdf', got %q", line.Title)
+	}
+
+	// Verify attachments
+	if len(line.Attachments) != 1 {
+		t.Fatalf("expected 1 attachment, got %d", len(line.Attachments))
+	}
+	att := line.Attachments[0]
+	if att.Filename != "quarterly-report.pdf" {
+		t.Errorf("expected filename 'quarterly-report.pdf', got %q", att.Filename)
+	}
+	if att.ContentType != "application/pdf" {
+		t.Errorf("expected content_type 'application/pdf', got %q", att.ContentType)
+	}
+	if att.ByteSize != 1048576 {
+		t.Errorf("expected byte_size 1048576, got %d", att.ByteSize)
+	}
+	if att.DownloadURL != "https://3.basecampapi.com/195539477/buckets/2085958499/uploads/1069479361/download/quarterly-report.pdf" {
+		t.Errorf("unexpected DownloadURL: %q", att.DownloadURL)
+	}
+	if att.Title != "quarterly-report.pdf" {
+		t.Errorf("expected attachment title 'quarterly-report.pdf', got %q", att.Title)
+	}
+	if att.URL != "https://3.basecampapi.com/195539477/buckets/2085958499/uploads/1069479361.json" {
+		t.Errorf("unexpected attachment URL: %q", att.URL)
+	}
+}
+
+func TestCampfireUploadLine_UnmarshalList(t *testing.T) {
+	data := loadCampfiresFixture(t, "uploads_list.json")
+
+	var lines []CampfireLine
+	if err := json.Unmarshal(data, &lines); err != nil {
+		t.Fatalf("failed to unmarshal uploads_list.json: %v", err)
+	}
+
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 upload lines, got %d", len(lines))
+	}
+
+	// First upload line
+	l1 := lines[0]
+	if l1.ID != 1069479360 {
+		t.Errorf("expected ID 1069479360, got %d", l1.ID)
+	}
+	if l1.Type != "Chat::Lines::Upload" {
+		t.Errorf("expected type 'Chat::Lines::Upload', got %q", l1.Type)
+	}
+	if len(l1.Attachments) != 1 {
+		t.Fatalf("expected 1 attachment on first line, got %d", len(l1.Attachments))
+	}
+	if l1.Attachments[0].Filename != "quarterly-report.pdf" {
+		t.Errorf("expected filename 'quarterly-report.pdf', got %q", l1.Attachments[0].Filename)
+	}
+
+	// Second upload line
+	l2 := lines[1]
+	if l2.ID != 1069479365 {
+		t.Errorf("expected ID 1069479365, got %d", l2.ID)
+	}
+	if len(l2.Attachments) != 1 {
+		t.Fatalf("expected 1 attachment on second line, got %d", len(l2.Attachments))
+	}
+	if l2.Attachments[0].Filename != "screenshot.png" {
+		t.Errorf("expected filename 'screenshot.png', got %q", l2.Attachments[0].Filename)
+	}
+	if l2.Attachments[0].ContentType != "image/png" {
+		t.Errorf("expected content_type 'image/png', got %q", l2.Attachments[0].ContentType)
+	}
+	if l2.Attachments[0].ByteSize != 204800 {
+		t.Errorf("expected byte_size 204800, got %d", l2.Attachments[0].ByteSize)
 	}
 }
 
@@ -686,6 +792,130 @@ func TestCreateChatbotRequest_Marshal(t *testing.T) {
 	}
 	if _, exists := dataNoURL["command_url"]; exists {
 		t.Errorf("command_url should be omitted when empty, got: %v", dataNoURL["command_url"])
+	}
+}
+
+// --- httptest-based service contract tests for ListUploads ---
+
+func TestListUploads_Service(t *testing.T) {
+	fixture := loadCampfiresFixture(t, "uploads_list.json")
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/chats/200/uploads.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "2")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.ListUploads(context.Background(), 200)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Lines) != 2 {
+		t.Errorf("expected 2 upload lines, got %d", len(result.Lines))
+	}
+	if result.Meta.TotalCount != 2 {
+		t.Errorf("expected TotalCount 2, got %d", result.Meta.TotalCount)
+	}
+	if result.Lines[0].Type != "Chat::Lines::Upload" {
+		t.Errorf("expected type 'Chat::Lines::Upload', got %q", result.Lines[0].Type)
+	}
+	if len(result.Lines[0].Attachments) != 1 {
+		t.Fatalf("expected 1 attachment, got %d", len(result.Lines[0].Attachments))
+	}
+	if result.Lines[0].Attachments[0].Filename != "quarterly-report.pdf" {
+		t.Errorf("expected filename 'quarterly-report.pdf', got %q", result.Lines[0].Attachments[0].Filename)
+	}
+}
+
+// --- httptest-based service contract tests for CreateUpload ---
+
+func TestCreateUpload_Service(t *testing.T) {
+	fixture := loadCampfiresFixture(t, "upload_line_get.json")
+	var receivedContentType string
+	var receivedBody []byte
+	var receivedQueryName string
+
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/chats/200/uploads.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		receivedQueryName = r.URL.Query().Get("name")
+		receivedContentType = r.Header.Get("Content-Type")
+		receivedBody, _ = io.ReadAll(r.Body)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	data := []byte("binary file content")
+	line, err := svc.CreateUpload(context.Background(), 200, "report.pdf", "application/pdf", bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if line.ID != 1069479360 {
+		t.Errorf("expected line ID 1069479360, got %d", line.ID)
+	}
+	if receivedQueryName != "report.pdf" {
+		t.Errorf("expected query name 'report.pdf', got %q", receivedQueryName)
+	}
+	if receivedContentType != "application/pdf" {
+		t.Errorf("expected Content-Type 'application/pdf', got %q", receivedContentType)
+	}
+	if string(receivedBody) != "binary file content" {
+		t.Errorf("expected body 'binary file content', got %q", string(receivedBody))
+	}
+	if len(line.Attachments) != 1 {
+		t.Fatalf("expected 1 attachment, got %d", len(line.Attachments))
+	}
+	if line.Attachments[0].Filename != "quarterly-report.pdf" {
+		t.Errorf("expected filename 'quarterly-report.pdf', got %q", line.Attachments[0].Filename)
+	}
+}
+
+func TestCreateUpload_EmptyFilename(t *testing.T) {
+	svc := newTestCampfiresService()
+	_, err := svc.CreateUpload(context.Background(), 200, "", "application/pdf", bytes.NewReader([]byte("data")))
+	if err == nil {
+		t.Fatal("expected error for empty filename")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
+func TestCreateUpload_EmptyContentType(t *testing.T) {
+	svc := newTestCampfiresService()
+	_, err := svc.CreateUpload(context.Background(), 200, "file.pdf", "", bytes.NewReader([]byte("data")))
+	if err == nil {
+		t.Fatal("expected error for empty content type")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
+func TestCreateUpload_EmptyData(t *testing.T) {
+	svc := newTestCampfiresService()
+	_, err := svc.CreateUpload(context.Background(), 200, "file.pdf", "application/pdf", bytes.NewReader([]byte{}))
+	if err == nil {
+		t.Fatal("expected error for empty data")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
 	}
 }
 

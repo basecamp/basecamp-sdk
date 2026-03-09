@@ -1,8 +1,10 @@
 package basecamp
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -21,6 +23,7 @@ type Campfire struct {
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
 	LinesURL         string    `json:"lines_url"`
+	FilesURL         string    `json:"files_url,omitempty"`
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
 	BoostsCount      int       `json:"boosts_count,omitempty"`
@@ -28,21 +31,32 @@ type Campfire struct {
 
 // CampfireLine represents a message in a Campfire chat.
 type CampfireLine struct {
-	ID               int64     `json:"id"`
-	Status           string    `json:"status"`
-	VisibleToClients bool      `json:"visible_to_clients"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	Title            string    `json:"title"`
-	InheritsStatus   bool      `json:"inherits_status"`
-	Type             string    `json:"type"`
-	URL              string    `json:"url"`
-	AppURL           string    `json:"app_url"`
-	Content          string    `json:"content"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
-	BoostsCount      int       `json:"boosts_count,omitempty"`
+	ID               int64                    `json:"id"`
+	Status           string                   `json:"status"`
+	VisibleToClients bool                     `json:"visible_to_clients"`
+	CreatedAt        time.Time                `json:"created_at"`
+	UpdatedAt        time.Time                `json:"updated_at"`
+	Title            string                   `json:"title"`
+	InheritsStatus   bool                     `json:"inherits_status"`
+	Type             string                   `json:"type"`
+	URL              string                   `json:"url"`
+	AppURL           string                   `json:"app_url"`
+	Content          string                   `json:"content,omitempty"`
+	Attachments      []CampfireLineAttachment `json:"attachments,omitempty"`
+	Parent           *Parent                  `json:"parent,omitempty"`
+	Bucket           *Bucket                  `json:"bucket,omitempty"`
+	Creator          *Person                  `json:"creator,omitempty"`
+	BoostsCount      int                      `json:"boosts_count,omitempty"`
+}
+
+// CampfireLineAttachment represents a file attached to an upload line.
+type CampfireLineAttachment struct {
+	Title       string `json:"title,omitempty"`
+	URL         string `json:"url,omitempty"`
+	Filename    string `json:"filename,omitempty"`
+	ContentType string `json:"content_type,omitempty"`
+	ByteSize    int64  `json:"byte_size,omitempty"`
+	DownloadURL string `json:"download_url,omitempty"`
 }
 
 // Line content type constants for campfire messages.
@@ -348,6 +362,104 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, campfireID, lineID in
 	return checkResponse(resp.HTTPResponse)
 }
 
+// ListUploads returns all uploaded files in a campfire.
+//
+// The returned CampfireLineListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *CampfiresService) ListUploads(ctx context.Context, campfireID int64) (result *CampfireLineListResult, err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "ListUploads",
+		ResourceType: "campfire_line", IsMutation: false,
+		ResourceID: campfireID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.ListCampfireUploadsWithResponse(ctx, s.client.accountID, campfireID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
+	if resp.JSON200 == nil {
+		return &CampfireLineListResult{Lines: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	lines := make([]CampfireLine, 0, len(*resp.JSON200))
+	for _, gl := range *resp.JSON200 {
+		lines = append(lines, campfireLineFromGenerated(gl))
+	}
+	return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount}}, nil
+}
+
+// CreateUpload uploads a file to a campfire.
+// filename is the name of the file, contentType is the MIME type (e.g., "image/png"),
+// and data is the raw file content. Returns the created upload line.
+func (s *CampfiresService) CreateUpload(ctx context.Context, campfireID int64, filename, contentType string, data io.Reader) (result *CampfireLine, err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "CreateUpload",
+		ResourceType: "campfire_line", IsMutation: true,
+		ResourceID: campfireID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if filename == "" {
+		err = ErrUsage("filename is required")
+		return nil, err
+	}
+	if contentType == "" {
+		err = ErrUsage("content type is required")
+		return nil, err
+	}
+
+	body, err := io.ReadAll(data)
+	if err != nil {
+		err = fmt.Errorf("failed to read file data: %w", err)
+		return nil, err
+	}
+
+	if len(body) == 0 {
+		err = ErrUsage("file data is required")
+		return nil, err
+	}
+
+	params := &generated.CreateCampfireUploadParams{
+		Name: filename,
+	}
+
+	resp, err := s.client.parent.gen.CreateCampfireUploadWithBodyWithResponse(ctx, s.client.accountID, campfireID, params, contentType, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON201 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	line := campfireLineFromGenerated(*resp.JSON201)
+	return &line, nil
+}
+
 // ListChatbots returns all chatbots for a campfire.
 // Note: Chatbots are account-wide but with basecamp-specific callback URLs.
 func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64) (result []Chatbot, err error) {
@@ -542,6 +654,7 @@ func campfireFromGenerated(gc generated.Campfire) Campfire {
 		URL:              gc.Url,
 		AppURL:           gc.AppUrl,
 		LinesURL:         gc.LinesUrl,
+		FilesURL:         gc.FilesUrl,
 		CreatedAt:        gc.CreatedAt,
 		UpdatedAt:        gc.UpdatedAt,
 	}
@@ -587,6 +700,20 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 	}
 
 	l.ID = gl.Id
+
+	if len(gl.Attachments) > 0 {
+		l.Attachments = make([]CampfireLineAttachment, len(gl.Attachments))
+		for i, ga := range gl.Attachments {
+			l.Attachments[i] = CampfireLineAttachment{
+				Title:       ga.Title,
+				URL:         ga.Url,
+				Filename:    ga.Filename,
+				ContentType: ga.ContentType,
+				ByteSize:    ga.ByteSize,
+				DownloadURL: ga.DownloadUrl,
+			}
+		}
+	}
 
 	if gl.Parent.Id != 0 || gl.Parent.Title != "" {
 		l.Parent = &Parent{
