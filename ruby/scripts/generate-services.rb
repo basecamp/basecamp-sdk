@@ -45,6 +45,7 @@ class ServiceGenerator
         GetCampfire ListCampfires
         ListChatbots CreateChatbot GetChatbot UpdateChatbot DeleteChatbot
         ListCampfireLines CreateCampfireLine GetCampfireLine DeleteCampfireLine
+        ListCampfireUploads CreateCampfireUpload
       ]
     },
     'Card Tables' => {
@@ -188,6 +189,8 @@ class ServiceGenerator
     'CreateCampfireLine' => 'create_line',
     'GetCampfireLine' => 'get_line',
     'DeleteCampfireLine' => 'delete_line',
+    'ListCampfireUploads' => 'list_uploads',
+    'CreateCampfireUpload' => 'create_upload',
     # Forwards - use specific names to avoid conflicts between forwards, replies, and inbox
     'GetForward' => 'get',
     'ListForwards' => 'list',

@@ -168,6 +168,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
       "GetCampfire", "ListCampfires",
       "ListChatbots", "CreateChatbot", "GetChatbot", "UpdateChatbot", "DeleteChatbot",
       "ListCampfireLines", "CreateCampfireLine", "GetCampfireLine", "DeleteCampfireLine",
+      "ListCampfireUploads", "CreateCampfireUpload",
     ],
   },
   "Card Tables": {
@@ -339,6 +340,8 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   CreateCampfireLine: "createLine",
   GetCampfireLine: "getLine",
   DeleteCampfireLine: "deleteLine",
+  ListCampfireUploads: "listUploads",
+  CreateCampfireUpload: "createUpload",
   GetForward: "get",
   ListForwards: "list",
   GetForwardReply: "getReply",
