@@ -1,0 +1,31 @@
+ruby/test/basecamp/services/search_service_test.rb
+  4157b42e838da4c6 18,21,30,33
+go/pkg/basecamp/zero_value_params_test.go
+  4157b42e838da4c6 10,12,20-21,77-78,86-87
+typescript/tests/services/search.test.ts
+  4157b42e838da4c6 51,66
+ruby/lib/basecamp/services/search_service.rb
+  4157b42e838da4c6 23
+go/pkg/basecamp/search.go
+  4157b42e838da4c6 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.9",
+  "base_commit_sha": "670d94822994da17f7d1b817a3efcf1b36be713d",
+  "prompts": {
+    "4157b42e838da4c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c8d5bb54-9161-4acb-aa7a-3c4c3268592c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    }
+  }
+}
