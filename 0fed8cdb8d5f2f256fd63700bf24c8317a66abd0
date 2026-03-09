@@ -1,0 +1,25 @@
+swift/Sources/BasecampGenerator/ServiceGrouper.swift
+  74fc34381cab2730 31
+swift/Sources/BasecampGenerator/MethodNaming.swift
+  74fc34381cab2730 94-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.9",
+  "base_commit_sha": "0fed8cdb8d5f2f256fd63700bf24c8317a66abd0",
+  "prompts": {
+    "74fc34381cab2730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f573773-e5b7-4682-8345-e3fe37f11fc2",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 135,
+      "total_deletions": 0,
+      "accepted_lines": 135,
+      "overriden_lines": 0
+    }
+  }
+}
