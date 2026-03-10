@@ -476,8 +476,6 @@ func TestProgress_DefaultLimitCaps(t *testing.T) {
 	}
 }
 
-// mockTokenProvider is used by timeline tests (defined in pagination_test.go too,
-// but we need it accessible here).
 func TestProgress_VerifyEventIDs(t *testing.T) {
 	h := &timelinePaginationHandler{pageSize: 3, totalItems: 7, totalCount: 7}
 	server := httptest.NewServer(h)

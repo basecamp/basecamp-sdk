@@ -390,16 +390,28 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 
 	case "GetProjectTimeline":
 		projectID := getInt64Param(tc.PathParams, "projectId")
-		_, err := account.Timeline().ProjectTimeline(ctx, projectID, nil)
+		var timelineOpts *basecamp.TimelineListOptions
+		if tc.ConfigOverrides != nil && tc.ConfigOverrides.MaxItems > 0 {
+			timelineOpts = &basecamp.TimelineListOptions{Limit: tc.ConfigOverrides.MaxItems}
+		}
+		_, err := account.Timeline().ProjectTimeline(ctx, projectID, timelineOpts)
 		return operationResult{err: err}
 
 	case "GetProgressReport":
-		_, err := account.Timeline().Progress(ctx, nil)
+		var timelineOpts *basecamp.TimelineListOptions
+		if tc.ConfigOverrides != nil && tc.ConfigOverrides.MaxItems > 0 {
+			timelineOpts = &basecamp.TimelineListOptions{Limit: tc.ConfigOverrides.MaxItems}
+		}
+		_, err := account.Timeline().Progress(ctx, timelineOpts)
 		return operationResult{err: err}
 
 	case "GetPersonProgress":
 		personID := getInt64Param(tc.PathParams, "personId")
-		_, err := account.Timeline().PersonProgress(ctx, personID, nil)
+		var timelineOpts *basecamp.TimelineListOptions
+		if tc.ConfigOverrides != nil && tc.ConfigOverrides.MaxItems > 0 {
+			timelineOpts = &basecamp.TimelineListOptions{Limit: tc.ConfigOverrides.MaxItems}
+		}
+		_, err := account.Timeline().PersonProgress(ctx, personID, timelineOpts)
 		return operationResult{err: err}
 
 	case "GetProjectTimesheet":

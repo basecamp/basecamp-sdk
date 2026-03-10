@@ -34,7 +34,9 @@ type TimelineListOptions struct {
 	// If 0, uses DefaultTimelineLimit (100). Use -1 for unlimited.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables auto-pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
