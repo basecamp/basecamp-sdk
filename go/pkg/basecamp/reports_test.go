@@ -167,7 +167,7 @@ func TestUpcomingScheduleResponse_Unmarshal(t *testing.T) {
 	}
 
 	if len(resp.ScheduleEntries) != 2 {
-		t.Errorf("expected 2 schedule entries, got %d", len(resp.ScheduleEntries))
+		t.Fatalf("expected 2 schedule entries, got %d", len(resp.ScheduleEntries))
 	}
 	if len(resp.RecurringOccurrences) != 1 {
 		t.Errorf("expected 1 recurring occurrence, got %d", len(resp.RecurringOccurrences))

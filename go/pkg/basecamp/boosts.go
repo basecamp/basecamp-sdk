@@ -28,7 +28,8 @@ type BoostListOptions struct {
 	// If 0, uses DefaultBoostLimit (50). Use -1 for unlimited.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if non-zero, disables automatic pagination and returns only the first page.
+	// NOTE: The page number itself is not honored; setting Page=2 does NOT fetch page 2.
 	Page int
 }
 
