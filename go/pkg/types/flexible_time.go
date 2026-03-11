@@ -45,10 +45,10 @@ func (ft *FlexibleTime) UnmarshalJSON(data []byte) error {
 }
 
 // MarshalJSON implements json.Marshaler for FlexibleTime.
-// Zero times marshal as "null"; all others emit RFC3339.
+// Zero times marshal as null; non-zero times use time.Time's JSON encoding.
 func (ft FlexibleTime) MarshalJSON() ([]byte, error) {
 	if ft.IsZero() {
 		return []byte("null"), nil
 	}
-	return []byte(`"` + ft.Format(time.RFC3339) + `"`), nil
+	return ft.Time.MarshalJSON()
 }
