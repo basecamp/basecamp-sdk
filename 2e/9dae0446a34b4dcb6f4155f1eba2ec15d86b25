@@ -1,0 +1,39 @@
+go/pkg/types/flexible_time.go
+  c80b430a7276af42 1-54
+go/pkg/basecamp/reports_test.go
+  c80b430a7276af42 155-156,159,168-169,171-181,184-185,193-212
+spec/fixtures/schedules/entries_list.json
+  c80b430a7276af42 113-114
+go/pkg/basecamp/schedules.go
+  c80b430a7276af42 66-67
+go/pkg/basecamp/schedules_test.go
+  c80b430a7276af42 103-105,107-111,194,214-225
+scripts/enhance-openapi-go-types.sh
+  c80b430a7276af42 7,104-136,149-150,153
+go/pkg/types/flexible_time_test.go
+  c80b430a7276af42 1-92
+go/pkg/basecamp/boosts.go
+  c80b430a7276af42 5,12-15,25-34,53-55,57-59,63,88-98,101-119,122-127,130-131,136-140,144,169-179,182-194,196-200,203-208,211-212
+go/pkg/basecamp/boosts_test.go
+  c80b430a7276af42 7,214,242,254-311,406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "2e9dae0446a34b4dcb6f4155f1eba2ec15d86b25",
+  "prompts": {
+    "c80b430a7276af42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b68ca9e5-50a5-4352-9a55-52b52a3a9a5d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 2,
+      "accepted_lines": 411,
+      "overriden_lines": 0
+    }
+  }
+}
