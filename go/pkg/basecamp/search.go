@@ -58,7 +58,7 @@ type SearchOptions struct {
 	// If 0 (default), returns all results.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	Page int
 }
 
@@ -77,7 +77,7 @@ func NewSearchService(client *AccountClient) *SearchService {
 //
 // Pagination options:
 //   - Limit: maximum number of results to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned SearchListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.

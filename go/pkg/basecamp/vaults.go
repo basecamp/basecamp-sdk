@@ -17,7 +17,7 @@ type VaultListOptions struct {
 	// If 0 (default), returns all vaults. Use a positive value to cap results.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	// NOTE: The page number itself is not yet honored due to OpenAPI client
 	// limitations. Use 0 to paginate through all results up to Limit.
 	Page int
@@ -37,7 +37,7 @@ type DocumentListOptions struct {
 	// If 0 (default), returns all documents. Use a positive value to cap results.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	// NOTE: The page number itself is not yet honored due to OpenAPI client
 	// limitations. Use 0 to paginate through all results up to Limit.
 	Page int
@@ -57,7 +57,7 @@ type UploadListOptions struct {
 	// If 0 (default), returns all uploads. Use a positive value to cap results.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	// NOTE: The page number itself is not yet honored due to OpenAPI client
 	// limitations. Use 0 to paginate through all results up to Limit.
 	Page int
@@ -267,7 +267,7 @@ func (s *VaultsService) Get(ctx context.Context, vaultID int64) (result *Vault, 
 //
 // Pagination options:
 //   - Limit: maximum number of vaults to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned VaultListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -472,7 +472,7 @@ func (s *DocumentsService) Get(ctx context.Context, documentID int64) (result *D
 //
 // Pagination options:
 //   - Limit: maximum number of documents to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned DocumentListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -705,7 +705,7 @@ func (s *UploadsService) Get(ctx context.Context, uploadID int64) (result *Uploa
 //
 // Pagination options:
 //   - Limit: maximum number of uploads to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned UploadListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -897,7 +897,7 @@ type UploadVersionListOptions struct {
 	// If 0 (default), returns all versions.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	Page int
 }
 
@@ -913,7 +913,7 @@ type UploadVersionListResult struct {
 //
 // Pagination options:
 //   - Limit: maximum number of versions to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned UploadVersionListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.

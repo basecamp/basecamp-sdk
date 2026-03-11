@@ -45,7 +45,7 @@ type PeopleListOptions struct {
 	// If 0 (default), returns all people.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	// NOTE: The page number itself is not yet honored due to OpenAPI client
 	// limitations. Use 0 to paginate through all results up to Limit.
 	Page int
@@ -73,7 +73,7 @@ func NewPeopleService(client *AccountClient) *PeopleService {
 //
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned PeopleListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -212,7 +212,7 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 //
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned PeopleListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -288,7 +288,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, 
 //
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned PeopleListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.

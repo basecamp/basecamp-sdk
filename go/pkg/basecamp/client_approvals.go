@@ -15,7 +15,7 @@ type ClientApprovalListOptions struct {
 	// If 0, returns all. Use -1 for unlimited (same as 0).
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	Page int
 }
 
@@ -87,7 +87,7 @@ func NewClientApprovalsService(client *AccountClient) *ClientApprovalsService {
 //
 // Pagination options:
 //   - Limit: maximum number of client approvals to return (0 = all, -1 = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned ClientApprovalListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.

@@ -99,6 +99,9 @@ func (h *wrappedPaginationHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 
 	start := (page - 1) * h.pageSize
 	remaining := h.total - start
+	if remaining <= 0 {
+		remaining = 0
+	}
 	count := min(remaining, h.pageSize)
 
 	events := make([]map[string]interface{}, count)

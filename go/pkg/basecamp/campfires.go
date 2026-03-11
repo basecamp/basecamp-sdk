@@ -23,7 +23,7 @@ type CampfireListOptions struct {
 	// If 0, returns all. Use -1 for unlimited (same as 0).
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	Page int
 }
 
@@ -33,7 +33,7 @@ type CampfireLineListOptions struct {
 	// If 0, uses DefaultCampfireLineLimit (100). Use -1 for unlimited.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	Page int
 }
 
@@ -43,7 +43,7 @@ type CampfireUploadListOptions struct {
 	// If 0, uses DefaultCampfireUploadLimit (100). Use -1 for unlimited.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	Page int
 }
 
@@ -178,7 +178,7 @@ func NewCampfiresService(client *AccountClient) *CampfiresService {
 //
 // Pagination options:
 //   - Limit: maximum number of campfires to return (0 = all, -1 = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned CampfireListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -291,7 +291,7 @@ func (s *CampfiresService) Get(ctx context.Context, campfireID int64) (result *C
 //
 // Pagination options:
 //   - Limit: maximum number of lines to return (0 = 100, -1 = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned CampfireLineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -485,7 +485,7 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, campfireID, lineID in
 //
 // Pagination options:
 //   - Limit: maximum number of uploads to return (0 = 100, -1 = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned CampfireLineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -629,7 +629,7 @@ type ChatbotListOptions struct {
 	// If 0 (default), returns all chatbots.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	Page int
 }
 
@@ -646,7 +646,7 @@ type ChatbotListResult struct {
 //
 // Pagination options:
 //   - Limit: maximum number of chatbots to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned ChatbotListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -693,7 +693,11 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64, o
 	// Determine limit: 0 = all (default for chatbots)
 	limit := 0
 	if opts != nil {
-		limit = opts.Limit
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
 	}
 
 	// Check if we already have enough items

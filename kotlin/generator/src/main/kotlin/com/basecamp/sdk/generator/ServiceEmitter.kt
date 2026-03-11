@@ -397,7 +397,7 @@ class ServiceEmitter(private val api: OpenApiParser) {
         val propNames = properties.keys.sorted()
         for ((i, propName) in propNames.withIndex()) {
             val camelName = propName.snakeToCamelCase()
-            val comma = if (i < propNames.size - 1) "," else ","
+            val comma = if (i < propNames.size - 1) "," else ""
             if (propName == op.paginationKey) {
                 sb.appendLine("    val $camelName: ListResult<$entityType>$comma")
             } else {

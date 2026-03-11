@@ -10,7 +10,7 @@ import kotlinx.serialization.json.jsonObject
 
 data class PersonProgressResult(
     val events: ListResult<TimelineEvent>,
-    val person: Person,
+    val person: Person
 )
 
 /**

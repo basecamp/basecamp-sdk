@@ -61,7 +61,7 @@ type TimesheetReportOptions struct {
 	// If 0 (default), returns all entries.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	Page int
 }
 
@@ -136,7 +136,7 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 //
 // Pagination options:
 //   - Limit: maximum number of entries to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned TimesheetListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -221,7 +221,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 //
 // Pagination options:
 //   - Limit: maximum number of entries to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned TimesheetListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.

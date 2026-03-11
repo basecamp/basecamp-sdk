@@ -15,7 +15,7 @@ type MessageTypeListOptions struct {
 	// If 0, returns all. Use -1 for unlimited (same as 0).
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
+	// Page, if positive, disables pagination and returns only the first page.
 	Page int
 }
 
@@ -66,7 +66,7 @@ func NewMessageTypesService(client *AccountClient) *MessageTypesService {
 //
 // Pagination options:
 //   - Limit: maximum number of message types to return (0 = all, -1 = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned MessageTypeListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.

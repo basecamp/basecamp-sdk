@@ -71,7 +71,7 @@ func NewTimelineService(client *AccountClient) *TimelineService {
 //
 // Pagination options:
 //   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, negative = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned TimelineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -144,7 +144,7 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 //
 // Pagination options:
 //   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, negative = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned TimelineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -221,7 +221,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 //
 // Pagination options:
 //   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, negative = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned PersonProgressResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
