@@ -113,7 +113,8 @@ func main() {
 				fmt.Printf("  PASS: %s\n", tc.Name)
 			} else {
 				failed++
-				fmt.Printf("  FAIL: %s\n        %s\n", tc.Name, result.Message)
+				sanitized := strings.ReplaceAll(strings.ReplaceAll(result.Message, "\n", " "), "\r", "")
+				fmt.Printf("  FAIL: %s\n        %s\n", tc.Name, sanitized)
 			}
 		}
 	}
