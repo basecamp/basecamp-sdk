@@ -108,7 +108,7 @@
 // Search across your Basecamp account:
 //
 //	results, err := account.Search().Search(ctx, "quarterly report", nil)
-//	for _, r := range results {
+//	for _, r := range results.Results {
 //	    fmt.Printf("%s: %s\n", r.Type, r.Title)
 //	}
 //

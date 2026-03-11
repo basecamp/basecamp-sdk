@@ -2,11 +2,22 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// TodolistGroupListOptions specifies options for listing todolist groups.
+type TodolistGroupListOptions struct {
+	// Limit is the maximum number of todolist groups to return.
+	// If 0, returns all. Use -1 for unlimited (same as 0).
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
 
 // TodolistGroup represents a Basecamp todolist group (organizational folder within a todolist).
 type TodolistGroup struct {
@@ -67,9 +78,13 @@ func NewTodolistGroupsService(client *AccountClient) *TodolistGroupsService {
 
 // List returns all groups in a todolist.
 //
+// Pagination options:
+//   - Limit: maximum number of todolist groups to return (0 = all, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
 // The returned TodolistGroupListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *TodolistGroupsService) List(ctx context.Context, todolistID int64) (result *TodolistGroupListResult, err error) {
+func (s *TodolistGroupsService) List(ctx context.Context, todolistID int64, opts *TodolistGroupListOptions) (result *TodolistGroupListResult, err error) {
 	op := OperationInfo{
 		Service: "TodolistGroups", Operation: "List",
 		ResourceType: "todolist_group", IsMutation: false,
@@ -95,16 +110,50 @@ func (s *TodolistGroupsService) List(ctx context.Context, todolistID int64) (res
 	// Capture total count from X-Total-Count header
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &TodolistGroupListResult{Groups: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var groups []TodolistGroup
+	if resp.JSON200 != nil {
+		for _, gg := range *resp.JSON200 {
+			groups = append(groups, todolistGroupFromGenerated(gg))
+		}
 	}
 
-	groups := make([]TodolistGroup, 0, len(*resp.JSON200))
-	for _, gg := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &TodolistGroupListResult{Groups: groups, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = all (no limit)
+	limit := 0
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(groups) >= limit {
+		return &TodolistGroupListResult{Groups: groups[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(groups), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(groups), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gg generated.TodolistGroup
+		if err := json.Unmarshal(raw, &gg); err != nil {
+			return nil, fmt.Errorf("failed to parse todolist group: %w", err)
+		}
 		groups = append(groups, todolistGroupFromGenerated(gg))
 	}
 
-	return &TodolistGroupListResult{Groups: groups, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &TodolistGroupListResult{Groups: groups, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a todolist group by ID.

@@ -2,6 +2,7 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -40,10 +41,25 @@ type SearchProject struct {
 	Name string `json:"name"`
 }
 
+// SearchListResult contains the results from searching.
+type SearchListResult struct {
+	// Results is the list of search results returned.
+	Results []SearchResult
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // SearchOptions specifies optional parameters for search.
 type SearchOptions struct {
 	// Sort specifies the sort order: "created_at" or "updated_at" (default: relevance).
 	Sort string
+
+	// Limit is the maximum number of results to return.
+	// If 0 (default), returns all results.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
 }
 
 // SearchService handles search operations.
@@ -58,8 +74,14 @@ func NewSearchService(client *AccountClient) *SearchService {
 
 // Search searches for content across the account.
 // The query parameter is the search string.
-// Returns a list of matching results.
-func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOptions) (result []SearchResult, err error) {
+//
+// Pagination options:
+//   - Limit: maximum number of results to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
+// The returned SearchListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOptions) (result *SearchListResult, err error) {
 	op := OperationInfo{
 		Service: "Search", Operation: "Search",
 		ResourceType: "search", IsMutation: false,
@@ -92,16 +114,50 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
+	// Parse first page
+	var searchResults []SearchResult
+	if resp.JSON200 != nil {
+		for _, gsr := range *resp.JSON200 {
+			searchResults = append(searchResults, searchResultFromGenerated(gsr))
+		}
 	}
 
-	searchResults := make([]SearchResult, 0, len(*resp.JSON200))
-	for _, gsr := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &SearchListResult{Results: searchResults, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = all (default for search)
+	limit := 0
+	if opts != nil {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(searchResults) >= limit {
+		return &SearchListResult{Results: searchResults[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(searchResults), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(searchResults), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gsr generated.SearchResult
+		if err := json.Unmarshal(raw, &gsr); err != nil {
+			return nil, fmt.Errorf("failed to parse search result: %w", err)
+		}
 		searchResults = append(searchResults, searchResultFromGenerated(gsr))
 	}
 
-	return searchResults, nil
+	return &SearchListResult{Results: searchResults, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Metadata returns metadata about available search scopes.

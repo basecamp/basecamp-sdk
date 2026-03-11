@@ -891,8 +891,33 @@ func (s *UploadsService) Trash(ctx context.Context, uploadID int64) (err error) 
 	return checkResponse(resp.HTTPResponse)
 }
 
+// UploadVersionListOptions specifies options for listing upload versions.
+type UploadVersionListOptions struct {
+	// Limit is the maximum number of versions to return.
+	// If 0 (default), returns all versions.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
+
+// UploadVersionListResult contains the results from listing upload versions.
+type UploadVersionListResult struct {
+	// Versions is the list of upload versions returned.
+	Versions []Upload
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // ListVersions returns all versions of an upload.
-func (s *UploadsService) ListVersions(ctx context.Context, uploadID int64) (result []Upload, err error) {
+//
+// Pagination options:
+//   - Limit: maximum number of versions to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
+// The returned UploadVersionListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *UploadsService) ListVersions(ctx context.Context, uploadID int64, opts *UploadVersionListOptions) (result *UploadVersionListResult, err error) {
 	op := OperationInfo{
 		Service: "Uploads", Operation: "ListVersions",
 		ResourceType: "upload", IsMutation: false,
@@ -907,6 +932,7 @@ func (s *UploadsService) ListVersions(ctx context.Context, uploadID int64) (resu
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListUploadVersionsWithResponse(ctx, s.client.accountID, uploadID)
 	if err != nil {
 		return nil, err
@@ -914,15 +940,50 @@ func (s *UploadsService) ListVersions(ctx context.Context, uploadID int64) (resu
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
+	// Parse first page
+	var versions []Upload
+	if resp.JSON200 != nil {
+		for _, gu := range *resp.JSON200 {
+			versions = append(versions, uploadFromGenerated(gu))
+		}
 	}
 
-	uploads := make([]Upload, 0, len(*resp.JSON200))
-	for _, gu := range *resp.JSON200 {
-		uploads = append(uploads, uploadFromGenerated(gu))
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &UploadVersionListResult{Versions: versions, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
-	return uploads, nil
+
+	// Determine limit: 0 = all (default for versions)
+	limit := 0
+	if opts != nil {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(versions) >= limit {
+		return &UploadVersionListResult{Versions: versions[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(versions), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(versions), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gu generated.Upload
+		if err := json.Unmarshal(raw, &gu); err != nil {
+			return nil, fmt.Errorf("failed to parse upload version: %w", err)
+		}
+		versions = append(versions, uploadFromGenerated(gu))
+	}
+
+	return &UploadVersionListResult{Versions: versions, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // DownloadResult contains the result from downloading an upload.

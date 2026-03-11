@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -67,6 +68,13 @@ func NewTimelineService(client *AccountClient) *TimelineService {
 
 // Progress returns the account-wide activity feed.
 // This shows recent activity across all projects.
+//
+// Pagination options:
+//   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
+// The returned TimelineListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
 func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOptions) (result *TimelineListResult, err error) {
 	op := OperationInfo{
 		Service: "Timeline", Operation: "Progress",
@@ -81,6 +89,7 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.GetProgressReportWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
@@ -132,6 +141,13 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 }
 
 // ProjectTimeline returns the activity timeline for a specific project.
+//
+// Pagination options:
+//   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
+// The returned TimelineListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
 func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, opts *TimelineListOptions) (result *TimelineListResult, err error) {
 	op := OperationInfo{
 		Service: "Timeline", Operation: "ProjectTimeline",
@@ -146,6 +162,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.GetProjectTimelineWithResponse(ctx, s.client.accountID, projectID)
 	if err != nil {
 		return nil, err
@@ -197,6 +214,17 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 }
 
 // PersonProgress returns the activity timeline for a specific person.
+//
+// Each page of this endpoint returns a wrapped response with {person, events}.
+// Pagination is handled with a custom loop since followPagination expects bare
+// arrays.
+//
+// Pagination options:
+//   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
+// The returned PersonProgressResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
 func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, opts *TimelineListOptions) (result *PersonProgressResult, err error) {
 	op := OperationInfo{
 		Service: "Timeline", Operation: "PersonProgress",
@@ -225,10 +253,10 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	result = &PersonProgressResult{}
-
+	// Extract person from first page
+	var person *Person
 	if resp.JSON200.Person.Id != 0 || resp.JSON200.Person.Name != "" {
-		result.Person = &Person{
+		person = &Person{
 			ID:           resp.JSON200.Person.Id,
 			Name:         resp.JSON200.Person.Name,
 			EmailAddress: resp.JSON200.Person.EmailAddress,
@@ -238,14 +266,14 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 		}
 	}
 
-	result.Events = make([]TimelineEvent, 0, len(resp.JSON200.Events))
+	// Parse events from first page
+	var events []TimelineEvent
 	for _, ge := range resp.JSON200.Events {
-		result.Events = append(result.Events, timelineEventFromGenerated(ge))
+		events = append(events, timelineEventFromGenerated(ge))
 	}
 
 	if opts != nil && opts.Page > 0 {
-		result.Meta = ListMeta{TotalCount: totalCount}
-		return result, nil
+		return &PersonProgressResult{Person: person, Events: events, Meta: ListMeta{TotalCount: totalCount}}, nil
 	}
 
 	limit := DefaultTimelineLimit
@@ -257,27 +285,90 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 		}
 	}
 
-	if limit > 0 && len(result.Events) >= limit {
-		result.Events = result.Events[:limit]
-		result.Meta = ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(resp.JSON200.Events), limit)}
-		return result, nil
+	if limit > 0 && len(events) >= limit {
+		return &PersonProgressResult{
+			Person: person,
+			Events: events[:limit],
+			Meta:   ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(events), limit)},
+		}, nil
 	}
 
-	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(result.Events), limit)
-	if err != nil {
-		return nil, err
-	}
+	// Custom wrapped pagination for PersonProgress.
+	// Each page returns {person, events} — we can't use followPagination which
+	// expects bare arrays. Instead, follow the same approach: parse Link headers,
+	// validate same-origin, fetch with doRequestURL.
+	truncated := false
+	if resp.HTTPResponse.Request != nil && resp.HTTPResponse.Request.URL != nil {
+		nextLink := parseNextLink(resp.HTTPResponse.Header.Get("Link"))
+		baseURL := resp.HTTPResponse.Request.URL.String()
+		currentPageURL := baseURL
 
-	for _, raw := range rawMore {
-		var ge generated.TimelineEvent
-		if err := json.Unmarshal(raw, &ge); err != nil {
-			return nil, fmt.Errorf("failed to parse timeline event: %w", err)
+		for page := 2; nextLink != "" && page <= s.client.parent.httpOpts.MaxPages; page++ {
+			// Resolve and validate URL
+			nextURL := resolveURL(currentPageURL, nextLink)
+
+			parsedURL, parseErr := url.Parse(nextURL)
+			if parseErr != nil || !parsedURL.IsAbs() {
+				return nil, fmt.Errorf("failed to resolve Link header URL %q against %q", nextLink, currentPageURL)
+			}
+
+			if !isSameOrigin(baseURL, nextURL) {
+				return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
+			}
+
+			// Check limit before fetching
+			if limit > 0 && len(events) >= limit {
+				truncated = true
+				break
+			}
+
+			pageResp, fetchErr := s.client.parent.doRequestURL(ctx, "GET", nextURL, nil)
+			if fetchErr != nil {
+				return nil, fetchErr
+			}
+
+			// Parse wrapped response — we only need events
+			var wrapper struct {
+				Events []json.RawMessage `json:"events"`
+			}
+			if unmarshalErr := json.Unmarshal(pageResp.Data, &wrapper); unmarshalErr != nil {
+				return nil, fmt.Errorf("failed to parse person progress page %d: %w", page, unmarshalErr)
+			}
+
+			for _, raw := range wrapper.Events {
+				var ge generated.TimelineEvent
+				if unmarshalErr := json.Unmarshal(raw, &ge); unmarshalErr != nil {
+					return nil, fmt.Errorf("failed to parse timeline event: %w", unmarshalErr)
+				}
+				events = append(events, timelineEventFromGenerated(ge))
+			}
+
+			// Check limit after adding items from this page
+			if limit > 0 && len(events) >= limit {
+				excess := len(events) - limit
+				if excess > 0 {
+					events = events[:limit]
+				}
+				// Truncated if we dropped items OR more pages exist
+				nextLink = parseNextLink(pageResp.Headers.Get("Link"))
+				if excess > 0 || nextLink != "" {
+					truncated = true
+				}
+				break
+			}
+
+			nextLink = parseNextLink(pageResp.Headers.Get("Link"))
+			currentPageURL = nextURL
 		}
-		result.Events = append(result.Events, timelineEventFromGenerated(ge))
+
+		// If we exited the loop because of MaxPages (page > MaxPages with nextLink still set)
+		if nextLink != "" && !truncated {
+			truncated = true
+			s.client.parent.logger.Warn("pagination capped", "maxPages", s.client.parent.httpOpts.MaxPages)
+		}
 	}
 
-	result.Meta = ListMeta{TotalCount: totalCount, Truncated: truncated}
-	return result, nil
+	return &PersonProgressResult{Person: person, Events: events, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // timelineEventFromGenerated converts a generated TimelineEvent to our clean type.

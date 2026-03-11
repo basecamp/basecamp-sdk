@@ -1,6 +1,7 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -78,6 +79,121 @@ func TestTimelineEvent_Unmarshal(t *testing.T) {
 	expectedTime := time.Date(2024, 3, 15, 10, 30, 0, 0, time.UTC)
 	if !event.CreatedAt.Equal(expectedTime) {
 		t.Errorf("expected CreatedAt %v, got %v", expectedTime, event.CreatedAt)
+	}
+}
+
+// wrappedPaginationHandler serves wrapped {person, events} responses with Link headers.
+type wrappedPaginationHandler struct {
+	pageSize  int
+	total     int
+	serverURL string
+	pageCount int32
+}
+
+func (h *wrappedPaginationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	atomic.AddInt32(&h.pageCount, 1)
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		fmt.Sscanf(p, "%d", &page)
+	}
+
+	start := (page - 1) * h.pageSize
+	remaining := h.total - start
+	count := min(remaining, h.pageSize)
+
+	events := make([]map[string]interface{}, count)
+	for i := 0; i < count; i++ {
+		events[i] = map[string]interface{}{
+			"id":     start + i + 1,
+			"action": "created",
+			"target": "todo",
+			"title":  fmt.Sprintf("Event %d", start+i+1),
+		}
+	}
+
+	if start+count < h.total {
+		nextURL := fmt.Sprintf("%s%s?page=%d", h.serverURL, r.URL.Path, page+1)
+		w.Header().Set("Link", fmt.Sprintf(`<%s>; rel="next"`, nextURL))
+	}
+	w.Header().Set("X-Total-Count", fmt.Sprintf("%d", h.total))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"person": map[string]interface{}{"id": 456, "name": "Jane Doe", "email_address": "jane@example.com"},
+		"events": events,
+	})
+}
+
+func TestPersonProgress_MultiPageWrapped(t *testing.T) {
+	h := &wrappedPaginationHandler{pageSize: 3, total: 7}
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	h.serverURL = srv.URL
+
+	cfg := &Config{BaseURL: srv.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	account := client.ForAccount("999")
+	ts := NewTimelineService(account)
+
+	result, err := ts.PersonProgress(context.Background(), 456, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify person is preserved from page 1
+	if result.Person == nil {
+		t.Fatal("expected Person to be non-nil")
+	}
+	if result.Person.Name != "Jane Doe" {
+		t.Errorf("expected Person.Name 'Jane Doe', got %q", result.Person.Name)
+	}
+
+	// Verify all 7 events accumulated across 3 pages
+	if len(result.Events) != 7 {
+		t.Fatalf("expected 7 events across 3 pages, got %d", len(result.Events))
+	}
+	for i, e := range result.Events {
+		expected := fmt.Sprintf("Event %d", i+1)
+		if e.Title != expected {
+			t.Errorf("event[%d]: expected Title %q, got %q", i, expected, e.Title)
+		}
+	}
+
+	// Verify metadata
+	if result.Meta.TotalCount != 7 {
+		t.Errorf("expected TotalCount 7, got %d", result.Meta.TotalCount)
+	}
+	if result.Meta.Truncated {
+		t.Error("expected Truncated=false when all events fetched")
+	}
+
+	// Should have fetched 3 pages (3+3+1)
+	pages := int(atomic.LoadInt32(&h.pageCount))
+	if pages != 3 {
+		t.Errorf("expected 3 page requests, got %d", pages)
+	}
+}
+
+func TestPersonProgress_MultiPageWithLimit(t *testing.T) {
+	h := &wrappedPaginationHandler{pageSize: 3, total: 9}
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	h.serverURL = srv.URL
+
+	cfg := &Config{BaseURL: srv.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	account := client.ForAccount("999")
+	ts := NewTimelineService(account)
+
+	result, err := ts.PersonProgress(context.Background(), 456, &TimelineListOptions{Limit: 5})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Events) != 5 {
+		t.Fatalf("expected 5 events (limited), got %d", len(result.Events))
+	}
+	if !result.Meta.Truncated {
+		t.Error("expected Truncated=true when limited")
 	}
 }
 
@@ -188,7 +304,7 @@ func (h *timelinePaginationHandler) getPageCount() int {
 }
 
 // personProgressPaginationHandler serves paginated person progress responses.
-// Page 1 returns {person: {...}, events: [...]}, subsequent pages return event arrays.
+// Every page returns {person: {...}, events: [...]}, matching the actual BC3 API.
 type personProgressPaginationHandler struct {
 	pageSize   int
 	totalItems int
@@ -231,14 +347,9 @@ func (h *personProgressPaginationHandler) ServeHTTP(w http.ResponseWriter, r *ht
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if page == 1 {
-		// First page returns the wrapped person+events structure
-		body := fmt.Sprintf(`{"person": {"id": 42, "name": "Test Person", "email_address": "test@example.com", "avatar_url": "", "admin": false, "owner": false}, "events": %s}`, eventsJSON)
-		w.Write([]byte(body))
-	} else {
-		// Subsequent pages return just the events array
-		w.Write([]byte(eventsJSON))
-	}
+	// Every page returns the wrapped person+events structure (matching the actual BC3 API)
+	body := fmt.Sprintf(`{"person": {"id": 42, "name": "Test Person", "email_address": "test@example.com", "avatar_url": "", "admin": false, "owner": false}, "events": %s}`, eventsJSON)
+	w.Write([]byte(body))
 }
 
 func (h *personProgressPaginationHandler) getPageCount() int {

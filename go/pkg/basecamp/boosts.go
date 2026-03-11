@@ -28,7 +28,7 @@ type BoostListOptions struct {
 	// If 0, uses DefaultBoostLimit (50). Use -1 for unlimited.
 	Limit int
 
-	// Page, if non-zero, disables automatic pagination and returns only the first page.
+	// Page, if positive, disables automatic pagination and returns only the first page.
 	// NOTE: The page number itself is not honored; setting Page=2 does NOT fetch page 2.
 	Page int
 }
@@ -57,7 +57,7 @@ func NewBoostsService(client *AccountClient) *BoostsService {
 //
 // Pagination options:
 //   - Limit: maximum number of boosts to return (0 = 50, -1 = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned BoostListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -138,7 +138,7 @@ func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64, op
 //
 // Pagination options:
 //   - Limit: maximum number of boosts to return (0 = 50, -1 = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, disables pagination and returns first page only
 //
 // The returned BoostListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.

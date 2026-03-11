@@ -204,7 +204,7 @@ func ExampleSearchService_Search() {
 		log.Fatal(err)
 	}
 
-	for _, r := range results {
+	for _, r := range results.Results {
 		fmt.Printf("[%s] %s\n", r.Type, r.Title)
 	}
 }
@@ -224,7 +224,7 @@ func ExampleSearchService_Search_sorted() {
 		log.Fatal(err)
 	}
 
-	for _, r := range results {
+	for _, r := range results.Results {
 		fmt.Printf("%s: %s\n", r.CreatedAt.Format("2006-01-02"), r.Title)
 	}
 }

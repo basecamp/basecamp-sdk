@@ -2,11 +2,22 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// ClientReplyListOptions specifies options for listing client replies.
+type ClientReplyListOptions struct {
+	// Limit is the maximum number of client replies to return.
+	// If 0, returns all. Use -1 for unlimited (same as 0).
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
 
 // ClientReply represents a reply to a client correspondence or approval.
 type ClientReply struct {
@@ -47,9 +58,13 @@ func NewClientRepliesService(client *AccountClient) *ClientRepliesService {
 
 // List returns all replies for a client recording (correspondence or approval).
 //
+// Pagination options:
+//   - Limit: maximum number of client replies to return (0 = all, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
 // The returned ClientReplyListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ClientRepliesService) List(ctx context.Context, recordingID int64) (result *ClientReplyListResult, err error) {
+func (s *ClientRepliesService) List(ctx context.Context, recordingID int64, opts *ClientReplyListOptions) (result *ClientReplyListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientReplies", Operation: "List",
 		ResourceType: "client_reply", IsMutation: false,
@@ -75,16 +90,50 @@ func (s *ClientRepliesService) List(ctx context.Context, recordingID int64) (res
 	// Capture total count from X-Total-Count header
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &ClientReplyListResult{Replies: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var replies []ClientReply
+	if resp.JSON200 != nil {
+		for _, gr := range *resp.JSON200 {
+			replies = append(replies, clientReplyFromGenerated(gr))
+		}
 	}
 
-	replies := make([]ClientReply, 0, len(*resp.JSON200))
-	for _, gr := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &ClientReplyListResult{Replies: replies, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = all (no limit)
+	limit := 0
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(replies) >= limit {
+		return &ClientReplyListResult{Replies: replies[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(replies), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(replies), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gr generated.ClientReply
+		if err := json.Unmarshal(raw, &gr); err != nil {
+			return nil, fmt.Errorf("failed to parse client reply: %w", err)
+		}
 		replies = append(replies, clientReplyFromGenerated(gr))
 	}
 
-	return &ClientReplyListResult{Replies: replies, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &ClientReplyListResult{Replies: replies, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a specific client reply.

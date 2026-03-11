@@ -816,7 +816,7 @@ func TestListUploads_Service(t *testing.T) {
 		w.Write(fixture)
 	})
 
-	result, err := svc.ListUploads(context.Background(), 200)
+	result, err := svc.ListUploads(context.Background(), 200, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

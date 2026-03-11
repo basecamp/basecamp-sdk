@@ -285,8 +285,14 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, 
 }
 
 // Pingable returns all account users who can be pinged.
-// Note: This endpoint is not paginated in the Basecamp API.
-func (s *PeopleService) Pingable(ctx context.Context) (result []Person, err error) {
+//
+// Pagination options:
+//   - Limit: maximum number of people to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
+// The returned PeopleListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *PeopleService) Pingable(ctx context.Context, opts *PeopleListOptions) (result *PeopleListResult, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "Pingable",
 		ResourceType: "person", IsMutation: false,
@@ -300,6 +306,7 @@ func (s *PeopleService) Pingable(ctx context.Context) (result []Person, err erro
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListPingablePeopleWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
@@ -307,16 +314,50 @@ func (s *PeopleService) Pingable(ctx context.Context) (result []Person, err erro
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
+	// Parse first page
+	var people []Person
+	if resp.JSON200 != nil {
+		for _, gp := range *resp.JSON200 {
+			people = append(people, personFromGenerated(gp))
+		}
 	}
 
-	people := make([]Person, 0, len(*resp.JSON200))
-	for _, gp := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = all (default for people)
+	limit := 0
+	if opts != nil {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(people) >= limit {
+		return &PeopleListResult{People: people[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(people), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(people), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gp generated.Person
+		if err := json.Unmarshal(raw, &gp); err != nil {
+			return nil, fmt.Errorf("failed to parse person: %w", err)
+		}
 		people = append(people, personFromGenerated(gp))
 	}
 
-	return people, nil
+	return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // UpdateProjectAccess grants or revokes project access for people.

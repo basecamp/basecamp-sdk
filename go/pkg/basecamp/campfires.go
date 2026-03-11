@@ -3,12 +3,49 @@ package basecamp
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// DefaultCampfireLineLimit is the default number of campfire lines to return when no limit is specified.
+const DefaultCampfireLineLimit = 100
+
+// DefaultCampfireUploadLimit is the default number of campfire uploads to return when no limit is specified.
+const DefaultCampfireUploadLimit = 100
+
+// CampfireListOptions specifies options for listing campfires.
+type CampfireListOptions struct {
+	// Limit is the maximum number of campfires to return.
+	// If 0, returns all. Use -1 for unlimited (same as 0).
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
+
+// CampfireLineListOptions specifies options for listing campfire lines.
+type CampfireLineListOptions struct {
+	// Limit is the maximum number of lines to return.
+	// If 0, uses DefaultCampfireLineLimit (100). Use -1 for unlimited.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
+
+// CampfireUploadListOptions specifies options for listing campfire uploads.
+type CampfireUploadListOptions struct {
+	// Limit is the maximum number of uploads to return.
+	// If 0, uses DefaultCampfireUploadLimit (100). Use -1 for unlimited.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
 
 // Campfire represents a Basecamp Campfire (real-time chat room).
 type Campfire struct {
@@ -139,9 +176,13 @@ func NewCampfiresService(client *AccountClient) *CampfiresService {
 
 // List returns all campfires across the account.
 //
+// Pagination options:
+//   - Limit: maximum number of campfires to return (0 = all, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
 // The returned CampfireListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *CampfiresService) List(ctx context.Context) (result *CampfireListResult, err error) {
+func (s *CampfiresService) List(ctx context.Context, opts *CampfireListOptions) (result *CampfireListResult, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "List",
 		ResourceType: "campfire", IsMutation: false,
@@ -166,15 +207,50 @@ func (s *CampfiresService) List(ctx context.Context) (result *CampfireListResult
 	// Capture total count from X-Total-Count header
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &CampfireListResult{Campfires: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var campfires []Campfire
+	if resp.JSON200 != nil {
+		for _, gc := range *resp.JSON200 {
+			campfires = append(campfires, campfireFromGenerated(gc))
+		}
 	}
 
-	campfires := make([]Campfire, 0, len(*resp.JSON200))
-	for _, gc := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &CampfireListResult{Campfires: campfires, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = all (no limit)
+	limit := 0
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(campfires) >= limit {
+		return &CampfireListResult{Campfires: campfires[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(campfires), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(campfires), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gc generated.Campfire
+		if err := json.Unmarshal(raw, &gc); err != nil {
+			return nil, fmt.Errorf("failed to parse campfire: %w", err)
+		}
 		campfires = append(campfires, campfireFromGenerated(gc))
 	}
-	return &CampfireListResult{Campfires: campfires, Meta: ListMeta{TotalCount: totalCount}}, nil
+
+	return &CampfireListResult{Campfires: campfires, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a campfire by ID.
@@ -211,9 +287,15 @@ func (s *CampfiresService) Get(ctx context.Context, campfireID int64) (result *C
 
 // ListLines returns all lines (messages) in a campfire.
 //
+// By default, returns up to 100 lines. Use Limit: -1 for unlimited.
+//
+// Pagination options:
+//   - Limit: maximum number of lines to return (0 = 100, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
 // The returned CampfireLineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64) (result *CampfireLineListResult, err error) {
+func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64, opts *CampfireLineListOptions) (result *CampfireLineListResult, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "ListLines",
 		ResourceType: "campfire_line", IsMutation: false,
@@ -239,15 +321,50 @@ func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64) (res
 	// Capture total count from X-Total-Count header
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &CampfireLineListResult{Lines: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var lines []CampfireLine
+	if resp.JSON200 != nil {
+		for _, gl := range *resp.JSON200 {
+			lines = append(lines, campfireLineFromGenerated(gl))
+		}
 	}
 
-	lines := make([]CampfireLine, 0, len(*resp.JSON200))
-	for _, gl := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
+	limit := DefaultCampfireLineLimit
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(lines) >= limit {
+		return &CampfireLineListResult{Lines: lines[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(lines), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(lines), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gl generated.CampfireLine
+		if err := json.Unmarshal(raw, &gl); err != nil {
+			return nil, fmt.Errorf("failed to parse campfire line: %w", err)
+		}
 		lines = append(lines, campfireLineFromGenerated(gl))
 	}
-	return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount}}, nil
+
+	return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // GetLine returns a single line (message) from a campfire.
@@ -364,9 +481,15 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, campfireID, lineID in
 
 // ListUploads returns all uploaded files in a campfire.
 //
+// By default, returns up to 100 uploads. Use Limit: -1 for unlimited.
+//
+// Pagination options:
+//   - Limit: maximum number of uploads to return (0 = 100, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
 // The returned CampfireLineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *CampfiresService) ListUploads(ctx context.Context, campfireID int64) (result *CampfireLineListResult, err error) {
+func (s *CampfiresService) ListUploads(ctx context.Context, campfireID int64, opts *CampfireUploadListOptions) (result *CampfireLineListResult, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "ListUploads",
 		ResourceType: "campfire_line", IsMutation: false,
@@ -391,15 +514,50 @@ func (s *CampfiresService) ListUploads(ctx context.Context, campfireID int64) (r
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &CampfireLineListResult{Lines: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var lines []CampfireLine
+	if resp.JSON200 != nil {
+		for _, gl := range *resp.JSON200 {
+			lines = append(lines, campfireLineFromGenerated(gl))
+		}
 	}
 
-	lines := make([]CampfireLine, 0, len(*resp.JSON200))
-	for _, gl := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
+	limit := DefaultCampfireUploadLimit
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(lines) >= limit {
+		return &CampfireLineListResult{Lines: lines[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(lines), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(lines), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gl generated.CampfireLine
+		if err := json.Unmarshal(raw, &gl); err != nil {
+			return nil, fmt.Errorf("failed to parse campfire upload: %w", err)
+		}
 		lines = append(lines, campfireLineFromGenerated(gl))
 	}
-	return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount}}, nil
+
+	return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // CreateUpload uploads a file to a campfire.
@@ -465,9 +623,34 @@ func (s *CampfiresService) CreateUpload(ctx context.Context, campfireID int64, f
 	return &line, nil
 }
 
+// ChatbotListOptions specifies options for listing chatbots.
+type ChatbotListOptions struct {
+	// Limit is the maximum number of chatbots to return.
+	// If 0 (default), returns all chatbots.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
+
+// ChatbotListResult contains the results from listing chatbots.
+type ChatbotListResult struct {
+	// Chatbots is the list of chatbots returned.
+	Chatbots []Chatbot
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // ListChatbots returns all chatbots for a campfire.
 // Note: Chatbots are account-wide but with basecamp-specific callback URLs.
-func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64) (result []Chatbot, err error) {
+//
+// Pagination options:
+//   - Limit: maximum number of chatbots to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
+// The returned ChatbotListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64, opts *ChatbotListOptions) (result *ChatbotListResult, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "ListChatbots",
 		ResourceType: "chatbot", IsMutation: false,
@@ -482,6 +665,7 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Call generated client for first page (spec-conformant - no manual path construction)
 	resp, err := s.client.parent.gen.ListChatbotsWithResponse(ctx, s.client.accountID, campfireID)
 	if err != nil {
 		return nil, err
@@ -489,15 +673,50 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64) (
 	if err = checkResponse(resp.HTTPResponse); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
+
+	// Capture total count from X-Total-Count header (first page only)
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
+	// Parse first page
+	var chatbots []Chatbot
+	if resp.JSON200 != nil {
+		for _, gc := range *resp.JSON200 {
+			chatbots = append(chatbots, chatbotFromGenerated(gc))
+		}
 	}
 
-	chatbots := make([]Chatbot, 0, len(*resp.JSON200))
-	for _, gc := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &ChatbotListResult{Chatbots: chatbots, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = all (default for chatbots)
+	limit := 0
+	if opts != nil {
+		limit = opts.Limit
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(chatbots) >= limit {
+		return &ChatbotListResult{Chatbots: chatbots[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(chatbots), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(chatbots), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gc generated.Chatbot
+		if err := json.Unmarshal(raw, &gc); err != nil {
+			return nil, fmt.Errorf("failed to parse chatbot: %w", err)
+		}
 		chatbots = append(chatbots, chatbotFromGenerated(gc))
 	}
-	return chatbots, nil
+
+	return &ChatbotListResult{Chatbots: chatbots, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // GetChatbot returns a chatbot by ID.

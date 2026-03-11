@@ -2,11 +2,22 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// ClientApprovalListOptions specifies options for listing client approvals.
+type ClientApprovalListOptions struct {
+	// Limit is the maximum number of client approvals to return.
+	// If 0, returns all. Use -1 for unlimited (same as 0).
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
 
 // ClientApproval represents a Basecamp client approval request.
 type ClientApproval struct {
@@ -74,9 +85,13 @@ func NewClientApprovalsService(client *AccountClient) *ClientApprovalsService {
 
 // List returns all client approvals in a project.
 //
+// Pagination options:
+//   - Limit: maximum number of client approvals to return (0 = all, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
 // The returned ClientApprovalListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ClientApprovalsService) List(ctx context.Context) (result *ClientApprovalListResult, err error) {
+func (s *ClientApprovalsService) List(ctx context.Context, opts *ClientApprovalListOptions) (result *ClientApprovalListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientApprovals", Operation: "List",
 		ResourceType: "client_approval", IsMutation: false,
@@ -101,16 +116,50 @@ func (s *ClientApprovalsService) List(ctx context.Context) (result *ClientApprov
 	// Capture total count from X-Total-Count header
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &ClientApprovalListResult{Approvals: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var approvals []ClientApproval
+	if resp.JSON200 != nil {
+		for _, ga := range *resp.JSON200 {
+			approvals = append(approvals, clientApprovalFromGenerated(ga))
+		}
 	}
 
-	approvals := make([]ClientApproval, 0, len(*resp.JSON200))
-	for _, ga := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &ClientApprovalListResult{Approvals: approvals, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = all (no limit)
+	limit := 0
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(approvals) >= limit {
+		return &ClientApprovalListResult{Approvals: approvals[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(approvals), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(approvals), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var ga generated.ClientApproval
+		if err := json.Unmarshal(raw, &ga); err != nil {
+			return nil, fmt.Errorf("failed to parse client approval: %w", err)
+		}
 		approvals = append(approvals, clientApprovalFromGenerated(ga))
 	}
 
-	return &ClientApprovalListResult{Approvals: approvals, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &ClientApprovalListResult{Approvals: approvals, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a client approval by ID.

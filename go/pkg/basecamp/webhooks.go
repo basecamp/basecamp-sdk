@@ -2,11 +2,22 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// WebhookListOptions specifies options for listing webhooks.
+type WebhookListOptions struct {
+	// Limit is the maximum number of webhooks to return.
+	// If 0, returns all. Use -1 for unlimited (same as 0).
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
 
 // Webhook represents a Basecamp webhook subscription.
 type Webhook struct {
@@ -83,9 +94,13 @@ func NewWebhooksService(client *AccountClient) *WebhooksService {
 
 // List returns all webhooks for a project (bucket).
 //
+// Pagination options:
+//   - Limit: maximum number of webhooks to return (0 = all, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
 // The returned WebhookListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result *WebhookListResult, err error) {
+func (s *WebhooksService) List(ctx context.Context, bucketID int64, opts *WebhookListOptions) (result *WebhookListResult, err error) {
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "List",
 		ResourceType: "webhook", IsMutation: false,
@@ -110,16 +125,50 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64) (result *Web
 	// Capture total count from X-Total-Count header
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &WebhookListResult{Webhooks: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var webhooks []Webhook
+	if resp.JSON200 != nil {
+		for _, gw := range *resp.JSON200 {
+			webhooks = append(webhooks, webhookFromGenerated(gw))
+		}
 	}
 
-	webhooks := make([]Webhook, 0, len(*resp.JSON200))
-	for _, gw := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &WebhookListResult{Webhooks: webhooks, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = all (no limit)
+	limit := 0
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(webhooks) >= limit {
+		return &WebhookListResult{Webhooks: webhooks[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(webhooks), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(webhooks), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gw generated.Webhook
+		if err := json.Unmarshal(raw, &gw); err != nil {
+			return nil, fmt.Errorf("failed to parse webhook: %w", err)
+		}
 		webhooks = append(webhooks, webhookFromGenerated(gw))
 	}
 
-	return &WebhookListResult{Webhooks: webhooks, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &WebhookListResult{Webhooks: webhooks, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a webhook by ID.

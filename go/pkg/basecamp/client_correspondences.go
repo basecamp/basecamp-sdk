@@ -2,11 +2,22 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// ClientCorrespondenceListOptions specifies options for listing client correspondences.
+type ClientCorrespondenceListOptions struct {
+	// Limit is the maximum number of client correspondences to return.
+	// If 0, returns all. Use -1 for unlimited (same as 0).
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
 
 // ClientCorrespondence represents a Basecamp client correspondence (message to clients).
 type ClientCorrespondence struct {
@@ -51,9 +62,13 @@ func NewClientCorrespondencesService(client *AccountClient) *ClientCorrespondenc
 
 // List returns all client correspondences in a project.
 //
+// Pagination options:
+//   - Limit: maximum number of client correspondences to return (0 = all, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
 // The returned ClientCorrespondenceListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ClientCorrespondencesService) List(ctx context.Context) (result *ClientCorrespondenceListResult, err error) {
+func (s *ClientCorrespondencesService) List(ctx context.Context, opts *ClientCorrespondenceListOptions) (result *ClientCorrespondenceListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientCorrespondences", Operation: "List",
 		ResourceType: "client_correspondence", IsMutation: false,
@@ -78,16 +93,50 @@ func (s *ClientCorrespondencesService) List(ctx context.Context) (result *Client
 	// Capture total count from X-Total-Count header
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &ClientCorrespondenceListResult{Correspondences: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var correspondences []ClientCorrespondence
+	if resp.JSON200 != nil {
+		for _, gc := range *resp.JSON200 {
+			correspondences = append(correspondences, clientCorrespondenceFromGenerated(gc))
+		}
 	}
 
-	correspondences := make([]ClientCorrespondence, 0, len(*resp.JSON200))
-	for _, gc := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &ClientCorrespondenceListResult{Correspondences: correspondences, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = all (no limit)
+	limit := 0
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(correspondences) >= limit {
+		return &ClientCorrespondenceListResult{Correspondences: correspondences[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(correspondences), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(correspondences), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gc generated.ClientCorrespondence
+		if err := json.Unmarshal(raw, &gc); err != nil {
+			return nil, fmt.Errorf("failed to parse client correspondence: %w", err)
+		}
 		correspondences = append(correspondences, clientCorrespondenceFromGenerated(gc))
 	}
 
-	return &ClientCorrespondenceListResult{Correspondences: correspondences, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &ClientCorrespondenceListResult{Correspondences: correspondences, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a client correspondence by ID.

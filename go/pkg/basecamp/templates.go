@@ -2,11 +2,22 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// TemplateListOptions specifies options for listing templates.
+type TemplateListOptions struct {
+	// Limit is the maximum number of templates to return.
+	// If 0, returns all. Use -1 for unlimited (same as 0).
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
 
 // Template represents a Basecamp project template.
 type Template struct {
@@ -70,9 +81,13 @@ func NewTemplatesService(client *AccountClient) *TemplatesService {
 
 // List returns all templates visible to the current user.
 //
+// Pagination options:
+//   - Limit: maximum number of templates to return (0 = all, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
 // The returned TemplateListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *TemplatesService) List(ctx context.Context) (result *TemplateListResult, err error) {
+func (s *TemplatesService) List(ctx context.Context, opts *TemplateListOptions) (result *TemplateListResult, err error) {
 	op := OperationInfo{
 		Service: "Templates", Operation: "List",
 		ResourceType: "template", IsMutation: false,
@@ -97,16 +112,50 @@ func (s *TemplatesService) List(ctx context.Context) (result *TemplateListResult
 	// Capture total count from X-Total-Count header
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &TemplateListResult{Templates: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var templates []Template
+	if resp.JSON200 != nil {
+		for _, gt := range *resp.JSON200 {
+			templates = append(templates, templateFromGenerated(gt))
+		}
 	}
 
-	templates := make([]Template, 0, len(*resp.JSON200))
-	for _, gt := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &TemplateListResult{Templates: templates, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = all (no limit)
+	limit := 0
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(templates) >= limit {
+		return &TemplateListResult{Templates: templates[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(templates), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(templates), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gt generated.Template
+		if err := json.Unmarshal(raw, &gt); err != nil {
+			return nil, fmt.Errorf("failed to parse template: %w", err)
+		}
 		templates = append(templates, templateFromGenerated(gt))
 	}
 
-	return &TemplateListResult{Templates: templates, Meta: ListMeta{TotalCount: totalCount}}, nil
+	return &TemplateListResult{Templates: templates, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a template by ID.

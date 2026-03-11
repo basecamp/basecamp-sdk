@@ -2,11 +2,22 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// MessageTypeListOptions specifies options for listing message types.
+type MessageTypeListOptions struct {
+	// Limit is the maximum number of message types to return.
+	// If 0, returns all. Use -1 for unlimited (same as 0).
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	Page int
+}
 
 // MessageType represents a Basecamp message type (category) in a project.
 type MessageType struct {
@@ -53,9 +64,13 @@ func NewMessageTypesService(client *AccountClient) *MessageTypesService {
 
 // List returns all message types for the account.
 //
+// Pagination options:
+//   - Limit: maximum number of message types to return (0 = all, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
+//
 // The returned MessageTypeListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *MessageTypesService) List(ctx context.Context) (result *MessageTypeListResult, err error) {
+func (s *MessageTypesService) List(ctx context.Context, opts *MessageTypeListOptions) (result *MessageTypeListResult, err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "List",
 		ResourceType: "message_type", IsMutation: false,
@@ -80,15 +95,50 @@ func (s *MessageTypesService) List(ctx context.Context) (result *MessageTypeList
 	// Capture total count from X-Total-Count header
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &MessageTypeListResult{MessageTypes: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var types []MessageType
+	if resp.JSON200 != nil {
+		for _, gt := range *resp.JSON200 {
+			types = append(types, messageTypeFromGenerated(gt))
+		}
 	}
 
-	types := make([]MessageType, 0, len(*resp.JSON200))
-	for _, gt := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &MessageTypeListResult{MessageTypes: types, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = all (no limit)
+	limit := 0
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(types) >= limit {
+		return &MessageTypeListResult{MessageTypes: types[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(types), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(types), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gt generated.MessageType
+		if err := json.Unmarshal(raw, &gt); err != nil {
+			return nil, fmt.Errorf("failed to parse message type: %w", err)
+		}
 		types = append(types, messageTypeFromGenerated(gt))
 	}
-	return &MessageTypeListResult{MessageTypes: types, Meta: ListMeta{TotalCount: totalCount}}, nil
+
+	return &MessageTypeListResult{MessageTypes: types, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a message type by ID.
