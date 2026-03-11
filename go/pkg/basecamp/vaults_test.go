@@ -486,10 +486,10 @@ func TestUpload_UnmarshalGet(t *testing.T) {
 		t.Errorf("expected byte_size 245678, got %d", upload.ByteSize)
 	}
 	if upload.Width != 1024 {
-		t.Errorf("expected width 1024, got %v", upload.Width)
+		t.Errorf("expected width 1024, got %d", upload.Width)
 	}
 	if upload.Height != 768 {
-		t.Errorf("expected height 768, got %v", upload.Height)
+		t.Errorf("expected height 768, got %d", upload.Height)
 	}
 	if upload.Description != "Company logo in high resolution" {
 		t.Errorf("expected description 'Company logo in high resolution', got %q", upload.Description)
@@ -541,7 +541,7 @@ func TestUpload_UnmarshalList(t *testing.T) {
 		t.Errorf("expected content_type 'image/png', got %q", u1.ContentType)
 	}
 	if u1.Width != 1024 {
-		t.Errorf("expected width 1024, got %v", u1.Width)
+		t.Errorf("expected width 1024, got %d", u1.Width)
 	}
 
 	// Verify second upload (PDF without dimensions)
@@ -559,7 +559,7 @@ func TestUpload_UnmarshalList(t *testing.T) {
 		t.Errorf("expected byte_size 1048576, got %d", u2.ByteSize)
 	}
 	if u2.Width != 0 {
-		t.Errorf("expected width 0 for PDF, got %v", u2.Width)
+		t.Errorf("expected width 0 for PDF, got %d", u2.Width)
 	}
 	if !u2.VisibleToClients {
 		t.Error("expected visible_to_clients to be true")

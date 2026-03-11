@@ -144,10 +144,24 @@ type Upload struct {
 	Description      string    `json:"description"`
 	ContentType      string    `json:"content_type"`
 	ByteSize         int64     `json:"byte_size"`
-	Width            float64   `json:"width,omitempty"`
-	Height           float64   `json:"height,omitempty"`
+	Width            int       `json:"width,omitempty"`
+	Height           int       `json:"height,omitempty"`
 	DownloadURL      string    `json:"download_url"`
 	Filename         string    `json:"filename"`
+}
+
+// UnmarshalJSON decodes an Upload from JSON, handling the BC3 API's
+// float-encoded integer dimensions (e.g. "width": 1024.0). Delegates
+// through the generated type (which uses FlexInt) so the public struct
+// can keep plain int fields while remaining directly decodable from the
+// API wire format.
+func (u *Upload) UnmarshalJSON(data []byte) error {
+	var gu generated.Upload
+	if err := json.Unmarshal(data, &gu); err != nil {
+		return err
+	}
+	*u = uploadFromGenerated(gu)
+	return nil
 }
 
 // CreateVaultRequest specifies the parameters for creating a vault (folder).
@@ -1120,13 +1134,14 @@ func uploadFromGenerated(gu generated.Upload) Upload {
 		BookmarkURL:      gu.BookmarkUrl,
 		SubscriptionURL:  gu.SubscriptionUrl,
 		CommentsCount:    int(gu.CommentsCount),
+		BoostsCount:      int(gu.BoostsCount),
 		CommentsURL:      gu.CommentsUrl,
 		Position:         int(gu.Position),
 		Description:      gu.Description,
 		ContentType:      gu.ContentType,
 		ByteSize:         gu.ByteSize,
-		Width:            gu.Width,
-		Height:           gu.Height,
+		Width:            int(gu.Width),
+		Height:           int(gu.Height),
 		DownloadURL:      gu.DownloadUrl,
 		Filename:         gu.Filename,
 		CreatedAt:        gu.CreatedAt,

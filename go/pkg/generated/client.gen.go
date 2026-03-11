@@ -1968,7 +1968,7 @@ type Upload struct {
 	Description      string          `json:"description,omitempty"`
 	DownloadUrl      string          `json:"download_url,omitempty"`
 	Filename         string          `json:"filename,omitempty"`
-	Height           float64         `json:"height,omitempty"`
+	Height           types.FlexInt   `json:"height,omitempty"`
 	Id               int64           `json:"id"`
 	InheritsStatus   bool            `json:"inherits_status"`
 	Parent           RecordingParent `json:"parent"`
@@ -1980,7 +1980,7 @@ type Upload struct {
 	UpdatedAt        time.Time       `json:"updated_at"`
 	Url              string          `json:"url"`
 	VisibleToClients bool            `json:"visible_to_clients"`
-	Width            float64         `json:"width,omitempty"`
+	Width            types.FlexInt   `json:"width,omitempty"`
 }
 
 // ValidationErrorResponseContent defines model for ValidationErrorResponseContent.

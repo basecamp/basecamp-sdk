@@ -5,6 +5,7 @@
 # Type mappings:
 #   - _at fields (created_at, updated_at, etc.) → time.Time (full timestamps)
 #   - _on fields (due_on, starts_on, etc.) → types.Date (date-only)
+#   - width/height fields → types.FlexInt (accepts float-encoded integers from API)
 #   - id fields → keep as pointers to distinguish nil from zero
 #
 # Usage: ./enhance-openapi-go-types.sh [input.json] [output.json]
@@ -99,6 +100,23 @@ walk(
     .
   end
 )
+|
+# Fourth pass: Upload width/height → types.FlexInt
+# The BC3 API serializes pixel dimensions as floats (1024.0); Go rejects
+# those into int fields. Scoped to the Upload schema to avoid surprising
+# any future integer width/height elsewhere in the spec.
+.components.schemas.Upload.properties |= (
+  (.width // empty) += {
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": true
+  } |
+  (.height // empty) += {
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": true
+  }
+)
 ' "$INPUT_FILE" > "${OUTPUT_FILE}.tmp"
 
 mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
@@ -106,6 +124,7 @@ mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 # Count enhancements
 timestamp_count=$(jq '[.. | objects | select(.["x-go-type"] == "time.Time")] | length' "$OUTPUT_FILE")
 date_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.Date")] | length' "$OUTPUT_FILE")
+flexint_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.FlexInt")] | length' "$OUTPUT_FILE")
 id_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == false and (.type == "integer" or .type == "number"))] | length' "$OUTPUT_FILE")
 nullable_bool_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("RequestContent$")) | .value.properties // {} | to_entries[] | select(.value.type == "boolean" and .value["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
 subscription_ptr_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("^Create.*RequestContent$")) | .value.properties // {} | .subscriptions // empty | select(.["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
@@ -113,6 +132,7 @@ subscription_ptr_count=$(jq '[.components.schemas | to_entries[] | select(.key |
 echo "Enhanced OpenAPI spec with Go type extensions:"
 echo "  Timestamp fields (time.Time): $timestamp_count"
 echo "  Date fields (types.Date): $date_count"
+echo "  Dimension fields (types.FlexInt): $flexint_count"
 echo "  Id fields (keeping pointers): $id_count"
 echo "  Nullable booleans (*bool): $nullable_bool_count"
 echo "  Subscription pointers (*[]int64): $subscription_ptr_count"
