@@ -1,0 +1,25 @@
+go/pkg/basecamp/timeline_test.go
+  8bf116e1ac89d87d 489-548,612-694
+go/pkg/basecamp/timeline.go
+  8bf116e1ac89d87d 35,73,146,223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "70818d985c6354755eeeebc93a0ab5b33c4c8c38",
+  "prompts": {
+    "8bf116e1ac89d87d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19b421e2-9b2d-442a-b828-9de25607361d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 147,
+      "total_deletions": 4,
+      "accepted_lines": 147,
+      "overriden_lines": 0
+    }
+  }
+}
