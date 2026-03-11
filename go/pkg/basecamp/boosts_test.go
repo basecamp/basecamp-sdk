@@ -415,6 +415,62 @@ func TestBoostsService_ListEvent(t *testing.T) {
 	}
 }
 
+func TestBoostsService_ListEvent_Pagination(t *testing.T) {
+	fixture := loadBoostsFixture(t, "list.json")
+	page2Fixture := `[{"id":1069479502,"content":"❤️","created_at":"2022-11-22T09:00:00.000Z","booster":{"id":1,"name":"Page Two"},"recording":{"id":100,"title":"Rec"}}]`
+
+	var requestCount int
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		if requestCount == 1 {
+			w.Header().Set("X-Total-Count", "3")
+			w.Header().Set("Link", fmt.Sprintf(`<%s/99999/recordings/200/events/300/boosts.json?page=2>; rel="next"`, "http://"+r.Host))
+			w.WriteHeader(200)
+			w.Write(fixture)
+		} else {
+			w.WriteHeader(200)
+			w.Write([]byte(page2Fixture))
+		}
+	})
+
+	result, err := svc.ListEvent(context.Background(), 200, 300, &BoostListOptions{Limit: -1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Boosts) != 3 {
+		t.Errorf("expected 3 boosts across pages, got %d", len(result.Boosts))
+	}
+	if result.Meta.TotalCount != 3 {
+		t.Errorf("expected TotalCount 3, got %d", result.Meta.TotalCount)
+	}
+	if requestCount != 2 {
+		t.Errorf("expected 2 HTTP requests (2 pages), got %d", requestCount)
+	}
+	if len(result.Boosts) >= 3 && result.Boosts[2].ID != 1069479502 {
+		t.Errorf("expected third boost ID 1069479502, got %d", result.Boosts[2].ID)
+	}
+}
+
+func TestBoostsService_ListEvent_SinglePage(t *testing.T) {
+	fixture := loadBoostsFixture(t, "list.json")
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Total-Count", "100")
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Link", fmt.Sprintf(`<%s/99999/recordings/200/events/300/boosts.json?page=2>; rel="next"`, "http://"+r.Host))
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.ListEvent(context.Background(), 200, 300, &BoostListOptions{Page: 1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Boosts) != 2 {
+		t.Errorf("expected 2 boosts (first page only), got %d", len(result.Boosts))
+	}
+}
+
 func TestBoostsService_CreateEvent(t *testing.T) {
 	var receivedBody map[string]string
 	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {

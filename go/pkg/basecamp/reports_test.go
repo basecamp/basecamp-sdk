@@ -3,8 +3,6 @@ package basecamp
 import (
 	"encoding/json"
 	"testing"
-
-	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 func TestAssignedTodosResponse_Unmarshal(t *testing.T) {
@@ -163,22 +161,9 @@ func TestUpcomingScheduleResponse_Unmarshal(t *testing.T) {
 		]
 	}`
 
-	// Unmarshal through the generated type (production path) to test
-	// FlexibleTime parsing of date-only strings.
-	var genResp generated.GetUpcomingScheduleResponseContent
-	if err := json.Unmarshal([]byte(data), &genResp); err != nil {
+	var resp UpcomingScheduleResponse
+	if err := json.Unmarshal([]byte(data), &resp); err != nil {
 		t.Fatalf("failed to unmarshal: %v", err)
-	}
-
-	resp := &UpcomingScheduleResponse{}
-	for _, gs := range genResp.ScheduleEntries {
-		resp.ScheduleEntries = append(resp.ScheduleEntries, scheduleEntryFromGenerated(gs))
-	}
-	for _, gs := range genResp.RecurringScheduleEntryOccurrences {
-		resp.RecurringOccurrences = append(resp.RecurringOccurrences, scheduleEntryFromGenerated(gs))
-	}
-	for _, ga := range genResp.Assignables {
-		resp.Assignables = append(resp.Assignables, assignableFromGenerated(ga))
 	}
 
 	if len(resp.ScheduleEntries) != 2 {

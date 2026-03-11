@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 func schedulesFixturesDir() string {
@@ -99,16 +97,9 @@ func TestSchedule_UnmarshalGet(t *testing.T) {
 func TestScheduleEntry_UnmarshalList(t *testing.T) {
 	data := loadSchedulesFixture(t, "entries_list.json")
 
-	// Unmarshal through the generated type (production path) to test
-	// FlexibleTime parsing of date-only strings in all-day entries.
-	var genEntries []generated.ScheduleEntry
-	if err := json.Unmarshal(data, &genEntries); err != nil {
+	var entries []ScheduleEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
 		t.Fatalf("failed to unmarshal entries_list.json: %v", err)
-	}
-
-	entries := make([]ScheduleEntry, len(genEntries))
-	for i, ge := range genEntries {
-		entries[i] = scheduleEntryFromGenerated(ge)
 	}
 
 	if len(entries) != 2 {

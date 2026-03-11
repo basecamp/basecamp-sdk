@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
+	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
 
 // ScheduleEntryListOptions specifies options for listing schedule entries.
@@ -48,29 +49,29 @@ type Schedule struct {
 
 // ScheduleEntry represents an event on a Basecamp schedule.
 type ScheduleEntry struct {
-	ID               int64     `json:"id"`
-	Status           string    `json:"status"`
-	VisibleToClients bool      `json:"visible_to_clients"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	Title            string    `json:"title"`
-	Summary          string    `json:"summary"`
-	InheritsStatus   bool      `json:"inherits_status"`
-	Type             string    `json:"type"`
-	URL              string    `json:"url"`
-	AppURL           string    `json:"app_url"`
-	BookmarkURL      string    `json:"bookmark_url"`
-	SubscriptionURL  string    `json:"subscription_url"`
-	CommentsURL      string    `json:"comments_url"`
-	CommentsCount    int       `json:"comments_count"`
-	StartsAt         time.Time `json:"starts_at"`
-	EndsAt           time.Time `json:"ends_at"`
-	AllDay           bool      `json:"all_day"`
-	Description      string    `json:"description"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
-	Participants     []Person  `json:"participants,omitempty"`
+	ID               int64              `json:"id"`
+	Status           string             `json:"status"`
+	VisibleToClients bool               `json:"visible_to_clients"`
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	Title            string             `json:"title"`
+	Summary          string             `json:"summary"`
+	InheritsStatus   bool               `json:"inherits_status"`
+	Type             string             `json:"type"`
+	URL              string             `json:"url"`
+	AppURL           string             `json:"app_url"`
+	BookmarkURL      string             `json:"bookmark_url"`
+	SubscriptionURL  string             `json:"subscription_url"`
+	CommentsURL      string             `json:"comments_url"`
+	CommentsCount    int                `json:"comments_count"`
+	StartsAt         types.FlexibleTime `json:"starts_at"`
+	EndsAt           types.FlexibleTime `json:"ends_at"`
+	AllDay           bool               `json:"all_day"`
+	Description      string             `json:"description"`
+	Parent           *Parent            `json:"parent,omitempty"`
+	Bucket           *Bucket            `json:"bucket,omitempty"`
+	Creator          *Person            `json:"creator,omitempty"`
+	Participants     []Person           `json:"participants,omitempty"`
 }
 
 // CreateScheduleEntryRequest specifies the parameters for creating a schedule entry.
@@ -585,8 +586,8 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 		SubscriptionURL:  ge.SubscriptionUrl,
 		CommentsURL:      ge.CommentsUrl,
 		CommentsCount:    int(ge.CommentsCount),
-		StartsAt:         ge.StartsAt.Time,
-		EndsAt:           ge.EndsAt.Time,
+		StartsAt:         ge.StartsAt,
+		EndsAt:           ge.EndsAt,
 		AllDay:           ge.AllDay,
 		Description:      ge.Description,
 	}
