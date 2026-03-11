@@ -110,8 +110,8 @@
     "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479410/subscription.json",
     "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479410/comments.json",
     "comments_count": 0,
-    "starts_at": "2022-11-15T00:00:00.000Z",
-    "ends_at": "2022-11-15T00:00:00.000Z",
+    "starts_at": "2022-11-15",
+    "ends_at": "2022-11-15",
     "all_day": true,
     "description": "",
     "parent": {

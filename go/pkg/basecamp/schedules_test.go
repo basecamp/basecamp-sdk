@@ -182,7 +182,7 @@ func TestScheduleEntry_UnmarshalList(t *testing.T) {
 		t.Errorf("expected second participant 'Annie Bryan', got %q", e1.Participants[1].Name)
 	}
 
-	// Verify second entry (all-day event)
+	// Verify second entry (all-day event with date-only starts_at/ends_at)
 	e2 := entries[1]
 	if e2.ID != 1069479410 {
 		t.Errorf("expected ID 1069479410, got %d", e2.ID)
@@ -201,6 +201,19 @@ func TestScheduleEntry_UnmarshalList(t *testing.T) {
 	}
 	if e2.Creator.Name != "Annie Bryan" {
 		t.Errorf("expected Creator.Name 'Annie Bryan', got %q", e2.Creator.Name)
+	}
+	// Verify date-only strings parse correctly (fixture uses "2022-11-15")
+	if e2.StartsAt.IsZero() {
+		t.Error("expected StartsAt to be non-zero for all-day entry")
+	}
+	if e2.StartsAt.Year() != 2022 || e2.StartsAt.Month() != 11 || e2.StartsAt.Day() != 15 {
+		t.Errorf("expected StartsAt 2022-11-15, got %v", e2.StartsAt)
+	}
+	if e2.EndsAt.IsZero() {
+		t.Error("expected EndsAt to be non-zero for all-day entry")
+	}
+	if e2.EndsAt.Year() != 2022 || e2.EndsAt.Month() != 11 || e2.EndsAt.Day() != 15 {
+		t.Errorf("expected EndsAt 2022-11-15, got %v", e2.EndsAt)
 	}
 }
 

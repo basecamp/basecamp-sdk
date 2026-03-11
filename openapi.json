@@ -22233,17 +22233,17 @@
           },
           "starts_at": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.FlexibleTime",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
           "ends_at": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.FlexibleTime",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },

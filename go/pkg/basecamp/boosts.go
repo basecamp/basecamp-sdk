@@ -2,11 +2,16 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
+
+// DefaultBoostLimit is the default number of boosts to return when no limit is specified.
+// Matches the API's maxPageSize of 50 (from x-basecamp-pagination in the spec).
+const DefaultBoostLimit = 50
 
 // Boost represents a Basecamp boost (emoji reaction) on a recording.
 type Boost struct {
@@ -15,6 +20,17 @@ type Boost struct {
 	CreatedAt time.Time `json:"created_at"`
 	Booster   *Person   `json:"booster,omitempty"`
 	Recording *Parent   `json:"recording,omitempty"`
+}
+
+// BoostListOptions specifies options for listing boosts.
+type BoostListOptions struct {
+	// Limit is the maximum number of boosts to return.
+	// If 0, uses DefaultBoostLimit (50). Use -1 for unlimited.
+	Limit int
+
+	// Page, if non-zero, disables automatic pagination and returns only the first page.
+	// NOTE: The page number itself is not honored; setting Page=2 does NOT fetch page 2.
+	Page int
 }
 
 // BoostListResult contains the results from listing boosts.
@@ -35,11 +51,17 @@ func NewBoostsService(client *AccountClient) *BoostsService {
 	return &BoostsService{client: client}
 }
 
-// ListRecording returns all boosts on a recording.
+// ListRecording returns boosts on a recording.
+//
+// By default, returns up to 50 boosts. Use Limit: -1 for unlimited.
+//
+// Pagination options:
+//   - Limit: maximum number of boosts to return (0 = 50, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
 //
 // The returned BoostListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64) (result *BoostListResult, err error) {
+func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64, opts *BoostListOptions) (result *BoostListResult, err error) {
 	op := OperationInfo{
 		Service: "Boosts", Operation: "ListRecording",
 		ResourceType: "boost", IsMutation: false,
@@ -64,22 +86,63 @@ func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64) (r
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &BoostListResult{Boosts: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var boosts []Boost
+	if resp.JSON200 != nil {
+		for _, gb := range *resp.JSON200 {
+			boosts = append(boosts, boostFromGenerated(gb))
+		}
 	}
 
-	boosts := make([]Boost, 0, len(*resp.JSON200))
-	for _, gb := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = default (50), -1 = unlimited, >0 = specific limit
+	limit := DefaultBoostLimit
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(boosts) >= limit {
+		return &BoostListResult{Boosts: boosts[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(boosts), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(boosts), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gb generated.Boost
+		if err := json.Unmarshal(raw, &gb); err != nil {
+			return nil, fmt.Errorf("failed to parse boost: %w", err)
+		}
 		boosts = append(boosts, boostFromGenerated(gb))
 	}
-	return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount}}, nil
+
+	return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
-// ListEvent returns all boosts on a specific event within a recording.
+// ListEvent returns boosts on a specific event within a recording.
+//
+// By default, returns up to 50 boosts. Use Limit: -1 for unlimited.
+//
+// Pagination options:
+//   - Limit: maximum number of boosts to return (0 = 50, -1 = unlimited)
+//   - Page: if non-zero, disables pagination and returns first page only
 //
 // The returned BoostListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *BoostsService) ListEvent(ctx context.Context, recordingID, eventID int64) (result *BoostListResult, err error) {
+func (s *BoostsService) ListEvent(ctx context.Context, recordingID, eventID int64, opts *BoostListOptions) (result *BoostListResult, err error) {
 	op := OperationInfo{
 		Service: "Boosts", Operation: "ListEvent",
 		ResourceType: "boost", IsMutation: false,
@@ -104,15 +167,50 @@ func (s *BoostsService) ListEvent(ctx context.Context, recordingID, eventID int6
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	if resp.JSON200 == nil {
-		return &BoostListResult{Boosts: nil, Meta: ListMeta{TotalCount: totalCount}}, nil
+	// Parse first page
+	var boosts []Boost
+	if resp.JSON200 != nil {
+		for _, gb := range *resp.JSON200 {
+			boosts = append(boosts, boostFromGenerated(gb))
+		}
 	}
 
-	boosts := make([]Boost, 0, len(*resp.JSON200))
-	for _, gb := range *resp.JSON200 {
+	// Handle single page fetch (--page flag)
+	if opts != nil && opts.Page > 0 {
+		return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	// Determine limit: 0 = default (50), -1 = unlimited, >0 = specific limit
+	limit := DefaultBoostLimit
+	if opts != nil {
+		if opts.Limit < 0 {
+			limit = 0 // unlimited
+		} else if opts.Limit > 0 {
+			limit = opts.Limit
+		}
+	}
+
+	// Check if we already have enough items
+	if limit > 0 && len(boosts) >= limit {
+		return &BoostListResult{Boosts: boosts[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(boosts), limit)}}, nil
+	}
+
+	// Follow pagination via Link headers
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(boosts), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse additional pages
+	for _, raw := range rawMore {
+		var gb generated.Boost
+		if err := json.Unmarshal(raw, &gb); err != nil {
+			return nil, fmt.Errorf("failed to parse boost: %w", err)
+		}
 		boosts = append(boosts, boostFromGenerated(gb))
 	}
-	return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount}}, nil
+
+	return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a boost by ID.
