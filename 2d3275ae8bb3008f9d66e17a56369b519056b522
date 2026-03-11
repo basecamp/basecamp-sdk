@@ -1,0 +1,15 @@
+go/pkg/types/flexint_test.go
+  15e765d5774cb50c 1-106
+go/pkg/types/flexint.go
+  15e765d5774cb50c 1-39
+scripts/enhance-openapi-go-types.sh
+  15e765d5774cb50c 8
+spec/basecamp.smithy
+  15e765d5774cb50c 2895-2896
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "2d3275ae8bb3008f9d66e17a56369b519056b522",
+  "prompts": {}
+}
