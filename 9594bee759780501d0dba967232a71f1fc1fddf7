@@ -1,0 +1,11 @@
+go/pkg/types/flexint_test.go
+  15e765d5774cb50c 1-106
+go/pkg/types/flexint.go
+  15e765d5774cb50c 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "9594bee759780501d0dba967232a71f1fc1fddf7",
+  "prompts": {}
+}
