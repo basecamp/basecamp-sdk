@@ -180,6 +180,69 @@ final class PaginationTests: XCTestCase {
         XCTAssertFalse(result.meta.truncated)
     }
 
+    // MARK: - Wrapped Pagination (PersonProgress)
+
+    func testWrappedPaginationAccumulatesAcrossPages() async throws {
+        let page1 = [
+            "person": ["id": 456, "name": "Jane Doe", "email_address": "jane@example.com"],
+            "events": [
+                ["id": 1, "action": "created", "target": "todo", "title": "Event 1",
+                 "created_at": "2026-01-01T00:00:00Z"],
+                ["id": 2, "action": "completed", "target": "todo", "title": "Event 2",
+                 "created_at": "2026-01-02T00:00:00Z"],
+            ]
+        ] as [String: Any]
+        let page2 = [
+            "person": ["id": 456, "name": "Jane Doe", "email_address": "jane@example.com"],
+            "events": [
+                ["id": 3, "action": "updated", "target": "message", "title": "Event 3",
+                 "created_at": "2026-01-03T00:00:00Z"],
+            ]
+        ] as [String: Any]
+
+        let page1Data = try JSONSerialization.data(withJSONObject: page1)
+        let page2Data = try JSONSerialization.data(withJSONObject: page2)
+
+        let transport = MockTransport { request in
+            let urlString = request.url!.absoluteString
+            if urlString.contains("page=2") {
+                let response = HTTPURLResponse(
+                    url: request.url!, statusCode: 200,
+                    httpVersion: "HTTP/1.1",
+                    headerFields: [
+                        "Content-Type": "application/json",
+                    ]
+                )!
+                return (page2Data, response)
+            } else {
+                let response = HTTPURLResponse(
+                    url: request.url!, statusCode: 200,
+                    httpVersion: "HTTP/1.1",
+                    headerFields: [
+                        "Content-Type": "application/json",
+                        "Link": "<https://3.basecampapi.com/999999999/reports/users/progress/456.json?page=2>; rel=\"next\"",
+                        "X-Total-Count": "3",
+                    ]
+                )!
+                return (page1Data, response)
+            }
+        }
+
+        let account = makeTestAccountClient(transport: transport)
+        let result = try await account.reports.personProgress(personId: 456)
+
+        // Wrapper field preserved from page 1
+        XCTAssertEqual(result.person.name, "Jane Doe")
+
+        // Events accumulated across both pages
+        XCTAssertEqual(result.events.count, 3)
+        XCTAssertEqual(result.events[0].title, "Event 1")
+        XCTAssertEqual(result.events[1].title, "Event 2")
+        XCTAssertEqual(result.events[2].title, "Event 3")
+        XCTAssertEqual(result.events.meta.totalCount, 3)
+        XCTAssertFalse(result.events.meta.truncated)
+    }
+
     // MARK: - SSRF Rejection
 
     func testSSRFRejectionOnDifferentOrigin() async throws {

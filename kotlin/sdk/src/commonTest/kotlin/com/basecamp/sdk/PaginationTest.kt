@@ -1,6 +1,8 @@
 package com.basecamp.sdk
 
 import com.basecamp.sdk.generated.projects
+import com.basecamp.sdk.generated.reports
+import com.basecamp.sdk.generated.services.PersonProgressResult
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
@@ -273,6 +275,61 @@ class PaginationTest {
         assertEquals(3L, projects[2].id)
         assertEquals(3L, projects.meta.totalCount)
         assertFalse(projects.meta.truncated)
+        client.close()
+    }
+
+    // =========================================================================
+    // Wrapped pagination (PersonProgress)
+    // =========================================================================
+
+    private fun wrappedPageJson(events: List<Pair<Long, String>>) = buildString {
+        append("""{"person":{"id":456,"name":"Jane Doe","email_address":"jane@example.com"},""")
+        append(""""events":[""")
+        append(events.joinToString(",") { (id, action) ->
+            """{"id":$id,"action":"$action","target":"todo","title":"Event $id"}"""
+        })
+        append("]}")
+    }
+
+    @Test
+    fun wrappedPaginationAccumulatesAcrossPages() = runTest {
+        var requestCount = 0
+        val client = mockClient { request ->
+            requestCount++
+            val page = request.url.parameters["page"]?.toIntOrNull() ?: 1
+            when (page) {
+                1 -> respond(
+                    content = wrappedPageJson(listOf(1L to "created", 2L to "completed")),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                        "Link" to listOf("""<https://3.basecampapi.com/12345/reports/users/progress/456.json?page=2>; rel="next""""),
+                        "X-Total-Count" to listOf("3"),
+                    ),
+                )
+                else -> respond(
+                    content = wrappedPageJson(listOf(3L to "updated")),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                    ),
+                )
+            }
+        }
+
+        val account = client.forAccount("12345")
+        val result: PersonProgressResult = account.reports.personProgress(456)
+
+        // Wrapper field preserved from page 1
+        assertEquals("Jane Doe", result.person.name)
+
+        // Events accumulated across both pages
+        assertEquals(3, result.events.size)
+        assertEquals("created", result.events[0].action)
+        assertEquals("completed", result.events[1].action)
+        assertEquals("updated", result.events[2].action)
+        assertEquals(3L, result.events.meta.totalCount)
+        assertFalse(result.events.meta.truncated)
         client.close()
     }
 }

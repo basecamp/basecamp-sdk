@@ -4,6 +4,14 @@ import com.basecamp.sdk.*
 import com.basecamp.sdk.generated.models.*
 import com.basecamp.sdk.services.BaseService
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+
+data class PersonProgressResult(
+    val events: ListResult<TimelineEvent>,
+    val person: Person,
+)
 
 /**
  * Service for Reports operations.
@@ -16,7 +24,7 @@ class ReportsService(client: AccountClient) : BaseService(client) {
      * Get account-wide activity feed (progress report)
      * @param options Optional query parameters and pagination control
      */
-    suspend fun progress(options: PaginationOptions? = null): ListResult<JsonElement> {
+    suspend fun progress(options: PaginationOptions? = null): ListResult<TimelineEvent> {
         val info = OperationInfo(
             service = "Reports",
             operation = "GetProgressReport",
@@ -28,7 +36,7 @@ class ReportsService(client: AccountClient) : BaseService(client) {
         return requestPaginated(info, options, {
             httpGet("/reports/progress.json", operationName = info.operation)
         }) { body ->
-            json.decodeFromString<List<JsonElement>>(body)
+            json.decodeFromString<List<TimelineEvent>>(body)
         }
     }
 
@@ -102,8 +110,9 @@ class ReportsService(client: AccountClient) : BaseService(client) {
     /**
      * Get a person's activity timeline
      * @param personId The person ID
+     * @param options Optional query parameters and pagination control
      */
-    suspend fun personProgress(personId: Long): JsonElement {
+    suspend fun personProgress(personId: Long, options: PaginationOptions? = null): PersonProgressResult {
         val info = OperationInfo(
             service = "Reports",
             operation = "GetPersonProgress",
@@ -112,10 +121,16 @@ class ReportsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = personId,
         )
-        return request(info, {
-            httpGet("/reports/users/progress/${personId}", operationName = info.operation)
+        val (firstPageBody, items) = requestPaginatedWrapped<TimelineEvent>(info, options, {
+            httpGet("/reports/users/progress/${personId}.json", operationName = info.operation)
         }) { body ->
-            json.decodeFromString<JsonElement>(body)
+            json.parseToJsonElement(body).jsonObject["events"]!!
+                .jsonArray.map { json.decodeFromJsonElement<TimelineEvent>(it) }
         }
+        val wrapper = json.parseToJsonElement(firstPageBody).jsonObject
+        return PersonProgressResult(
+            events = items,
+            person = json.decodeFromJsonElement<Person>(wrapper["person"]!!)
+        )
     }
 }

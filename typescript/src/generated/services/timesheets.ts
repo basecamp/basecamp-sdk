@@ -6,17 +6,21 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
 // =============================================================================
 
+/** TimesheetEntry entity from the Basecamp API. */
+export type TimesheetEntry = components["schemas"]["TimesheetEntry"];
 
 /**
  * Options for forProject.
  */
-export interface ForProjectTimesheetOptions {
+export interface ForProjectTimesheetOptions extends PaginationOptions {
   /** From */
   from?: string;
   /** To */
@@ -28,7 +32,7 @@ export interface ForProjectTimesheetOptions {
 /**
  * Options for forRecording.
  */
-export interface ForRecordingTimesheetOptions {
+export interface ForRecordingTimesheetOptions extends PaginationOptions {
   /** From */
   from?: string;
   /** To */
@@ -91,15 +95,15 @@ export class TimesheetsService extends BaseService {
    * Get timesheet for a specific project
    * @param projectId - The project ID
    * @param options - Optional query parameters
-   * @returns Array of results
+   * @returns All TimesheetEntry across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.timesheets.forProject(123);
    * ```
    */
-  async forProject(projectId: number, options?: ForProjectTimesheetOptions): Promise<components["schemas"]["GetProjectTimesheetResponseContent"]> {
-    const response = await this.request(
+  async forProject(projectId: number, options?: ForProjectTimesheetOptions): Promise<ListResult<TimesheetEntry>> {
+    return this.requestPaginated(
       {
         service: "Timesheets",
         operation: "GetProjectTimesheet",
@@ -114,23 +118,23 @@ export class TimesheetsService extends BaseService {
             query: { from: options?.from, to: options?.to, "person_id": options?.personId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
    * Get timesheet for a specific recording
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
-   * @returns Array of results
+   * @returns All TimesheetEntry across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.timesheets.forRecording(123);
    * ```
    */
-  async forRecording(recordingId: number, options?: ForRecordingTimesheetOptions): Promise<components["schemas"]["GetRecordingTimesheetResponseContent"]> {
-    const response = await this.request(
+  async forRecording(recordingId: number, options?: ForRecordingTimesheetOptions): Promise<ListResult<TimesheetEntry>> {
+    return this.requestPaginated(
       {
         service: "Timesheets",
         operation: "GetRecordingTimesheet",
@@ -145,15 +149,15 @@ export class TimesheetsService extends BaseService {
             query: { from: options?.from, to: options?.to, "person_id": options?.personId },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
    * Create a timesheet entry on a recording
    * @param recordingId - The recording ID
    * @param req - Timesheet_entry creation parameters
-   * @returns The timesheet_entry
+   * @returns The TimesheetEntry
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
@@ -161,7 +165,7 @@ export class TimesheetsService extends BaseService {
    * const result = await client.timesheets.create(123, { date: "example", hours: "example" });
    * ```
    */
-  async create(recordingId: number, req: CreateTimesheetRequest): Promise<components["schemas"]["CreateTimesheetEntryResponseContent"]> {
+  async create(recordingId: number, req: CreateTimesheetRequest): Promise<TimesheetEntry> {
     if (!req.date) {
       throw Errors.validation("Date is required");
     }
@@ -195,14 +199,14 @@ export class TimesheetsService extends BaseService {
   /**
    * Get account-wide timesheet report
    * @param options - Optional query parameters
-   * @returns Array of results
+   * @returns Array of TimesheetEntry
    *
    * @example
    * ```ts
    * const result = await client.timesheets.report();
    * ```
    */
-  async report(options?: ReportTimesheetOptions): Promise<components["schemas"]["GetTimesheetReportResponseContent"]> {
+  async report(options?: ReportTimesheetOptions): Promise<TimesheetEntry[]> {
     const response = await this.request(
       {
         service: "Timesheets",
@@ -223,7 +227,7 @@ export class TimesheetsService extends BaseService {
   /**
    * Get a single timesheet entry
    * @param entryId - The entry ID
-   * @returns The timesheet_entry
+   * @returns The TimesheetEntry
    * @throws {BasecampError} If the resource is not found
    *
    * @example
@@ -231,7 +235,7 @@ export class TimesheetsService extends BaseService {
    * const result = await client.timesheets.get(123);
    * ```
    */
-  async get(entryId: number): Promise<components["schemas"]["GetTimesheetEntryResponseContent"]> {
+  async get(entryId: number): Promise<TimesheetEntry> {
     const response = await this.request(
       {
         service: "Timesheets",
@@ -254,7 +258,7 @@ export class TimesheetsService extends BaseService {
    * Update a timesheet entry
    * @param entryId - The entry ID
    * @param req - Timesheet_entry update parameters
-   * @returns The timesheet_entry
+   * @returns The TimesheetEntry
    * @throws {BasecampError} If the resource is not found or fields are invalid
    *
    * @example
@@ -262,7 +266,7 @@ export class TimesheetsService extends BaseService {
    * const result = await client.timesheets.update(123, { });
    * ```
    */
-  async update(entryId: number, req: UpdateTimesheetRequest): Promise<components["schemas"]["UpdateTimesheetEntryResponseContent"]> {
+  async update(entryId: number, req: UpdateTimesheetRequest): Promise<TimesheetEntry> {
     const response = await this.request(
       {
         service: "Timesheets",

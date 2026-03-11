@@ -113,13 +113,61 @@ class ReportsServiceTest < Minitest::Test
         { "id" => 1, "action" => "created" }
       ]
     }
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/reports/users/progress/456$})
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/reports/users/progress/456\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
     result = @account.reports.person_progress(person_id: 456)
 
     assert_kind_of Hash, result
     assert_equal "Jane Doe", result["person"]["name"]
+  end
+
+  def test_person_progress_multi_page_wrapped
+    page1 = {
+      "person" => { "id" => 456, "name" => "Jane Doe" },
+      "events" => [
+        { "id" => 1, "action" => "created" },
+        { "id" => 2, "action" => "completed" }
+      ]
+    }
+    page2 = {
+      "person" => { "id" => 456, "name" => "Jane Doe" },
+      "events" => [
+        { "id" => 3, "action" => "updated" }
+      ]
+    }
+
+    page2_url = "https://3.basecampapi.com/12345/reports/users/progress/456.json?page=2"
+
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/reports/users/progress/456\.json$})
+      .to_return(
+        status: 200,
+        body: page1.to_json,
+        headers: {
+          "Content-Type" => "application/json",
+          "X-Total-Count" => "3",
+          "Link" => "<#{page2_url}>; rel=\"next\""
+        }
+      )
+
+    stub_request(:get, page2_url)
+      .to_return(
+        status: 200,
+        body: page2.to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    result = @account.reports.person_progress(person_id: 456)
+
+    # Wrapper field (person) preserved from page 1
+    assert_equal "Jane Doe", result["person"]["name"]
+
+    # Events accumulated across both pages via lazy Enumerator
+    all_events = result["events"].to_a
+    assert_equal 3, all_events.length
+    assert_equal "created", all_events[0]["action"]
+    assert_equal "completed", all_events[1]["action"]
+    assert_equal "updated", all_events[2]["action"]
   end
 
   # Note: Timesheet methods (timesheet, project_timesheet, recording_timesheet) moved to TimesheetsService

@@ -7667,6 +7667,11 @@
         "tags": [
           "Schedule"
         ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -10704,6 +10709,11 @@
         "tags": [
           "Schedule"
         ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -11553,7 +11563,7 @@
         }
       }
     },
-    "/reports/users/progress/{personId}": {
+    "/reports/users/progress/{personId}.json": {
       "get": {
         "description": "Get a person's activity timeline",
         "operationId": "GetPersonProgress",
@@ -11629,6 +11639,12 @@
               }
             }
           }
+        },
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50,
+          "key": "events"
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -16084,7 +16100,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "title": {
             "type": "string"
@@ -16105,10 +16122,20 @@
             "$ref": "#/components/schemas/TodoParent"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "starts_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "assignees": {
             "type": "array",
@@ -16137,13 +16164,19 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "content": {
             "type": "string"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "booster": {
             "$ref": "#/components/schemas/Person"
@@ -16162,7 +16195,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -16171,10 +16205,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -16237,7 +16281,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -16246,10 +16291,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -16340,7 +16395,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -16349,10 +16405,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -16386,13 +16452,23 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "completed": {
             "type": "boolean"
           },
           "completed_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "comments_count": {
             "type": "integer",
@@ -16463,7 +16539,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -16472,10 +16549,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -16553,7 +16640,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -16562,10 +16650,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -16590,13 +16688,23 @@
             "format": "int32"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "completed": {
             "type": "boolean"
           },
           "completed_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "parent": {
             "$ref": "#/components/schemas/RecordingParent"
@@ -16641,7 +16749,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -16650,10 +16759,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -16715,13 +16834,24 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "service_name": {
             "type": "string"
@@ -16751,7 +16881,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -16760,10 +16891,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -16802,7 +16943,12 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "replies_count": {
             "type": "integer",
@@ -16845,7 +16991,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -16854,10 +17001,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -16896,7 +17053,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string"
@@ -16912,7 +17070,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -16921,10 +17080,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -16992,7 +17161,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17001,10 +17171,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17072,7 +17252,8 @@
         "properties": {
           "source_recording_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -17087,7 +17268,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17096,10 +17278,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17223,10 +17415,16 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -17243,7 +17441,12 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "assignees": {
             "type": "array",
@@ -17309,7 +17512,8 @@
             "items": {
               "type": "integer",
               "format": "int64"
-            }
+            },
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -17377,14 +17581,16 @@
           },
           "category_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "subscriptions": {
             "type": "array",
             "items": {
               "type": "integer",
               "format": "int64"
-            }
+            },
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -17510,10 +17716,20 @@
             "type": "string"
           },
           "starts_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "ends_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "description": {
             "type": "string"
@@ -17526,17 +17742,20 @@
             }
           },
           "all_day": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "subscriptions": {
             "type": "array",
             "items": {
               "type": "integer",
               "format": "int64"
-            }
+            },
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -17579,7 +17798,8 @@
           },
           "person_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -17614,13 +17834,24 @@
             }
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "starts_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -17678,7 +17909,8 @@
             "items": {
               "type": "integer",
               "format": "int64"
-            }
+            },
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -17715,7 +17947,8 @@
             }
           },
           "active": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -17734,7 +17967,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "title": {
             "type": "string"
@@ -17770,7 +18004,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17779,10 +18014,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -17860,11 +18105,13 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "recording_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "action": {
             "type": "string"
@@ -17873,7 +18120,12 @@
             "$ref": "#/components/schemas/EventDetails"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "creator": {
             "$ref": "#/components/schemas/Person"
@@ -17939,7 +18191,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -17948,10 +18201,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -18022,7 +18285,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -18031,10 +18295,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -18341,7 +18615,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -18350,10 +18625,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -18635,7 +18920,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -18644,10 +18930,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -18726,7 +19022,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -18735,10 +19032,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -18799,7 +19106,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string"
@@ -18808,10 +19116,20 @@
             "type": "string"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -18827,11 +19145,13 @@
         "properties": {
           "source_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "target_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "position": {
             "type": "integer",
@@ -18848,7 +19168,8 @@
         "properties": {
           "column_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -18882,7 +19203,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "attachable_sgid": {
             "type": "string"
@@ -18931,10 +19253,20 @@
             }
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "admin": {
             "type": "boolean"
@@ -18988,7 +19320,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string",
@@ -19005,17 +19338,28 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string",
             "description": "active|archived|trashed"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "name": {
             "type": "string"
@@ -19087,7 +19431,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19109,7 +19454,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19118,10 +19464,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19188,7 +19544,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19197,10 +19554,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19234,7 +19601,12 @@
             "type": "string"
           },
           "group_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "parent": {
             "$ref": "#/components/schemas/RecordingParent"
@@ -19277,7 +19649,12 @@
             "type": "string"
           },
           "group_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -19300,13 +19677,24 @@
         "properties": {
           "reminder_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "remind_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "group_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "question": {
             "$ref": "#/components/schemas/Question"
@@ -19359,7 +19747,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19368,10 +19757,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19447,7 +19846,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19456,10 +19856,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19523,7 +19933,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string"
@@ -19543,7 +19954,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "title": {
             "type": "string"
@@ -19571,7 +19983,8 @@
         "properties": {
           "source_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "position": {
             "type": "integer",
@@ -19594,7 +20007,8 @@
           "parent_id": {
             "type": "integer",
             "description": "Optional todolist ID to move the todo to a different parent",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -19638,7 +20052,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19647,10 +20062,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19722,7 +20147,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19731,10 +20157,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19783,10 +20219,20 @@
             "type": "boolean"
           },
           "starts_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "ends_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "participants": {
             "type": "array",
@@ -19835,7 +20281,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string"
@@ -19853,7 +20300,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -19862,10 +20310,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -19990,16 +20448,27 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "name": {
             "type": "string"
@@ -20032,17 +20501,24 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "kind": {
             "type": "string"
           },
           "parent_recording_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "url": {
             "type": "string"
@@ -20075,7 +20551,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -20084,10 +20561,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20150,7 +20637,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string",
@@ -20160,10 +20648,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20216,10 +20714,20 @@
             "type": "string"
           },
           "starts_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "assignees": {
             "type": "array",
@@ -20266,7 +20774,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "name": {
             "type": "string"
@@ -20286,7 +20795,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "title": {
             "type": "string"
@@ -20314,7 +20824,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string",
@@ -20324,10 +20835,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20421,7 +20942,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -20430,10 +20952,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20543,7 +21075,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -20552,10 +21085,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20638,16 +21181,27 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -20719,7 +21273,12 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "assignee_ids": {
             "type": "array",
@@ -20740,7 +21299,12 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "assignees": {
             "type": "array",
@@ -20825,7 +21389,8 @@
           },
           "category_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -20903,11 +21468,13 @@
         "properties": {
           "notify_on_answer": {
             "type": "boolean",
-            "description": "Notify when someone answers"
+            "description": "Notify when someone answers",
+            "x-go-type-skip-optional-pointer": false
           },
           "digest_include_unanswered": {
             "type": "boolean",
-            "description": "Include unanswered in digest"
+            "description": "Include unanswered in digest",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -20932,7 +21499,8 @@
             "$ref": "#/components/schemas/QuestionSchedule"
           },
           "paused": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -20946,10 +21514,20 @@
             "type": "string"
           },
           "starts_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "ends_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "description": {
             "type": "string"
@@ -20962,10 +21540,12 @@
             }
           },
           "all_day": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -21036,7 +21616,8 @@
           },
           "person_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -21067,13 +21648,24 @@
             }
           },
           "notify": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "starts_on": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -21148,7 +21740,8 @@
             }
           },
           "active": {
-            "type": "boolean"
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -21160,7 +21753,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -21169,10 +21763,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -21282,7 +21886,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string"
@@ -21291,10 +21896,20 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "title": {
             "type": "string"
@@ -21369,16 +21984,27 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "active": {
             "type": "boolean"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "payload_url": {
             "type": "string"
@@ -21417,7 +22043,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "url": {
             "type": "string"
@@ -21435,7 +22062,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },
@@ -21444,10 +22072,16 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "request": {
             "$ref": "#/components/schemas/WebhookDeliveryRequest"
@@ -21489,14 +22123,20 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "kind": {
             "type": "string"
           },
           "details": {},
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "recording": {
             "$ref": "#/components/schemas/Recording"

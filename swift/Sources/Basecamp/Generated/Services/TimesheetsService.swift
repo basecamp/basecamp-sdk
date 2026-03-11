@@ -5,11 +5,18 @@ public struct ForProjectTimesheetOptions: Sendable {
     public var from: String?
     public var to: String?
     public var personId: Int?
+    public var maxItems: Int?
 
-    public init(from: String? = nil, to: String? = nil, personId: Int? = nil) {
+    public init(
+        from: String? = nil,
+        to: String? = nil,
+        personId: Int? = nil,
+        maxItems: Int? = nil
+    ) {
         self.from = from
         self.to = to
         self.personId = personId
+        self.maxItems = maxItems
     }
 }
 
@@ -17,11 +24,18 @@ public struct ForRecordingTimesheetOptions: Sendable {
     public var from: String?
     public var to: String?
     public var personId: Int?
+    public var maxItems: Int?
 
-    public init(from: String? = nil, to: String? = nil, personId: Int? = nil) {
+    public init(
+        from: String? = nil,
+        to: String? = nil,
+        personId: Int? = nil,
+        maxItems: Int? = nil
+    ) {
         self.from = from
         self.to = to
         self.personId = personId
+        self.maxItems = maxItems
     }
 }
 
@@ -49,7 +63,7 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func forProject(projectId: Int, options: ForProjectTimesheetOptions? = nil) async throws -> [TimesheetEntry] {
+    public func forProject(projectId: Int, options: ForProjectTimesheetOptions? = nil) async throws -> ListResult<TimesheetEntry> {
         var queryItems: [URLQueryItem] = []
         if let from = options?.from {
             queryItems.append(URLQueryItem(name: "from", value: from))
@@ -60,15 +74,16 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
         if let personId = options?.personId {
             queryItems.append(URLQueryItem(name: "person_id", value: String(personId)))
         }
-        return try await request(
+        return try await requestPaginated(
             OperationInfo(service: "Timesheets", operation: "GetProjectTimesheet", resourceType: "project_timesheet", isMutation: false, projectId: projectId),
-            method: "GET",
-            path: "/projects/\(projectId)/timesheet.json" + queryString(queryItems),
+            path: "/projects/\(projectId)/timesheet.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "GetProjectTimesheet")
         )
     }
 
-    public func forRecording(recordingId: Int, options: ForRecordingTimesheetOptions? = nil) async throws -> [TimesheetEntry] {
+    public func forRecording(recordingId: Int, options: ForRecordingTimesheetOptions? = nil) async throws -> ListResult<TimesheetEntry> {
         var queryItems: [URLQueryItem] = []
         if let from = options?.from {
             queryItems.append(URLQueryItem(name: "from", value: from))
@@ -79,10 +94,11 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
         if let personId = options?.personId {
             queryItems.append(URLQueryItem(name: "person_id", value: String(personId)))
         }
-        return try await request(
+        return try await requestPaginated(
             OperationInfo(service: "Timesheets", operation: "GetRecordingTimesheet", resourceType: "recording_timesheet", isMutation: false, resourceId: recordingId),
-            method: "GET",
-            path: "/recordings/\(recordingId)/timesheet.json" + queryString(queryItems),
+            path: "/recordings/\(recordingId)/timesheet.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "GetRecordingTimesheet")
         )
     }

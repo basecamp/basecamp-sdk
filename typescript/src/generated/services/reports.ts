@@ -13,6 +13,10 @@ import type { PaginationOptions } from "../../pagination.js";
 // Types
 // =============================================================================
 
+/** TimelineEvent entity from the Basecamp API. */
+export type TimelineEvent = components["schemas"]["TimelineEvent"];
+/** Person entity from the Basecamp API. */
+export type Person = components["schemas"]["Person"];
 
 /**
  * Options for progress.
@@ -38,6 +42,12 @@ export interface AssignedReportOptions {
   groupBy?: string;
 }
 
+/**
+ * Options for personProgress.
+ */
+export interface PersonProgressReportOptions extends PaginationOptions {
+}
+
 
 // =============================================================================
 // Service
@@ -51,14 +61,14 @@ export class ReportsService extends BaseService {
   /**
    * Get account-wide activity feed (progress report)
    * @param options - Optional query parameters
-   * @returns All results across all pages, with .meta.totalCount
+   * @returns All TimelineEvent across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.reports.progress();
    * ```
    */
-  async progress(options?: ProgressReportOptions): Promise<components["schemas"]["GetProgressReportResponseContent"]> {
+  async progress(options?: ProgressReportOptions): Promise<ListResult<TimelineEvent>> {
     return this.requestPaginated(
       {
         service: "Reports",
@@ -159,15 +169,16 @@ export class ReportsService extends BaseService {
   /**
    * Get a person's activity timeline
    * @param personId - The person ID
-   * @returns The person_progress
+   * @param options - Optional query parameters
+   * @returns Wrapper with events as ListResult<TimelineEvent> across all pages
    *
    * @example
    * ```ts
    * const result = await client.reports.personProgress(123);
    * ```
    */
-  async personProgress(personId: number): Promise<components["schemas"]["GetPersonProgressResponseContent"]> {
-    const response = await this.request(
+  async personProgress(personId: number, options?: PersonProgressReportOptions): Promise<{ person: Person; events: ListResult<TimelineEvent> }> {
+    return this.requestPaginatedWrapped<"events", TimelineEvent>(
       {
         service: "Reports",
         operation: "GetPersonProgress",
@@ -176,12 +187,12 @@ export class ReportsService extends BaseService {
         resourceId: personId,
       },
       () =>
-        this.client.GET("/reports/users/progress/{personId}", {
+        this.client.GET("/reports/users/progress/{personId}.json", {
           params: {
             path: { personId },
           },
         })
-    );
-    return response;
+      , "events", options
+    ) as unknown as { person: Person; events: ListResult<TimelineEvent> };
   }
 }

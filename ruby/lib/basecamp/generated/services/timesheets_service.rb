@@ -12,10 +12,11 @@ module Basecamp
       # @param from [String, nil] from
       # @param to [String, nil] to
       # @param person_id [Integer, nil] person id
-      # @return [Hash] response data
+      # @return [Enumerator<Hash>] paginated results
       def for_project(project_id:, from: nil, to: nil, person_id: nil)
-        with_operation(service: "timesheets", operation: "for_project", is_mutation: false, project_id: project_id) do
-          http_get("/projects/#{project_id}/timesheet.json", params: compact_params(from: from, to: to, person_id: person_id)).json
+        wrap_paginated(service: "timesheets", operation: "for_project", is_mutation: false, project_id: project_id) do
+          params = compact_params(from: from, to: to, person_id: person_id)
+          paginate("/projects/#{project_id}/timesheet.json", params: params)
         end
       end
 
@@ -24,10 +25,11 @@ module Basecamp
       # @param from [String, nil] from
       # @param to [String, nil] to
       # @param person_id [Integer, nil] person id
-      # @return [Hash] response data
+      # @return [Enumerator<Hash>] paginated results
       def for_recording(recording_id:, from: nil, to: nil, person_id: nil)
-        with_operation(service: "timesheets", operation: "for_recording", is_mutation: false, resource_id: recording_id) do
-          http_get("/recordings/#{recording_id}/timesheet.json", params: compact_params(from: from, to: to, person_id: person_id)).json
+        wrap_paginated(service: "timesheets", operation: "for_recording", is_mutation: false, resource_id: recording_id) do
+          params = compact_params(from: from, to: to, person_id: person_id)
+          paginate("/recordings/#{recording_id}/timesheet.json", params: params)
         end
       end
 

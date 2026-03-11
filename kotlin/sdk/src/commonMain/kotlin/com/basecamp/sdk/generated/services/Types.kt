@@ -346,16 +346,20 @@ data class CreateProjectFromTemplateBody(
 data class GetProjectTimesheetOptions(
     val from: String? = null,
     val to: String? = null,
-    val personId: Long? = null
+    val personId: Long? = null,
+    val maxItems: Int? = null
 ) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
 /** Options for GetRecordingTimesheet. */
 data class GetRecordingTimesheetOptions(
     val from: String? = null,
     val to: String? = null,
-    val personId: Long? = null
+    val personId: Long? = null,
+    val maxItems: Int? = null
 ) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
 /** Request body for CreateTimesheetEntry. */

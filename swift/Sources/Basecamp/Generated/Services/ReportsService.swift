@@ -9,6 +9,14 @@ public struct AssignedReportOptions: Sendable {
     }
 }
 
+public struct PersonProgressReportOptions: Sendable {
+    public var maxItems: Int?
+
+    public init(maxItems: Int? = nil) {
+        self.maxItems = maxItems
+    }
+}
+
 public struct ProgressReportOptions: Sendable {
     public var maxItems: Int?
 
@@ -25,6 +33,12 @@ public struct UpcomingReportOptions: Sendable {
         self.windowStartsOn = windowStartsOn
         self.windowEndsOn = windowEndsOn
     }
+}
+
+
+public struct PersonProgressResult: Sendable {
+    public let events: ListResult<TimelineEvent>
+    public let person: Person
 }
 
 
@@ -51,13 +65,19 @@ public final class ReportsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func personProgress(personId: Int) async throws -> GetPersonProgressResponseContent {
-        return try await request(
+    public func personProgress(personId: Int, options: PersonProgressReportOptions? = nil) async throws -> PersonProgressResult {
+        let (wrapperData, items): (Data, ListResult<TimelineEvent>) = try await requestPaginatedWrapped(
             OperationInfo(service: "Reports", operation: "GetPersonProgress", resourceType: "person_progress", isMutation: false, resourceId: personId),
-            method: "GET",
-            path: "/reports/users/progress/\(personId)",
+            path: "/reports/users/progress/\(personId).json",
+            itemsKey: "events",
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "GetPersonProgress")
         )
+        struct Wrapper: Decodable {
+            let person: Person
+        }
+        let wrapper = try Self.decoder.decode(Wrapper.self, from: wrapperData)
+        return PersonProgressResult(events: items, person: wrapper.person)
     }
 
     public func progress(options: ProgressReportOptions? = nil) async throws -> ListResult<TimelineEvent> {

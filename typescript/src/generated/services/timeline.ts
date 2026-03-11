@@ -13,6 +13,8 @@ import type { PaginationOptions } from "../../pagination.js";
 // Types
 // =============================================================================
 
+/** TimelineEvent entity from the Basecamp API. */
+export type TimelineEvent = components["schemas"]["TimelineEvent"];
 
 /**
  * Options for projectTimeline.
@@ -34,14 +36,14 @@ export class TimelineService extends BaseService {
    * Get project timeline
    * @param projectId - The project ID
    * @param options - Optional query parameters
-   * @returns All results across all pages, with .meta.totalCount
+   * @returns All TimelineEvent across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.timeline.projectTimeline(123);
    * ```
    */
-  async projectTimeline(projectId: number, options?: ProjectTimelineTimelineOptions): Promise<components["schemas"]["GetProjectTimelineResponseContent"]> {
+  async projectTimeline(projectId: number, options?: ProjectTimelineTimelineOptions): Promise<ListResult<TimelineEvent>> {
     return this.requestPaginated(
       {
         service: "Timeline",

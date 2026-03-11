@@ -1651,7 +1651,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/reports/users/progress/{personId}": {
+    "/reports/users/progress/{personId}.json": {
         parameters: {
             query?: never;
             header?: never;

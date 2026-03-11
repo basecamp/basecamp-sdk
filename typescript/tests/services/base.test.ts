@@ -32,6 +32,14 @@ class TestService extends BaseService {
       (this.client as any).GET(path)
     , opts);
   }
+
+  async testPaginatedWrappedGet<K extends string, TItem>(
+    path: string, info: OperationInfo, key: K, opts?: PaginationOptions,
+  ): Promise<Omit<Record<string, unknown>, K> & Record<K, ListResult<TItem>>> {
+    return this.requestPaginatedWrapped<K, TItem>(info, () =>
+      (this.client as any).GET(path)
+    , key, opts);
+  }
 }
 
 describe("BaseService", () => {
@@ -447,6 +455,69 @@ describe("BaseService", () => {
 
       expect(result.length).toBe(2);
       expect(result.meta.truncated).toBe(true);
+    });
+  });
+
+  describe("requestPaginatedWrapped", () => {
+    const listInfo: OperationInfo = {
+      service: "Test",
+      operation: "ListWrapped",
+      resourceType: "test",
+      isMutation: false,
+    };
+
+    it("should accumulate items across pages and preserve wrapper fields", async () => {
+      server.use(
+        http.get(`${BASE_URL}/test-wrapped`, ({ request }) => {
+          const url = new URL(request.url);
+          const page = url.searchParams.get("page");
+
+          if (page === "2") {
+            return HttpResponse.json({
+              person: { id: 456, name: "Jane Doe" },
+              events: [{ id: 3, action: "updated" }],
+            });
+          }
+
+          return HttpResponse.json({
+            person: { id: 456, name: "Jane Doe" },
+            events: [{ id: 1, action: "created" }, { id: 2, action: "completed" }],
+          }, {
+            headers: {
+              "X-Total-Count": "3",
+              Link: `<${BASE_URL}/test-wrapped?page=2>; rel="next"`,
+            },
+          });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        hooks: mockHooks,
+      });
+      const wrappedService = new TestService(client.raw, mockHooks, async (url: string) => {
+        return fetch(url, {
+          headers: { Authorization: "Bearer test-token", Accept: "application/json" },
+        });
+      });
+
+      const result = await wrappedService.testPaginatedWrappedGet<"events", { id: number; action: string }>(
+        "/test-wrapped", listInfo, "events"
+      );
+
+      // Wrapper field preserved from page 1
+      expect((result as any).person).toEqual({ id: 456, name: "Jane Doe" });
+
+      // Events accumulated across both pages
+      const events = result.events;
+      expect(events).toBeInstanceOf(ListResult);
+      expect(events.length).toBe(3);
+      expect(events[0]).toEqual({ id: 1, action: "created" });
+      expect(events[1]).toEqual({ id: 2, action: "completed" });
+      expect(events[2]).toEqual({ id: 3, action: "updated" });
+      expect(events.meta.totalCount).toBe(3);
+      expect(events.meta.truncated).toBe(false);
     });
   });
 

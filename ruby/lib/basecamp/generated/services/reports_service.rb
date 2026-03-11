@@ -47,8 +47,8 @@ module Basecamp
       # @param person_id [Integer] person id ID
       # @return [Hash] response data
       def person_progress(person_id:)
-        with_operation(service: "reports", operation: "person_progress", is_mutation: false, resource_id: person_id) do
-          http_get("/reports/users/progress/#{person_id}").json
+        wrap_paginated_wrapped(key: "events", service: "reports", operation: "person_progress", is_mutation: false, resource_id: person_id) do
+          paginate_wrapped("/reports/users/progress/#{person_id}.json", key: "events")
         end
       end
     end
