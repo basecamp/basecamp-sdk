@@ -1,0 +1,25 @@
+go/pkg/basecamp/reports_test.go
+  c80b430a7276af42 170
+go/pkg/basecamp/boosts.go
+  c80b430a7276af42 31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "f357a29c209413988d86f02c5e41c42ac1521fa9",
+  "prompts": {
+    "c80b430a7276af42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b68ca9e5-50a5-4352-9a55-52b52a3a9a5d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 2,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
