@@ -31,17 +31,17 @@
     "tags": ["path", "reports"]
   },
   {
-    "name": "Person progress uses /reports/users/ path",
-    "description": "Verifies that GetPersonProgress constructs the URL path using /reports/users/progress/{personId}",
+    "name": "Person progress uses /reports/users/ path with .json",
+    "description": "Verifies that GetPersonProgress constructs the URL path using /reports/users/progress/{personId}.json",
     "operation": "GetPersonProgress",
     "method": "GET",
-    "path": "/reports/users/progress/{personId}",
+    "path": "/reports/users/progress/{personId}.json",
     "pathParams": {"personId": 45678},
     "mockResponses": [
       {"status": 200, "body": {"person": {"id": 45678, "name": "Test"}, "events": []}}
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/reports/users/progress/45678"},
+      {"type": "requestPath", "expected": "/999/reports/users/progress/45678.json"},
       {"type": "noError"}
     ],
     "tags": ["path", "reports"]

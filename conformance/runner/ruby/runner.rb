@@ -107,7 +107,7 @@ class OperationMapper
     when "GetProjectTimesheet"
       @account.timesheets.for_project(
         project_id: path_params["projectId"]
-      )
+      ).to_a
     when "UpdateTimesheetEntry"
       @account.timesheets.update(
         entry_id: path_params["entryId"],

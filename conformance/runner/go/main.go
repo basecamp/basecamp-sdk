@@ -445,7 +445,7 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 
 	case "ListWebhooks":
 		bucketID := getInt64Param(tc.PathParams, "bucketId")
-		_, err := account.Webhooks().List(ctx, bucketID)
+		_, err := account.Webhooks().List(ctx, bucketID, nil)
 		return operationResult{err: err}
 
 	case "CreateWebhook":
