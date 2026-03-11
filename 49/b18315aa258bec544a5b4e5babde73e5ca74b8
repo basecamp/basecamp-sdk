@@ -1,0 +1,27 @@
+scripts/enhance-openapi-go-types.sh
+  15e765d5774cb50c 8,103-119
+spec/basecamp.smithy
+  15e765d5774cb50c 2895-2896
+go/pkg/basecamp/vaults.go
+  15e765d5774cb50c 153-166,1137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "49b18315aa258bec544a5b4e5babde73e5ca74b8",
+  "prompts": {
+    "15e765d5774cb50c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73a48b77-9240-440c-9825-2e859006a62c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 21,
+      "total_deletions": 17,
+      "accepted_lines": 35,
+      "overriden_lines": 0
+    }
+  }
+}
