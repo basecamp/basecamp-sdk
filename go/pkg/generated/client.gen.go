@@ -1386,31 +1386,31 @@ type ScheduleAttributes struct {
 
 // ScheduleEntry defines model for ScheduleEntry.
 type ScheduleEntry struct {
-	AllDay           bool            `json:"all_day,omitempty"`
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	BoostsCount      int32           `json:"boosts_count,omitempty"`
-	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	CommentsCount    int32           `json:"comments_count,omitempty"`
-	CommentsUrl      string          `json:"comments_url,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	Description      string          `json:"description,omitempty"`
-	EndsAt           time.Time       `json:"ends_at,omitempty"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Participants     []Person        `json:"participants,omitempty"`
-	StartsAt         time.Time       `json:"starts_at,omitempty"`
-	Status           string          `json:"status"`
-	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Summary          string          `json:"summary"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AllDay           bool               `json:"all_day,omitempty"`
+	AppUrl           string             `json:"app_url"`
+	BookmarkUrl      string             `json:"bookmark_url,omitempty"`
+	BoostsCount      int32              `json:"boosts_count,omitempty"`
+	BoostsUrl        string             `json:"boosts_url,omitempty"`
+	Bucket           TodoBucket         `json:"bucket"`
+	CommentsCount    int32              `json:"comments_count,omitempty"`
+	CommentsUrl      string             `json:"comments_url,omitempty"`
+	CreatedAt        time.Time          `json:"created_at"`
+	Creator          Person             `json:"creator"`
+	Description      string             `json:"description,omitempty"`
+	EndsAt           types.FlexibleTime `json:"ends_at,omitempty"`
+	Id               int64              `json:"id"`
+	InheritsStatus   bool               `json:"inherits_status"`
+	Parent           RecordingParent    `json:"parent"`
+	Participants     []Person           `json:"participants,omitempty"`
+	StartsAt         types.FlexibleTime `json:"starts_at,omitempty"`
+	Status           string             `json:"status"`
+	SubscriptionUrl  string             `json:"subscription_url,omitempty"`
+	Summary          string             `json:"summary"`
+	Title            string             `json:"title"`
+	Type             string             `json:"type"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	Url              string             `json:"url"`
+	VisibleToClients bool               `json:"visible_to_clients"`
 }
 
 // SearchMetadata defines model for SearchMetadata.

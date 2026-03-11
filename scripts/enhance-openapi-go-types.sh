@@ -4,6 +4,7 @@
 #
 # Type mappings:
 #   - _at fields (created_at, updated_at, etc.) → time.Time (full timestamps)
+#   - ScheduleEntry starts_at/ends_at → types.FlexibleTime (handles date-only for all-day events)
 #   - _on fields (due_on, starts_on, etc.) → types.Date (date-only)
 #   - width/height fields → types.FlexInt (accepts float-encoded integers from API)
 #   - id fields → keep as pointers to distinguish nil from zero
@@ -117,6 +118,22 @@ walk(
     "x-go-type-skip-optional-pointer": true
   }
 )
+|
+# Fifth pass: override starts_at/ends_at on ScheduleEntry response to use types.FlexibleTime
+# The API returns date-only strings ("2006-01-02") for all-day schedule entries,
+# which time.Time cannot parse. FlexibleTime handles RFC3339, RFC3339Nano, and date-only.
+# Only the response schema needs this; request schemas keep time.Time since we always send RFC3339.
+.components.schemas.ScheduleEntry.properties.starts_at += {
+  "x-go-type": "types.FlexibleTime",
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+  "x-go-type-skip-optional-pointer": true
+}
+|
+.components.schemas.ScheduleEntry.properties.ends_at += {
+  "x-go-type": "types.FlexibleTime",
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+  "x-go-type-skip-optional-pointer": true
+}
 ' "$INPUT_FILE" > "${OUTPUT_FILE}.tmp"
 
 mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
@@ -129,8 +146,11 @@ id_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == fa
 nullable_bool_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("RequestContent$")) | .value.properties // {} | to_entries[] | select(.value.type == "boolean" and .value["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
 subscription_ptr_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("^Create.*RequestContent$")) | .value.properties // {} | .subscriptions // empty | select(.["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
 
+flexible_time_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.FlexibleTime")] | length' "$OUTPUT_FILE")
+
 echo "Enhanced OpenAPI spec with Go type extensions:"
 echo "  Timestamp fields (time.Time): $timestamp_count"
+echo "  FlexibleTime fields (types.FlexibleTime): $flexible_time_count"
 echo "  Date fields (types.Date): $date_count"
 echo "  Dimension fields (types.FlexInt): $flexint_count"
 echo "  Id fields (keeping pointers): $id_count"

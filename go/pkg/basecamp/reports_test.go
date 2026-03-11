@@ -3,6 +3,8 @@ package basecamp
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 func TestAssignedTodosResponse_Unmarshal(t *testing.T) {
@@ -150,29 +152,64 @@ func TestAssignable_Unmarshal(t *testing.T) {
 func TestUpcomingScheduleResponse_Unmarshal(t *testing.T) {
 	data := `{
 		"schedule_entries": [
-			{"id": 1, "summary": "Entry 1"}
+			{"id": 1, "summary": "Entry 1", "starts_at": "2022-11-01T10:00:00.000Z", "ends_at": "2022-11-01T11:00:00.000Z"},
+			{"id": 4, "summary": "All Day", "starts_at": "2022-11-15", "ends_at": "2022-11-15", "all_day": true}
 		],
 		"recurring_schedule_entry_occurrences": [
-			{"id": 2, "summary": "Recurring Entry"}
+			{"id": 2, "summary": "Recurring Entry", "starts_at": "2022-12-01T09:00:00Z", "ends_at": "2022-12-01T10:00:00Z"}
 		],
 		"assignables": [
 			{"id": 3, "title": "Assignable 1"}
 		]
 	}`
 
-	var resp UpcomingScheduleResponse
-	if err := json.Unmarshal([]byte(data), &resp); err != nil {
+	// Unmarshal through the generated type (production path) to test
+	// FlexibleTime parsing of date-only strings.
+	var genResp generated.GetUpcomingScheduleResponseContent
+	if err := json.Unmarshal([]byte(data), &genResp); err != nil {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
 
-	if len(resp.ScheduleEntries) != 1 {
-		t.Errorf("expected 1 schedule entry, got %d", len(resp.ScheduleEntries))
+	resp := &UpcomingScheduleResponse{}
+	for _, gs := range genResp.ScheduleEntries {
+		resp.ScheduleEntries = append(resp.ScheduleEntries, scheduleEntryFromGenerated(gs))
+	}
+	for _, gs := range genResp.RecurringScheduleEntryOccurrences {
+		resp.RecurringOccurrences = append(resp.RecurringOccurrences, scheduleEntryFromGenerated(gs))
+	}
+	for _, ga := range genResp.Assignables {
+		resp.Assignables = append(resp.Assignables, assignableFromGenerated(ga))
+	}
+
+	if len(resp.ScheduleEntries) != 2 {
+		t.Errorf("expected 2 schedule entries, got %d", len(resp.ScheduleEntries))
 	}
 	if len(resp.RecurringOccurrences) != 1 {
 		t.Errorf("expected 1 recurring occurrence, got %d", len(resp.RecurringOccurrences))
 	}
 	if len(resp.Assignables) != 1 {
 		t.Errorf("expected 1 assignable, got %d", len(resp.Assignables))
+	}
+
+	// Verify RFC3339 datetime entry
+	e1 := resp.ScheduleEntries[0]
+	if e1.StartsAt.IsZero() {
+		t.Error("expected StartsAt to be non-zero for datetime entry")
+	}
+	if e1.StartsAt.Hour() != 10 {
+		t.Errorf("expected StartsAt hour 10, got %d", e1.StartsAt.Hour())
+	}
+
+	// Verify date-only entry
+	e2 := resp.ScheduleEntries[1]
+	if e2.StartsAt.IsZero() {
+		t.Error("expected StartsAt to be non-zero for date-only entry")
+	}
+	if e2.StartsAt.Year() != 2022 || e2.StartsAt.Month() != 11 || e2.StartsAt.Day() != 15 {
+		t.Errorf("expected StartsAt 2022-11-15, got %v", e2.StartsAt)
+	}
+	if e2.EndsAt.Year() != 2022 || e2.EndsAt.Month() != 11 || e2.EndsAt.Day() != 15 {
+		t.Errorf("expected EndsAt 2022-11-15, got %v", e2.EndsAt)
 	}
 }
 

@@ -585,8 +585,8 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 		SubscriptionURL:  ge.SubscriptionUrl,
 		CommentsURL:      ge.CommentsUrl,
 		CommentsCount:    int(ge.CommentsCount),
-		StartsAt:         ge.StartsAt,
-		EndsAt:           ge.EndsAt,
+		StartsAt:         ge.StartsAt.Time,
+		EndsAt:           ge.EndsAt.Time,
 		AllDay:           ge.AllDay,
 		Description:      ge.Description,
 	}
