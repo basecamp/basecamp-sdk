@@ -32,7 +32,7 @@ type TimelineEvent struct {
 // TimelineListOptions specifies options for listing timeline events.
 type TimelineListOptions struct {
 	// Limit is the maximum number of events to return.
-	// If 0, uses DefaultTimelineLimit (100). Use -1 for unlimited.
+	// If 0, uses DefaultTimelineLimit (100). Any negative value means unlimited.
 	Limit int
 
 	// Page, if positive, disables auto-pagination and returns only the first page.
@@ -70,7 +70,7 @@ func NewTimelineService(client *AccountClient) *TimelineService {
 // This shows recent activity across all projects.
 //
 // Pagination options:
-//   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, -1 = unlimited)
+//   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, negative = unlimited)
 //   - Page: if non-zero, disables pagination and returns first page only
 //
 // The returned TimelineListResult includes pagination metadata (TotalCount from
@@ -143,7 +143,7 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 // ProjectTimeline returns the activity timeline for a specific project.
 //
 // Pagination options:
-//   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, -1 = unlimited)
+//   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, negative = unlimited)
 //   - Page: if non-zero, disables pagination and returns first page only
 //
 // The returned TimelineListResult includes pagination metadata (TotalCount from
@@ -220,7 +220,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 // arrays.
 //
 // Pagination options:
-//   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, -1 = unlimited)
+//   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, negative = unlimited)
 //   - Page: if non-zero, disables pagination and returns first page only
 //
 // The returned PersonProgressResult includes pagination metadata (TotalCount from

@@ -486,6 +486,66 @@ func TestProjectTimeline_WithLimit(t *testing.T) {
 	}
 }
 
+func TestProjectTimeline_DefaultLimitCaps(t *testing.T) {
+	h := &timelinePaginationHandler{pageSize: 50, totalItems: 150, totalCount: 150}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	svc := newTestTimelineService(server.URL)
+	result, err := svc.ProjectTimeline(t.Context(), 999, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Events) != 100 {
+		t.Errorf("expected 100 events (default limit), got %d", len(result.Events))
+	}
+	if !result.Meta.Truncated {
+		t.Error("expected Truncated true when capped at default limit")
+	}
+}
+
+func TestProjectTimeline_ExplicitZeroLimitUsesDefault(t *testing.T) {
+	h := &timelinePaginationHandler{pageSize: 50, totalItems: 150, totalCount: 150}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	svc := newTestTimelineService(server.URL)
+	result, err := svc.ProjectTimeline(t.Context(), 999, &TimelineListOptions{Limit: 0})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Events) != 100 {
+		t.Errorf("expected 100 events (Limit:0 = default), got %d", len(result.Events))
+	}
+	if !result.Meta.Truncated {
+		t.Error("expected Truncated true when capped at default limit")
+	}
+}
+
+func TestProjectTimeline_UnlimitedFetchesAll(t *testing.T) {
+	h := &timelinePaginationHandler{pageSize: 50, totalItems: 150, totalCount: 150}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	svc := newTestTimelineService(server.URL)
+	result, err := svc.ProjectTimeline(t.Context(), 999, &TimelineListOptions{Limit: -1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Events) != 150 {
+		t.Errorf("expected 150 events (unlimited), got %d", len(result.Events))
+	}
+	if result.Meta.Truncated {
+		t.Error("expected Truncated false when all events fetched")
+	}
+}
+
 func TestPersonProgress_NilOpts_FollowsPagination(t *testing.T) {
 	h := &personProgressPaginationHandler{pageSize: 5, totalItems: 12, totalCount: 12}
 	server := httptest.NewServer(h)
@@ -546,6 +606,89 @@ func TestPersonProgress_WithLimit(t *testing.T) {
 
 	if len(result.Events) != 3 {
 		t.Errorf("expected 3 events, got %d", len(result.Events))
+	}
+}
+
+func TestPersonProgress_DefaultLimitCaps(t *testing.T) {
+	h := &personProgressPaginationHandler{pageSize: 50, totalItems: 150, totalCount: 150}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	svc := newTestTimelineService(server.URL)
+	result, err := svc.PersonProgress(t.Context(), 42, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Events) != 100 {
+		t.Errorf("expected 100 events (default limit), got %d", len(result.Events))
+	}
+	if !result.Meta.Truncated {
+		t.Error("expected Truncated true when capped at default limit")
+	}
+	if result.Person == nil || result.Person.Name != "Test Person" {
+		t.Error("expected Person preserved from page 1")
+	}
+}
+
+func TestPersonProgress_ExplicitZeroLimitUsesDefault(t *testing.T) {
+	h := &personProgressPaginationHandler{pageSize: 50, totalItems: 150, totalCount: 150}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	svc := newTestTimelineService(server.URL)
+	result, err := svc.PersonProgress(t.Context(), 42, &TimelineListOptions{Limit: 0})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Events) != 100 {
+		t.Errorf("expected 100 events (Limit:0 = default), got %d", len(result.Events))
+	}
+	if !result.Meta.Truncated {
+		t.Error("expected Truncated true when capped at default limit")
+	}
+}
+
+func TestPersonProgress_UnlimitedFetchesAll(t *testing.T) {
+	h := &personProgressPaginationHandler{pageSize: 50, totalItems: 150, totalCount: 150}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	svc := newTestTimelineService(server.URL)
+	result, err := svc.PersonProgress(t.Context(), 42, &TimelineListOptions{Limit: -1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Events) != 150 {
+		t.Errorf("expected 150 events (unlimited), got %d", len(result.Events))
+	}
+	if result.Meta.Truncated {
+		t.Error("expected Truncated false when all events fetched")
+	}
+}
+
+func TestProgress_ExplicitZeroLimitUsesDefault(t *testing.T) {
+	h := &timelinePaginationHandler{pageSize: 50, totalItems: 150, totalCount: 150}
+	server := httptest.NewServer(h)
+	defer server.Close()
+	h.serverURL = server.URL
+
+	svc := newTestTimelineService(server.URL)
+	result, err := svc.Progress(t.Context(), &TimelineListOptions{Limit: 0})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Events) != 100 {
+		t.Errorf("expected 100 events (Limit:0 = default), got %d", len(result.Events))
+	}
+	if !result.Meta.Truncated {
+		t.Error("expected Truncated true when capped at default limit")
 	}
 }
 
