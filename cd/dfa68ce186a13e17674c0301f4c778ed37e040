@@ -1,0 +1,53 @@
+go/pkg/basecamp/webhooks.go
+  8bf116e1ac89d87d 18,99
+go/pkg/basecamp/vaults.go
+  8bf116e1ac89d87d 20,40,60,256,461,694,886,902
+go/pkg/basecamp/client_approvals.go
+  8bf116e1ac89d87d 18,90
+go/pkg/basecamp/timeline_test.go
+  8bf116e1ac89d87d 102-104,492-551,615-697
+go/pkg/basecamp/people.go
+  8bf116e1ac89d87d 48,76,215,291
+go/pkg/basecamp/client_replies.go
+  8bf116e1ac89d87d 18,63
+go/pkg/basecamp/campfires.go
+  8bf116e1ac89d87d 26,36,46,181,294,488,632,649,696-698,700
+go/pkg/basecamp/timeline.go
+  8bf116e1ac89d87d 35,73-74,146-147,223-224
+go/pkg/basecamp/search.go
+  8bf116e1ac89d87d 61,80
+go/pkg/basecamp/boosts.go
+  8bf116e1ac89d87d 18,53,132
+go/pkg/basecamp/message_types.go
+  8bf116e1ac89d87d 18,69
+go/pkg/basecamp/client_correspondences.go
+  8bf116e1ac89d87d 18,67
+go/pkg/basecamp/templates.go
+  8bf116e1ac89d87d 18,86
+go/pkg/basecamp/todolist_groups.go
+  8bf116e1ac89d87d 18,83
+go/pkg/basecamp/timesheet.go
+  8bf116e1ac89d87d 64,139,224
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ServiceEmitter.kt
+  8bf116e1ac89d87d 400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "cddfa68ce186a13e17674c0301f4c778ed37e040",
+  "prompts": {
+    "8bf116e1ac89d87d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19b421e2-9b2d-442a-b828-9de25607361d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 54,
+      "total_deletions": 47,
+      "accepted_lines": 200,
+      "overriden_lines": 0
+    }
+  }
+}
