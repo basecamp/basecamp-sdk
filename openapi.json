@@ -23843,12 +23843,22 @@
             "format": "int64"
           },
           "width": {
-            "type": "number",
-            "format": "double"
+            "type": "integer",
+            "format": "int32",
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "height": {
-            "type": "number",
-            "format": "double"
+            "type": "integer",
+            "format": "int32",
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "download_url": {
             "type": "string"
