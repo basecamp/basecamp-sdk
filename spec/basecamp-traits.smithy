@@ -48,6 +48,11 @@ structure basecampPagination {
 
     /// Maximum items per page (server default)
     maxPageSize: Integer
+
+    /// Key within the response object containing the paginated array.
+    /// When present, the response is a wrapper object (not a bare array)
+    /// and the paginated items live under this key.
+    key: String
 }
 
 /// Idempotency semantics for Basecamp write operations.

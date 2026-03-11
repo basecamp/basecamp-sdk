@@ -8648,6 +8648,11 @@
         "tags": [
           "Schedule"
         ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -12067,6 +12072,11 @@
         "tags": [
           "Schedule"
         ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -13029,7 +13039,7 @@
         }
       }
     },
-    "/{accountId}/reports/users/progress/{personId}": {
+    "/{accountId}/reports/users/progress/{personId}.json": {
       "get": {
         "description": "Get a person's activity timeline",
         "operationId": "GetPersonProgress",
@@ -13116,6 +13126,12 @@
               }
             }
           }
+        },
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50,
+          "key": "events"
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,

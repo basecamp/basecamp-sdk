@@ -2436,6 +2436,7 @@ structure GetTimesheetReportOutput {
 /// Get timesheet for a specific project
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/projects/{projectId}/timesheet.json")
 operation GetProjectTimesheet {
   input: GetProjectTimesheetInput
@@ -2470,6 +2471,7 @@ structure GetProjectTimesheetOutput {
 /// Get timesheet for a specific recording
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/recordings/{recordingId}/timesheet.json")
 operation GetRecordingTimesheet {
   input: GetRecordingTimesheetInput
@@ -6788,6 +6790,7 @@ structure GetProjectTimelineOutput {
 /// Get a person's activity timeline
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50, key: "events")
 @http(method: "GET", uri: "/{accountId}/reports/users/progress/{personId}")
 operation GetPersonProgress {
   input: GetPersonProgressInput

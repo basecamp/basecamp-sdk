@@ -12089,7 +12089,7 @@ func NewGetPersonProgressRequest(server string, accountId string, personId int64
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/reports/users/progress/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/reports/users/progress/%s.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}

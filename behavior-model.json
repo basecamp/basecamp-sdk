@@ -782,6 +782,10 @@
     },
     "GetPersonProgress": {
       "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -850,6 +854,10 @@
     },
     "GetProjectTimesheet": {
       "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -914,6 +922,10 @@
     },
     "GetRecordingTimesheet": {
       "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,

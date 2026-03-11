@@ -134,6 +134,14 @@ walk(
   "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
   "x-go-type-skip-optional-pointer": true
 }
+|
+# Sixth pass: append .json to path keys where Smithy cannot express it
+# (labeled terminal segments like /{personId} need .json but Smithy forbids it)
+.paths |= (to_entries | map(
+  if .key == "/{accountId}/reports/users/progress/{personId}" then
+    .key = "/{accountId}/reports/users/progress/{personId}.json"
+  else . end
+) | from_entries)
 ' "$INPUT_FILE" > "${OUTPUT_FILE}.tmp"
 
 mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
