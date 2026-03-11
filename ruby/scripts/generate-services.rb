@@ -387,7 +387,8 @@ class ServiceGenerator
       returns_void: returns_void,
       returns_array: returns_array,
       is_mutation: http_method != 'GET',
-      has_pagination: !!operation['x-basecamp-pagination']
+      has_pagination: !!operation['x-basecamp-pagination'],
+      pagination_key: operation.dig('x-basecamp-pagination', 'key')
     }
   end
 
@@ -574,9 +575,14 @@ class ServiceGenerator
     end
 
     # Add @return tag
+    is_paginated = (op[:returns_array] || op[:has_pagination]) && !op[:pagination_key]
+    is_wrapped_paginated = op[:has_pagination] && op[:pagination_key]
+
     if op[:returns_void]
       lines << '      # @return [void]'
-    elsif op[:returns_array] || op[:has_pagination]
+    elsif is_wrapped_paginated
+      lines << '      # @return [Hash] response data'
+    elsif is_paginated
       lines << '      # @return [Enumerator<Hash>] paginated results'
     else
       lines << '      # @return [Hash] response data'
@@ -587,10 +593,15 @@ class ServiceGenerator
     # Build the path
     path_expr = build_path_expression(op)
 
-    is_paginated = op[:returns_array] || op[:has_pagination]
     hook_kwargs = build_hook_kwargs(op, service_name)
 
-    if is_paginated
+    if is_wrapped_paginated
+      pagination_key = op[:pagination_key]
+      lines << "        wrap_paginated_wrapped(key: \"#{pagination_key}\", #{hook_kwargs}) do"
+      body_lines = generate_wrapped_paginated_method_body(op, path_expr, pagination_key)
+      body_lines.each { |l| lines << "  #{l}" }
+      lines << '        end'
+    elsif is_paginated
       # wrap_paginated defers hooks to actual iteration time (lazy-safe)
       lines << "        wrap_paginated(#{hook_kwargs}) do"
       body_lines = generate_list_method_body(op, path_expr)
@@ -712,6 +723,20 @@ class ServiceGenerator
       lines << "        paginate(#{path_expr}, params: params)"
     else
       lines << "        paginate(#{path_expr})"
+    end
+
+    lines
+  end
+
+  def generate_wrapped_paginated_method_body(op, path_expr, pagination_key)
+    lines = []
+
+    if op[:query_params].any?
+      param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
+      lines << "        params = compact_params(#{param_names.join(', ')})"
+      lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\", params: params)"
+    else
+      lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\")"
     end
 
     lines

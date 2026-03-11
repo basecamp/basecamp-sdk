@@ -43,6 +43,7 @@ interface Operation {
     style: string;
     maxPageSize?: number;
     totalCountHeader?: string;
+    key?: string;
   };
 }
 
@@ -98,6 +99,7 @@ interface ParsedOperation {
   isMutation: boolean;
   resourceType: string;
   hasPagination: boolean;
+  paginationKey?: string;
 }
 
 interface PathParam {
@@ -426,6 +428,8 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   ClientApproval: ["ClientApproval", "entity"],
   ClientCorrespondence: ["ClientCorrespondence", "entity"],
   ClientReply: ["ClientReply", "entity"],
+  TimelineEvent: ["TimelineEvent", "entity"],
+  TimesheetEntry: ["TimesheetEntry", "entity"],
 };
 
 /**
@@ -701,6 +705,7 @@ function parseOperation(
   const isMutation = httpMethod !== "GET";
   const resourceType = extractResourceType(operationId);
   const hasPagination = !!operation["x-basecamp-pagination"];
+  const paginationKey = operation["x-basecamp-pagination"]?.key;
 
   return {
     operationId,
@@ -720,6 +725,7 @@ function parseOperation(
     isMutation,
     resourceType,
     hasPagination,
+    paginationKey,
   };
 }
 
@@ -782,14 +788,14 @@ function groupOperations(spec: OpenAPISpec): Map<string, ServiceDefinition> {
   return services;
 }
 
-function getEntityTypeName(schemaRef: string): string | null {
+function getEntityTypeName(schemaRef: string, paginationKey?: string): string | null {
   // Direct entity reference - check if schema is in TYPE_ALIASES
   if (TYPE_ALIASES[schemaRef]) {
     return TYPE_ALIASES[schemaRef][0];
   }
 
   // For ResponseContent types, resolve to the underlying entity schema
-  const entitySchema = findUnderlyingEntitySchema(schemaRef);
+  const entitySchema = findUnderlyingEntitySchema(schemaRef, paginationKey);
   if (entitySchema && TYPE_ALIASES[entitySchema]) {
     return TYPE_ALIASES[entitySchema][0];
   }
@@ -816,7 +822,9 @@ function generateService(service: ServiceDefinition): string {
   lines.push(`import type { components } from "../schema.js";`);
 
   // Import ListResult and PaginationOptions if any operation uses pagination
-  const needsPagination = service.operations.some((op) => op.hasPagination && op.returnsArray);
+  const needsPagination = service.operations.some((op) =>
+    (op.hasPagination && op.returnsArray) || (op.hasPagination && !op.returnsArray && op.paginationKey)
+  );
   if (needsPagination) {
     lines.push(`import { ListResult } from "../../pagination.js";`);
     lines.push(`import type { PaginationOptions } from "../../pagination.js";`);
@@ -884,7 +892,7 @@ function collectTypeExports(service: ServiceDefinition): string[] {
   for (const op of service.operations) {
     if (op.responseSchemaRef && !op.returnsVoid) {
       // Find the underlying entity schema (e.g., "Todo" from "GetTodoResponseContent")
-      const entitySchema = findUnderlyingEntitySchema(op.responseSchemaRef);
+      const entitySchema = findUnderlyingEntitySchema(op.responseSchemaRef, op.paginationKey);
       if (entitySchema && TYPE_ALIASES[entitySchema]) {
         const [typeName] = TYPE_ALIASES[entitySchema];
         if (!added.has(typeName)) {
@@ -893,13 +901,34 @@ function collectTypeExports(service: ServiceDefinition): string[] {
           added.add(typeName);
         }
       }
+
+      // For wrapped pagination, also export other entity types referenced in wrapper fields
+      if (op.paginationKey && op.hasPagination && !op.returnsArray) {
+        const schema = globalSchemas[op.responseSchemaRef];
+        if (schema?.type === "object" && schema.properties) {
+          for (const [propName, propSchema] of Object.entries(schema.properties)) {
+            if (propName === op.paginationKey) continue;
+            if (propSchema.$ref) {
+              const refName = resolveRef(propSchema.$ref);
+              if (TYPE_ALIASES[refName]) {
+                const [typeName] = TYPE_ALIASES[refName];
+                if (!added.has(typeName)) {
+                  exports.push(`/** ${typeName} entity from the Basecamp API. */`);
+                  exports.push(`export type ${typeName} = components["schemas"]["${refName}"];`);
+                  added.add(typeName);
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 
   return exports;
 }
 
-function findUnderlyingEntitySchema(responseSchemaRef: string): string | null {
+function findUnderlyingEntitySchema(responseSchemaRef: string, paginationKey?: string): string | null {
   // ResponseContent types often alias entity types
   const schema = globalSchemas[responseSchemaRef];
   if (!schema) return null;
@@ -918,6 +947,17 @@ function findUnderlyingEntitySchema(responseSchemaRef: string): string | null {
     const refName = resolveRef(schema.items.$ref);
     if (TYPE_ALIASES[refName]) {
       return refName;
+    }
+  }
+
+  // If it's an object with a pagination key, resolve the entity type from properties[key].items.$ref
+  if (paginationKey && schema.type === "object" && schema.properties?.[paginationKey]) {
+    const keyProp = schema.properties[paginationKey];
+    if (keyProp.type === "array" && keyProp.items?.$ref) {
+      const refName = resolveRef(keyProp.items.$ref);
+      if (TYPE_ALIASES[refName]) {
+        return refName;
+      }
     }
   }
 
@@ -957,14 +997,15 @@ function generateRequestInterfaces(service: ServiceDefinition): string[] {
 
     // Generate options interfaces for query params (or pagination-only ops)
     const optionalQueryParams = op.queryParams.filter((q) => !q.required);
-    const needsOptionsInterface = optionalQueryParams.length > 0 || (op.hasPagination && op.returnsArray);
+    const isWrappedPaginated = op.hasPagination && !op.returnsArray && !!op.paginationKey;
+    const needsOptionsInterface = optionalQueryParams.length > 0 || (op.hasPagination && op.returnsArray) || isWrappedPaginated;
     if (needsOptionsInterface) {
       const interfaceName = `${capitalize(op.methodName)}${capitalize(singularize(service.name))}Options`;
       if (generated.has(interfaceName)) continue;
       generated.add(interfaceName);
 
       // Extend PaginationOptions for paginated operations
-      const extendsClause = (op.hasPagination && op.returnsArray) ? " extends PaginationOptions" : "";
+      const extendsClause = (op.hasPagination && op.returnsArray) || isWrappedPaginated ? " extends PaginationOptions" : "";
 
       lines.push(`/**`);
       lines.push(` * Options for ${op.methodName}.`);
@@ -1047,6 +1088,9 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   } else if (op.returnsArray && op.hasPagination) {
     const entityType = getEntityTypeName(op.responseSchemaRef || "");
     lines.push(`   * @returns All ${entityType || "results"} across all pages, with .meta.totalCount`);
+  } else if (op.hasPagination && !op.returnsArray && op.paginationKey) {
+    const entityType = getEntityTypeName(op.responseSchemaRef || "", op.paginationKey);
+    lines.push(`   * @returns Wrapper with ${op.paginationKey} as ListResult<${entityType || "unknown"}> across all pages`);
   } else if (op.returnsArray) {
     const entityType = getEntityTypeName(op.responseSchemaRef || "");
     lines.push(`   * @returns Array of ${entityType || "results"}`);
@@ -1142,10 +1186,16 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
 
   // Method body — use requestPaginated for paginated array responses
   const isPaginated = op.hasPagination && op.returnsArray;
+  const isWrappedPaginated = op.hasPagination && !op.returnsArray && !!op.paginationKey;
+  const wrappedReturnType = isWrappedPaginated ? buildReturnType(op, serviceName) : null;
   if (op.returnsVoid) {
     lines.push(`    await this.request(`);
   } else if (isPaginated) {
     lines.push(`    return this.requestPaginated(`);
+  } else if (isWrappedPaginated) {
+    const entitySchema = findUnderlyingEntitySchema(op.responseSchemaRef || "", op.paginationKey);
+    const entityName = entitySchema && TYPE_ALIASES[entitySchema] ? TYPE_ALIASES[entitySchema][0] : "unknown";
+    lines.push(`    return this.requestPaginatedWrapped<"${op.paginationKey}", ${entityName}>(`);
   } else {
     lines.push(`    const response = await this.request(`);
   }
@@ -1219,10 +1269,17 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   if (isPaginated) {
     // Pass pagination options as third arg to requestPaginated
     lines.push(`      , options`);
+  } else if (isWrappedPaginated) {
+    // Pass key and pagination options as args 3 and 4 to requestPaginatedWrapped
+    lines.push(`      , "${op.paginationKey}", options`);
   }
-  lines.push(`    );`);
+  if (isWrappedPaginated && wrappedReturnType) {
+    lines.push(`    ) as unknown as ${wrappedReturnType};`);
+  } else {
+    lines.push(`    );`);
+  }
 
-  if (!op.returnsVoid && !isPaginated) {
+  if (!op.returnsVoid && !isPaginated && !isWrappedPaginated) {
     if (op.returnsArray) {
       lines.push(`    return response ?? [];`);
     } else {
@@ -1273,7 +1330,8 @@ function buildMethodSignature(op: ParsedOperation, resourceName: string): {
     params.push(`${toCamelCase(q.name)}: ${q.type}`);
   }
 
-  if (optionalQueryParams.length > 0 || (op.hasPagination && op.returnsArray)) {
+  const isWrappedPaginated = op.hasPagination && !op.returnsArray && !!op.paginationKey;
+  if (optionalQueryParams.length > 0 || (op.hasPagination && op.returnsArray) || isWrappedPaginated) {
     params.push(`options?: ${optionsInterfaceName}`);
     hasOptions = true;
   }
@@ -1292,7 +1350,31 @@ function buildReturnType(op: ParsedOperation, serviceName: string): string {
 
   // Try to get a friendly type name
   if (op.responseSchemaRef) {
-    const entityName = getEntityTypeName(op.responseSchemaRef);
+    // Wrapped pagination: build explicit shape like { person: Person; events: ListResult<TimelineEvent> }
+    if (op.paginationKey && op.hasPagination && !op.returnsArray) {
+      const schema = globalSchemas[op.responseSchemaRef];
+      if (schema?.type === "object" && schema.properties) {
+        const parts: string[] = [];
+        for (const [propName, propSchema] of Object.entries(schema.properties)) {
+          if (propName === op.paginationKey) {
+            const entitySchema = findUnderlyingEntitySchema(op.responseSchemaRef, op.paginationKey);
+            const entityName = entitySchema && TYPE_ALIASES[entitySchema] ? TYPE_ALIASES[entitySchema][0] : "unknown";
+            parts.push(`${propName}: ListResult<${entityName}>`);
+          } else {
+            const propType = propSchema.$ref
+              ? (() => {
+                  const refName = resolveRef(propSchema.$ref);
+                  return TYPE_ALIASES[refName] ? TYPE_ALIASES[refName][0] : `components["schemas"]["${refName}"]`;
+                })()
+              : schemaToTsType(propSchema);
+            parts.push(`${propName}: ${propType}`);
+          }
+        }
+        return `{ ${parts.join("; ")} }`;
+      }
+    }
+
+    const entityName = getEntityTypeName(op.responseSchemaRef, op.paginationKey);
     if (entityName) {
       if (op.returnsArray && op.hasPagination) {
         return `ListResult<${entityName}>`;

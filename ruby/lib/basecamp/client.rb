@@ -208,6 +208,15 @@ module Basecamp
       @parent.http.paginate_key(account_path(path), key: key, params: params, &)
     end
 
+    # Fetches a wrapped paginated resource, returning wrapper fields + lazy paginated items.
+    # @param path [String] URL path (without account prefix)
+    # @param key [String] the key containing the array of paginated items
+    # @param params [Hash] query parameters
+    # @return [Hash] wrapper fields merged with key => Enumerator of all items
+    def paginate_wrapped(path, key:, params: {})
+      @parent.http.paginate_wrapped(account_path(path), key: key, params: params)
+    end
+
     # @!group Services
 
     # @return [Services::ProjectsService]

@@ -335,6 +335,7 @@ export {
 
 export {
   ReportsService,
+  type PersonProgressReportOptions,
 } from "./generated/services/reports.js";
 
 // Recording services - generated

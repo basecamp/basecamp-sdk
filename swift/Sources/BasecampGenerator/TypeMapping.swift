@@ -44,6 +44,8 @@ let typeAliases: [String: (name: String, kind: String)] = [
     "ClientCorrespondence": ("ClientCorrespondence", "entity"),
     "ClientReply": ("ClientReply", "entity"),
     "Boost": ("Boost", "entity"),
+    "TimelineEvent": ("TimelineEvent", "entity"),
+    "TimesheetEntry": ("TimesheetEntry", "entity"),
 ]
 
 // MARK: - Property Hints
@@ -114,14 +116,14 @@ func schemaToSwiftPropertyType(_ schema: [String: Any]) -> String {
 }
 
 /// Gets the entity type name for a response schema ref.
-func getEntityTypeName(_ schemaRef: String, schemas: [String: Any]) -> String? {
+func getEntityTypeName(_ schemaRef: String, schemas: [String: Any], paginationKey: String? = nil) -> String? {
     // Direct entity reference
     if typeAliases[schemaRef] != nil {
         return typeAliases[schemaRef]!.name
     }
 
     // ResponseContent types — resolve to underlying entity
-    if let entitySchema = findUnderlyingEntitySchema(schemaRef, schemas: schemas) {
+    if let entitySchema = findUnderlyingEntitySchema(schemaRef, schemas: schemas, paginationKey: paginationKey) {
         return typeAliases[entitySchema]?.name
     }
 
@@ -129,7 +131,7 @@ func getEntityTypeName(_ schemaRef: String, schemas: [String: Any]) -> String? {
 }
 
 /// Resolves ResponseContent wrapper schemas to their underlying entity schema name.
-func findUnderlyingEntitySchema(_ responseSchemaRef: String, schemas: [String: Any]) -> String? {
+func findUnderlyingEntitySchema(_ responseSchemaRef: String, schemas: [String: Any], paginationKey: String? = nil) -> String? {
     guard let schema = schemas[responseSchemaRef] as? [String: Any] else { return nil }
 
     // Direct $ref to known entity
@@ -141,6 +143,18 @@ func findUnderlyingEntitySchema(_ responseSchemaRef: String, schemas: [String: A
     // Array with items.$ref to known entity
     if (schema["type"] as? String) == "array",
        let items = schema["items"] as? [String: Any],
+       let ref = items["$ref"] as? String {
+        let refName = resolveRef(ref)
+        if typeAliases[refName] != nil { return refName }
+    }
+
+    // Wrapped-pagination object: properties[key].items.$ref to known entity
+    if let key = paginationKey,
+       (schema["type"] as? String) == "object",
+       let properties = schema["properties"] as? [String: Any],
+       let keyProp = properties[key] as? [String: Any],
+       (keyProp["type"] as? String) == "array",
+       let items = keyProp["items"] as? [String: Any],
        let ref = items["$ref"] as? String {
         let refName = resolveRef(ref)
         if typeAliases[refName] != nil { return refName }

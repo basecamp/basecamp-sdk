@@ -1,5 +1,7 @@
 package com.basecamp.sdk.generator
 
+import kotlinx.serialization.json.*
+
 /**
  * Generates Kotlin service classes from parsed operation data.
  */
@@ -16,12 +18,29 @@ class ServiceEmitter(private val api: OpenApiParser) {
         sb.appendLine("import com.basecamp.sdk.services.BaseService")
         sb.appendLine("import kotlinx.serialization.json.JsonElement")
 
-        val needsPagination = service.operations.any { it.hasPagination && it.returnsArray }
+        val needsWrappedPagination = service.operations.any {
+            it.hasPagination && it.paginationKey != null
+        }
+        if (needsWrappedPagination) {
+            sb.appendLine("import kotlinx.serialization.json.decodeFromJsonElement")
+            sb.appendLine("import kotlinx.serialization.json.jsonArray")
+            sb.appendLine("import kotlinx.serialization.json.jsonObject")
+        }
+
+        val needsPagination = service.operations.any { it.hasPagination && (it.returnsArray || it.paginationKey != null) }
         if (needsPagination) {
             // ListResult and PaginationOptions are in the sdk package already
         }
 
         sb.appendLine()
+
+        // Generate result data classes for wrapped pagination operations
+        for (op in service.operations) {
+            if (op.hasPagination && op.paginationKey != null && !op.returnsArray) {
+                sb.append(generateWrappedResultClass(op))
+            }
+        }
+
         sb.appendLine("/**")
         sb.appendLine(" * Service for ${service.name} operations.")
         sb.appendLine(" *")
@@ -62,7 +81,7 @@ class ServiceEmitter(private val api: OpenApiParser) {
         for (q in op.queryParams.filter { it.required }) {
             sb.appendLine("     * @param ${q.name.snakeToCamelCase()} ${q.description ?: q.name.toHumanReadable()}")
         }
-        if (op.queryParams.any { !it.required } || (op.hasPagination && op.returnsArray)) {
+        if (op.queryParams.any { !it.required } || (op.hasPagination && (op.returnsArray || op.paginationKey != null))) {
             sb.appendLine("     * @param options Optional query parameters and pagination control")
         }
         sb.appendLine("     */")
@@ -96,9 +115,45 @@ class ServiceEmitter(private val api: OpenApiParser) {
         val pathWithQuery = if (hasQueryParams) "$pathExpr + qs" else pathExpr
 
         val isPaginated = op.hasPagination && op.returnsArray
+        val isWrappedPaginated = op.hasPagination && op.paginationKey != null && !op.returnsArray
 
-        if (isPaginated) {
-            val entitySchema = op.responseSchemaRef?.let { api.findUnderlyingEntitySchema(it) }
+        if (isWrappedPaginated) {
+            val entitySchema = op.responseSchemaRef?.let { api.findUnderlyingEntitySchema(it, op.paginationKey) }
+            val entityType = entitySchema?.let { TYPE_ALIASES[it] } ?: "JsonElement"
+            val resultClassName = buildWrappedResultClassName(op)
+
+            sb.appendLine("        val (firstPageBody, items) = requestPaginatedWrapped<$entityType>(info, options, {")
+            sb.appendLine("            httpGet($pathWithQuery, operationName = info.operation)")
+            sb.appendLine("        }) { body ->")
+            sb.appendLine("            json.parseToJsonElement(body).jsonObject[\"${op.paginationKey}\"]!!")
+            sb.appendLine("                .jsonArray.map { json.decodeFromJsonElement<$entityType>(it) }")
+            sb.appendLine("        }")
+
+            // Decode wrapper fields from first page body
+            val schema = api.getSchema(op.responseSchemaRef!!)
+            val properties = schema?.get("properties")?.jsonObject ?: JsonObject(emptyMap())
+
+            sb.appendLine("        val wrapper = json.parseToJsonElement(firstPageBody).jsonObject")
+
+            val constructorArgs = mutableListOf<String>()
+            for (propName in properties.keys.sorted()) {
+                val camelName = propName.snakeToCamelCase()
+                if (propName == op.paginationKey) {
+                    constructorArgs.add("$camelName = items")
+                } else {
+                    val propType = resolveWrapperPropertyType(op.responseSchemaRef!!, propName)
+                    constructorArgs.add("$camelName = json.decodeFromJsonElement<$propType>(wrapper[\"$propName\"]!!)")
+                }
+            }
+
+            sb.appendLine("        return $resultClassName(")
+            for ((i, arg) in constructorArgs.withIndex()) {
+                val comma = if (i < constructorArgs.size - 1) "," else ""
+                sb.appendLine("            $arg$comma")
+            }
+            sb.appendLine("        )")
+        } else if (isPaginated) {
+            val entitySchema = op.responseSchemaRef?.let { api.findUnderlyingEntitySchema(it, op.paginationKey) }
             val entityType = entitySchema?.let { TYPE_ALIASES[it] } ?: "JsonElement"
 
             // Convert custom options to PaginationOptions
@@ -115,7 +170,7 @@ class ServiceEmitter(private val api: OpenApiParser) {
             sb.append(generateHttpCall(op, pathWithQuery))
             sb.appendLine("        }) { Unit }")
         } else {
-            val entitySchema = op.responseSchemaRef?.let { api.findUnderlyingEntitySchema(it) }
+            val entitySchema = op.responseSchemaRef?.let { api.findUnderlyingEntitySchema(it, op.paginationKey) }
             val entityType = entitySchema?.let { TYPE_ALIASES[it] }
             val decodeType = when {
                 entityType != null && op.returnsArray -> "List<$entityType>"
@@ -243,7 +298,12 @@ class ServiceEmitter(private val api: OpenApiParser) {
     private fun buildReturnType(op: ParsedOperation): String {
         if (op.returnsVoid) return "Unit"
 
-        val entitySchema = op.responseSchemaRef?.let { api.findUnderlyingEntitySchema(it) }
+        // Wrapped pagination returns a result data class
+        if (op.hasPagination && op.paginationKey != null && !op.returnsArray) {
+            return buildWrappedResultClassName(op)
+        }
+
+        val entitySchema = op.responseSchemaRef?.let { api.findUnderlyingEntitySchema(it, op.paginationKey) }
         val entityType = entitySchema?.let { TYPE_ALIASES[it] }
 
         return when {
@@ -283,8 +343,9 @@ class ServiceEmitter(private val api: OpenApiParser) {
         // Optional: query params + pagination
         val hasOptionalQuery = op.queryParams.any { !it.required }
         val hasPagination = op.hasPagination && op.returnsArray
-        if (hasOptionalQuery || hasPagination) {
-            val optionsClassName = buildOptionsClassName(op, hasPagination, hasOptionalQuery)
+        val isWrappedPaginated = op.hasPagination && op.paginationKey != null && !op.returnsArray
+        if (hasOptionalQuery || hasPagination || isWrappedPaginated) {
+            val optionsClassName = buildOptionsClassName(op, hasPagination || isWrappedPaginated, hasOptionalQuery)
             parts += "options: $optionsClassName? = null"
         }
 
@@ -306,6 +367,67 @@ class ServiceEmitter(private val api: OpenApiParser) {
             result += ". Trashed items can be recovered."
         }
         return result
+    }
+
+    /**
+     * Builds a result class name for wrapped pagination operations.
+     * E.g., "GetPersonProgress" → "PersonProgressResult"
+     */
+    private fun buildWrappedResultClassName(op: ParsedOperation): String {
+        val base = op.operationId
+            .removePrefix("Get")
+            .removePrefix("List")
+        return "${base}Result"
+    }
+
+    /**
+     * Generates a data class for wrapped pagination results.
+     * Wrapper fields get their resolved types; the pagination key gets ListResult<EntityType>.
+     */
+    private fun generateWrappedResultClass(op: ParsedOperation): String {
+        val sb = StringBuilder()
+        val className = buildWrappedResultClassName(op)
+        val schema = api.getSchema(op.responseSchemaRef!!) ?: return ""
+        val properties = schema["properties"]?.jsonObject ?: return ""
+
+        val entitySchema = api.findUnderlyingEntitySchema(op.responseSchemaRef, op.paginationKey)
+        val entityType = entitySchema?.let { TYPE_ALIASES[it] } ?: "JsonElement"
+
+        sb.appendLine("data class $className(")
+        val propNames = properties.keys.sorted()
+        for ((i, propName) in propNames.withIndex()) {
+            val camelName = propName.snakeToCamelCase()
+            val comma = if (i < propNames.size - 1) "," else ","
+            if (propName == op.paginationKey) {
+                sb.appendLine("    val $camelName: ListResult<$entityType>$comma")
+            } else {
+                val propType = resolveWrapperPropertyType(op.responseSchemaRef!!, propName)
+                sb.appendLine("    val $camelName: $propType$comma")
+            }
+        }
+        sb.appendLine(")")
+        sb.appendLine()
+
+        return sb.toString()
+    }
+
+    /**
+     * Resolves a wrapper property's type from the response schema.
+     * Uses TYPE_ALIASES for known entity $refs, falls back to JsonElement.
+     */
+    private fun resolveWrapperPropertyType(schemaRef: String, propName: String): String {
+        val schema = api.getSchema(schemaRef) ?: return "JsonElement"
+        val propObj = schema["properties"]?.jsonObject?.get(propName)?.jsonObject ?: return "JsonElement"
+
+        // Direct $ref to a known entity
+        val ref = propObj["\$ref"]?.jsonPrimitive?.contentOrNull
+        if (ref != null) {
+            val refName = api.resolveRef(ref)
+            return TYPE_ALIASES[refName] ?: "JsonElement"
+        }
+
+        // Primitive types
+        return api.schemaToKotlinType(propObj)
     }
 }
 

@@ -239,6 +239,101 @@ abstract class BaseService(
     }
 
     /**
+     * Executes a paginated request for wrapped responses, returning both the raw
+     * first page body (for wrapper field decoding) and the paginated items.
+     *
+     * @param info Operation metadata for hooks.
+     * @param options Pagination control (maxItems).
+     * @param fn The suspend function that performs the initial HTTP call.
+     * @param parseItems Parses a page's response body into a list of items.
+     * @return A [Pair] of the first page's raw body and the [ListResult] of all items.
+     */
+    protected suspend fun <T> requestPaginatedWrapped(
+        info: OperationInfo,
+        options: PaginationOptions? = null,
+        fn: suspend () -> HttpResponse,
+        parseItems: (String) -> List<T>,
+    ): Pair<String, ListResult<T>> {
+        val startTime = currentTimeMillis()
+        val maxItems = options?.maxItems
+
+        hooks.safeOnOperationStart(info)
+
+        try {
+            val response = fn()
+
+            if (!response.status.isSuccess()) {
+                val error = errorFromResponse(response)
+                val duration = (currentTimeMillis() - startTime).millisToDuration()
+                hooks.safeOnOperationEnd(info, OperationResult(duration, error))
+                throw error
+            }
+
+            val firstPageBody = response.bodyAsText()
+            val firstPageItems = parseItems(firstPageBody)
+            val totalCount = parseTotalCount(response.headers.toMap())
+
+            // Check if maxItems is satisfied by the first page
+            if (maxItems != null && maxItems > 0 && firstPageItems.size >= maxItems) {
+                val hasMore = firstPageItems.size > maxItems
+                    || parseNextLink(response.headers["Link"]) != null
+                val duration = (currentTimeMillis() - startTime).millisToDuration()
+                val result = ListResult(firstPageItems.take(maxItems), ListMeta(totalCount, hasMore))
+                hooks.safeOnOperationEnd(info, OperationResult(duration))
+                return Pair(firstPageBody, result)
+            }
+
+            // Follow pagination
+            val allItems = firstPageItems.toMutableList()
+            var currentResponse = response
+            val initialUrl = response.request.url.toString()
+
+            for (page in 1 until maxPages) {
+                val rawNextUrl = parseNextLink(currentResponse.headers["Link"]) ?: break
+                val nextUrl = resolveUrl(currentResponse.request.url.toString(), rawNextUrl)
+
+                if (!isSameOrigin(nextUrl, initialUrl)) {
+                    throw BasecampException.Api(
+                        "Pagination Link header points to different origin: $nextUrl",
+                        httpStatus = 0,
+                    )
+                }
+
+                currentResponse = http.requestWithRetry(HttpMethod.Get, nextUrl)
+
+                if (!currentResponse.status.isSuccess()) {
+                    throw errorFromResponse(currentResponse)
+                }
+
+                val pageBody = currentResponse.bodyAsText()
+                val pageItems = parseItems(pageBody)
+                allItems.addAll(pageItems)
+
+                if (maxItems != null && maxItems > 0 && allItems.size >= maxItems) {
+                    val duration = (currentTimeMillis() - startTime).millisToDuration()
+                    val result = ListResult(allItems.take(maxItems), ListMeta(totalCount, truncated = true))
+                    hooks.safeOnOperationEnd(info, OperationResult(duration))
+                    return Pair(firstPageBody, result)
+                }
+            }
+
+            val hasMore = parseNextLink(currentResponse.headers["Link"]) != null
+            val duration = (currentTimeMillis() - startTime).millisToDuration()
+            val result = ListResult(allItems, ListMeta(totalCount, hasMore))
+            hooks.safeOnOperationEnd(info, OperationResult(duration))
+            return Pair(firstPageBody, result)
+        } catch (e: BasecampException) {
+            val duration = (currentTimeMillis() - startTime).millisToDuration()
+            hooks.safeOnOperationEnd(info, OperationResult(duration, e))
+            throw e
+        } catch (e: Exception) {
+            val duration = (currentTimeMillis() - startTime).millisToDuration()
+            hooks.safeOnOperationEnd(info, OperationResult(duration, e))
+            throw e
+        }
+    }
+
+    /**
      * Streaming paginated request that emits items as each page arrives.
      *
      * Unlike [requestPaginated] which eagerly loads all pages, this returns

@@ -285,6 +285,8 @@ val TYPE_ALIASES = mapOf(
     "ClientCorrespondence" to "ClientCorrespondence",
     "ClientReply" to "ClientReply",
     "Boost" to "Boost",
+    "TimelineEvent" to "TimelineEvent",
+    "TimesheetEntry" to "TimesheetEntry",
 )
 
 /**

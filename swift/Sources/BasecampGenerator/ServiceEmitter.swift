@@ -17,6 +17,13 @@ func emitService(_ service: ServiceDefinition, schemas: [String: Any]) -> String
         lines.append("")
     }
 
+    // Result structs for wrapped pagination operations
+    let resultStructs = emitWrappedResultStructs(service, schemas: schemas)
+    if !resultStructs.isEmpty {
+        lines.append(contentsOf: resultStructs)
+        lines.append("")
+    }
+
     // Service class
     lines.append("public final class \(service.className): BaseService, @unchecked Sendable {")
 
@@ -40,7 +47,8 @@ private func emitOptionsStructs(_ service: ServiceDefinition) -> [String] {
     let sortedOps = service.operations.sorted { $0.operationId < $1.operationId }
     for op in sortedOps {
         let optionalQueryParams = op.queryParams.filter { !$0.required }
-        let needsOptions = !optionalQueryParams.isEmpty || (op.hasPagination && op.returnsArray)
+        let isWrappedPaginated = op.hasPagination && op.paginationKey != nil && !op.returnsArray
+        let needsOptions = !optionalQueryParams.isEmpty || (op.hasPagination && op.returnsArray) || isWrappedPaginated
         guard needsOptions else { continue }
 
         let structName = "\(capitalize(op.methodName))\(capitalize(singularize(service.name)))Options"
@@ -55,7 +63,7 @@ private func emitOptionsStructs(_ service: ServiceDefinition) -> [String] {
         }
 
         // Add maxItems for paginated operations
-        if op.hasPagination && op.returnsArray {
+        if (op.hasPagination && op.returnsArray) || isWrappedPaginated {
             lines.append("    public var maxItems: Int?")
         }
 
@@ -65,7 +73,7 @@ private func emitOptionsStructs(_ service: ServiceDefinition) -> [String] {
             let camelName = toCamelCase(param.name)
             initParams.append("\(camelName): \(param.swiftType)? = nil")
         }
-        if op.hasPagination && op.returnsArray {
+        if (op.hasPagination && op.returnsArray) || isWrappedPaginated {
             initParams.append("maxItems: Int? = nil")
         }
 
@@ -85,7 +93,7 @@ private func emitOptionsStructs(_ service: ServiceDefinition) -> [String] {
             let camelName = toCamelCase(param.name)
             lines.append("        self.\(camelName) = \(camelName)")
         }
-        if op.hasPagination && op.returnsArray {
+        if (op.hasPagination && op.returnsArray) || isWrappedPaginated {
             lines.append("        self.maxItems = maxItems")
         }
         lines.append("    }")
@@ -114,13 +122,14 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
     }
 
     let isPaginated = op.hasPagination && op.returnsArray
+    let isWrappedPaginated = op.hasPagination && op.paginationKey != nil && !op.returnsArray
 
     // Build query items for ops with query params
     let optionalQueryParams = op.queryParams.filter { !$0.required }
     let requiredQueryParams = op.queryParams.filter { $0.required }
     let hasQueryItems = !op.queryParams.isEmpty
 
-    if hasQueryItems && !isPaginated {
+    if hasQueryItems && !isPaginated && !isWrappedPaginated {
         // Non-paginated ops: build URL query string inline
         lines.append("        var queryItems: [URLQueryItem] = []")
         for q in requiredQueryParams {
@@ -188,7 +197,54 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
 
     let opInfoStr = opInfoParts.joined(separator: ", ")
 
-    if isPaginated {
+    if isWrappedPaginated {
+        // requestPaginatedWrapped call — returns both wrapper data and paginated items
+        let resultClassName = buildWrappedResultClassName(op, serviceName: serviceName)
+        let entityName = getEntityTypeName(op.responseSchemaRef ?? "", schemas: schemas, paginationKey: op.paginationKey) ?? "Any"
+
+        lines.append("        let (wrapperData, items): (Data, ListResult<\(entityName)>) = try await requestPaginatedWrapped(")
+        lines.append("            OperationInfo(\(opInfoStr)),")
+        lines.append("            path: \"\(swiftPath)\",")
+        lines.append("            itemsKey: \"\(op.paginationKey!)\",")
+        if hasQueryItems {
+            lines.append("            queryItems: queryItems.isEmpty ? nil : queryItems,")
+        }
+        if hasOptions {
+            lines.append("            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },")
+        }
+        lines.append("            retryConfig: Metadata.retryConfig(for: \"\(op.operationId)\")")
+        lines.append("        )")
+
+        // Decode wrapper fields from first page data
+        lines.append("        struct Wrapper: Decodable {")
+        if let responseRef = op.responseSchemaRef,
+           let schema = schemas[responseRef] as? [String: Any],
+           let properties = schema["properties"] as? [String: Any] {
+            for propName in properties.keys.sorted() {
+                if propName == op.paginationKey { continue }
+                let propType = resolveWrapperPropertyType(propName, schema: schema, schemas: schemas)
+                lines.append("            let \(toCamelCase(propName)): \(propType)")
+            }
+        }
+        lines.append("        }")
+        lines.append("        let wrapper = try Self.decoder.decode(Wrapper.self, from: wrapperData)")
+
+        // Build result struct
+        var constructorArgs: [String] = []
+        if let responseRef = op.responseSchemaRef,
+           let schema = schemas[responseRef] as? [String: Any],
+           let properties = schema["properties"] as? [String: Any] {
+            for propName in properties.keys.sorted() {
+                let camelName = toCamelCase(propName)
+                if propName == op.paginationKey {
+                    constructorArgs.append("\(camelName): items")
+                } else {
+                    constructorArgs.append("\(camelName): wrapper.\(camelName)")
+                }
+            }
+        }
+        lines.append("        return \(resultClassName)(\(constructorArgs.joined(separator: ", ")))")
+    } else if isPaginated {
         // requestPaginated call
         lines.append("        return try await requestPaginated(")
         lines.append("            OperationInfo(\(opInfoStr)),")
@@ -283,7 +339,8 @@ private func buildSignature(
 
     // Optional query params / pagination → options struct
     let optionalQueryParams = op.queryParams.filter { !$0.required }
-    if !optionalQueryParams.isEmpty || (op.hasPagination && op.returnsArray) {
+    let isWrappedPaginated = op.hasPagination && op.paginationKey != nil && !op.returnsArray
+    if !optionalQueryParams.isEmpty || (op.hasPagination && op.returnsArray) || isWrappedPaginated {
         params.append("options: \(optionsName)? = nil")
         hasOptions = true
     }
@@ -307,8 +364,13 @@ func requestTypeNameForSchema(_ schemaRef: String?) -> String {
 private func buildReturnType(_ op: ParsedOperation, serviceName: String, schemas: [String: Any]) -> String {
     if op.returnsVoid { return "Void" }
 
+    // Wrapped pagination returns a result struct
+    if op.hasPagination && op.paginationKey != nil && !op.returnsArray {
+        return buildWrappedResultClassName(op, serviceName: serviceName)
+    }
+
     if let responseRef = op.responseSchemaRef {
-        let entityName = getEntityTypeName(responseRef, schemas: schemas)
+        let entityName = getEntityTypeName(responseRef, schemas: schemas, paginationKey: op.paginationKey)
         if let name = entityName {
             if op.returnsArray && op.hasPagination { return "ListResult<\(name)>" }
             return op.returnsArray ? "[\(name)]" : name
@@ -343,4 +405,64 @@ private func resolveReturnEntityType(_ op: ParsedOperation, serviceName: String,
         return entityName
     }
     return "Any"
+}
+
+// MARK: - Wrapped Pagination Helpers
+
+/// Builds a result class name for wrapped pagination.
+/// E.g., "GetPersonProgress" → "PersonProgressResult"
+private func buildWrappedResultClassName(_ op: ParsedOperation, serviceName: String) -> String {
+    var base = op.operationId
+    if base.hasPrefix("Get") { base = String(base.dropFirst(3)) }
+    else if base.hasPrefix("List") { base = String(base.dropFirst(4)) }
+    return "\(base)Result"
+}
+
+/// Generates result structs for wrapped pagination operations.
+private func emitWrappedResultStructs(_ service: ServiceDefinition, schemas: [String: Any]) -> [String] {
+    var lines: [String] = []
+    let sortedOps = service.operations.sorted { $0.operationId < $1.operationId }
+
+    for op in sortedOps {
+        let isWrappedPaginated = op.hasPagination && op.paginationKey != nil && !op.returnsArray
+        guard isWrappedPaginated else { continue }
+        guard let responseRef = op.responseSchemaRef,
+              let schema = schemas[responseRef] as? [String: Any],
+              let properties = schema["properties"] as? [String: Any] else { continue }
+
+        let className = buildWrappedResultClassName(op, serviceName: service.name)
+        let entityName = getEntityTypeName(responseRef, schemas: schemas, paginationKey: op.paginationKey) ?? "Any"
+
+        lines.append("public struct \(className): Sendable {")
+        for propName in properties.keys.sorted() {
+            let camelName = toCamelCase(propName)
+            if propName == op.paginationKey {
+                lines.append("    public let \(camelName): ListResult<\(entityName)>")
+            } else {
+                let propType = resolveWrapperPropertyType(propName, schema: schema, schemas: schemas)
+                lines.append("    public let \(camelName): \(propType)")
+            }
+        }
+        lines.append("}")
+        lines.append("")
+    }
+
+    return lines
+}
+
+/// Resolves a wrapper property's Swift type from the response schema.
+private func resolveWrapperPropertyType(_ propName: String, schema: [String: Any], schemas: [String: Any]) -> String {
+    guard let properties = schema["properties"] as? [String: Any],
+          let propSchema = properties[propName] as? [String: Any] else { return "Any" }
+
+    // Direct $ref to a known entity
+    if let ref = propSchema["$ref"] as? String {
+        let refName = resolveRef(ref)
+        if let alias = typeAliases[refName] {
+            return alias.name
+        }
+        return refName
+    }
+
+    return schemaToSwiftType(propSchema)
 }

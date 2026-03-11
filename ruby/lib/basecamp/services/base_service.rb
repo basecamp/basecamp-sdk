@@ -85,6 +85,43 @@ module Basecamp
         end
       end
 
+      # Wraps a wrapped-paginated operation with hooks.
+      # Fires on_operation_start eagerly (before page 1 fetch),
+      # on_operation_end when the events Enumerator completes/errors/breaks.
+      def wrap_paginated_wrapped(key:, service:, operation:, is_mutation: false, project_id: nil, resource_id: nil)
+        info = OperationInfo.new(
+          service: service, operation: operation,
+          is_mutation: is_mutation, project_id: project_id, resource_id: resource_id
+        )
+        hooks = @hooks
+        start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        safe_hook { hooks.on_operation_start(info) }
+
+        begin
+          result = yield  # paginate_wrapped fetches page 1 here
+        rescue => e
+          duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
+          safe_hook { hooks.on_operation_end(info, OperationResult.new(duration_ms: duration, error: e)) }
+          raise
+        end
+
+        inner_enum = result[key]
+        wrapped_enum = Enumerator.new do |yielder|
+          error = nil
+          begin
+            inner_enum.each { |item| yielder.yield(item) }
+          rescue => e
+            error = e
+            raise
+          ensure
+            duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
+            safe_hook { hooks.on_operation_end(info, OperationResult.new(duration_ms: duration, error: error)) }
+          end
+        end
+
+        result.merge(key => wrapped_enum)
+      end
+
       # Invoke a hook callback, swallowing exceptions so hooks never break SDK behavior.
       def safe_hook
         yield
@@ -140,6 +177,11 @@ module Basecamp
       # Paginate extracting items from a specific key (for object responses)
       def paginate_key(...)
         @client.paginate_key(...)
+      end
+
+      # Paginate a wrapped response extracting items from a specific key
+      def paginate_wrapped(...)
+        @client.paginate_wrapped(...)
       end
     end
   end

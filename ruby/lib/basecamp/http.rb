@@ -172,6 +172,72 @@ module Basecamp
       end
     end
 
+    # Fetches a wrapped paginated resource, returning wrapper fields + lazy paginated items.
+    # Use this for endpoints that return {wrapper_field: ..., key: [items]} on every page.
+    # @param path [String] initial URL path
+    # @param key [String] the key containing the array of paginated items
+    # @param params [Hash] query parameters
+    # @return [Hash] wrapper fields merged with key => Enumerator of all items
+    def paginate_wrapped(path, key:, params: {})
+      base_url = build_url(path)
+
+      @hooks.on_paginate(base_url, 1)
+      first_response = get(base_url, params: params)
+      Security.check_body_size!(first_response.body, Security::MAX_RESPONSE_BODY_BYTES)
+
+      begin
+        first_data = JSON.parse(first_response.body)
+      rescue JSON::ParserError => e
+        raise Basecamp::APIError.new(
+          "Failed to parse paginated response (page 1): #{Security.truncate(e.message)}"
+        )
+      end
+
+      wrapper = first_data.reject { |k, _| k == key }
+      first_items = first_data[key] || []
+
+      events = Enumerator.new do |yielder|
+        first_items.each { |item| yielder << item }
+
+        next_link = parse_next_link(first_response.headers["Link"])
+        url = base_url
+        page = 1
+
+        while next_link && page < @config.max_pages
+          page += 1
+          next_url = Security.resolve_url(url, next_link)
+
+          unless Security.same_origin?(next_url, base_url)
+            raise Basecamp::APIError.new(
+              "Pagination Link header points to different origin: " \
+              "#{Security.truncate(next_url)}"
+            )
+          end
+
+          @hooks.on_paginate(next_url, page)
+          response = get(next_url)
+          Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
+
+          begin
+            data = JSON.parse(response.body)
+          rescue JSON::ParserError => e
+            raise Basecamp::APIError.new(
+              "Failed to parse paginated response (page #{page}): " \
+              "#{Security.truncate(e.message)}"
+            )
+          end
+
+          items = data[key] || []
+          items.each { |item| yielder << item }
+
+          next_link = parse_next_link(response.headers["Link"])
+          url = next_url
+        end
+      end
+
+      wrapper.merge(key => events)
+    end
+
     private
 
     def build_faraday_client

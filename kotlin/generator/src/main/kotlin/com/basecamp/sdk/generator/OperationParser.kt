@@ -23,6 +23,7 @@ data class ParsedOperation(
     val isMutation: Boolean,
     val resourceType: String,
     val hasPagination: Boolean,
+    val paginationKey: String?,
 )
 
 data class PathParam(val name: String, val type: String, val description: String?)
@@ -138,6 +139,7 @@ class OperationParser(private val api: OpenApiParser) {
         var responseSchemaRef: String? = null
         var returnsArray = false
         val responses = operation["responses"]?.jsonObject
+
         val successResponse = responses?.get("200")?.jsonObject ?: responses?.get("201")?.jsonObject
         val responseSchema = successResponse?.get("content")?.jsonObject
             ?.get("application/json")?.jsonObject
@@ -162,6 +164,11 @@ class OperationParser(private val api: OpenApiParser) {
         val isMutation = httpMethod != "GET"
         val resourceType = extractResourceType(operationId)
         val hasPagination = operation.containsKey("x-basecamp-pagination")
+        val paginationKey = operation["x-basecamp-pagination"]?.jsonObject?.get("key")?.jsonPrimitive?.content
+
+        // Note: wrapped pagination (paginationKey != null) does NOT force returnsArray.
+        // The response is an object with a paginated array inside — handled separately
+        // by isWrappedPaginated in the emitter.
 
         val convertedPath = path.replace(Regex("^/\\{accountId}"), "")
 
@@ -183,6 +190,7 @@ class OperationParser(private val api: OpenApiParser) {
             isMutation = isMutation,
             resourceType = resourceType,
             hasPagination = hasPagination,
+            paginationKey = paginationKey,
         )
     }
 
@@ -257,7 +265,7 @@ class OperationParser(private val api: OpenApiParser) {
 
                 // Track entity types used
                 if (parsed.responseSchemaRef != null) {
-                    val entitySchema = api.findUnderlyingEntitySchema(parsed.responseSchemaRef)
+                    val entitySchema = api.findUnderlyingEntitySchema(parsed.responseSchemaRef, parsed.paginationKey)
                     if (entitySchema != null && entitySchema in TYPE_ALIASES) {
                         service.entityTypes.add(entitySchema)
                     }

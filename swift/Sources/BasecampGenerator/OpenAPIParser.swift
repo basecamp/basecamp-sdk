@@ -21,6 +21,7 @@ struct ParsedOperation {
     let isMutation: Bool
     let resourceType: String
     let hasPagination: Bool
+    let paginationKey: String?
 }
 
 struct PathParam {
@@ -167,7 +168,13 @@ func parseOperation(
     let returnsVoid = isVoidResponse(responses)
     let isMutation = httpMethod != "GET"
     let resourceType = extractResourceType(operationId)
-    let hasPagination = operation["x-basecamp-pagination"] != nil
+    let paginationExt = operation["x-basecamp-pagination"] as? [String: Any]
+    let hasPagination = paginationExt != nil
+    let paginationKey = paginationExt?["key"] as? String
+
+    // Note: wrapped pagination (paginationKey != nil) does NOT force returnsArray.
+    // The response is an object with a paginated array inside — handled separately
+    // by isWrappedPaginated in the emitter.
 
     return ParsedOperation(
         operationId: operationId,
@@ -187,7 +194,8 @@ func parseOperation(
         returnsVoid: returnsVoid,
         isMutation: isMutation,
         resourceType: resourceType,
-        hasPagination: hasPagination
+        hasPagination: hasPagination,
+        paginationKey: paginationKey
     )
 }
 

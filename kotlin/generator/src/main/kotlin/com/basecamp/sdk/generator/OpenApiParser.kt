@@ -20,8 +20,9 @@ class OpenApiParser(private val root: JsonObject) {
      * Find the underlying entity schema for a ResponseContent type.
      * E.g., "GetTodoResponseContent" → "Todo" (via $ref)
      * E.g., "ListTodosResponseContent" → "Todo" (via array items $ref)
+     * E.g., "GetPersonProgressResponseContent" → "TimelineEvent" (via object property "events" when paginationKey="events")
      */
-    fun findUnderlyingEntitySchema(schemaRef: String): String? {
+    fun findUnderlyingEntitySchema(schemaRef: String, paginationKey: String? = null): String? {
         val schema = getSchema(schemaRef) ?: return null
 
         // Direct $ref to a known entity
@@ -37,6 +38,19 @@ class OpenApiParser(private val root: JsonObject) {
             if (itemsRef != null) {
                 val refName = resolveRef(itemsRef)
                 if (refName in TYPE_ALIASES) return refName
+            }
+        }
+
+        // Wrapped-pagination object: only when paginationKey is specified,
+        // look at properties[key].items.$ref to find the entity type
+        if (paginationKey != null && schema["type"]?.jsonPrimitive?.content == "object") {
+            val keyProp = schema["properties"]?.jsonObject?.get(paginationKey)?.jsonObject
+            if (keyProp != null && keyProp["type"]?.jsonPrimitive?.content == "array") {
+                val itemsRef = keyProp["items"]?.jsonObject?.get("\$ref")?.jsonPrimitive?.content
+                if (itemsRef != null) {
+                    val refName = resolveRef(itemsRef)
+                    if (refName in TYPE_ALIASES) return refName
+                }
             }
         }
 

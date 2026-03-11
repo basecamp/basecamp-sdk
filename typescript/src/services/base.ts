@@ -230,6 +230,87 @@ export abstract class BaseService {
   }
 
   /**
+   * Executes a paginated API request for wrapped responses.
+   *
+   * For endpoints that return `{ wrapper_field: ..., key: [items] }` on every page.
+   * Follows Link headers, extracting items from the specified key on each page.
+   * Returns wrapper fields from page 1 + all items across pages as a ListResult.
+   */
+  protected async requestPaginatedWrapped<K extends string, TItem>(
+    info: OperationInfo,
+    fn: () => Promise<FetchResponse<Record<string, unknown>>>,
+    key: K,
+    paginationOpts?: PaginationOptions,
+  ): Promise<Omit<Record<string, unknown>, K> & Record<K, ListResult<TItem>>> {
+    const start = performance.now();
+    let result: OperationResult = { durationMs: 0 };
+
+    try {
+      this.hooks?.onOperationStart?.(info);
+    } catch {
+      // Hooks should not interrupt operations
+    }
+
+    try {
+      const { data, error, response } = await fn();
+      result.durationMs = Math.round(performance.now() - start);
+
+      if (!response.ok || error) {
+        const basecampError = await this.handleError(response, error);
+        result.error = basecampError;
+        throw basecampError;
+      }
+
+      const firstPageData = (data ?? {}) as Record<string, unknown>;
+      const totalCount = parseTotalCount(response);
+
+      // Extract wrapper fields (everything except the paginated key)
+      const wrapper: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(firstPageData)) {
+        if (k !== key) wrapper[k] = v;
+      }
+
+      const firstPageItems: TItem[] = (firstPageData[key] as TItem[]) ?? [];
+      const maxItems = paginationOpts?.maxItems;
+
+      // If maxItems is set and first page satisfies it, return early
+      if (maxItems && maxItems > 0 && firstPageItems.length >= maxItems) {
+        const hasMore = firstPageItems.length > maxItems
+          || parseNextLink(response.headers.get("Link")) !== null;
+        result.durationMs = Math.round(performance.now() - start);
+        const listResult = new ListResult(firstPageItems.slice(0, maxItems), { totalCount, truncated: hasMore });
+        return { ...wrapper, [key]: listResult } as Omit<Record<string, unknown>, K> & Record<K, ListResult<TItem>>;
+      }
+
+      // Follow pagination, extracting items from key on each subsequent page
+      const { items: allItems, truncated } = await this.followPaginationWrapped<TItem>(
+        response,
+        firstPageItems,
+        key,
+        maxItems,
+      );
+
+      result.durationMs = Math.round(performance.now() - start);
+      const listResult = new ListResult(allItems, { totalCount, truncated });
+      return { ...wrapper, [key]: listResult } as Omit<Record<string, unknown>, K> & Record<K, ListResult<TItem>>;
+    } catch (err) {
+      result.durationMs = Math.round(performance.now() - start);
+      if (err instanceof BasecampError) {
+        result.error = err;
+      } else if (err instanceof Error) {
+        result.error = err;
+      }
+      throw err;
+    } finally {
+      try {
+        this.hooks?.onOperationEnd?.(info, result);
+      } catch {
+        // Hooks should not interrupt operations
+      }
+    }
+  }
+
+  /**
    * Follows Link header pagination, accumulating items across pages.
    * Returns items and whether results were truncated (by maxItems or page cap).
    */
@@ -273,6 +354,52 @@ export abstract class BaseService {
 
     // If we exited the loop because page >= maxPages and there's still a next link,
     // the results are truncated by the safety cap
+    const hasMore = parseNextLink(response.headers.get("Link")) !== null;
+    return { items: allItems, truncated: hasMore };
+  }
+
+  /**
+   * Follows Link header pagination for wrapped responses.
+   * Each page is a wrapper object; items are extracted from data[key].
+   */
+  private async followPaginationWrapped<T>(
+    initialResponse: Response,
+    firstPageItems: T[],
+    key: string,
+    maxItems: number | undefined,
+  ): Promise<{ items: T[]; truncated: boolean }> {
+    const allItems = [...firstPageItems];
+    let response = initialResponse;
+    const initialUrl = initialResponse.url;
+
+    for (let page = 1; page < this.maxPages; page++) {
+      const rawNextUrl = parseNextLink(response.headers.get("Link"));
+      if (!rawNextUrl) break;
+
+      const nextUrl = resolveURL(response.url, rawNextUrl);
+
+      if (!isSameOrigin(nextUrl, initialUrl)) {
+        throw new BasecampError(
+          "api_error",
+          `Pagination Link header points to different origin: ${nextUrl}`,
+        );
+      }
+
+      response = await this.fetchPage(nextUrl);
+
+      if (!response.ok) {
+        throw await errorFromResponse(response, response.headers.get("X-Request-Id") ?? undefined);
+      }
+
+      const pageData = (await response.json()) as Record<string, unknown>;
+      const pageItems: T[] = (pageData[key] as T[]) ?? [];
+      allItems.push(...pageItems);
+
+      if (maxItems && maxItems > 0 && allItems.length >= maxItems) {
+        return { items: allItems.slice(0, maxItems), truncated: true };
+      }
+    }
+
     const hasMore = parseNextLink(response.headers.get("Link")) !== null;
     return { items: allItems, truncated: hasMore };
   }
