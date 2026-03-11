@@ -1,0 +1,23 @@
+go/pkg/types/flexible_time.go
+  c80b430a7276af42 48,53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "d88d92f675ce0577ecd34daa5c5fdc32eae67216",
+  "prompts": {
+    "c80b430a7276af42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b68ca9e5-50a5-4352-9a55-52b52a3a9a5d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
