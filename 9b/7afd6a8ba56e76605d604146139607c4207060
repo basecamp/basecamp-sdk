@@ -1,0 +1,23 @@
+conformance/runner/go/main.go
+  8bf116e1ac89d87d 116-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "9b7afd6a8ba56e76605d604146139607c4207060",
+  "prompts": {
+    "8bf116e1ac89d87d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19b421e2-9b2d-442a-b828-9de25607361d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
