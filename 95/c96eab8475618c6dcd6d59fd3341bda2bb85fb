@@ -1,0 +1,29 @@
+go/pkg/basecamp/zero_value_params_test.go
+  2b1fb5776f17a7db 46-61,129-147
+ruby/test/basecamp/services/messages_service_test.rb
+  2b1fb5776f17a7db 40-52
+go/pkg/basecamp/messages_test.go
+  2b1fb5776f17a7db 4,6-7,402-463
+typescript/tests/services/messages.test.ts
+  2b1fb5776f17a7db 50-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "95c96eab8475618c6dcd6d59fd3341bda2bb85fb",
+  "prompts": {
+    "2b1fb5776f17a7db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2e22df6-c2a3-451c-9b44-1ee2eae382c9",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 133,
+      "overriden_lines": 0
+    }
+  }
+}
