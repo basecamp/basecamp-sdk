@@ -1,0 +1,25 @@
+go/templates/client.tmpl
+  809fdfa218e872c1 387,415,436,459,474,501
+go/pkg/basecamp/zero_value_params_test.go
+  809fdfa218e872c1 28,39-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "005adc35f17e47c00bcbdc47ed7e3d05f6c14253",
+  "prompts": {
+    "809fdfa218e872c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2323220d-3263-4a0c-815e-7613558e4edb",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 8,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    }
+  }
+}
