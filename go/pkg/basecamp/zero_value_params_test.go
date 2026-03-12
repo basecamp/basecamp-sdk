@@ -25,7 +25,7 @@ func TestZeroValueOptionalQueryParams_Omitted(t *testing.T) {
 		}
 	})
 
-	t.Run("todos: string zero value omitted, bool false still serialized", func(t *testing.T) {
+	t.Run("todos: string and bool zero values omitted", func(t *testing.T) {
 		req, err := generated.NewListTodosRequest("https://3.basecampapi.com", "12345", 999, &generated.ListTodosParams{})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -36,10 +36,11 @@ func TestZeroValueOptionalQueryParams_Omitted(t *testing.T) {
 		if q.Has("status") {
 			t.Errorf("expected status to be absent, got %q", q.Get("status"))
 		}
-		// Bool params serialize unconditionally — false is a meaningful value
-		// (e.g., completed=false means "show incomplete todos")
-		if got := q.Get("completed"); got != "false" {
-			t.Errorf("expected completed=false, got %q", got)
+		// BC3 API returns pending (incomplete) todos by default when completed
+		// is omitted; only completed=true changes behavior. Zero-value false
+		// is treated as "unset," same as "" for strings and 0 for numerics.
+		if q.Has("completed") {
+			t.Errorf("expected completed to be absent, got %q", q.Get("completed"))
 		}
 	})
 

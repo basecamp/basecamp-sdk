@@ -384,6 +384,7 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
             {{if and (not .Required) (not .HasOptionalPointer)}}
             {{if eq .Schema.GoType "string"}}if params.{{.GoName}} != "" {
             {{else if or (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}}if params.{{.GoName}} != 0 {
+            {{else if eq .Schema.GoType "bool"}}if params.{{.GoName}} {
             {{end}}
             {{end}}
             {{if .IsPassThrough}}
@@ -411,7 +412,7 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
             }
             {{end}}
             {{if and (not .Required) (not .HasOptionalPointer)}}
-            {{if or (eq .Schema.GoType "string") (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}} }
+            {{if or (eq .Schema.GoType "string") (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64") (eq .Schema.GoType "bool")}} }
             {{end}}
             {{end}}
             {{if .HasOptionalPointer}}}{{end}}
@@ -432,6 +433,7 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
         {{if and (not .Required) (not .HasOptionalPointer)}}
         {{if eq .Schema.GoType "string"}}if params.{{.GoName}} != "" {
         {{else if or (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}}if params.{{.GoName}} != 0 {
+        {{else if eq .Schema.GoType "bool"}}if params.{{.GoName}} {
         {{end}}
         {{end}}
         var headerParam{{$paramIdx}} string
@@ -454,7 +456,7 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
         {{end}}
         req.Header.Set("{{.ParamName}}", headerParam{{$paramIdx}})
         {{if and (not .Required) (not .HasOptionalPointer)}}
-        {{if or (eq .Schema.GoType "string") (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}} }
+        {{if or (eq .Schema.GoType "string") (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64") (eq .Schema.GoType "bool")}} }
         {{end}}
         {{end}}
         {{if .HasOptionalPointer}}}{{end}}
@@ -469,6 +471,7 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
         {{if and (not .Required) (not .HasOptionalPointer)}}
         {{if eq .Schema.GoType "string"}}if params.{{.GoName}} != "" {
         {{else if or (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}}if params.{{.GoName}} != 0 {
+        {{else if eq .Schema.GoType "bool"}}if params.{{.GoName}} {
         {{end}}
         {{end}}
         var cookieParam{{$paramIdx}} string
@@ -495,7 +498,7 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
         }
         req.AddCookie(cookie{{$paramIdx}})
         {{if and (not .Required) (not .HasOptionalPointer)}}
-        {{if or (eq .Schema.GoType "string") (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}} }
+        {{if or (eq .Schema.GoType "string") (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64") (eq .Schema.GoType "bool")}} }
         {{end}}
         {{end}}
         {{if .HasOptionalPointer}}}{{end}}
