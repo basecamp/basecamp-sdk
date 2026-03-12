@@ -1,0 +1,25 @@
+go/pkg/basecamp/messages.go
+  2b1fb5776f17a7db 62-67,121-131,133
+spec/basecamp.smithy
+  2b1fb5776f17a7db 1469-1474,7210,7241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "e61b6267b8436e4f0d9dc376baf5b507191914ed",
+  "prompts": {
+    "2b1fb5776f17a7db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2e22df6-c2a3-451c-9b44-1ee2eae382c9",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 163,
+      "total_deletions": 9,
+      "accepted_lines": 159,
+      "overriden_lines": 0
+    }
+  }
+}
