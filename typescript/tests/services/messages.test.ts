@@ -47,6 +47,22 @@ describe("MessagesService", () => {
       expect(messages[1]!.id).toBe(2);
     });
 
+    it("should pass sort and direction query params", async () => {
+      const boardId = 200;
+
+      server.use(
+        http.get(`${BASE_URL}/message_boards/${boardId}/messages.json`, ({ request }) => {
+          const url = new URL(request.url);
+          expect(url.searchParams.get("sort")).toBe("created_at");
+          expect(url.searchParams.get("direction")).toBe("desc");
+          return HttpResponse.json([sampleMessage(1)]);
+        })
+      );
+
+      const messages = await client.messages.list(boardId, { sort: "created_at", direction: "desc" });
+      expect(messages).toHaveLength(1);
+    });
+
     it("should return empty array when no messages exist", async () => {
       server.use(
         http.get(`${BASE_URL}/message_boards/200/messages.json`, () => {
