@@ -1,0 +1,23 @@
+spec/api-provenance.json
+  2b1fb5776f17a7db 3-4,7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "a17352806bc7da94bc9e82e1690f692bf563304e",
+  "prompts": {
+    "2b1fb5776f17a7db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2e22df6-c2a3-451c-9b44-1ee2eae382c9",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}
