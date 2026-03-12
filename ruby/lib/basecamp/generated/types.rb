@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-03-11T02:58:58Z
+# Generated: 2026-03-12T01:04:29Z
 
 require "json"
 require "time"
@@ -2180,9 +2180,9 @@ module Basecamp
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
         @description = data["description"]
-        @ends_at = parse_datetime(data["ends_at"])
+        @ends_at = data["ends_at"]
         @participants = parse_array(data["participants"], "Person")
-        @starts_at = parse_datetime(data["starts_at"])
+        @starts_at = data["starts_at"]
         @subscription_url = data["subscription_url"]
       end
 

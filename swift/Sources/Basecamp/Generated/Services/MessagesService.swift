@@ -2,9 +2,13 @@
 import Foundation
 
 public struct ListMessageOptions: Sendable {
+    public var sort: String?
+    public var direction: String?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(sort: String? = nil, direction: String? = nil, maxItems: Int? = nil) {
+        self.sort = sort
+        self.direction = direction
         self.maxItems = maxItems
     }
 }
@@ -31,9 +35,17 @@ public final class MessagesService: BaseService, @unchecked Sendable {
     }
 
     public func list(boardId: Int, options: ListMessageOptions? = nil) async throws -> ListResult<Message> {
+        var queryItems: [URLQueryItem] = []
+        if let sort = options?.sort {
+            queryItems.append(URLQueryItem(name: "sort", value: sort))
+        }
+        if let direction = options?.direction {
+            queryItems.append(URLQueryItem(name: "direction", value: direction))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Messages", operation: "ListMessages", resourceType: "message", isMutation: false, resourceId: boardId),
             path: "/message_boards/\(boardId)/messages.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListMessages")
         )

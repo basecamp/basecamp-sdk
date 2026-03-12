@@ -9,10 +9,13 @@ module Basecamp
 
       # List messages on a message board
       # @param board_id [Integer] board id ID
+      # @param sort [String, nil] created_at|updated_at
+      # @param direction [String, nil] asc|desc
       # @return [Enumerator<Hash>] paginated results
-      def list(board_id:)
+      def list(board_id:, sort: nil, direction: nil)
         wrap_paginated(service: "messages", operation: "list", is_mutation: false, resource_id: board_id) do
-          paginate("/message_boards/#{board_id}/messages.json")
+          params = compact_params(sort: sort, direction: direction)
+          paginate("/message_boards/#{board_id}/messages.json", params: params)
         end
       end
 

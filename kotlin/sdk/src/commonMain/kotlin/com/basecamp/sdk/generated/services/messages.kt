@@ -17,7 +17,7 @@ class MessagesService(client: AccountClient) : BaseService(client) {
      * @param boardId The board ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(boardId: Long, options: PaginationOptions? = null): ListResult<Message> {
+    suspend fun list(boardId: Long, options: ListMessagesOptions? = null): ListResult<Message> {
         val info = OperationInfo(
             service = "Messages",
             operation = "ListMessages",
@@ -26,8 +26,12 @@ class MessagesService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = boardId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/message_boards/${boardId}/messages.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "sort" to options?.sort,
+            "direction" to options?.direction,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/message_boards/${boardId}/messages.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Message>>(body)
         }

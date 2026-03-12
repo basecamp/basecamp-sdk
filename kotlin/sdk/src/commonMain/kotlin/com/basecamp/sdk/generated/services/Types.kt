@@ -196,6 +196,15 @@ data class UpdateMessageTypeBody(
     val icon: String? = null
 )
 
+/** Options for ListMessages. */
+data class ListMessagesOptions(
+    val sort: String? = null,
+    val direction: String? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateMessage. */
 data class CreateMessageBody(
     val subject: String,

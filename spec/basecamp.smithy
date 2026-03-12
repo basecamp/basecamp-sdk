@@ -1466,6 +1466,12 @@ structure ListMessagesInput {
   @required
   @httpLabel
   boardId: MessageBoardId
+
+  @httpQuery("sort")
+  sort: RecordingSortField
+
+  @httpQuery("direction")
+  direction: SortDirection
 }
 
 structure ListMessagesOutput {
@@ -7201,6 +7207,7 @@ structure CreateRecordingBoostInput {
   recordingId: RecordingId
 
   @required
+  @length(max: 16)
   content: String
 }
 
@@ -7231,6 +7238,7 @@ structure CreateEventBoostInput {
   eventId: EventId
 
   @required
+  @length(max: 16)
   content: String
 }
 

@@ -5974,6 +5974,24 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "created_at|updated_at",
+            "schema": {
+              "type": "string",
+              "description": "created_at|updated_at"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "description": "asc|desc",
+            "schema": {
+              "type": "string",
+              "description": "asc|desc"
+            }
           }
         ],
         "responses": {
@@ -17527,7 +17545,8 @@
         "type": "object",
         "properties": {
           "content": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 16
           }
         },
         "required": [
@@ -17699,7 +17718,8 @@
         "type": "object",
         "properties": {
           "content": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 16
           }
         },
         "required": [
@@ -20220,17 +20240,17 @@
           },
           "starts_at": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.FlexibleTime",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
           "ends_at": {
             "type": "string",
-            "x-go-type": "time.Time",
+            "x-go-type": "types.FlexibleTime",
             "x-go-type-import": {
-              "path": "time"
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
             "x-go-type-skip-optional-pointer": true
           },
@@ -21831,11 +21851,21 @@
           },
           "width": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "height": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "download_url": {
             "type": "string"

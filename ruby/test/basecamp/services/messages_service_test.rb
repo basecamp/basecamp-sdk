@@ -37,6 +37,19 @@ class MessagesServiceTest < Minitest::Test
     assert_equal "Test Message", result[0]["subject"]
   end
 
+  def test_list_with_sort_and_direction
+    messages = [ sample_message, sample_message(id: 790, subject: "Another Message") ]
+    url = "#{BASE_URL}/12345/message_boards/456/messages.json"
+    stub_request(:get, url)
+      .with(query: { "sort" => "created_at", "direction" => "desc" })
+      .to_return(status: 200, body: messages.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.messages.list(board_id: 456, sort: "created_at", direction: "desc").to_a
+
+    assert_equal 2, result.length
+    assert_requested(:get, url, query: { "sort" => "created_at", "direction" => "desc" })
+  end
+
   def test_get
     # Generated service: /messages/{id} without .json
     stub_get("/12345/messages/789", response_body: sample_message)

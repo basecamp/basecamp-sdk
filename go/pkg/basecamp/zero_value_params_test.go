@@ -44,6 +44,22 @@ func TestZeroValueOptionalQueryParams_Omitted(t *testing.T) {
 		}
 	})
 
+	t.Run("messages: optional sort/direction omitted when zero", func(t *testing.T) {
+		req, err := generated.NewListMessagesRequest("https://3.basecampapi.com", "12345", 999, &generated.ListMessagesParams{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		q := req.URL.Query()
+
+		if q.Has("sort") {
+			t.Errorf("expected sort to be absent, got %q", q.Get("sort"))
+		}
+		if q.Has("direction") {
+			t.Errorf("expected direction to be absent, got %q", q.Get("direction"))
+		}
+	})
+
 	t.Run("recordings: required param present, optional params omitted", func(t *testing.T) {
 		req, err := generated.NewListRecordingsRequest("https://3.basecampapi.com", "12345", &generated.ListRecordingsParams{
 			Type: "Todo",
@@ -108,6 +124,25 @@ func TestNonZeroOptionalQueryParams_Included(t *testing.T) {
 		}
 		if got := q.Get("completed"); got != "true" {
 			t.Errorf("expected completed=true, got %q", got)
+		}
+	})
+
+	t.Run("messages: sort and direction included when set", func(t *testing.T) {
+		req, err := generated.NewListMessagesRequest("https://3.basecampapi.com", "12345", 999, &generated.ListMessagesParams{
+			Sort:      "created_at",
+			Direction: "desc",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		q := req.URL.Query()
+
+		if got := q.Get("sort"); got != "created_at" {
+			t.Errorf("expected sort=created_at, got %q", got)
+		}
+		if got := q.Get("direction"); got != "desc" {
+			t.Errorf("expected direction=desc, got %q", got)
 		}
 	})
 

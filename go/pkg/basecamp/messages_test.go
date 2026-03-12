@@ -1,7 +1,10 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -393,6 +396,68 @@ func TestUpdateMessageRequest_Marshal(t *testing.T) {
 	}
 	if roundtrip.Content != req.Content {
 		t.Errorf("expected content %q, got %q", req.Content, roundtrip.Content)
+	}
+}
+
+// --- httptest-based service contract tests ---
+
+// testMessagesServer creates an httptest.Server and a MessagesService wired to it.
+func testMessagesServer(t *testing.T, handler http.HandlerFunc) *MessagesService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Messages()
+}
+
+func TestMessagesService_List_SortDirection(t *testing.T) {
+	fixture := loadMessagesFixture(t, "list.json")
+	svc := testMessagesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if got := r.URL.Query().Get("sort"); got != "created_at" {
+			t.Errorf("expected sort=created_at, got %q", got)
+		}
+		if got := r.URL.Query().Get("direction"); got != "desc" {
+			t.Errorf("expected direction=desc, got %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.List(context.Background(), 200, &MessageListOptions{Sort: "created_at", Direction: "desc"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Messages) != 2 {
+		t.Errorf("expected 2 messages, got %d", len(result.Messages))
+	}
+}
+
+func TestMessagesService_List_NoSortDirection(t *testing.T) {
+	fixture := loadMessagesFixture(t, "list.json")
+	svc := testMessagesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Has("sort") {
+			t.Errorf("expected sort to be absent, got %q", r.URL.Query().Get("sort"))
+		}
+		if r.URL.Query().Has("direction") {
+			t.Errorf("expected direction to be absent, got %q", r.URL.Query().Get("direction"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.List(context.Background(), 200, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
