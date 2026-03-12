@@ -59,6 +59,12 @@ type UpdateMessageRequest struct {
 
 // MessageListOptions specifies options for listing messages.
 type MessageListOptions struct {
+	// Sort specifies the sort field: "created_at" or "updated_at".
+	Sort string
+
+	// Direction specifies the sort direction: "desc" or "asc".
+	Direction string
+
 	// Limit is the maximum number of messages to return.
 	// If 0, uses DefaultMessageLimit (100). Use -1 for unlimited.
 	Limit int
@@ -112,8 +118,19 @@ func (s *MessagesService) List(ctx context.Context, boardID int64, opts *Message
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	// Build params for generated client
+	params := &generated.ListMessagesParams{}
+	if opts != nil {
+		if opts.Sort != "" {
+			params.Sort = opts.Sort
+		}
+		if opts.Direction != "" {
+			params.Direction = opts.Direction
+		}
+	}
+
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListMessagesWithResponse(ctx, s.client.accountID, boardID)
+	resp, err := s.client.parent.gen.ListMessagesWithResponse(ctx, s.client.accountID, boardID, params)
 	if err != nil {
 		return nil, err
 	}

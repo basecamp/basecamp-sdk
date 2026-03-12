@@ -21,6 +21,10 @@ export type Message = components["schemas"]["Message"];
  * Options for list.
  */
 export interface ListMessageOptions extends PaginationOptions {
+  /** Filter by sort */
+  sort?: "created_at" | "updated_at";
+  /** Filter by direction */
+  direction?: "asc" | "desc";
 }
 
 /**
@@ -72,6 +76,9 @@ export class MessagesService extends BaseService {
    * @example
    * ```ts
    * const result = await client.messages.list(123);
+   *
+   * // With options
+   * const filtered = await client.messages.list(123, { sort: "created_at" });
    * ```
    */
   async list(boardId: number, options?: ListMessageOptions): Promise<ListResult<Message>> {
@@ -87,6 +94,7 @@ export class MessagesService extends BaseService {
         this.client.GET("/message_boards/{boardId}/messages.json", {
           params: {
             path: { boardId },
+            query: { sort: options?.sort, direction: options?.direction },
           },
         })
       , options

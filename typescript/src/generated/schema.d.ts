@@ -8075,7 +8075,12 @@ export interface operations {
     };
     ListMessages: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description created_at|updated_at */
+                sort?: string;
+                /** @description asc|desc */
+                direction?: string;
+            };
             header?: never;
             path: {
                 boardId: number;

@@ -2120,6 +2120,15 @@ type CreateCampfireUploadParams struct {
 	Name string `form:"name" json:"name"`
 }
 
+// ListMessagesParams defines parameters for ListMessages.
+type ListMessagesParams struct {
+	// Sort created_at|updated_at
+	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+
+	// Direction asc|desc
+	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
+}
+
 // ListProjectsParams defines parameters for ListProjects.
 type ListProjectsParams struct {
 	// Status active|archived|trashed
@@ -2931,7 +2940,7 @@ type ClientInterface interface {
 	GetMessageBoard(ctx context.Context, accountId string, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListMessages request
-	ListMessages(ctx context.Context, accountId string, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListMessages(ctx context.Context, accountId string, boardId int64, params *ListMessagesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateMessageWithBody request with any body
 	CreateMessageWithBody(ctx context.Context, accountId string, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4373,10 +4382,10 @@ func (c *Client) GetMessageBoard(ctx context.Context, accountId string, boardId 
 
 // ListMessages is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListMessages(ctx context.Context, accountId string, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListMessages(ctx context.Context, accountId string, boardId int64, params *ListMessagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListMessagesRequest(c.Server, accountId, boardId)
+		return NewListMessagesRequest(c.Server, accountId, boardId, params)
 	}, true, "ListMessages", reqEditors...)
 
 }
@@ -9075,7 +9084,7 @@ func NewGetMessageBoardRequest(server string, accountId string, boardId int64) (
 }
 
 // NewListMessagesRequest generates requests for ListMessages
-func NewListMessagesRequest(server string, accountId string, boardId int64) (*http.Request, error) {
+func NewListMessagesRequest(server string, accountId string, boardId int64, params *ListMessagesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9105,6 +9114,44 @@ func NewListMessagesRequest(server string, accountId string, boardId int64) (*ht
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Sort != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Direction != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -15296,8 +15343,8 @@ func (s *DocumentsService) Update(ctx context.Context, accountId string, documen
 	return s.client.UpdateDocument(ctx, accountId, documentId, body, reqEditors...)
 }
 
-func (s *MessagesService) List(ctx context.Context, accountId string, boardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListMessages(ctx, accountId, boardId, reqEditors...)
+func (s *MessagesService) List(ctx context.Context, accountId string, boardId int64, params *ListMessagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListMessages(ctx, accountId, boardId, params, reqEditors...)
 }
 
 func (s *MessagesService) CreateWithBody(ctx context.Context, accountId string, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -15843,7 +15890,7 @@ type ClientWithResponsesInterface interface {
 	GetMessageBoardWithResponse(ctx context.Context, accountId string, boardId int64, reqEditors ...RequestEditorFn) (*GetMessageBoardResponse, error)
 
 	// ListMessagesWithResponse request
-	ListMessagesWithResponse(ctx context.Context, accountId string, boardId int64, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error)
+	ListMessagesWithResponse(ctx context.Context, accountId string, boardId int64, params *ListMessagesParams, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error)
 
 	// CreateMessageWithBodyWithResponse request with any body
 	CreateMessageWithBodyWithResponse(ctx context.Context, accountId string, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error)
@@ -21695,8 +21742,8 @@ func (c *ClientWithResponses) GetMessageBoardWithResponse(ctx context.Context, a
 }
 
 // ListMessagesWithResponse request returning *ListMessagesResponse
-func (c *ClientWithResponses) ListMessagesWithResponse(ctx context.Context, accountId string, boardId int64, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error) {
-	rsp, err := c.ListMessages(ctx, accountId, boardId, reqEditors...)
+func (c *ClientWithResponses) ListMessagesWithResponse(ctx context.Context, accountId string, boardId int64, params *ListMessagesParams, reqEditors ...RequestEditorFn) (*ListMessagesResponse, error) {
+	rsp, err := c.ListMessages(ctx, accountId, boardId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
