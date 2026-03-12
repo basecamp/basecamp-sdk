@@ -2,21 +2,21 @@
 import Foundation
 
 public final class ToolsService: BaseService, @unchecked Sendable {
-    public func clone(req: CloneToolRequest) async throws -> Tool {
+    public func clone(projectId: Int, req: CloneToolRequest) async throws -> Tool {
         return try await request(
-            OperationInfo(service: "Tools", operation: "CloneTool", resourceType: "tool", isMutation: true),
+            OperationInfo(service: "Tools", operation: "CloneTool", resourceType: "tool", isMutation: true, projectId: projectId),
             method: "POST",
-            path: "/dock/tools.json",
+            path: "/buckets/\(projectId)/dock/tools.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "CloneTool")
         )
     }
 
-    public func delete(toolId: Int) async throws {
+    public func delete(projectId: Int, toolId: Int) async throws {
         try await requestVoid(
-            OperationInfo(service: "Tools", operation: "DeleteTool", resourceType: "tool", isMutation: true, resourceId: toolId),
+            OperationInfo(service: "Tools", operation: "DeleteTool", resourceType: "tool", isMutation: true, projectId: projectId, resourceId: toolId),
             method: "DELETE",
-            path: "/dock/tools/\(toolId)",
+            path: "/buckets/\(projectId)/dock/tools/\(toolId)",
             retryConfig: Metadata.retryConfig(for: "DeleteTool")
         )
     }
@@ -39,11 +39,11 @@ public final class ToolsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func get(toolId: Int) async throws -> Tool {
+    public func get(projectId: Int, toolId: Int) async throws -> Tool {
         return try await request(
-            OperationInfo(service: "Tools", operation: "GetTool", resourceType: "tool", isMutation: false, resourceId: toolId),
+            OperationInfo(service: "Tools", operation: "GetTool", resourceType: "tool", isMutation: false, projectId: projectId, resourceId: toolId),
             method: "GET",
-            path: "/dock/tools/\(toolId)",
+            path: "/buckets/\(projectId)/dock/tools/\(toolId)",
             retryConfig: Metadata.retryConfig(for: "GetTool")
         )
     }
@@ -58,11 +58,11 @@ public final class ToolsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func update(toolId: Int, req: UpdateToolRequest) async throws -> Tool {
+    public func update(projectId: Int, toolId: Int, req: UpdateToolRequest) async throws -> Tool {
         return try await request(
-            OperationInfo(service: "Tools", operation: "UpdateTool", resourceType: "tool", isMutation: true, resourceId: toolId),
+            OperationInfo(service: "Tools", operation: "UpdateTool", resourceType: "tool", isMutation: true, projectId: projectId, resourceId: toolId),
             method: "PUT",
-            path: "/dock/tools/\(toolId)",
+            path: "/buckets/\(projectId)/dock/tools/\(toolId)",
             body: req,
             retryConfig: Metadata.retryConfig(for: "UpdateTool")
         )

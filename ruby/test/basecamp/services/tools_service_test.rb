@@ -12,10 +12,10 @@ class ToolsServiceTest < Minitest::Test
   def test_get
     response = { "id" => 1, "name" => "Message Board", "enabled" => true }
 
-    stub_request(:get, %r{https://3\.basecampapi\.com/12345/dock/tools/\d+})
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/dock/tools/\d+})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.tools.get(tool_id: 2)
+    result = @account.tools.get(project_id: 99, tool_id: 2)
     assert_equal "Message Board", result["name"]
     assert_equal true, result["enabled"]
   end
@@ -23,28 +23,28 @@ class ToolsServiceTest < Minitest::Test
   def test_clone
     response = { "id" => 2, "name" => "Message Board (Copy)" }
 
-    stub_request(:post, %r{https://3\.basecampapi\.com/12345/dock/tools\.json})
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/dock/tools\.json})
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.tools.clone(source_recording_id: 2)
+    result = @account.tools.clone(project_id: 99, source_recording_id: 2)
     assert_equal "Message Board (Copy)", result["name"]
   end
 
   def test_update
     response = { "id" => 1, "title" => "Team Updates" }
 
-    stub_request(:put, %r{https://3\.basecampapi\.com/12345/dock/tools/\d+})
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/buckets/\d+/dock/tools/\d+})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.tools.update(tool_id: 2, title: "Team Updates")
+    result = @account.tools.update(project_id: 99, tool_id: 2, title: "Team Updates")
     assert_equal "Team Updates", result["title"]
   end
 
   def test_delete
-    stub_request(:delete, %r{https://3\.basecampapi\.com/12345/dock/tools/\d+})
+    stub_request(:delete, %r{https://3\.basecampapi\.com/12345/buckets/\d+/dock/tools/\d+})
       .to_return(status: 204)
 
-    result = @account.tools.delete(tool_id: 2)
+    result = @account.tools.delete(project_id: 99, tool_id: 2)
     assert_nil result
   end
 

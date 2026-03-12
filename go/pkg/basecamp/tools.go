@@ -40,7 +40,7 @@ func NewToolsService(client *AccountClient) *ToolsService {
 }
 
 // Get returns a tool by ID.
-func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err error) {
+func (s *ToolsService) Get(ctx context.Context, projectID, toolID int64) (result *Tool, err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Get",
 		ResourceType: "tool", IsMutation: false,
@@ -55,7 +55,7 @@ func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetToolWithResponse(ctx, s.client.accountID, toolID)
+	resp, err := s.client.parent.gen.GetToolWithResponse(ctx, s.client.accountID, projectID, toolID)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err
 
 // Create clones an existing tool to create a new one.
 // Returns the newly created tool.
-func (s *ToolsService) Create(ctx context.Context, sourceToolID int64) (result *Tool, err error) {
+func (s *ToolsService) Create(ctx context.Context, projectID, sourceToolID int64) (result *Tool, err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Create",
 		ResourceType: "tool", IsMutation: true,
@@ -92,7 +92,7 @@ func (s *ToolsService) Create(ctx context.Context, sourceToolID int64) (result *
 		SourceRecordingId: sourceToolID,
 	}
 
-	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, body)
+	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, projectID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (s *ToolsService) Create(ctx context.Context, sourceToolID int64) (result *
 
 // Update updates (renames) an existing tool.
 // Returns the updated tool.
-func (s *ToolsService) Update(ctx context.Context, toolID int64, title string) (result *Tool, err error) {
+func (s *ToolsService) Update(ctx context.Context, projectID, toolID int64, title string) (result *Tool, err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Update",
 		ResourceType: "tool", IsMutation: true,
@@ -134,7 +134,7 @@ func (s *ToolsService) Update(ctx context.Context, toolID int64, title string) (
 		Title: title,
 	}
 
-	resp, err := s.client.parent.gen.UpdateToolWithResponse(ctx, s.client.accountID, toolID, body)
+	resp, err := s.client.parent.gen.UpdateToolWithResponse(ctx, s.client.accountID, projectID, toolID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (s *ToolsService) Update(ctx context.Context, toolID int64, title string) (
 
 // Delete moves a tool to the trash.
 // Trashed tools can be recovered from the trash.
-func (s *ToolsService) Delete(ctx context.Context, toolID int64) (err error) {
+func (s *ToolsService) Delete(ctx context.Context, projectID, toolID int64) (err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Delete",
 		ResourceType: "tool", IsMutation: true,
@@ -167,7 +167,7 @@ func (s *ToolsService) Delete(ctx context.Context, toolID int64) (err error) {
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DeleteToolWithResponse(ctx, s.client.accountID, toolID)
+	resp, err := s.client.parent.gen.DeleteToolWithResponse(ctx, s.client.accountID, projectID, toolID)
 	if err != nil {
 		return err
 	}

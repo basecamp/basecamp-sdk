@@ -8,39 +8,43 @@ module Basecamp
     class ToolsService < BaseService
 
       # Clone an existing tool to create a new one
+      # @param project_id [Integer] project id ID
       # @param source_recording_id [Integer] source recording id
       # @return [Hash] response data
-      def clone(source_recording_id:)
-        with_operation(service: "tools", operation: "clone", is_mutation: true) do
-          http_post("/dock/tools.json", body: compact_params(source_recording_id: source_recording_id)).json
+      def clone(project_id:, source_recording_id:)
+        with_operation(service: "tools", operation: "clone", is_mutation: true, project_id: project_id) do
+          http_post("/buckets/#{project_id}/dock/tools.json", body: compact_params(source_recording_id: source_recording_id)).json
         end
       end
 
       # Get a dock tool by id
+      # @param project_id [Integer] project id ID
       # @param tool_id [Integer] tool id ID
       # @return [Hash] response data
-      def get(tool_id:)
-        with_operation(service: "tools", operation: "get", is_mutation: false, resource_id: tool_id) do
-          http_get("/dock/tools/#{tool_id}").json
+      def get(project_id:, tool_id:)
+        with_operation(service: "tools", operation: "get", is_mutation: false, project_id: project_id, resource_id: tool_id) do
+          http_get("/buckets/#{project_id}/dock/tools/#{tool_id}").json
         end
       end
 
       # Update (rename) an existing tool
+      # @param project_id [Integer] project id ID
       # @param tool_id [Integer] tool id ID
       # @param title [String] title
       # @return [Hash] response data
-      def update(tool_id:, title:)
-        with_operation(service: "tools", operation: "update", is_mutation: true, resource_id: tool_id) do
-          http_put("/dock/tools/#{tool_id}", body: compact_params(title: title)).json
+      def update(project_id:, tool_id:, title:)
+        with_operation(service: "tools", operation: "update", is_mutation: true, project_id: project_id, resource_id: tool_id) do
+          http_put("/buckets/#{project_id}/dock/tools/#{tool_id}", body: compact_params(title: title)).json
         end
       end
 
       # Delete a tool (trash it)
+      # @param project_id [Integer] project id ID
       # @param tool_id [Integer] tool id ID
       # @return [void]
-      def delete(tool_id:)
-        with_operation(service: "tools", operation: "delete", is_mutation: true, resource_id: tool_id) do
-          http_delete("/dock/tools/#{tool_id}")
+      def delete(project_id:, tool_id:)
+        with_operation(service: "tools", operation: "delete", is_mutation: true, project_id: project_id, resource_id: tool_id) do
+          http_delete("/buckets/#{project_id}/dock/tools/#{tool_id}")
           nil
         end
       end

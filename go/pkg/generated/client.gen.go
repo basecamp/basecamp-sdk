@@ -2220,6 +2220,12 @@ type ListTodolistsParams struct {
 // CreateWebhookJSONRequestBody defines body for CreateWebhook for application/json ContentType.
 type CreateWebhookJSONRequestBody = CreateWebhookRequestContent
 
+// CloneToolJSONRequestBody defines body for CloneTool for application/json ContentType.
+type CloneToolJSONRequestBody = CloneToolRequestContent
+
+// UpdateToolJSONRequestBody defines body for UpdateTool for application/json ContentType.
+type UpdateToolJSONRequestBody = UpdateToolRequestContent
+
 // UpdateCardJSONRequestBody defines body for UpdateCard for application/json ContentType.
 type UpdateCardJSONRequestBody = UpdateCardRequestContent
 
@@ -2270,12 +2276,6 @@ type CreateCampfireLineJSONRequestBody = CreateCampfireLineRequestContent
 
 // UpdateCommentJSONRequestBody defines body for UpdateComment for application/json ContentType.
 type UpdateCommentJSONRequestBody = UpdateCommentRequestContent
-
-// CloneToolJSONRequestBody defines body for CloneTool for application/json ContentType.
-type CloneToolJSONRequestBody = CloneToolRequestContent
-
-// UpdateToolJSONRequestBody defines body for UpdateTool for application/json ContentType.
-type UpdateToolJSONRequestBody = UpdateToolRequestContent
 
 // UpdateDocumentJSONRequestBody defines body for UpdateDocument for application/json ContentType.
 type UpdateDocumentJSONRequestBody = UpdateDocumentRequestContent
@@ -2707,6 +2707,22 @@ type ClientInterface interface {
 
 	CreateWebhook(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CloneToolWithBody request with any body
+	CloneToolWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CloneTool(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTool request
+	DeleteTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTool request
+	GetTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateToolWithBody request with any body
+	UpdateToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateTool(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetCard request
 	GetCard(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2878,22 +2894,6 @@ type ClientInterface interface {
 	UpdateCommentWithBody(ctx context.Context, accountId string, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateComment(ctx context.Context, accountId string, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CloneToolWithBody request with any body
-	CloneToolWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CloneTool(ctx context.Context, accountId string, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteTool request
-	DeleteTool(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetTool request
-	GetTool(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateToolWithBody request with any body
-	UpdateToolWithBody(ctx context.Context, accountId string, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	UpdateTool(ctx context.Context, accountId string, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDocument request
 	GetDocument(ctx context.Context, accountId string, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3417,6 +3417,74 @@ func (c *Client) CreateWebhook(ctx context.Context, accountId string, bucketId i
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// CloneToolWithBody executes the CloneTool operation.
+
+func (c *Client) CloneToolWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCloneToolRequestWithBody(c.Server, accountId, projectId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CloneTool(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCloneToolRequest(c.Server, accountId, projectId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// DeleteTool is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeleteTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeleteToolRequest(c.Server, accountId, projectId, toolId)
+	}, true, "DeleteTool", reqEditors...)
+
+}
+
+// GetTool is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetTool(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetToolRequest(c.Server, accountId, projectId, toolId)
+	}, true, "GetTool", reqEditors...)
+
+}
+
+// UpdateToolWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateToolWithBody(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateToolRequestWithBody(c.Server, accountId, projectId, toolId, contentType, body)
+	}, true, "UpdateTool", reqEditors...)
+
+}
+
+func (c *Client) UpdateTool(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateToolRequest(c.Server, accountId, projectId, toolId, body)
+	}, true, "UpdateTool", reqEditors...)
 
 }
 
@@ -4133,74 +4201,6 @@ func (c *Client) UpdateComment(ctx context.Context, accountId string, commentId 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCommentRequest(c.Server, accountId, commentId, body)
 	}, true, "UpdateComment", reqEditors...)
-
-}
-
-// CloneToolWithBody executes the CloneTool operation.
-
-func (c *Client) CloneToolWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCloneToolRequestWithBody(c.Server, accountId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-func (c *Client) CloneTool(ctx context.Context, accountId string, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCloneToolRequest(c.Server, accountId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-// DeleteTool is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) DeleteTool(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDeleteToolRequest(c.Server, accountId, toolId)
-	}, true, "DeleteTool", reqEditors...)
-
-}
-
-// GetTool is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) GetTool(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetToolRequest(c.Server, accountId, toolId)
-	}, true, "GetTool", reqEditors...)
-
-}
-
-// UpdateToolWithBody is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) UpdateToolWithBody(ctx context.Context, accountId string, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateToolRequestWithBody(c.Server, accountId, toolId, contentType, body)
-	}, true, "UpdateTool", reqEditors...)
-
-}
-
-func (c *Client) UpdateTool(ctx context.Context, accountId string, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateToolRequest(c.Server, accountId, toolId, body)
-	}, true, "UpdateTool", reqEditors...)
 
 }
 
@@ -6220,6 +6220,217 @@ func NewCreateWebhookRequestWithBody(server string, accountId string, bucketId i
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCloneToolRequest calls the generic CloneTool builder with application/json body
+func NewCloneToolRequest(server string, accountId string, projectId int64, body CloneToolJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCloneToolRequestWithBody(server, accountId, projectId, "application/json", bodyReader)
+}
+
+// NewCloneToolRequestWithBody generates requests for CloneTool with any type of body
+func NewCloneToolRequestWithBody(server string, accountId string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteToolRequest generates requests for DeleteTool
+func NewDeleteToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetToolRequest generates requests for GetTool
+func NewGetToolRequest(server string, accountId string, projectId int64, toolId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateToolRequest calls the generic UpdateTool builder with application/json body
+func NewUpdateToolRequest(server string, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateToolRequestWithBody(server, accountId, projectId, toolId, "application/json", bodyReader)
+}
+
+// NewUpdateToolRequestWithBody generates requests for UpdateTool with any type of body
+func NewUpdateToolRequestWithBody(server string, accountId string, projectId int64, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -8337,189 +8548,6 @@ func NewUpdateCommentRequestWithBody(server string, accountId string, commentId 
 	}
 
 	operationPath := fmt.Sprintf("/%s/comments/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewCloneToolRequest calls the generic CloneTool builder with application/json body
-func NewCloneToolRequest(server string, accountId string, body CloneToolJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCloneToolRequestWithBody(server, accountId, "application/json", bodyReader)
-}
-
-// NewCloneToolRequestWithBody generates requests for CloneTool with any type of body
-func NewCloneToolRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/dock/tools.json", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDeleteToolRequest generates requests for DeleteTool
-func NewDeleteToolRequest(server string, accountId string, toolId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/dock/tools/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetToolRequest generates requests for GetTool
-func NewGetToolRequest(server string, accountId string, toolId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/dock/tools/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUpdateToolRequest calls the generic UpdateTool builder with application/json body
-func NewUpdateToolRequest(server string, accountId string, toolId int64, body UpdateToolJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateToolRequestWithBody(server, accountId, toolId, "application/json", bodyReader)
-}
-
-// NewUpdateToolRequestWithBody generates requests for UpdateTool with any type of body
-func NewUpdateToolRequestWithBody(server string, accountId string, toolId int64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "toolId", runtime.ParamLocationPath, toolId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/dock/tools/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -14537,6 +14565,10 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetBoost":                           {Idempotent: true, HasSensitiveParams: false},
 	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
+	"CloneTool":                          {Idempotent: false, HasSensitiveParams: false},
+	"DeleteTool":                         {Idempotent: true, HasSensitiveParams: false},
+	"GetTool":                            {Idempotent: true, HasSensitiveParams: false},
+	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
 	"UpdateCard":                         {Idempotent: true, HasSensitiveParams: false},
 	"MoveCard":                           {Idempotent: false, HasSensitiveParams: false},
@@ -14583,10 +14615,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetClientReply":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetComment":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateComment":                      {Idempotent: true, HasSensitiveParams: false},
-	"CloneTool":                          {Idempotent: false, HasSensitiveParams: false},
-	"DeleteTool":                         {Idempotent: true, HasSensitiveParams: false},
-	"GetTool":                            {Idempotent: true, HasSensitiveParams: false},
-	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetDocument":                        {Idempotent: true, HasSensitiveParams: false},
 	"UpdateDocument":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetForward":                         {Idempotent: true, HasSensitiveParams: false},
@@ -15661,6 +15689,22 @@ type ClientWithResponsesInterface interface {
 
 	CreateWebhookWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
 
+	// CloneToolWithBodyWithResponse request with any body
+	CloneToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+
+	CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+
+	// DeleteToolWithResponse request
+	DeleteToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error)
+
+	// GetToolWithResponse request
+	GetToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*GetToolResponse, error)
+
+	// UpdateToolWithBodyWithResponse request with any body
+	UpdateToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
+
+	UpdateToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
+
 	// GetCardWithResponse request
 	GetCardWithResponse(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error)
 
@@ -15832,22 +15876,6 @@ type ClientWithResponsesInterface interface {
 	UpdateCommentWithBodyWithResponse(ctx context.Context, accountId string, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
 
 	UpdateCommentWithResponse(ctx context.Context, accountId string, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
-
-	// CloneToolWithBodyWithResponse request with any body
-	CloneToolWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
-
-	CloneToolWithResponse(ctx context.Context, accountId string, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
-
-	// DeleteToolWithResponse request
-	DeleteToolWithResponse(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error)
-
-	// GetToolWithResponse request
-	GetToolWithResponse(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*GetToolResponse, error)
-
-	// UpdateToolWithBodyWithResponse request with any body
-	UpdateToolWithBodyWithResponse(ctx context.Context, accountId string, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
-
-	UpdateToolWithResponse(ctx context.Context, accountId string, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error)
 
 	// GetDocumentWithResponse request
 	GetDocumentWithResponse(ctx context.Context, accountId string, documentId int64, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error)
@@ -16424,6 +16452,111 @@ func (r CreateWebhookResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CloneToolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CloneToolResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CloneToolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CloneToolResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteToolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteToolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteToolResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetToolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetToolResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetToolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetToolResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpdateToolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateToolResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateToolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateToolResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -17632,111 +17765,6 @@ func (r UpdateCommentResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateCommentResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type CloneToolResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *CloneToolResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r CloneToolResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CloneToolResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type DeleteToolResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteToolResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteToolResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetToolResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *GetToolResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r GetToolResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetToolResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type UpdateToolResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *UpdateToolResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateToolResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateToolResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -21003,6 +21031,58 @@ func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, acc
 	return ParseCreateWebhookResponse(rsp)
 }
 
+// CloneToolWithBodyWithResponse request with arbitrary body returning *CloneToolResponse
+func (c *ClientWithResponses) CloneToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
+	rsp, err := c.CloneToolWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCloneToolResponse(rsp)
+}
+
+func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, accountId string, projectId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
+	rsp, err := c.CloneTool(ctx, accountId, projectId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCloneToolResponse(rsp)
+}
+
+// DeleteToolWithResponse request returning *DeleteToolResponse
+func (c *ClientWithResponses) DeleteToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error) {
+	rsp, err := c.DeleteTool(ctx, accountId, projectId, toolId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteToolResponse(rsp)
+}
+
+// GetToolWithResponse request returning *GetToolResponse
+func (c *ClientWithResponses) GetToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, reqEditors ...RequestEditorFn) (*GetToolResponse, error) {
+	rsp, err := c.GetTool(ctx, accountId, projectId, toolId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetToolResponse(rsp)
+}
+
+// UpdateToolWithBodyWithResponse request with arbitrary body returning *UpdateToolResponse
+func (c *ClientWithResponses) UpdateToolWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
+	rsp, err := c.UpdateToolWithBody(ctx, accountId, projectId, toolId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateToolResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateToolWithResponse(ctx context.Context, accountId string, projectId int64, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
+	rsp, err := c.UpdateTool(ctx, accountId, projectId, toolId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateToolResponse(rsp)
+}
+
 // GetCardWithResponse request returning *GetCardResponse
 func (c *ClientWithResponses) GetCardWithResponse(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error) {
 	rsp, err := c.GetCard(ctx, accountId, cardId, reqEditors...)
@@ -21551,58 +21631,6 @@ func (c *ClientWithResponses) UpdateCommentWithResponse(ctx context.Context, acc
 		return nil, err
 	}
 	return ParseUpdateCommentResponse(rsp)
-}
-
-// CloneToolWithBodyWithResponse request with arbitrary body returning *CloneToolResponse
-func (c *ClientWithResponses) CloneToolWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
-	rsp, err := c.CloneToolWithBody(ctx, accountId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCloneToolResponse(rsp)
-}
-
-func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, accountId string, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
-	rsp, err := c.CloneTool(ctx, accountId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCloneToolResponse(rsp)
-}
-
-// DeleteToolWithResponse request returning *DeleteToolResponse
-func (c *ClientWithResponses) DeleteToolWithResponse(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error) {
-	rsp, err := c.DeleteTool(ctx, accountId, toolId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteToolResponse(rsp)
-}
-
-// GetToolWithResponse request returning *GetToolResponse
-func (c *ClientWithResponses) GetToolWithResponse(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*GetToolResponse, error) {
-	rsp, err := c.GetTool(ctx, accountId, toolId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetToolResponse(rsp)
-}
-
-// UpdateToolWithBodyWithResponse request with arbitrary body returning *UpdateToolResponse
-func (c *ClientWithResponses) UpdateToolWithBodyWithResponse(ctx context.Context, accountId string, toolId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
-	rsp, err := c.UpdateToolWithBody(ctx, accountId, toolId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateToolResponse(rsp)
-}
-
-func (c *ClientWithResponses) UpdateToolWithResponse(ctx context.Context, accountId string, toolId int64, body UpdateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateToolResponse, error) {
-	rsp, err := c.UpdateTool(ctx, accountId, toolId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateToolResponse(rsp)
 }
 
 // GetDocumentWithResponse request returning *GetDocumentResponse
@@ -23309,6 +23337,229 @@ func ParseCreateWebhookResponse(rsp *http.Response) (*CreateWebhookResponse, err
 			return nil, err
 		}
 		response.JSON507 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCloneToolResponse parses an HTTP response from a CloneToolWithResponse call
+func ParseCloneToolResponse(rsp *http.Response) (*CloneToolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CloneToolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CloneToolResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteToolResponse parses an HTTP response from a DeleteToolWithResponse call
+func ParseDeleteToolResponse(rsp *http.Response) (*DeleteToolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteToolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetToolResponse parses an HTTP response from a GetToolWithResponse call
+func ParseGetToolResponse(rsp *http.Response) (*GetToolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetToolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetToolResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateToolResponse parses an HTTP response from a UpdateToolWithResponse call
+func ParseUpdateToolResponse(rsp *http.Response) (*UpdateToolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateToolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateToolResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 
@@ -25838,229 +26089,6 @@ func ParseUpdateCommentResponse(rsp *http.Response) (*UpdateCommentResponse, err
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest UpdateCommentResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCloneToolResponse parses an HTTP response from a CloneToolWithResponse call
-func ParseCloneToolResponse(rsp *http.Response) (*CloneToolResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CloneToolResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest CloneToolResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDeleteToolResponse parses an HTTP response from a DeleteToolWithResponse call
-func ParseDeleteToolResponse(rsp *http.Response) (*DeleteToolResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteToolResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetToolResponse parses an HTTP response from a GetToolWithResponse call
-func ParseGetToolResponse(rsp *http.Response) (*GetToolResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetToolResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetToolResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUpdateToolResponse parses an HTTP response from a UpdateToolWithResponse call
-func ParseUpdateToolResponse(rsp *http.Response) (*UpdateToolResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateToolResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UpdateToolResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

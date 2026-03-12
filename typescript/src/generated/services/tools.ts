@@ -51,25 +51,30 @@ export class ToolsService extends BaseService {
 
   /**
    * Clone an existing tool to create a new one
+   * @param projectId - The project ID
    * @param req - Tool request parameters
    * @returns The Tool
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * const result = await client.tools.clone({ sourceRecordingId: 1 });
+   * const result = await client.tools.clone(123, { sourceRecordingId: 1 });
    * ```
    */
-  async clone(req: CloneToolRequest): Promise<Tool> {
+  async clone(projectId: number, req: CloneToolRequest): Promise<Tool> {
     const response = await this.request(
       {
         service: "Tools",
         operation: "CloneTool",
         resourceType: "tool",
         isMutation: true,
+        projectId,
       },
       () =>
-        this.client.POST("/dock/tools.json", {
+        this.client.POST("/buckets/{projectId}/dock/tools.json", {
+          params: {
+            path: { projectId },
+          },
           body: {
             source_recording_id: req.sourceRecordingId,
           },
@@ -80,28 +85,30 @@ export class ToolsService extends BaseService {
 
   /**
    * Get a dock tool by id
+   * @param projectId - The project ID
    * @param toolId - The tool ID
    * @returns The Tool
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.tools.get(123);
+   * const result = await client.tools.get(123, 123);
    * ```
    */
-  async get(toolId: number): Promise<Tool> {
+  async get(projectId: number, toolId: number): Promise<Tool> {
     const response = await this.request(
       {
         service: "Tools",
         operation: "GetTool",
         resourceType: "tool",
         isMutation: false,
+        projectId,
         resourceId: toolId,
       },
       () =>
-        this.client.GET("/dock/tools/{toolId}", {
+        this.client.GET("/buckets/{projectId}/dock/tools/{toolId}", {
           params: {
-            path: { toolId },
+            path: { projectId, toolId },
           },
         })
     );
@@ -110,6 +117,7 @@ export class ToolsService extends BaseService {
 
   /**
    * Update (rename) an existing tool
+   * @param projectId - The project ID
    * @param toolId - The tool ID
    * @param req - Tool update parameters
    * @returns The Tool
@@ -117,10 +125,10 @@ export class ToolsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.tools.update(123, { title: "example" });
+   * const result = await client.tools.update(123, 123, { title: "example" });
    * ```
    */
-  async update(toolId: number, req: UpdateToolRequest): Promise<Tool> {
+  async update(projectId: number, toolId: number, req: UpdateToolRequest): Promise<Tool> {
     if (!req.title) {
       throw Errors.validation("Title is required");
     }
@@ -130,12 +138,13 @@ export class ToolsService extends BaseService {
         operation: "UpdateTool",
         resourceType: "tool",
         isMutation: true,
+        projectId,
         resourceId: toolId,
       },
       () =>
-        this.client.PUT("/dock/tools/{toolId}", {
+        this.client.PUT("/buckets/{projectId}/dock/tools/{toolId}", {
           params: {
-            path: { toolId },
+            path: { projectId, toolId },
           },
           body: {
             title: req.title,
@@ -147,28 +156,30 @@ export class ToolsService extends BaseService {
 
   /**
    * Delete a tool (trash it)
+   * @param projectId - The project ID
    * @param toolId - The tool ID
    * @returns void
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * await client.tools.delete(123);
+   * await client.tools.delete(123, 123);
    * ```
    */
-  async delete(toolId: number): Promise<void> {
+  async delete(projectId: number, toolId: number): Promise<void> {
     await this.request(
       {
         service: "Tools",
         operation: "DeleteTool",
         resourceType: "tool",
         isMutation: true,
+        projectId,
         resourceId: toolId,
       },
       () =>
-        this.client.DELETE("/dock/tools/{toolId}", {
+        this.client.DELETE("/buckets/{projectId}/dock/tools/{toolId}", {
           params: {
-            path: { toolId },
+            path: { projectId, toolId },
           },
         })
     );

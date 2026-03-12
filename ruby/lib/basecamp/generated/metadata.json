@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-03-12T01:04:29Z",
+  "generated": "2026-03-12T15:57:48Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -64,6 +64,56 @@
           429,
           503
         ]
+      }
+    },
+    "CloneTool": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetTool": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateTool": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "DeleteTool": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "GetCard": {
@@ -651,56 +701,6 @@
       }
     },
     "UpdateComment": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
-    "CloneTool": {
-      "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
-    "GetTool": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
-    "UpdateTool": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
-    "DeleteTool": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,

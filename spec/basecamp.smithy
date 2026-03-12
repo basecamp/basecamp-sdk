@@ -6504,7 +6504,7 @@ structure GetProjectConstructionOutput {
 /// Get a dock tool by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/dock/tools/{toolId}")
+@http(method: "GET", uri: "/{accountId}/buckets/{projectId}/dock/tools/{toolId}")
 operation GetTool {
   input: GetToolInput
   output: GetToolOutput
@@ -6518,6 +6518,10 @@ structure GetToolInput {
 
   @required
   @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpLabel
   toolId: ToolId
 }
 
@@ -6528,7 +6532,7 @@ structure GetToolOutput {
 
 /// Clone an existing tool to create a new one
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/dock/tools.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/dock/tools.json", code: 201)
 operation CloneTool {
   input: CloneToolInput
   output: CloneToolOutput
@@ -6539,6 +6543,10 @@ structure CloneToolInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
 
   @required
   source_recording_id: ToolId
@@ -6553,7 +6561,7 @@ structure CloneToolOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/dock/tools/{toolId}")
+@http(method: "PUT", uri: "/{accountId}/buckets/{projectId}/dock/tools/{toolId}")
 operation UpdateTool {
   input: UpdateToolInput
   output: UpdateToolOutput
@@ -6564,6 +6572,10 @@ structure UpdateToolInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
 
   @required
   @httpLabel
@@ -6582,7 +6594,7 @@ structure UpdateToolOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/dock/tools/{toolId}", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/buckets/{projectId}/dock/tools/{toolId}", code: 204)
 operation DeleteTool {
   input: DeleteToolInput
   output: DeleteToolOutput
@@ -6593,6 +6605,10 @@ structure DeleteToolInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
 
   @required
   @httpLabel
