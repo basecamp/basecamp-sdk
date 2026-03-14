@@ -1,0 +1,43 @@
+go/pkg/basecamp/vaults.go
+  6bd6435eca61d3a5 1032
+  ff509bd416c57fb1 1033
+go/pkg/basecamp/download_test.go
+  6bd6435eca61d3a5 1-256,264,266,269-271,274-275,277-287,294-433,435-452,456-473,477-709
+  ff509bd416c57fb1 257-263,265,267-268,272-273,276,288-293,434,453-455,474-476
+go/pkg/basecamp/download.go
+  ff509bd416c57fb1 43,45-49,113,129
+  6bd6435eca61d3a5 1-42,44,50-112,114-128,130-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "f5163153dff65664e69a8ce52cbee9977512795d",
+  "prompts": {
+    "6bd6435eca61d3a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2fda1d3a-a4fe-4209-b4f0-44e762e534e5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 872,
+      "total_deletions": 27,
+      "accepted_lines": 847,
+      "overriden_lines": 0
+    },
+    "ff509bd416c57fb1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5058098-fe55-4a6d-9524-2a201c50c867",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 798,
+      "total_deletions": 44,
+      "accepted_lines": 778,
+      "overriden_lines": 0
+    }
+  }
+}
