@@ -15,6 +15,7 @@ import { BasecampError } from "./errors.js";
 import { isLocalhost } from "./security.js";
 import { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
 import { type AuthStrategy, bearerAuth } from "./auth-strategy.js";
+import { createDownloadURL, type DownloadResult } from "./download.js";
 
 // Use createRequire for JSON import (Node 18+ compatible)
 const require = createRequire(import.meta.url);
@@ -168,6 +169,8 @@ export interface BasecampClient extends RawClient {
   readonly clientVisibility: ClientVisibilityService;
   /** Boosts service - manage recording boosts */
   readonly boosts: BoostsService;
+  /** Download file content from any API-routable download URL */
+  downloadURL(rawURL: string): Promise<DownloadResult>;
 }
 
 /**
@@ -357,6 +360,16 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("timeline", () => new TimelineService(client, hooks, fetchPage, maxPages));
   defineService("clientVisibility", () => new ClientVisibilityService(client, hooks, fetchPage, maxPages));
   defineService("boosts", () => new BoostsService(client, hooks, fetchPage, maxPages));
+
+  // Wire downloadURL — raw fetch, not openapi-fetch (like fetchPage)
+  const downloadURLFn = createDownloadURL({
+    authStrategy, userAgent, baseUrl, hooks, requestTimeoutMs,
+  });
+  Object.defineProperty(enhancedClient, "downloadURL", {
+    value: downloadURLFn,
+    writable: false,
+    enumerable: false,
+  });
 
   return enhancedClient;
 }

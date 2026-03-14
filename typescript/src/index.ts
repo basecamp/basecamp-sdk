@@ -51,6 +51,9 @@ export { fetchAllPages, paginateAll } from "./client.js";
 export { ListResult, parseTotalCount, type ListMeta, type PaginationOptions } from "./pagination.js";
 export { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
 
+// Download
+export { type DownloadResult, filenameFromURL } from "./download.js";
+
 // Errors
 export {
   BasecampError,
