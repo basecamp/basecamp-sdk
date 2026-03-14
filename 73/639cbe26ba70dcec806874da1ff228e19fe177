@@ -1,0 +1,29 @@
+typescript/src/download.ts
+  ff509bd416c57fb1 41-48,81,150-151,174,189,203
+go/pkg/basecamp/download_test.go
+  ff509bd416c57fb1 6,656
+go/pkg/basecamp/download.go
+  ff509bd416c57fb1 102,118-119
+typescript/tests/download.test.ts
+  ff509bd416c57fb1 1-2,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "73639cbe26ba70dcec806874da1ff228e19fe177",
+  "prompts": {
+    "ff509bd416c57fb1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5058098-fe55-4a6d-9524-2a201c50c867",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 22,
+      "total_deletions": 18,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    }
+  }
+}
