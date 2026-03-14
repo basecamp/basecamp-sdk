@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -652,11 +653,7 @@ func TestDownload_SecondLegNoTimeout(t *testing.T) {
 
 // isSDKError extracts an *Error from err via errors.As.
 func isSDKError(err error, target **Error) bool {
-	if e, ok := err.(*Error); ok {
-		*target = e
-		return true
-	}
-	return false
+	return errors.As(err, target)
 }
 
 // testHooks is a configurable Hooks implementation for testing.

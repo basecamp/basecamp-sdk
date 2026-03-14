@@ -99,7 +99,7 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 
 	apiClient := &http.Client{
 		Transport: ac.parent.httpClient.Transport, // loggingTransport — fires hooks
-		Timeout:   ac.parent.httpOpts.Timeout,
+		Timeout:   0,                              // no client-level timeout — body may be streamed on direct 2xx
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
@@ -115,7 +115,8 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 
 	// Dispatch on response status
 	switch {
-	case resp.StatusCode >= 300 && resp.StatusCode < 400:
+	case resp.StatusCode == 301 || resp.StatusCode == 302 || resp.StatusCode == 303 ||
+		resp.StatusCode == 307 || resp.StatusCode == 308:
 		// Redirect — extract Location, close body, proceed to hop 2
 		location := resp.Header.Get("Location")
 		_ = resp.Body.Close()

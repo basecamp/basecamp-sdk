@@ -38,6 +38,14 @@ export function filenameFromURL(rawURL: string): string {
   }
 }
 
+/** Parse Content-Length header defensively, returning -1 for missing/invalid values. */
+function parseContentLength(headers: Headers): number {
+  const raw = headers.get("Content-Length");
+  if (!raw) return -1;
+  const parsed = parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : -1;
+}
+
 /** Dependencies for createDownloadURL factory */
 interface DownloadDeps {
   authStrategy: AuthStrategy;
@@ -70,7 +78,7 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
     } catch {
       throw new BasecampError("usage", "download URL must be an absolute URL");
     }
-    if (!parsed.protocol.startsWith("http")) {
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       throw new BasecampError("usage", "download URL must be an absolute URL");
     }
 
@@ -139,7 +147,8 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
       });
 
       // Dispatch on response status
-      if (response.status >= 300 && response.status < 400) {
+      const isRedirect = [301, 302, 303, 307, 308].includes(response.status);
+      if (isRedirect) {
         // Redirect — extract Location, cancel body, proceed to hop 2
         const location = response.headers.get("Location");
         response.body?.cancel();
@@ -162,6 +171,7 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
         }
 
         if (!signedResponse.ok) {
+          signedResponse.body?.cancel();
           throw new BasecampError(
             "api_error",
             `download failed with status ${signedResponse.status}`,
@@ -176,9 +186,7 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
         return {
           body: signedResponse.body,
           contentType: signedResponse.headers.get("Content-Type") ?? "",
-          contentLength: signedResponse.headers.has("Content-Length")
-            ? parseInt(signedResponse.headers.get("Content-Length")!, 10)
-            : -1,
+          contentLength: parseContentLength(signedResponse.headers),
           filename: filenameFromURL(rawURL),
         };
       }
@@ -192,9 +200,7 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
         return {
           body: response.body,
           contentType: response.headers.get("Content-Type") ?? "",
-          contentLength: response.headers.has("Content-Length")
-            ? parseInt(response.headers.get("Content-Length")!, 10)
-            : -1,
+          contentLength: parseContentLength(response.headers),
           filename: filenameFromURL(rawURL),
         };
       }

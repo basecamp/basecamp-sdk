@@ -1,9 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
-import { http, HttpResponse, passthrough } from "msw";
+import { describe, it, expect } from "vitest";
+import { http, HttpResponse } from "msw";
 import { server } from "./setup.js";
 import { createBasecampClient } from "../src/client.js";
 import { filenameFromURL } from "../src/download.js";
-import type { BasecampHooks, RequestInfo, RequestResult, OperationInfo, OperationResult } from "../src/hooks.js";
+import type { BasecampHooks, RequestInfo, RequestResult, OperationInfo } from "../src/hooks.js";
 import { BasecampError } from "../src/errors.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
