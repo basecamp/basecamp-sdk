@@ -1,0 +1,29 @@
+typescript/src/download.ts
+  ff509bd416c57fb1 1-214
+typescript/src/index.ts
+  ff509bd416c57fb1 54-56
+typescript/tests/download.test.ts
+  ff509bd416c57fb1 1-513
+typescript/src/client.ts
+  ff509bd416c57fb1 18,172-173,364-373
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "7f030f22996cb850656ec7229e23f3370fe17704",
+  "prompts": {
+    "ff509bd416c57fb1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5058098-fe55-4a6d-9524-2a201c50c867",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 743,
+      "overriden_lines": 0
+    }
+  }
+}
