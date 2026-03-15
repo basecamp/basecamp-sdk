@@ -1,7 +1,11 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -135,6 +139,110 @@ func TestCreateTodolistGroupRequest_Marshal(t *testing.T) {
 
 	if roundtrip.Name != req.Name {
 		t.Error("round-trip mismatch")
+	}
+}
+
+// --- httptest-based service contract tests ---
+
+// testTodolistGroupsServer creates an httptest.Server and a TodolistGroupsService wired to it.
+func testTodolistGroupsServer(t *testing.T, handler http.HandlerFunc) *TodolistGroupsService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.TodolistGroups()
+}
+
+func TestTodolistGroupsService_Get(t *testing.T) {
+	fixture := loadTodolistGroupsFixture(t, "get.json")
+	svc := testTodolistGroupsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/todolists/1069479600" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	group, err := svc.Get(context.Background(), 1069479600)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if group.ID != 1069479600 {
+		t.Errorf("expected ID 1069479600, got %d", group.ID)
+	}
+	if group.Name != "Phase 1" {
+		t.Errorf("expected name 'Phase 1', got %q", group.Name)
+	}
+	if group.Parent == nil {
+		t.Fatal("expected Parent to be non-nil")
+	}
+	if group.Parent.ID != 1069479519 {
+		t.Errorf("expected Parent.ID 1069479519, got %d", group.Parent.ID)
+	}
+	if group.Bucket == nil {
+		t.Fatal("expected Bucket to be non-nil")
+	}
+	if group.Bucket.ID != 2085958500 {
+		t.Errorf("expected Bucket.ID 2085958500, got %d", group.Bucket.ID)
+	}
+	if group.Creator == nil {
+		t.Fatal("expected Creator to be non-nil")
+	}
+	if group.Creator.Name != "Victor Cooper" {
+		t.Errorf("expected Creator.Name 'Victor Cooper', got %q", group.Creator.Name)
+	}
+}
+
+func TestTodolistGroupsService_Update(t *testing.T) {
+	fixture := loadTodolistGroupsFixture(t, "get.json")
+	var receivedBody map[string]string
+	svc := testTodolistGroupsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/todolists/1069479600" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	group, err := svc.Update(context.Background(), 1069479600, &UpdateTodolistGroupRequest{
+		Name: "Updated Phase 1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if group.ID != 1069479600 {
+		t.Errorf("expected ID 1069479600, got %d", group.ID)
+	}
+	if group.Name != "Phase 1" {
+		t.Errorf("expected name 'Phase 1', got %q", group.Name)
+	}
+	if group.Parent == nil {
+		t.Fatal("expected Parent to be non-nil")
+	}
+	if group.Bucket == nil {
+		t.Fatal("expected Bucket to be non-nil")
+	}
+	if group.Creator == nil {
+		t.Fatal("expected Creator to be non-nil")
+	}
+	if receivedBody["name"] != "Updated Phase 1" {
+		t.Errorf("expected request body name 'Updated Phase 1', got %q", receivedBody["name"])
 	}
 }
 

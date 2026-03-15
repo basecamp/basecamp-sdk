@@ -1,7 +1,11 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -157,6 +161,114 @@ func TestUpdateTodolistRequest_Marshal(t *testing.T) {
 	}
 	if req.Description != "Updated description for launch tasks" {
 		t.Errorf("expected description 'Updated description for launch tasks', got %q", req.Description)
+	}
+}
+
+// --- httptest-based service contract tests ---
+
+// testTodolistsServer creates an httptest.Server and a TodolistsService wired to it.
+func testTodolistsServer(t *testing.T, handler http.HandlerFunc) *TodolistsService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Todolists()
+}
+
+func TestTodolistsService_Get(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	svc := testTodolistsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/todolists/1069479519" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	todolist, err := svc.Get(context.Background(), 1069479519)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if todolist.ID != 1069479519 {
+		t.Errorf("expected ID 1069479519, got %d", todolist.ID)
+	}
+	if todolist.Name != "Hardware" {
+		t.Errorf("expected name 'Hardware', got %q", todolist.Name)
+	}
+	if todolist.Parent == nil {
+		t.Fatal("expected Parent to be non-nil")
+	}
+	if todolist.Parent.ID != 1069479338 {
+		t.Errorf("expected Parent.ID 1069479338, got %d", todolist.Parent.ID)
+	}
+	if todolist.Bucket == nil {
+		t.Fatal("expected Bucket to be non-nil")
+	}
+	if todolist.Bucket.ID != 2085958500 {
+		t.Errorf("expected Bucket.ID 2085958500, got %d", todolist.Bucket.ID)
+	}
+	if todolist.Creator == nil {
+		t.Fatal("expected Creator to be non-nil")
+	}
+	if todolist.Creator.Name != "Victor Cooper" {
+		t.Errorf("expected Creator.Name 'Victor Cooper', got %q", todolist.Creator.Name)
+	}
+}
+
+func TestTodolistsService_Update(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	var receivedBody map[string]string
+	svc := testTodolistsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/todolists/1069479519" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	todolist, err := svc.Update(context.Background(), 1069479519, &UpdateTodolistRequest{
+		Name:        "Updated Name",
+		Description: "Updated description",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if todolist.ID != 1069479519 {
+		t.Errorf("expected ID 1069479519, got %d", todolist.ID)
+	}
+	if todolist.Name != "Hardware" {
+		t.Errorf("expected name 'Hardware', got %q", todolist.Name)
+	}
+	if todolist.Parent == nil {
+		t.Fatal("expected Parent to be non-nil")
+	}
+	if todolist.Bucket == nil {
+		t.Fatal("expected Bucket to be non-nil")
+	}
+	if todolist.Creator == nil {
+		t.Fatal("expected Creator to be non-nil")
+	}
+	if receivedBody["name"] != "Updated Name" {
+		t.Errorf("expected request body name 'Updated Name', got %q", receivedBody["name"])
+	}
+	if receivedBody["description"] != "Updated description" {
+		t.Errorf("expected request body description 'Updated description', got %q", receivedBody["description"])
 	}
 }
 
