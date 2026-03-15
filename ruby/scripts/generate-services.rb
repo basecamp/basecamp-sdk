@@ -559,7 +559,7 @@ class ServiceGenerator
         ruby_name = to_snake_case(b[:name])
         type = b[:type] || 'Object'
         type = "#{type}, nil" unless b[:required]
-        desc = b[:description] || ruby_name.gsub('_', ' ')
+        desc = (b[:description] || ruby_name.gsub('_', ' ')).gsub("\n", "\n      #   ")
         format_hint = b[:format_hint] ? " (#{b[:format_hint]})" : ''
         lines << "      # @param #{ruby_name} [#{type}] #{desc}#{format_hint}"
       end
@@ -570,7 +570,7 @@ class ServiceGenerator
       ruby_name = to_snake_case(q[:name])
       type = q[:type] || 'String'
       type = "#{type}, nil" unless q[:required]
-      desc = q[:description] || ruby_name.gsub('_', ' ')
+      desc = (q[:description] || ruby_name.gsub('_', ' ')).gsub("\n", "\n      #   ")
       lines << "      # @param #{ruby_name} [#{type}] #{desc}"
     end
 
