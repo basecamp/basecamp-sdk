@@ -1,0 +1,29 @@
+typescript/tests/services/tools.test.ts
+  698a3774091a3125 78,80,86,90-100
+ruby/test/basecamp/services/tools_service_test.rb
+  698a3774091a3125 24,27,30-31
+go/pkg/basecamp/tools_test.go
+  698a3774091a3125 4,6,180-245
+go/pkg/basecamp/tools.go
+  698a3774091a3125 26-33,84-89,93,104-108,110-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "b645423fb70724efe7df5a413d5e0fb535baa723",
+  "prompts": {
+    "698a3774091a3125": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e204b86-fa77-434c-831c-11d321199a48",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 108,
+      "overriden_lines": 0
+    }
+  }
+}
