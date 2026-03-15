@@ -12339,10 +12339,10 @@
           {
             "name": "sort",
             "in": "query",
-            "description": "created_at|updated_at",
+            "description": "best_match|created_at",
             "schema": {
               "type": "string",
-              "description": "created_at|updated_at"
+              "description": "best_match|created_at"
             }
           }
         ],

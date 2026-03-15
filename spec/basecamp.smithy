@@ -6964,7 +6964,7 @@ structure Assignable {
 
 // ===== Search Shapes =====
 
-@documentation("created_at|updated_at")
+@documentation("best_match|created_at")
 string SearchSortField
 
 list SearchResultList {
