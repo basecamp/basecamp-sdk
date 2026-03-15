@@ -459,6 +459,22 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		})
 		return operationResult{err: err}
 
+	case "GetTool":
+		toolID := getInt64Param(tc.PathParams, "toolId")
+		_, err := account.Tools().Get(ctx, toolID)
+		return operationResult{err: err}
+
+	case "CloneTool":
+		sourceRecordingID := getInt64Param(tc.RequestBody, "source_recording_id")
+		title := getStringParam(tc.RequestBody, "title")
+		_, err := account.Tools().Create(ctx, sourceRecordingID, title)
+		return operationResult{err: err}
+
+	case "EnableTool":
+		toolID := getInt64Param(tc.PathParams, "toolId")
+		err := account.Tools().Enable(ctx, toolID)
+		return operationResult{err: err}
+
 	default:
 		return operationResult{
 			err: fmt.Errorf("unknown operation: %s", tc.Operation),

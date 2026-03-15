@@ -29,8 +29,10 @@ module Basecamp
       # @param project_id [Integer, String] project (bucket) ID
       # @param source_tool_id [Integer, String] ID of the tool to clone
       # @return [Hash] newly created tool
-      def clone(project_id:, source_tool_id:)
-        http_post(bucket_path(project_id, "/dock/tools/#{source_tool_id}/clone.json")).json
+      def clone(project_id:, source_tool_id:, title: nil)
+        body = { source_recording_id: source_tool_id }
+        body[:title] = title if title
+        http_post(bucket_path(project_id, "/dock/tools.json"), body: body).json
       end
 
       # Updates (renames) an existing tool.
@@ -59,7 +61,7 @@ module Basecamp
       # @param tool_id [Integer, String] tool ID
       # @return [void]
       def enable(project_id:, tool_id:)
-        http_post(bucket_path(project_id, "/dock/tools/#{tool_id}/position.json"))
+        http_post(bucket_path(project_id, "/recordings/#{tool_id}/position.json"))
         nil
       end
 
@@ -69,7 +71,7 @@ module Basecamp
       # @param tool_id [Integer, String] tool ID
       # @return [void]
       def disable(project_id:, tool_id:)
-        http_delete(bucket_path(project_id, "/dock/tools/#{tool_id}/position.json"))
+        http_delete(bucket_path(project_id, "/recordings/#{tool_id}/position.json"))
         nil
       end
 
@@ -80,7 +82,7 @@ module Basecamp
       # @param position [Integer] new position (1-based, 1 = first on dock)
       # @return [void]
       def reposition(project_id:, tool_id:, position:)
-        http_put(bucket_path(project_id, "/dock/tools/#{tool_id}/position.json"),
+        http_put(bucket_path(project_id, "/recordings/#{tool_id}/position.json"),
                  body: { position: position })
         nil
       end

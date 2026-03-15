@@ -167,7 +167,7 @@ export class ForwardsService extends BaseService {
         operation: "GetForwardReply",
         resourceType: "forward_reply",
         isMutation: false,
-        resourceId: forwardId,
+        resourceId: replyId,
       },
       () =>
         this.client.GET("/inbox_forwards/{forwardId}/replies/{replyId}", {

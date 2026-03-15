@@ -70,7 +70,7 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
 
     public func deleteLine(campfireId: Int, lineId: Int) async throws {
         try await requestVoid(
-            OperationInfo(service: "Campfires", operation: "DeleteCampfireLine", resourceType: "campfire_line", isMutation: true, resourceId: campfireId),
+            OperationInfo(service: "Campfires", operation: "DeleteCampfireLine", resourceType: "campfire_line", isMutation: true, resourceId: lineId),
             method: "DELETE",
             path: "/chats/\(campfireId)/lines/\(lineId)",
             retryConfig: Metadata.retryConfig(for: "DeleteCampfireLine")
@@ -79,7 +79,7 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
 
     public func deleteChatbot(campfireId: Int, chatbotId: Int) async throws {
         try await requestVoid(
-            OperationInfo(service: "Campfires", operation: "DeleteChatbot", resourceType: "chatbot", isMutation: true, resourceId: campfireId),
+            OperationInfo(service: "Campfires", operation: "DeleteChatbot", resourceType: "chatbot", isMutation: true, resourceId: chatbotId),
             method: "DELETE",
             path: "/chats/\(campfireId)/integrations/\(chatbotId)",
             retryConfig: Metadata.retryConfig(for: "DeleteChatbot")
@@ -97,7 +97,7 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
 
     public func getLine(campfireId: Int, lineId: Int) async throws -> CampfireLine {
         return try await request(
-            OperationInfo(service: "Campfires", operation: "GetCampfireLine", resourceType: "campfire_line", isMutation: false, resourceId: campfireId),
+            OperationInfo(service: "Campfires", operation: "GetCampfireLine", resourceType: "campfire_line", isMutation: false, resourceId: lineId),
             method: "GET",
             path: "/chats/\(campfireId)/lines/\(lineId)",
             retryConfig: Metadata.retryConfig(for: "GetCampfireLine")
@@ -106,7 +106,7 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
 
     public func getChatbot(campfireId: Int, chatbotId: Int) async throws -> Chatbot {
         return try await request(
-            OperationInfo(service: "Campfires", operation: "GetChatbot", resourceType: "chatbot", isMutation: false, resourceId: campfireId),
+            OperationInfo(service: "Campfires", operation: "GetChatbot", resourceType: "chatbot", isMutation: false, resourceId: chatbotId),
             method: "GET",
             path: "/chats/\(campfireId)/integrations/\(chatbotId)",
             retryConfig: Metadata.retryConfig(for: "GetChatbot")
@@ -151,7 +151,7 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
 
     public func updateChatbot(campfireId: Int, chatbotId: Int, req: UpdateChatbotRequest) async throws -> Chatbot {
         return try await request(
-            OperationInfo(service: "Campfires", operation: "UpdateChatbot", resourceType: "chatbot", isMutation: true, resourceId: campfireId),
+            OperationInfo(service: "Campfires", operation: "UpdateChatbot", resourceType: "chatbot", isMutation: true, resourceId: chatbotId),
             method: "PUT",
             path: "/chats/\(campfireId)/integrations/\(chatbotId)",
             body: req,

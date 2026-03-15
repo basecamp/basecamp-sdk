@@ -61,7 +61,6 @@ describe("ToolsService", () => {
 
   describe("clone", () => {
     it("should clone a tool", async () => {
-      const projectId = 111;
       const sourceToolId = 222;
       const mockTool = {
         id: 333,
@@ -73,16 +72,17 @@ describe("ToolsService", () => {
 
       server.use(
         http.post(
-          `${BASE_URL}/buckets/${projectId}/dock/tools.json`,
+          `${BASE_URL}/dock/tools.json`,
           async ({ request }) => {
-            const body = await request.json() as { source_recording_id: number };
+            const body = await request.json() as { source_recording_id: number; title: string };
             expect(body.source_recording_id).toBe(sourceToolId);
+            expect(body.title).toBe("To-dos (Copy)");
             return HttpResponse.json(mockTool, { status: 201 });
           }
         )
       );
 
-      const tool = await client.tools.clone(projectId, { sourceRecordingId: sourceToolId });
+      const tool = await client.tools.clone({ sourceRecordingId: sourceToolId, title: "To-dos (Copy)" });
       expect(tool.id).toBe(333);
       expect(tool.title).toBe("To-dos (Copy)");
     });

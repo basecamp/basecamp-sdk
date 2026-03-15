@@ -644,6 +644,25 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "GetTool" -> {
+            val toolId = tc.pathParams.longParam("toolId")
+            account.tools.get(toolId)
+            DispatchResult()
+        }
+
+        "CloneTool" -> {
+            val sourceRecordingId = tc.requestBody!!["source_recording_id"]!!.jsonPrimitive.long
+            val title = tc.requestBody?.get("title")?.jsonPrimitive?.contentOrNull
+            account.tools.clone(CloneToolBody(sourceRecordingId = sourceRecordingId, title = title))
+            DispatchResult()
+        }
+
+        "EnableTool" -> {
+            val toolId = tc.pathParams.longParam("toolId")
+            account.tools.enable(toolId)
+            DispatchResult()
+        }
+
         else ->
             throw UnsupportedOperationException("Unknown operation: ${tc.operation}")
     }

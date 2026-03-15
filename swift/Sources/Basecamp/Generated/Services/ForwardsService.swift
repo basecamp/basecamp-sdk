@@ -40,7 +40,7 @@ public final class ForwardsService: BaseService, @unchecked Sendable {
 
     public func getReply(forwardId: Int, replyId: Int) async throws -> ForwardReply {
         return try await request(
-            OperationInfo(service: "Forwards", operation: "GetForwardReply", resourceType: "forward_reply", isMutation: false, resourceId: forwardId),
+            OperationInfo(service: "Forwards", operation: "GetForwardReply", resourceType: "forward_reply", isMutation: false, resourceId: replyId),
             method: "GET",
             path: "/inbox_forwards/\(forwardId)/replies/\(replyId)",
             retryConfig: Metadata.retryConfig(for: "GetForwardReply")

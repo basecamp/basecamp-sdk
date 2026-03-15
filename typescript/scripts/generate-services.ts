@@ -1211,7 +1211,7 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
     lines.push(`        projectId,`);
   }
 
-  const resourceParam = op.pathParams.find((p) => p.name !== "projectId" && p.name.endsWith("Id"));
+  const resourceParam = op.pathParams.findLast((p) => p.name !== "projectId" && p.name.endsWith("Id"));
   if (resourceParam) {
     lines.push(`        resourceId: ${resourceParam.name},`);
   }

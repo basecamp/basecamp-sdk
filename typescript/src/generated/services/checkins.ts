@@ -491,7 +491,7 @@ export class CheckinsService extends BaseService {
         operation: "GetAnswersByPerson",
         resourceType: "answers_by_person",
         isMutation: false,
-        resourceId: questionId,
+        resourceId: personId,
       },
       () =>
         this.client.GET("/questions/{questionId}/answers/by/{personId}", {

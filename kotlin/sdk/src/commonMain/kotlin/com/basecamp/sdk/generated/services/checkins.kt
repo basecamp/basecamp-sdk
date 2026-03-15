@@ -262,7 +262,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             resourceType = "answers_by_person",
             isMutation = false,
             projectId = null,
-            resourceId = questionId,
+            resourceId = personId,
         )
         return requestPaginated(info, options, {
             httpGet("/questions/${questionId}/answers/by/${personId}", operationName = info.operation)

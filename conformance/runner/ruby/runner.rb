@@ -131,6 +131,19 @@ class OperationMapper
       @account.reports.person_progress(
         person_id: path_params["personId"]
       )
+    when "GetTool"
+      @account.tools.get(
+        tool_id: path_params["toolId"]
+      )
+    when "CloneTool"
+      @account.tools.clone(
+        source_recording_id: body["source_recording_id"],
+        title: body["title"]
+      )
+    when "EnableTool"
+      @account.tools.enable(
+        tool_id: path_params["toolId"]
+      )
     else
       raise "Unknown operation: #{operation}"
     end

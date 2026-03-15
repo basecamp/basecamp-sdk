@@ -1,7 +1,6 @@
 export { AttachmentsService } from "./attachments.js";
 export { BoostsService } from "./boosts.js";
 export { WebhooksService } from "./webhooks.js";
-export { ToolsService } from "./tools.js";
 export { CardsService } from "./cards.js";
 export { CardStepsService } from "./card-steps.js";
 export { CardColumnsService } from "./card-columns.js";
@@ -13,6 +12,7 @@ export { ClientApprovalsService } from "./client-approvals.js";
 export { ClientCorrespondencesService } from "./client-correspondences.js";
 export { ClientRepliesService } from "./client-replies.js";
 export { CommentsService } from "./comments.js";
+export { ToolsService } from "./tools.js";
 export { DocumentsService } from "./documents.js";
 export { ForwardsService } from "./forwards.js";
 export { LineupService } from "./lineup.js";

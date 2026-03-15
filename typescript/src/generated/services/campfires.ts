@@ -227,7 +227,7 @@ export class CampfiresService extends BaseService {
         operation: "GetChatbot",
         resourceType: "chatbot",
         isMutation: false,
-        resourceId: campfireId,
+        resourceId: chatbotId,
       },
       () =>
         this.client.GET("/chats/{campfireId}/integrations/{chatbotId}", {
@@ -262,7 +262,7 @@ export class CampfiresService extends BaseService {
         operation: "UpdateChatbot",
         resourceType: "chatbot",
         isMutation: true,
-        resourceId: campfireId,
+        resourceId: chatbotId,
       },
       () =>
         this.client.PUT("/chats/{campfireId}/integrations/{chatbotId}", {
@@ -297,7 +297,7 @@ export class CampfiresService extends BaseService {
         operation: "DeleteChatbot",
         resourceType: "chatbot",
         isMutation: true,
-        resourceId: campfireId,
+        resourceId: chatbotId,
       },
       () =>
         this.client.DELETE("/chats/{campfireId}/integrations/{chatbotId}", {
@@ -395,7 +395,7 @@ export class CampfiresService extends BaseService {
         operation: "GetCampfireLine",
         resourceType: "campfire_line",
         isMutation: false,
-        resourceId: campfireId,
+        resourceId: lineId,
       },
       () =>
         this.client.GET("/chats/{campfireId}/lines/{lineId}", {
@@ -426,7 +426,7 @@ export class CampfiresService extends BaseService {
         operation: "DeleteCampfireLine",
         resourceType: "campfire_line",
         isMutation: true,
-        resourceId: campfireId,
+        resourceId: lineId,
       },
       () =>
         this.client.DELETE("/chats/{campfireId}/lines/{lineId}", {

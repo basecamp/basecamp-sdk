@@ -62,23 +62,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buckets/{projectId}/dock/tools.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Clone an existing tool to create a new one */
-        post: operations["CloneTool"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/card_tables/cards/{cardId}": {
         parameters: {
             query?: never;
@@ -665,6 +648,23 @@ export interface paths {
         /** @description Update an existing comment */
         put: operations["UpdateComment"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dock/tools.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Clone an existing tool to create a new one */
+        post: operations["CloneTool"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2505,6 +2505,7 @@ export interface components {
         CloneToolRequestContent: {
             /** Format: int64 */
             source_recording_id: number;
+            title?: string;
         };
         CloneToolResponseContent: components["schemas"]["Tool"];
         Comment: {
@@ -4173,77 +4174,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebhookLimitErrorResponseContent"];
-                };
-            };
-        };
-    };
-    CloneTool: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CloneToolRequestContent"];
-            };
-        };
-        responses: {
-            /** @description CloneTool 201 response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CloneToolResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
                 };
             };
         };
@@ -7136,6 +7066,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CloneTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloneToolRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CloneTool 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloneToolResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
