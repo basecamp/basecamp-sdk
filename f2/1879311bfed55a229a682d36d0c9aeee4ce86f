@@ -1,0 +1,25 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Download.kt
+  e27d054ea0c928f9 1-295
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DownloadTest.kt
+  e27d054ea0c928f9 1-457
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "f21879311bfed55a229a682d36d0c9aeee4ce86f",
+  "prompts": {
+    "e27d054ea0c928f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f23241c8-f1fa-49e0-9514-771001db849c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1521,
+      "overriden_lines": 0
+    }
+  }
+}
