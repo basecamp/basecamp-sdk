@@ -1,0 +1,29 @@
+ruby/test/basecamp/services/card_steps_service_test.rb
+  a807c2f81a85442d 28-36
+typescript/tests/services/card-steps.test.ts
+  a807c2f81a85442d 32-57
+go/pkg/basecamp/cards.go
+  a807c2f81a85442d 886-917
+go/pkg/basecamp/cards_test.go
+  a807c2f81a85442d 4,6-8,637-703
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "f984152b002ffae3f48dd120e9c5ab722f340a9a",
+  "prompts": {
+    "a807c2f81a85442d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21428f07-f0b6-49db-8818-060e98f5992e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 138,
+      "overriden_lines": 0
+    }
+  }
+}
