@@ -34,7 +34,7 @@ func (c *Client) fetchSignedDownload(ctx context.Context, downloadURL string) (*
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		_ = resp.Body.Close()
-		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
+		return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("download failed with status %d", resp.StatusCode))
 	}
 
 	return resp, nil
@@ -124,7 +124,7 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 		location := resp.Header.Get("Location")
 		_ = resp.Body.Close()
 		if location == "" {
-			return nil, fmt.Errorf("redirect %d with no Location header", resp.StatusCode)
+			return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("redirect %d with no Location header", resp.StatusCode))
 		}
 		// Resolve relative Location against the rewritten API URL
 		resolvedLocation := resolveURL(rewrittenURL, location)
