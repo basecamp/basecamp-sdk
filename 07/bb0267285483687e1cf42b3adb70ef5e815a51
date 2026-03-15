@@ -1,0 +1,29 @@
+go/pkg/basecamp/cards.go
+  a807c2f81a85442d 886-917
+go/pkg/basecamp/cards_test.go
+  a807c2f81a85442d 4,6-8,637-703
+ruby/test/basecamp/services/card_steps_service_test.rb
+  a807c2f81a85442d 28-44
+typescript/tests/services/card-steps.test.ts
+  a807c2f81a85442d 9,33-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "07bb0267285483687e1cf42b3adb70ef5e815a51",
+  "prompts": {
+    "a807c2f81a85442d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21428f07-f0b6-49db-8818-060e98f5992e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 1,
+      "accepted_lines": 147,
+      "overriden_lines": 0
+    }
+  }
+}
