@@ -1,0 +1,47 @@
+ruby/test/basecamp/services/tools_service_test.rb
+  6c95e4335226b0a8 26-27,30
+conformance/runner/go/main.go
+  6c95e4335226b0a8 462-477
+go/pkg/basecamp/tools.go
+  6c95e4335226b0a8 75,77,94,97
+conformance/tests/paths.json
+  6c95e4335226b0a8 130-177
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  6c95e4335226b0a8 647-665
+spec/basecamp.smithy
+  6c95e4335226b0a8 6531,6545-6546
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ServiceEmitter.kt
+  6c95e4335226b0a8 94
+conformance/runner/ruby/runner.rb
+  6c95e4335226b0a8 134-146
+typescript/scripts/generate-services.ts
+  6c95e4335226b0a8 1214
+conformance/runner/typescript/runner.test.ts
+  6c95e4335226b0a8 201-215
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  6c95e4335226b0a8 184
+ruby/lib/basecamp/services/tools_service.rb
+  6c95e4335226b0a8 32-35,64,74,85
+typescript/tests/services/tools.test.ts
+  6c95e4335226b0a8 75,77,79,85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "52d90a40c49428371bfc023a2770ad86ecd19f4f",
+  "prompts": {
+    "6c95e4335226b0a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d3d069-f8ac-41df-8d33-8feb4374289f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 135,
+      "total_deletions": 21,
+      "accepted_lines": 135,
+      "overriden_lines": 0
+    }
+  }
+}
