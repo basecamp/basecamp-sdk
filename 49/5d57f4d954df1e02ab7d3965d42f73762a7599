@@ -1,0 +1,25 @@
+ruby/lib/basecamp/services/tools_service.rb
+  6c95e4335226b0a8 31,33-36
+go/pkg/basecamp/tools.go
+  6c95e4335226b0a8 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "495d57f4d954df1e02ab7d3965d42f73762a7599",
+  "prompts": {
+    "6c95e4335226b0a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d3d069-f8ac-41df-8d33-8feb4374289f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 10,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
