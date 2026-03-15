@@ -1,0 +1,31 @@
+ruby/lib/basecamp/http.rb
+  e27d054ea0c928f9 83-90
+ruby/lib/basecamp/download.rb
+  e27d054ea0c928f9 1-32
+ruby/lib/basecamp/client.rb
+  e27d054ea0c928f9 220-305,522-556
+ruby/lib/basecamp.rb
+  e27d054ea0c928f9 22,29
+ruby/test/basecamp/download_test.rb
+  e27d054ea0c928f9 1-352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "f03e8e5492a9797eda1dc5c1741bdaa7667ed58b",
+  "prompts": {
+    "e27d054ea0c928f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f23241c8-f1fa-49e0-9514-771001db849c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 2084,
+      "total_deletions": 47,
+      "accepted_lines": 2037,
+      "overriden_lines": 0
+    }
+  }
+}
