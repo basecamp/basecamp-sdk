@@ -64,12 +64,12 @@ describe("SearchService", () => {
         http.get(`${BASE_URL}/search.json`, ({ request }) => {
           const url = new URL(request.url);
           expect(url.searchParams.get("q")).toBe("test");
-          expect(url.searchParams.get("sort")).toBe("updated_at");
+          expect(url.searchParams.get("sort")).toBe("best_match");
           return HttpResponse.json([]);
         })
       );
 
-      const results = await client.search.search("test", { sort: "updated_at" });
+      const results = await client.search.search("test", { sort: "best_match" });
       expect(results).toHaveLength(0);
     });
 

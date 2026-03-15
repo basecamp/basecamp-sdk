@@ -1,7 +1,10 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -227,5 +230,59 @@ func TestSearchResult_DifferentTypes(t *testing.T) {
 		if !types[et] {
 			t.Errorf("expected type %q in results", et)
 		}
+	}
+}
+
+// testSearchServer creates an httptest.Server and a SearchService wired to it.
+func testSearchServer(t *testing.T, handler http.HandlerFunc) *SearchService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Search()
+}
+
+func TestSearchService_Search_BestMatchSort(t *testing.T) {
+	fixture := loadSearchFixture(t, "results.json")
+	svc := testSearchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if got := r.URL.Query().Get("sort"); got != "best_match" {
+			t.Errorf("expected sort=best_match, got %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.Search(context.Background(), "leto", &SearchOptions{Sort: "best_match"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Results) != 3 {
+		t.Errorf("expected 3 results, got %d", len(result.Results))
+	}
+}
+
+func TestSearchService_Search_NoSort(t *testing.T) {
+	fixture := loadSearchFixture(t, "results.json")
+	svc := testSearchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Has("sort") {
+			t.Errorf("expected sort to be absent, got %q", r.URL.Query().Get("sort"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.Search(context.Background(), "leto", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
