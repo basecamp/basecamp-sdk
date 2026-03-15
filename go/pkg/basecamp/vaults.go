@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -1030,33 +1029,10 @@ func (s *UploadsService) Download(ctx context.Context, uploadID int64) (result *
 		return nil, err
 	}
 
-	// Fetch the file content from the download URL
-	// The download URL is a signed S3 URL that doesn't require auth headers
-	req, err := http.NewRequestWithContext(ctx, "GET", upload.DownloadURL, nil)
+	// Fetch the file content from the signed download URL (no auth headers, no timeout).
+	resp, err := s.client.parent.fetchSignedDownload(ctx, upload.DownloadURL) //nolint:bodyclose // body ownership transfers to caller via DownloadResult
 	if err != nil {
-		return nil, fmt.Errorf("failed to create download request: %w", err)
-	}
-
-	// Use a plain HTTP client for S3 downloads (no auth headers).
-	// Reuse the parent's transport to preserve proxy settings, custom CA/mTLS,
-	// and connection pooling, but skip the auth-adding loggingTransport wrapper.
-	transport := s.client.parent.httpOpts.Transport
-	if transport == nil {
-		transport = http.DefaultTransport
-	}
-	httpClient := &http.Client{
-		Transport: transport,
-		Timeout:   s.client.parent.httpOpts.Timeout,
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to download file: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		_ = resp.Body.Close()
-		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
+		return nil, err
 	}
 
 	return &DownloadResult{

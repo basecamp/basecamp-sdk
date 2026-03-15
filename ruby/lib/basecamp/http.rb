@@ -80,6 +80,14 @@ module Basecamp
       single_request_raw(:post, url, body: body, content_type: content_type, attempt: 1)
     end
 
+    # Performs a GET request without retry logic.
+    # Used for the download flow where retry is not appropriate.
+    # @param url [String] absolute URL
+    # @return [Response]
+    def get_no_retry(url)
+      single_request(:get, url, params: {}, body: nil, attempt: 1)
+    end
+
     # Fetches all pages of a paginated resource.
     # @param path [String] initial URL path
     # @param params [Hash] query parameters

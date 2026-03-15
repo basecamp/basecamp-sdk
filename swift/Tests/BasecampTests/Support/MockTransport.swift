@@ -62,6 +62,10 @@ final class MockTransport: Transport, @unchecked Sendable {
         return try await handler(request)
     }
 
+    func dataNoRedirect(for request: URLRequest) async throws -> (Data, URLResponse) {
+        try await data(for: request)
+    }
+
     /// Resets the recorded requests.
     func reset() {
         lock.withLock {

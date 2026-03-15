@@ -19,12 +19,14 @@ loader.ignore("#{__dir__}/basecamp/errors.rb")
 loader.ignore("#{__dir__}/basecamp/auth_strategy.rb")
 # Ignore operation_info.rb - defines both OperationInfo and OperationResult
 loader.ignore("#{__dir__}/basecamp/operation_info.rb")
+loader.ignore("#{__dir__}/basecamp/download.rb")
 loader.setup
 
 # Load infrastructure that generated services depend on
 require_relative "basecamp/errors"
 require_relative "basecamp/auth_strategy"
 require_relative "basecamp/operation_info"
+require_relative "basecamp/download"
 require_relative "basecamp/services/base_service"
 require_relative "basecamp/services/authorization_service"
 
