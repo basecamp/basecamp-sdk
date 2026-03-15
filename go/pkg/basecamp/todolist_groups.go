@@ -185,14 +185,14 @@ func (s *TodolistGroupsService) Get(ctx context.Context, groupID int64) (result 
 		return nil, err
 	}
 
-	// The response is a union type, try to extract as TodolistGroup
-	g, err := resp.JSON200.AsTodolistOrGroup1()
-	if err != nil {
-		err = fmt.Errorf("response is not a todolist group: %w", err)
-		return nil, err
+	// The API returns flat JSON, not the envelope that AsTodolistOrGroup1 expects.
+	// Decode resp.Body directly into the generated TodolistGroup type.
+	var gg generated.TodolistGroup
+	if err := json.Unmarshal(resp.Body, &gg); err != nil {
+		return nil, fmt.Errorf("failed to parse todolist group: %w", err)
 	}
 
-	group := todolistGroupFromGenerated(g.Group)
+	group := todolistGroupFromGenerated(gg)
 	return &group, nil
 }
 
@@ -272,14 +272,14 @@ func (s *TodolistGroupsService) Update(ctx context.Context, groupID int64, req *
 		return nil, err
 	}
 
-	// The response is a union type, try to extract as TodolistGroup
-	g, err := resp.JSON200.AsTodolistOrGroup1()
-	if err != nil {
-		err = fmt.Errorf("response is not a todolist group: %w", err)
-		return nil, err
+	// The API returns flat JSON, not the envelope that AsTodolistOrGroup1 expects.
+	// Decode resp.Body directly into the generated TodolistGroup type.
+	var gg generated.TodolistGroup
+	if err := json.Unmarshal(resp.Body, &gg); err != nil {
+		return nil, fmt.Errorf("failed to parse todolist group: %w", err)
 	}
 
-	group := todolistGroupFromGenerated(g.Group)
+	group := todolistGroupFromGenerated(gg)
 	return &group, nil
 }
 
