@@ -51,25 +51,30 @@ export class ToolsService extends BaseService {
 
   /**
    * Clone an existing tool to create a new one
+   * @param projectId - The project ID
    * @param req - Tool request parameters
    * @returns The Tool
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * const result = await client.tools.clone({ sourceRecordingId: 1 });
+   * const result = await client.tools.clone(123, { sourceRecordingId: 1 });
    * ```
    */
-  async clone(req: CloneToolRequest): Promise<Tool> {
+  async clone(projectId: number, req: CloneToolRequest): Promise<Tool> {
     const response = await this.request(
       {
         service: "Tools",
         operation: "CloneTool",
         resourceType: "tool",
         isMutation: true,
+        projectId,
       },
       () =>
-        this.client.POST("/dock/tools.json", {
+        this.client.POST("/buckets/{projectId}/dock/tools.json", {
+          params: {
+            path: { projectId },
+          },
           body: {
             source_recording_id: req.sourceRecordingId,
           },

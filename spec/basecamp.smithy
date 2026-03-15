@@ -6528,7 +6528,7 @@ structure GetToolOutput {
 
 /// Clone an existing tool to create a new one
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/dock/tools.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/buckets/{projectId}/dock/tools.json", code: 201)
 operation CloneTool {
   input: CloneToolInput
   output: CloneToolOutput
@@ -6539,6 +6539,10 @@ structure CloneToolInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
 
   @required
   source_recording_id: ToolId

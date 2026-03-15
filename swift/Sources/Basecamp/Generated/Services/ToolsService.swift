@@ -2,11 +2,11 @@
 import Foundation
 
 public final class ToolsService: BaseService, @unchecked Sendable {
-    public func clone(req: CloneToolRequest) async throws -> Tool {
+    public func clone(projectId: Int, req: CloneToolRequest) async throws -> Tool {
         return try await request(
-            OperationInfo(service: "Tools", operation: "CloneTool", resourceType: "tool", isMutation: true),
+            OperationInfo(service: "Tools", operation: "CloneTool", resourceType: "tool", isMutation: true, projectId: projectId),
             method: "POST",
-            path: "/dock/tools.json",
+            path: "/buckets/\(projectId)/dock/tools.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "CloneTool")
         )
