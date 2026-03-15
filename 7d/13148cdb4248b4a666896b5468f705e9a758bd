@@ -1,0 +1,15 @@
+spec/basecamp.smithy
+  5011bd808bd35d26 6507,6519-6521,6535,6548-6550,6553-6555,6567,6579-6581,6600,6612-6614,6625,6637-6639,6652,6664-6666,6679,6691-6693
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  5011bd808bd35d26 184
+typescript/scripts/generate-services.ts
+  5011bd808bd35d26 1214
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ServiceEmitter.kt
+  5011bd808bd35d26 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "7d13148cdb4248b4a666896b5468f705e9a758bd",
+  "prompts": {}
+}
