@@ -1,0 +1,25 @@
+spec/basecamp.smithy
+  a807c2f81a85442d 164,4244-4267
+spec/overlays/tags.smithy
+  a807c2f81a85442d 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "0fbfe46868ac2454ce4f26892ae06baaa2b01e87",
+  "prompts": {
+    "a807c2f81a85442d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21428f07-f0b6-49db-8818-060e98f5992e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 170,
+      "total_deletions": 6,
+      "accepted_lines": 168,
+      "overriden_lines": 0
+    }
+  }
+}
