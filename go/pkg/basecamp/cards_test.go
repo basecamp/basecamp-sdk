@@ -1,7 +1,11 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -628,5 +632,72 @@ func TestUpdateStepRequest_Marshal(t *testing.T) {
 	}
 	if _, ok := data["assignees"]; ok {
 		t.Error("expected assignees to be omitted")
+	}
+}
+
+// testCardStepsServer creates an httptest.Server and a CardStepsService wired to it.
+func testCardStepsServer(t *testing.T, handler http.HandlerFunc) *CardStepsService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.CardSteps()
+}
+
+func TestCardStepsService_Get(t *testing.T) {
+	fixture := loadCardsFixture(t, "step.json")
+	svc := testCardStepsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/card_tables/steps/1069479360" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	step, err := svc.Get(context.Background(), 1069479360)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if step.ID != 1069479360 {
+		t.Errorf("expected ID 1069479360, got %d", step.ID)
+	}
+	if step.Title != "Set up OAuth providers" {
+		t.Errorf("expected title 'Set up OAuth providers', got %q", step.Title)
+	}
+	if step.Type != "Kanban::Step" {
+		t.Errorf("expected type 'Kanban::Step', got %q", step.Type)
+	}
+	if !step.Completed {
+		t.Error("expected completed to be true")
+	}
+	if step.Parent == nil || step.Parent.ID != 1069479350 {
+		t.Error("expected Parent to be mapped")
+	}
+	if step.Completer == nil || step.Completer.Name != "Annie Bryan" {
+		t.Error("expected Completer to be mapped")
+	}
+}
+
+func TestCardStepsService_Get_NotFound(t *testing.T) {
+	svc := testCardStepsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(404)
+	})
+
+	_, err := svc.Get(context.Background(), 999)
+	if err == nil {
+		t.Fatal("expected error for 404")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeNotFound {
+		t.Errorf("expected not_found error, got: %v", err)
 	}
 }

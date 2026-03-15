@@ -883,6 +883,38 @@ func NewCardStepsService(client *AccountClient) *CardStepsService {
 	return &CardStepsService{client: client}
 }
 
+// Get retrieves a card step by ID.
+func (s *CardStepsService) Get(ctx context.Context, stepID int64) (result *CardStep, err error) {
+	op := OperationInfo{
+		Service: "CardSteps", Operation: "Get",
+		ResourceType: "card_step", IsMutation: false,
+		ResourceID: stepID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetCardStepWithResponse(ctx, s.client.accountID, stepID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	step := cardStepFromGenerated(*resp.JSON200)
+	return &step, nil
+}
+
 // Create creates a new step on a card.
 // Returns the created step.
 func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *CreateStepRequest) (result *CardStep, err error) {
