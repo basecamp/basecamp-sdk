@@ -1,0 +1,31 @@
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  5011bd808bd35d26 647-668
+conformance/runner/typescript/runner.test.ts
+  5011bd808bd35d26 189-203
+conformance/tests/paths.json
+  5011bd808bd35d26 130-178
+conformance/runner/go/main.go
+  5011bd808bd35d26 462-480
+conformance/runner/ruby/runner.rb
+  5011bd808bd35d26 128-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "b5576d5aeb08a230d92088cc11332af1672be49e",
+  "prompts": {
+    "5011bd808bd35d26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "18c78034-5988-4e66-aa06-a6d18f514cc3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 121,
+      "overriden_lines": 0
+    }
+  }
+}
