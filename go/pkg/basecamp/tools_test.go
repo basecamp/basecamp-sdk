@@ -1,7 +1,9 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -173,5 +175,71 @@ func TestUpdateToolRequest_Marshal(t *testing.T) {
 
 	if roundtrip.Title != req.Title {
 		t.Errorf("expected title %q, got %q", req.Title, roundtrip.Title)
+	}
+}
+
+func TestCloneToolRequest_Marshal(t *testing.T) {
+	req := CloneToolRequest{SourceToolID: 123, Title: "Sprint Backlog"}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal CloneToolRequest: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if data["source_recording_id"] != float64(123) {
+		t.Errorf("expected source_recording_id 123, got %v", data["source_recording_id"])
+	}
+	if data["title"] != "Sprint Backlog" {
+		t.Errorf("expected title 'Sprint Backlog', got %v", data["title"])
+	}
+
+	// Round-trip test
+	var roundtrip CloneToolRequest
+	if err := json.Unmarshal(out, &roundtrip); err != nil {
+		t.Fatalf("failed to unmarshal round-trip: %v", err)
+	}
+
+	if roundtrip.SourceToolID != req.SourceToolID {
+		t.Errorf("expected SourceToolID %d, got %d", req.SourceToolID, roundtrip.SourceToolID)
+	}
+	if roundtrip.Title != req.Title {
+		t.Errorf("expected Title %q, got %q", req.Title, roundtrip.Title)
+	}
+}
+
+// newTestToolsService creates a ToolsService with minimal wiring for
+// testing validation logic that runs before the generated client call.
+func newTestToolsService() *ToolsService {
+	c := &Client{hooks: NoopHooks{}}
+	ac := &AccountClient{parent: c, accountID: "99999"}
+	return NewToolsService(ac)
+}
+
+func TestCreate_NilRequest(t *testing.T) {
+	svc := newTestToolsService()
+	_, err := svc.Create(context.Background(), nil)
+	if err == nil {
+		t.Fatal("expected error for nil request")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
+func TestCreate_EmptyTitle(t *testing.T) {
+	svc := newTestToolsService()
+	_, err := svc.Create(context.Background(), &CloneToolRequest{SourceToolID: 1})
+	if err == nil {
+		t.Fatal("expected error for empty title")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
 	}
 }

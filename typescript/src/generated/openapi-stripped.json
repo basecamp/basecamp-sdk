@@ -17272,10 +17272,14 @@
             "type": "integer",
             "format": "int64",
             "x-go-type-skip-optional-pointer": false
+          },
+          "title": {
+            "type": "string"
           }
         },
         "required": [
-          "source_recording_id"
+          "source_recording_id",
+          "title"
         ]
       },
       "CloneToolResponseContent": {

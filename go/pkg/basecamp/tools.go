@@ -23,6 +23,14 @@ type Tool struct {
 	Bucket    *Bucket   `json:"bucket,omitempty"`
 }
 
+// CloneToolRequest specifies the parameters for cloning a tool.
+type CloneToolRequest struct {
+	// SourceToolID is the ID of the tool to clone (required).
+	SourceToolID int64 `json:"source_recording_id"`
+	// Title is the name for the new tool (required).
+	Title string `json:"title"`
+}
+
 // UpdateToolRequest specifies the parameters for updating (renaming) a tool.
 type UpdateToolRequest struct {
 	// Title is the new title for the tool (required).
@@ -73,11 +81,16 @@ func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err
 
 // Create clones an existing tool to create a new one.
 // Returns the newly created tool.
-func (s *ToolsService) Create(ctx context.Context, sourceToolID int64) (result *Tool, err error) {
+func (s *ToolsService) Create(ctx context.Context, req *CloneToolRequest) (result *Tool, err error) {
+	if req == nil {
+		err = ErrUsage("clone tool request is required")
+		return nil, err
+	}
+
 	op := OperationInfo{
 		Service: "Tools", Operation: "Create",
 		ResourceType: "tool", IsMutation: true,
-		ResourceID: sourceToolID,
+		ResourceID: req.SourceToolID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -88,8 +101,14 @@ func (s *ToolsService) Create(ctx context.Context, sourceToolID int64) (result *
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	if req.Title == "" {
+		err = ErrUsage("tool title is required")
+		return nil, err
+	}
+
 	body := generated.CloneToolJSONRequestBody{
-		SourceRecordingId: sourceToolID,
+		SourceRecordingId: req.SourceToolID,
+		Title:             req.Title,
 	}
 
 	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, body)

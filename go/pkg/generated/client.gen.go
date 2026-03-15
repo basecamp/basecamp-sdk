@@ -325,7 +325,8 @@ type ClientSide struct {
 
 // CloneToolRequestContent defines model for CloneToolRequestContent.
 type CloneToolRequestContent struct {
-	SourceRecordingId int64 `json:"source_recording_id"`
+	SourceRecordingId int64  `json:"source_recording_id"`
+	Title             string `json:"title"`
 }
 
 // CloneToolResponseContent defines model for CloneToolResponseContent.

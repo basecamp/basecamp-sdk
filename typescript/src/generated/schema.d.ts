@@ -2505,6 +2505,7 @@ export interface components {
         CloneToolRequestContent: {
             /** Format: int64 */
             source_recording_id: number;
+            title: string;
         };
         CloneToolResponseContent: components["schemas"]["Tool"];
         Comment: {

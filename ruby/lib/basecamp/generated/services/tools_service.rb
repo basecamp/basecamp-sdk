@@ -9,10 +9,11 @@ module Basecamp
 
       # Clone an existing tool to create a new one
       # @param source_recording_id [Integer] source recording id
+      # @param title [String] title
       # @return [Hash] response data
-      def clone(source_recording_id:)
+      def clone(source_recording_id:, title:)
         with_operation(service: "tools", operation: "clone", is_mutation: true) do
-          http_post("/dock/tools.json", body: compact_params(source_recording_id: source_recording_id)).json
+          http_post("/dock/tools.json", body: compact_params(source_recording_id: source_recording_id, title: title)).json
         end
       end
 

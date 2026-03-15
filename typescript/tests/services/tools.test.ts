@@ -75,16 +75,29 @@ describe("ToolsService", () => {
         http.post(
           `${BASE_URL}/dock/tools.json`,
           async ({ request }) => {
-            const body = await request.json() as { source_recording_id: number };
+            const body = await request.json() as { source_recording_id: number; title: string };
             expect(body.source_recording_id).toBe(sourceToolId);
+            expect(body.title).toBe("To-dos (Copy)");
             return HttpResponse.json(mockTool, { status: 201 });
           }
         )
       );
 
-      const tool = await client.tools.clone({ sourceRecordingId: sourceToolId });
+      const tool = await client.tools.clone({ sourceRecordingId: sourceToolId, title: "To-dos (Copy)" });
       expect(tool.id).toBe(333);
       expect(tool.title).toBe("To-dos (Copy)");
+    });
+
+    it("should send title in request body", async () => {
+      server.use(
+        http.post(`${BASE_URL}/dock/tools.json`, async ({ request }) => {
+          const body = await request.json() as { source_recording_id: number; title: string };
+          expect(body.title).toBe("Sprint Backlog");
+          return HttpResponse.json({ id: 444, title: "Sprint Backlog" }, { status: 201 });
+        })
+      );
+      const tool = await client.tools.clone({ sourceRecordingId: 222, title: "Sprint Backlog" });
+      expect(tool.title).toBe("Sprint Backlog");
     });
   });
 

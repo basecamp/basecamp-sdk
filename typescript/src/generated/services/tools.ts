@@ -21,6 +21,8 @@ export type Tool = components["schemas"]["Tool"];
 export interface CloneToolRequest {
   /** Source recording id */
   sourceRecordingId: number;
+  /** Title */
+  title: string;
 }
 
 /**
@@ -57,10 +59,13 @@ export class ToolsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.tools.clone({ sourceRecordingId: 1 });
+   * const result = await client.tools.clone({ sourceRecordingId: 1, title: "example" });
    * ```
    */
   async clone(req: CloneToolRequest): Promise<Tool> {
+    if (!req.title) {
+      throw Errors.validation("Title is required");
+    }
     const response = await this.request(
       {
         service: "Tools",
@@ -72,6 +77,7 @@ export class ToolsService extends BaseService {
         this.client.POST("/dock/tools.json", {
           body: {
             source_recording_id: req.sourceRecordingId,
+            title: req.title,
           },
         })
     );

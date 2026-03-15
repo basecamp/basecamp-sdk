@@ -21,13 +21,14 @@ class ToolsServiceTest < Minitest::Test
   end
 
   def test_clone
-    response = { "id" => 2, "name" => "Message Board (Copy)" }
+    response = { "id" => 2, "name" => "Message Board (Copy)", "title" => "Sprint Backlog" }
 
     stub_request(:post, %r{https://3\.basecampapi\.com/12345/dock/tools\.json})
+      .with(body: hash_including("source_recording_id" => 2, "title" => "Sprint Backlog"))
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.tools.clone(source_recording_id: 2)
-    assert_equal "Message Board (Copy)", result["name"]
+    result = @account.tools.clone(source_recording_id: 2, title: "Sprint Backlog")
+    assert_equal "Sprint Backlog", result["title"]
   end
 
   def test_update

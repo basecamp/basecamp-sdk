@@ -28,6 +28,7 @@ class ToolsService(client: AccountClient) : BaseService(client) {
         return request(info, {
             httpPost("/dock/tools.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("source_recording_id", kotlinx.serialization.json.JsonPrimitive(body.sourceRecordingId))
+                put("title", kotlinx.serialization.json.JsonPrimitive(body.title))
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Tool>(body)
