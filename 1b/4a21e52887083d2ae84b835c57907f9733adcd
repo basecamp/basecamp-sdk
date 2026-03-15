@@ -1,0 +1,29 @@
+typescript/scripts/generate-services.ts
+  a807c2f81a85442d 186
+ruby/scripts/generate-services.rb
+  a807c2f81a85442d 60
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  a807c2f81a85442d 45
+swift/Sources/BasecampGenerator/ServiceGrouper.swift
+  a807c2f81a85442d 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "1b4a21e52887083d2ae84b835c57907f9733adcd",
+  "prompts": {
+    "a807c2f81a85442d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21428f07-f0b6-49db-8818-060e98f5992e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 142,
+      "overriden_lines": 0
+    }
+  }
+}
