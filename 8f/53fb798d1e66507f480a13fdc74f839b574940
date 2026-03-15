@@ -1,0 +1,23 @@
+go/pkg/basecamp/download.go
+  e27d054ea0c928f9 37,127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "8f53fb798d1e66507f480a13fdc74f839b574940",
+  "prompts": {
+    "e27d054ea0c928f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f23241c8-f1fa-49e0-9514-771001db849c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
