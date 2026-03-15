@@ -8,12 +8,12 @@ module Basecamp
     class ToolsService < BaseService
 
       # Clone an existing tool to create a new one
-      # @param project_id [Integer] project id ID
       # @param source_recording_id [Integer] source recording id
+      # @param title [String, nil] title
       # @return [Hash] response data
-      def clone(project_id:, source_recording_id:)
-        with_operation(service: "tools", operation: "clone", is_mutation: true, project_id: project_id) do
-          http_post("/buckets/#{project_id}/dock/tools.json", body: compact_params(source_recording_id: source_recording_id)).json
+      def clone(source_recording_id:, title: nil)
+        with_operation(service: "tools", operation: "clone", is_mutation: true) do
+          http_post("/dock/tools.json", body: compact_params(source_recording_id: source_recording_id, title: title)).json
         end
       end
 

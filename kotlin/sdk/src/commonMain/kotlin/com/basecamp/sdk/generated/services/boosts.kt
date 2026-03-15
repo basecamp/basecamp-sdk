@@ -107,7 +107,7 @@ class BoostsService(client: AccountClient) : BaseService(client) {
             resourceType = "event_boost",
             isMutation = false,
             projectId = null,
-            resourceId = recordingId,
+            resourceId = eventId,
         )
         return requestPaginated(info, options, {
             httpGet("/recordings/${recordingId}/events/${eventId}/boosts.json", operationName = info.operation)
@@ -129,7 +129,7 @@ class BoostsService(client: AccountClient) : BaseService(client) {
             resourceType = "event_boost",
             isMutation = true,
             projectId = null,
-            resourceId = recordingId,
+            resourceId = eventId,
         )
         return request(info, {
             httpPost("/recordings/${recordingId}/events/${eventId}/boosts.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {

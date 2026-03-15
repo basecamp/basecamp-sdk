@@ -74,7 +74,7 @@ public final class CheckinsService: BaseService, @unchecked Sendable {
 
     public func byPerson(questionId: Int, personId: Int, options: ByPersonCheckinOptions? = nil) async throws -> ListResult<Answer> {
         return try await requestPaginated(
-            OperationInfo(service: "Checkins", operation: "GetAnswersByPerson", resourceType: "answers_by_person", isMutation: false, resourceId: questionId),
+            OperationInfo(service: "Checkins", operation: "GetAnswersByPerson", resourceType: "answers_by_person", isMutation: false, resourceId: personId),
             path: "/questions/\(questionId)/answers/by/\(personId)",
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "GetAnswersByPerson")

@@ -91,7 +91,7 @@ class ServiceEmitter(private val api: OpenApiParser) {
 
         // Build OperationInfo
         val projectParam = op.pathParams.find { it.name == "projectId" }
-        val resourceParam = op.pathParams.find { it.name != "projectId" && it.name.endsWith("Id") }
+        val resourceParam = op.pathParams.findLast { it.name != "projectId" && it.name.endsWith("Id") }
         val projectArg = if (projectParam != null) "projectId" else "null"
         val resourceArg = if (resourceParam != null) resourceParam.name.snakeToCamelCase() else "null"
 

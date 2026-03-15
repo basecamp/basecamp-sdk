@@ -280,7 +280,7 @@ export class TemplatesService extends BaseService {
         operation: "GetProjectConstruction",
         resourceType: "project_construction",
         isMutation: false,
-        resourceId: templateId,
+        resourceId: constructionId,
       },
       () =>
         this.client.GET("/templates/{templateId}/project_constructions/{constructionId}", {

@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-03-15T19:21:44Z",
+  "generated": "2026-03-15T21:11:56Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -56,17 +56,6 @@
       }
     },
     "CreateWebhook": {
-      "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
-    "CloneTool": {
       "retry": {
         "maxAttempts": 2,
         "baseDelayMs": 1000,
@@ -673,6 +662,17 @@
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "CloneTool": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "GetTool": {

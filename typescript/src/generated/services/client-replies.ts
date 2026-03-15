@@ -81,7 +81,7 @@ export class ClientRepliesService extends BaseService {
         operation: "GetClientReply",
         resourceType: "client_reply",
         isMutation: false,
-        resourceId: recordingId,
+        resourceId: replyId,
       },
       () =>
         this.client.GET("/client/recordings/{recordingId}/replies/{replyId}", {

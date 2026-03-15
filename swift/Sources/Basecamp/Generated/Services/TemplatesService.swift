@@ -44,7 +44,7 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
 
     public func getConstruction(templateId: Int, constructionId: Int) async throws -> ProjectConstruction {
         return try await request(
-            OperationInfo(service: "Templates", operation: "GetProjectConstruction", resourceType: "project_construction", isMutation: false, resourceId: templateId),
+            OperationInfo(service: "Templates", operation: "GetProjectConstruction", resourceType: "project_construction", isMutation: false, resourceId: constructionId),
             method: "GET",
             path: "/templates/\(templateId)/project_constructions/\(constructionId)",
             retryConfig: Metadata.retryConfig(for: "GetProjectConstruction")

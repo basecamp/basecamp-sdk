@@ -198,7 +198,7 @@ export class BoostsService extends BaseService {
         operation: "ListEventBoosts",
         resourceType: "event_boost",
         isMutation: false,
-        resourceId: recordingId,
+        resourceId: eventId,
       },
       () =>
         this.client.GET("/recordings/{recordingId}/events/{eventId}/boosts.json", {
@@ -233,7 +233,7 @@ export class BoostsService extends BaseService {
         operation: "CreateEventBoost",
         resourceType: "event_boost",
         isMutation: true,
-        resourceId: recordingId,
+        resourceId: eventId,
       },
       () =>
         this.client.POST("/recordings/{recordingId}/events/{eventId}/boosts.json", {

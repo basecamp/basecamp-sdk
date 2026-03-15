@@ -156,7 +156,7 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
             resourceType = "project_construction",
             isMutation = false,
             projectId = null,
-            resourceId = templateId,
+            resourceId = constructionId,
         )
         return request(info, {
             httpGet("/templates/${templateId}/project_constructions/${constructionId}", operationName = info.operation)

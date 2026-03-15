@@ -45,7 +45,7 @@ class ClientRepliesService(client: AccountClient) : BaseService(client) {
             resourceType = "client_reply",
             isMutation = false,
             projectId = null,
-            resourceId = recordingId,
+            resourceId = replyId,
         )
         return request(info, {
             httpGet("/client/recordings/${recordingId}/replies/${replyId}", operationName = info.operation)

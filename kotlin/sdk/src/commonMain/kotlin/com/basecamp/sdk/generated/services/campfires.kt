@@ -109,7 +109,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
             resourceType = "chatbot",
             isMutation = false,
             projectId = null,
-            resourceId = campfireId,
+            resourceId = chatbotId,
         )
         return request(info, {
             httpGet("/chats/${campfireId}/integrations/${chatbotId}", operationName = info.operation)
@@ -131,7 +131,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
             resourceType = "chatbot",
             isMutation = true,
             projectId = null,
-            resourceId = campfireId,
+            resourceId = chatbotId,
         )
         return request(info, {
             httpPut("/chats/${campfireId}/integrations/${chatbotId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
@@ -155,7 +155,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
             resourceType = "chatbot",
             isMutation = true,
             projectId = null,
-            resourceId = campfireId,
+            resourceId = chatbotId,
         )
         request(info, {
             httpDelete("/chats/${campfireId}/integrations/${chatbotId}", operationName = info.operation)
@@ -219,7 +219,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
             resourceType = "campfire_line",
             isMutation = false,
             projectId = null,
-            resourceId = campfireId,
+            resourceId = lineId,
         )
         return request(info, {
             httpGet("/chats/${campfireId}/lines/${lineId}", operationName = info.operation)
@@ -240,7 +240,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
             resourceType = "campfire_line",
             isMutation = true,
             projectId = null,
-            resourceId = campfireId,
+            resourceId = lineId,
         )
         request(info, {
             httpDelete("/chats/${campfireId}/lines/${lineId}", operationName = info.operation)

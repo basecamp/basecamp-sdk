@@ -88,7 +88,7 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
             resourceType = "forward_reply",
             isMutation = false,
             projectId = null,
-            resourceId = forwardId,
+            resourceId = replyId,
         )
         return request(info, {
             httpGet("/inbox_forwards/${forwardId}/replies/${replyId}", operationName = info.operation)

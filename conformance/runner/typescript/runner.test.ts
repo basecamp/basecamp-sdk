@@ -198,6 +198,21 @@ async function executeOperation(
         await client.reports.personProgress(Number(params.personId));
         break;
 
+      case "GetTool":
+        await client.tools.get(Number(params.toolId));
+        break;
+
+      case "CloneTool":
+        await client.tools.clone({
+          sourceRecordingId: Number(body.source_recording_id),
+          title: String(body.title || "Conformance Test"),
+        });
+        break;
+
+      case "EnableTool":
+        await client.tools.enable(Number(params.toolId));
+        break;
+
       default:
         throw new Error(`Unknown operation: ${tc.operation}`);
     }

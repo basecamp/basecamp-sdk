@@ -13,7 +13,7 @@ public struct ListClientReplyOptions: Sendable {
 public final class ClientRepliesService: BaseService, @unchecked Sendable {
     public func get(recordingId: Int, replyId: Int) async throws -> ClientReply {
         return try await request(
-            OperationInfo(service: "ClientReplies", operation: "GetClientReply", resourceType: "client_reply", isMutation: false, resourceId: recordingId),
+            OperationInfo(service: "ClientReplies", operation: "GetClientReply", resourceType: "client_reply", isMutation: false, resourceId: replyId),
             method: "GET",
             path: "/client/recordings/\(recordingId)/replies/\(replyId)",
             retryConfig: Metadata.retryConfig(for: "GetClientReply")

@@ -127,5 +127,53 @@
       {"type": "noError"}
     ],
     "tags": ["path", "webhooks"]
+  },
+  {
+    "name": "GetTool uses flat /dock/tools/{toolId} path (no bucketId)",
+    "description": "Verifies that GetTool constructs the flat URL path /dock/tools/{toolId} without bucket scoping",
+    "operation": "GetTool",
+    "method": "GET",
+    "path": "/dock/tools/{toolId}",
+    "pathParams": {"toolId": 789},
+    "mockResponses": [
+      {"status": 200, "body": {"id": 789, "name": "todoset", "title": "To-dos", "status": "active", "enabled": true, "position": 1, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json", "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/dock/tools/789"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "tools"]
+  },
+  {
+    "name": "CloneTool uses flat /dock/tools.json path (no bucketId)",
+    "description": "Verifies that CloneTool constructs the flat URL path /dock/tools.json without bucket scoping",
+    "operation": "CloneTool",
+    "method": "POST",
+    "path": "/dock/tools.json",
+    "requestBody": {"source_recording_id": 789, "title": "To-dos (Copy)"},
+    "mockResponses": [
+      {"status": 201, "body": {"id": 800, "name": "todoset", "title": "To-dos (Copy)", "status": "active", "enabled": true, "position": 5, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/todosets/800.json", "app_url": "https://3.basecamp.com/999/buckets/456/todosets/800", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/dock/tools.json"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "tools"]
+  },
+  {
+    "name": "EnableTool uses flat /recordings/{toolId}/position.json path (no bucketId)",
+    "description": "Verifies that EnableTool constructs the flat URL path /recordings/{toolId}/position.json without bucket scoping",
+    "operation": "EnableTool",
+    "method": "POST",
+    "path": "/recordings/{toolId}/position.json",
+    "pathParams": {"toolId": 789},
+    "mockResponses": [
+      {"status": 201, "body": {}}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/recordings/789/position.json"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "tools"]
   }
 ]

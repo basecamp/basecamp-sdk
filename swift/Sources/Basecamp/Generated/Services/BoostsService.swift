@@ -21,7 +21,7 @@ public struct ListForRecordingBoostOptions: Sendable {
 public final class BoostsService: BaseService, @unchecked Sendable {
     public func createForEvent(recordingId: Int, eventId: Int, req: CreateEventBoostRequest) async throws -> Boost {
         return try await request(
-            OperationInfo(service: "Boosts", operation: "CreateEventBoost", resourceType: "event_boost", isMutation: true, resourceId: recordingId),
+            OperationInfo(service: "Boosts", operation: "CreateEventBoost", resourceType: "event_boost", isMutation: true, resourceId: eventId),
             method: "POST",
             path: "/recordings/\(recordingId)/events/\(eventId)/boosts.json",
             body: req,
@@ -59,7 +59,7 @@ public final class BoostsService: BaseService, @unchecked Sendable {
 
     public func listForEvent(recordingId: Int, eventId: Int, options: ListForEventBoostOptions? = nil) async throws -> ListResult<Boost> {
         return try await requestPaginated(
-            OperationInfo(service: "Boosts", operation: "ListEventBoosts", resourceType: "event_boost", isMutation: false, resourceId: recordingId),
+            OperationInfo(service: "Boosts", operation: "ListEventBoosts", resourceType: "event_boost", isMutation: false, resourceId: eventId),
             path: "/recordings/\(recordingId)/events/\(eventId)/boosts.json",
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListEventBoosts")
