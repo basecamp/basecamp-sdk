@@ -217,6 +217,92 @@ module Basecamp
       @parent.http.paginate_wrapped(account_path(path), key: key, params: params)
     end
 
+    # Downloads file content from any API-routable download URL.
+    #
+    # Handles the full download flow: URL rewriting to the configured API host,
+    # authenticated first hop (which typically 302s to a signed download URL),
+    # and unauthenticated second hop to fetch the actual file content.
+    #
+    # @param raw_url [String] absolute download URL (e.g., from bc-attachment elements)
+    # @return [DownloadResult] the download result with body, content_type, content_length, filename
+    # @raise [UsageError] if raw_url is empty or not absolute
+    # @raise [NetworkError] if a network error occurs
+    # @raise [APIError] if the API or download returns an error
+    def download_url(raw_url)
+      # Validation
+      raise UsageError.new("download URL is required") if raw_url.nil? || raw_url.to_s.empty?
+
+      begin
+        parsed = URI.parse(raw_url)
+      rescue URI::InvalidURIError
+        raise UsageError.new("download URL must be an absolute URL")
+      end
+      raise UsageError.new("download URL must be an absolute URL") unless parsed.is_a?(URI::HTTP)
+
+      # Operation hooks
+      op = OperationInfo.new(
+        service: "Account", operation: "DownloadURL",
+        resource_type: "download", is_mutation: false
+      )
+      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      safe_hook { hooks.on_operation_start(op) }
+
+      begin
+        # URL rewriting: replace scheme+host with config.base_url origin, preserve path+query+fragment
+        base = URI.parse(config.base_url)
+        rewritten = parsed.dup
+        rewritten.scheme = base.scheme
+        rewritten.host = base.host
+        rewritten.port = base.port
+        rewritten_url = rewritten.to_s
+
+        # Hop 1: Authenticated API request (no retry, captures redirect)
+        response = http.get_no_retry(rewritten_url)
+
+        result = case response.status
+        when 301, 302, 303, 307, 308
+          # Redirect — extract Location, proceed to hop 2
+          location = response.headers["Location"] || response.headers["location"]
+          raise APIError.new("redirect #{response.status} with no Location header") if location.nil? || location.empty?
+
+          # Resolve relative Location against the rewritten API URL
+          resolved_url = Security.resolve_url(rewritten_url, location)
+
+          # Hop 2: fetch from signed URL (no auth, no hooks)
+          signed_response = fetch_signed_download(resolved_url)
+
+          DownloadResult.new(
+            body: signed_response.body,
+            content_type: signed_response["Content-Type"] || "",
+            content_length: parse_content_length(signed_response["Content-Length"]),
+            filename: Basecamp.filename_from_url(raw_url)
+          )
+
+        when 200..299
+          # Direct download — no second hop
+          DownloadResult.new(
+            body: response.body,
+            content_type: response.headers["Content-Type"] || response.headers["content-type"] || "",
+            content_length: parse_content_length(response.headers["Content-Length"] || response.headers["content-length"]),
+            filename: Basecamp.filename_from_url(raw_url)
+          )
+
+        else
+          # This shouldn't happen because Faraday's raise_error middleware
+          # handles 4xx/5xx, but handle it defensively
+          raise Basecamp.error_from_response(response.status, response.body)
+        end
+      rescue => e
+        duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
+        safe_hook { hooks.on_operation_end(op, OperationResult.new(duration_ms: duration, error: e)) }
+        raise
+      else
+        duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
+        safe_hook { hooks.on_operation_end(op, OperationResult.new(duration_ms: duration, error: nil)) }
+        result
+      end
+    end
+
     # @!group Services
 
     # @return [Services::ProjectsService]
@@ -432,6 +518,41 @@ module Basecamp
       @mutex.synchronize do
         @services[name] ||= yield
       end
+    end
+
+    def fetch_signed_download(url)
+      uri = URI.parse(url)
+      http_client = Net::HTTP.new(uri.host, uri.port)
+      http_client.use_ssl = (uri.scheme == "https")
+      http_client.open_timeout = config.timeout
+      http_client.read_timeout = config.timeout
+
+      request = Net::HTTP::Get.new(uri)
+
+      begin
+        response = http_client.request(request)
+      rescue StandardError => e
+        raise NetworkError.new("Download failed: #{e.message}", cause: e)
+      end
+
+      unless response.is_a?(Net::HTTPSuccess)
+        raise APIError.new("download failed with status #{response.code}", http_status: response.code.to_i)
+      end
+
+      response
+    end
+
+    def safe_hook
+      yield
+    rescue => e
+      warn "Basecamp hook error: #{e.class}: #{e.message}"
+    end
+
+    def parse_content_length(value)
+      return -1 if value.nil? || value.to_s.empty?
+
+      parsed = value.to_i
+      parsed >= 0 ? parsed : -1
     end
   end
 end
