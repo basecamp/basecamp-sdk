@@ -1,0 +1,35 @@
+spec/basecamp.smithy
+  e59ccc2fbc269b9c 6967
+ruby/scripts/generate-services.rb
+  e59ccc2fbc269b9c 562,573
+ruby/test/basecamp/services/search_service_test.rb
+  e59ccc2fbc269b9c 30,33
+go/pkg/basecamp/search.go
+  e59ccc2fbc269b9c 54-55
+go/pkg/basecamp/search_test.go
+  e59ccc2fbc269b9c 4,6-7,235-288
+ruby/lib/basecamp/services/search_service.rb
+  e59ccc2fbc269b9c 20
+typescript/tests/services/search.test.ts
+  e59ccc2fbc269b9c 67,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "ad53f55ab7c9af7ee035562b6efb90a6b18ffd11",
+  "prompts": {
+    "e59ccc2fbc269b9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c49a485-0fef-4b58-ad88-d312f32a9cf6",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 67,
+      "overriden_lines": 0
+    }
+  }
+}
