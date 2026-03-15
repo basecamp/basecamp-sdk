@@ -161,6 +161,7 @@ service Basecamp {
     DisableCardColumnOnHold,
     SubscribeToCardColumn,
     UnsubscribeFromCardColumn,
+    GetCardStep,
     CreateCardStep,
     UpdateCardStep,
     SetCardStepCompletion,
@@ -4239,6 +4240,30 @@ structure UnsubscribeFromCardColumnInput {
 structure UnsubscribeFromCardColumnOutput {}
 
 // ===== CardStep Operations =====
+
+/// Get a step by ID
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/card_tables/steps/{stepId}")
+operation GetCardStep {
+  input: GetCardStepInput
+  output: GetCardStepOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure GetCardStepInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  stepId: CardStepId
+}
+
+structure GetCardStepOutput {
+  step: CardStep
+}
 
 /// Create a step on a card
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])

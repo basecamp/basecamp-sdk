@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-03-15T21:11:56Z",
+  "generated": "2026-03-15T21:32:13Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -241,6 +241,17 @@
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "GetCardStep": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "UpdateCardStep": {

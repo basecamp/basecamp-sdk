@@ -12,6 +12,15 @@ public final class CardStepsService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func get(stepId: Int) async throws -> CardStep {
+        return try await request(
+            OperationInfo(service: "CardSteps", operation: "GetCardStep", resourceType: "card_step", isMutation: false, resourceId: stepId),
+            method: "GET",
+            path: "/card_tables/steps/\(stepId)",
+            retryConfig: Metadata.retryConfig(for: "GetCardStep")
+        )
+    }
+
     public func reposition(cardId: Int, req: RepositionCardStepRequest) async throws {
         try await requestVoid(
             OperationInfo(service: "CardSteps", operation: "RepositionCardStep", resourceType: "card_step", isMutation: true, resourceId: cardId),

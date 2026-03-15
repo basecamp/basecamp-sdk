@@ -25,6 +25,23 @@ class CardStepsServiceTest < Minitest::Test
     }
   end
 
+  def test_get_step
+    stub_get("/12345/card_tables/steps/200", response_body: sample_step(id: 200))
+
+    step = @account.card_steps.get(step_id: 200)
+
+    assert_equal 200, step["id"]
+    assert_equal "Review code", step["title"]
+  end
+
+  def test_get_step_not_found
+    stub_get("/12345/card_tables/steps/999", response_body: "", status: 404)
+
+    assert_raises(Basecamp::NotFoundError) do
+      @account.card_steps.get(step_id: 999)
+    end
+  end
+
   def test_create_step
     new_step = sample_step(id: 999, title: "New step")
     stub_post("/12345/card_tables/cards/200/steps.json", response_body: new_step)

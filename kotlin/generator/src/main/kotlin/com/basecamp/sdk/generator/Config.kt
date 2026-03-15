@@ -42,7 +42,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
             "SubscribeToCardColumn", "UnsubscribeFromCardColumn",
         ),
         "CardSteps" to listOf(
-            "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",
+            "GetCardStep", "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",
             "RepositionCardStep",
         ),
     ),

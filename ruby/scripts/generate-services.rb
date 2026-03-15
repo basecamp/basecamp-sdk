@@ -57,7 +57,7 @@ class ServiceGenerator
         CreateCardColumn MoveCardColumn
       ],
       'CardSteps' => %w[
-        CreateCardStep UpdateCardStep SetCardStepCompletion
+        GetCardStep CreateCardStep UpdateCardStep SetCardStepCompletion
         RepositionCardStep
       ]
     },

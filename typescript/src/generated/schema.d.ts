@@ -232,7 +232,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** @description Get a step by ID */
+        get: operations["GetCardStep"];
         /** @description Update an existing step */
         put: operations["UpdateCardStep"];
         post?: never;
@@ -2815,6 +2816,7 @@ export interface components {
         GetCampfireResponseContent: components["schemas"]["Campfire"];
         GetCardColumnResponseContent: components["schemas"]["CardColumn"];
         GetCardResponseContent: components["schemas"]["Card"];
+        GetCardStepResponseContent: components["schemas"]["CardStep"];
         GetCardTableResponseContent: components["schemas"]["CardTable"];
         GetChatbotResponseContent: components["schemas"]["Chatbot"];
         GetClientApprovalResponseContent: components["schemas"]["ClientApproval"];
@@ -5052,6 +5054,64 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetCardStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stepId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetCardStep 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetCardStepResponseContent"];
+                };
             };
             /** @description UnauthorizedError 401 response */
             401: {

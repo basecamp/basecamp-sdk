@@ -231,6 +231,7 @@
       "pattern": "/{accountId}/card_tables/steps/{stepId}",
       "resource": "Card Tables",
       "operations": {
+        "GET": "GetCardStep",
         "PUT": "UpdateCardStep"
       },
       "params": {

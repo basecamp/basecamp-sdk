@@ -6,6 +6,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import type { BasecampClient } from "../../src/client.js";
+import { BasecampError } from "../../src/errors.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -26,6 +27,32 @@ describe("CardStepsService", () => {
       accountId: "12345",
       accessToken: "test-token",
       enableRetry: false,
+    });
+  });
+
+  describe("get", () => {
+    it("should return a single step", async () => {
+      const stepId = 42;
+
+      server.use(
+        http.get(`${BASE_URL}/card_tables/steps/${stepId}`, () => {
+          return HttpResponse.json(sampleStep(stepId));
+        })
+      );
+
+      const step = await client.cardSteps.get(stepId);
+      expect(step.id).toBe(stepId);
+      expect(step.title).toBe("Review code");
+    });
+
+    it("should throw not_found for missing step", async () => {
+      server.use(
+        http.get(`${BASE_URL}/card_tables/steps/999`, () => {
+          return HttpResponse.json({ error: "Not found" }, { status: 404 });
+        })
+      );
+
+      await expect(client.cardSteps.get(999)).rejects.toThrow(BasecampError);
     });
   });
 
