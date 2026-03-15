@@ -49,7 +49,6 @@ describe("ToolsService", () => {
     });
 
     it("should throw not_found error for non-existent tool", async () => {
-
       server.use(
         http.get(`${BASE_URL}/dock/tools/999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
@@ -62,6 +61,7 @@ describe("ToolsService", () => {
 
   describe("clone", () => {
     it("should clone a tool", async () => {
+      const projectId = 111;
       const sourceToolId = 222;
       const mockTool = {
         id: 333,
@@ -73,7 +73,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.post(
-          `${BASE_URL}/dock/tools.json`,
+          `${BASE_URL}/buckets/${projectId}/dock/tools.json`,
           async ({ request }) => {
             const body = await request.json() as { source_recording_id: number };
             expect(body.source_recording_id).toBe(sourceToolId);
@@ -82,7 +82,7 @@ describe("ToolsService", () => {
         )
       );
 
-      const tool = await client.tools.clone({ sourceRecordingId: sourceToolId });
+      const tool = await client.tools.clone(projectId, { sourceRecordingId: sourceToolId });
       expect(tool.id).toBe(333);
       expect(tool.title).toBe("To-dos (Copy)");
     });
