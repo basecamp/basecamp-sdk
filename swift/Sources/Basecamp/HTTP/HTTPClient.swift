@@ -200,6 +200,76 @@ package final class HTTPClient: Sendable {
         return (data, httpResponse)
     }
 
+    /// Authenticated GET without redirect following. Fires request hooks.
+    /// Used by downloadURL for the first hop.
+    package func performDownloadRequest(url: String) async throws -> (Data, HTTPURLResponse) {
+        guard let requestURL = URL(string: url) else {
+            throw BasecampError.usage(message: "Invalid URL: \(url)", hint: nil)
+        }
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "GET"
+        request.timeoutInterval = config.timeoutInterval
+
+        try await authStrategy.authenticate(&request)
+        request.setValue(config.userAgent, forHTTPHeaderField: "User-Agent")
+
+        let info = RequestInfo(method: "GET", url: url, attempt: 1)
+        safeInvokeHooks { $0.onRequestStart(info) }
+
+        let startTime = CFAbsoluteTimeGetCurrent()
+
+        do {
+            let (data, response) = try await transport.dataNoRedirect(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw BasecampError.network(message: "Invalid response type", cause: nil)
+            }
+
+            let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
+            safeInvokeHooks {
+                $0.onRequestEnd(info, result: RequestResult(
+                    statusCode: httpResponse.statusCode, durationMs: durationMs))
+            }
+
+            return (data, httpResponse)
+        } catch let error as BasecampError {
+            throw error
+        } catch {
+            let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
+            safeInvokeHooks {
+                $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
+            }
+            throw BasecampError.network(message: "Network error", cause: error)
+        }
+    }
+
+    /// Unauthenticated GET via bare transport. No hooks.
+    /// Used by downloadURL for the signed-URL hop.
+    package func fetchSignedDownload(url: String) async throws -> (Data, HTTPURLResponse) {
+        guard let requestURL = URL(string: url) else {
+            throw BasecampError.usage(message: "Invalid URL: \(url)", hint: nil)
+        }
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "GET"
+        request.timeoutInterval = config.timeoutInterval
+
+        do {
+            let (data, response) = try await transport.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw BasecampError.network(message: "Invalid response type", cause: nil)
+            }
+
+            return (data, httpResponse)
+        } catch let error as BasecampError {
+            throw error
+        } catch {
+            throw BasecampError.network(message: "Download failed", cause: error)
+        }
+    }
+
     // MARK: - Private
 
     private func calculateDelay(
