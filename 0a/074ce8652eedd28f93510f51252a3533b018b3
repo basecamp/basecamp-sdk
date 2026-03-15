@@ -1,0 +1,15 @@
+ruby/test/basecamp/services/tools_service_test.rb
+  5011bd808bd35d26 15,18,26,29,36,39,44,47,52-53,55,60,63,68-69,71
+ruby/lib/basecamp/services/tools_service.rb
+  5011bd808bd35d26 31,33-35,64,74,85
+typescript/tests/services/tools.test.ts
+  5011bd808bd35d26 16,41,46,55,60,77,79,81,87,105,115,127,132,142,144,149,159,166,176,180,187
+go/pkg/basecamp/tools.go
+  5011bd808bd35d26 43,58,76,91-95,98,101,119,143,161,176,185,200,209,224,233,257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "0a074ce8652eedd28f93510f51252a3533b018b3",
+  "prompts": {}
+}
