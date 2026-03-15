@@ -1,0 +1,25 @@
+go/pkg/basecamp/todolists_test.go
+  99d2f08a53d3f45d 4,6-8,167-274
+go/pkg/basecamp/todolist_groups_test.go
+  99d2f08a53d3f45d 4,6-8,145-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "d1a620beb710b14a197854a54bbf60952788b54c",
+  "prompts": {
+    "99d2f08a53d3f45d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25629d1b-eca2-414b-809c-bee484c6eaf5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 220,
+      "overriden_lines": 0
+    }
+  }
+}
