@@ -6542,6 +6542,9 @@ structure CloneToolInput {
 
   @required
   source_recording_id: ToolId
+
+  @required
+  title: String
 }
 
 structure CloneToolOutput {
