@@ -1,0 +1,27 @@
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ServiceEmitter.kt
+  5011bd808bd35d26 94
+typescript/scripts/generate-services.ts
+  5011bd808bd35d26 1214
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  5011bd808bd35d26 184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "e21fd11df150a9552dae97345c050857fa2b3ec2",
+  "prompts": {
+    "5011bd808bd35d26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "18c78034-5988-4e66-aa06-a6d18f514cc3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
