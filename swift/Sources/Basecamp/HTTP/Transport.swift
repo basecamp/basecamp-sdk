@@ -47,7 +47,7 @@ public struct URLSessionTransport: Transport, Sendable {
 
 /// URLSession delegate that blocks all redirects, causing the redirect response
 /// to be returned directly to the caller.
-private final class RedirectBlockingDelegate: NSObject, URLSessionTaskDelegate, Sendable {
+private final class RedirectBlockingDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     func urlSession(
         _ session: URLSession,
         task: URLSessionTask,

@@ -20,7 +20,7 @@ func (c *Client) fetchSignedDownload(ctx context.Context, downloadURL string) (*
 
 	transport := c.httpOpts.Transport
 	if transport == nil {
-		transport = http.DefaultTransport
+		transport = newDefaultTransport()
 	}
 	httpClient := &http.Client{
 		Transport: transport,
@@ -32,7 +32,7 @@ func (c *Client) fetchSignedDownload(ctx context.Context, downloadURL string) (*
 		return nil, fmt.Errorf("failed to download file: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		_ = resp.Body.Close()
 		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
 	}
@@ -57,6 +57,9 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 	parsed, parseErr := url.Parse(rawURL)
 	if parseErr != nil || !parsed.IsAbs() {
 		return nil, ErrUsage("download URL must be an absolute URL")
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return nil, ErrUsage("download URL must use HTTP or HTTPS scheme")
 	}
 
 	// Operation hooks

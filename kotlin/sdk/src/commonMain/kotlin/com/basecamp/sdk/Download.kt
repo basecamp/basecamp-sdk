@@ -87,7 +87,7 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
     if (!rawURL.startsWith("http://") && !rawURL.startsWith("https://")) {
         throw BasecampException.Usage("download URL must be an absolute URL")
     }
-    val parsed = try {
+    try {
         Url(rawURL)
     } catch (_: Exception) {
         throw BasecampException.Usage("download URL must be an absolute URL")
@@ -233,6 +233,8 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                                 }
                             }
                         }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (_: Exception) {
                         // Body is not JSON or empty — use status text
                     }
