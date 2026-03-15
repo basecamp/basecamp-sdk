@@ -1,0 +1,31 @@
+swift/Tests/BasecampTests/DownloadTests.swift
+  e27d054ea0c928f9 1-494
+swift/Sources/Basecamp/HTTP/HTTPClient.swift
+  e27d054ea0c928f9 203-272
+swift/Tests/BasecampTests/Support/MockTransport.swift
+  e27d054ea0c928f9 65-68
+swift/Sources/Basecamp/Download.swift
+  e27d054ea0c928f9 1-167
+swift/Sources/Basecamp/HTTP/Transport.swift
+  e27d054ea0c928f9 13-17,31-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "52a79297043366cdf0d0c7e3ab23c34d77b682fb",
+  "prompts": {
+    "e27d054ea0c928f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f23241c8-f1fa-49e0-9514-771001db849c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 769,
+      "overriden_lines": 0
+    }
+  }
+}
