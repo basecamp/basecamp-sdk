@@ -7,6 +7,8 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -210,14 +212,32 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                 }
 
                 else -> {
-                    // Error response
-                    val body = response.bodyAsText()
+                    // Error response — parse JSON error/hint and Retry-After,
+                    // matching BaseService.errorFromResponse
                     val requestId = response.headers["X-Request-Id"]
-                    throw BasecampException.fromHttpStatus(
-                        httpStatus = status,
-                        message = body.ifEmpty { null },
-                        requestId = requestId,
-                    )
+                    val retryAfter = parseRetryAfter(response.headers["Retry-After"])
+
+                    var message: String = response.status.description.ifEmpty { "Request failed" }
+                    var hint: String? = null
+
+                    try {
+                        val bodyText = response.bodyAsText()
+                        if (bodyText.isNotBlank()) {
+                            val jsonBody = parent.json.parseToJsonElement(bodyText)
+                            if (jsonBody is JsonObject) {
+                                jsonBody["error"]?.jsonPrimitive?.content?.let {
+                                    message = BasecampException.truncateMessage(it)
+                                }
+                                jsonBody["error_description"]?.jsonPrimitive?.content?.let {
+                                    hint = BasecampException.truncateMessage(it)
+                                }
+                            }
+                        }
+                    } catch (_: Exception) {
+                        // Body is not JSON or empty — use status text
+                    }
+
+                    throw BasecampException.fromHttpStatus(status, message, hint, requestId, retryAfter)
                 }
             }
         }
