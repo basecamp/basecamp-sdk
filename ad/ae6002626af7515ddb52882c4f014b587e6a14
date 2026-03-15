@@ -1,0 +1,27 @@
+go/pkg/basecamp/download.go
+  e27d054ea0c928f9 23,35,61-63
+swift/Sources/Basecamp/HTTP/Transport.swift
+  e27d054ea0c928f9 50
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Download.kt
+  e27d054ea0c928f9 236-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "adae6002626af7515ddb52882c4f014b587e6a14",
+  "prompts": {
+    "e27d054ea0c928f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f23241c8-f1fa-49e0-9514-771001db849c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 4,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    }
+  }
+}
