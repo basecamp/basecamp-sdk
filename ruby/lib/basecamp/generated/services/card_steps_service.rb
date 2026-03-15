@@ -31,6 +31,15 @@ module Basecamp
         end
       end
 
+      # Get a step by ID
+      # @param step_id [Integer] step id ID
+      # @return [Hash] response data
+      def get(step_id:)
+        with_operation(service: "cardsteps", operation: "get", is_mutation: false, resource_id: step_id) do
+          http_get("/card_tables/steps/#{step_id}").json
+        end
+      end
+
       # Update an existing step
       # @param step_id [Integer] step id ID
       # @param title [String, nil] title

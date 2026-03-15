@@ -183,7 +183,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
       "SubscribeToCardColumn", "UnsubscribeFromCardColumn",
     ],
     CardSteps: [
-      "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",
+      "GetCardStep", "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",
       "RepositionCardStep",
     ],
   },

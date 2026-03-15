@@ -763,6 +763,9 @@ type GetCardColumnResponseContent = CardColumn
 // GetCardResponseContent defines model for GetCardResponseContent.
 type GetCardResponseContent = Card
 
+// GetCardStepResponseContent defines model for GetCardStepResponseContent.
+type GetCardStepResponseContent = CardStep
+
 // GetCardTableResponseContent defines model for GetCardTableResponseContent.
 type GetCardTableResponseContent = CardTable
 
@@ -2764,6 +2767,9 @@ type ClientInterface interface {
 	// SubscribeToCardColumn request
 	SubscribeToCardColumn(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetCardStep request
+	GetCardStep(ctx context.Context, accountId string, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UpdateCardStepWithBody request with any body
 	UpdateCardStepWithBody(ctx context.Context, accountId string, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3668,6 +3674,16 @@ func (c *Client) SubscribeToCardColumn(ctx context.Context, accountId string, co
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewSubscribeToCardColumnRequest(c.Server, accountId, columnId)
 	}, true, "SubscribeToCardColumn", reqEditors...)
+
+}
+
+// GetCardStep is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetCardStep(ctx context.Context, accountId string, stepId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetCardStepRequest(c.Server, accountId, stepId)
+	}, true, "GetCardStep", reqEditors...)
 
 }
 
@@ -6888,6 +6904,47 @@ func NewSubscribeToCardColumnRequest(server string, accountId string, columnId i
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetCardStepRequest generates requests for GetCardStep
+func NewGetCardStepRequest(server string, accountId string, stepId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "stepId", runtime.ParamLocationPath, stepId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/card_tables/steps/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -14552,6 +14609,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateCard":                         {Idempotent: false, HasSensitiveParams: false},
 	"UnsubscribeFromCardColumn":          {Idempotent: true, HasSensitiveParams: false},
 	"SubscribeToCardColumn":              {Idempotent: true, HasSensitiveParams: false},
+	"GetCardStep":                        {Idempotent: true, HasSensitiveParams: false},
 	"UpdateCardStep":                     {Idempotent: true, HasSensitiveParams: false},
 	"SetCardStepCompletion":              {Idempotent: true, HasSensitiveParams: false},
 	"GetCardTable":                       {Idempotent: true, HasSensitiveParams: false},
@@ -15718,6 +15776,9 @@ type ClientWithResponsesInterface interface {
 	// SubscribeToCardColumnWithResponse request
 	SubscribeToCardColumnWithResponse(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*SubscribeToCardColumnResponse, error)
 
+	// GetCardStepWithResponse request
+	GetCardStepWithResponse(ctx context.Context, accountId string, stepId int64, reqEditors ...RequestEditorFn) (*GetCardStepResponse, error)
+
 	// UpdateCardStepWithBodyWithResponse request with any body
 	UpdateCardStepWithBodyWithResponse(ctx context.Context, accountId string, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error)
 
@@ -16794,6 +16855,32 @@ func (r SubscribeToCardColumnResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r SubscribeToCardColumnResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetCardStepResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetCardStepResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCardStepResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCardStepResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -21186,6 +21273,15 @@ func (c *ClientWithResponses) SubscribeToCardColumnWithResponse(ctx context.Cont
 	return ParseSubscribeToCardColumnResponse(rsp)
 }
 
+// GetCardStepWithResponse request returning *GetCardStepResponse
+func (c *ClientWithResponses) GetCardStepWithResponse(ctx context.Context, accountId string, stepId int64, reqEditors ...RequestEditorFn) (*GetCardStepResponse, error) {
+	rsp, err := c.GetCardStep(ctx, accountId, stepId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCardStepResponse(rsp)
+}
+
 // UpdateCardStepWithBodyWithResponse request with arbitrary body returning *UpdateCardStepResponse
 func (c *ClientWithResponses) UpdateCardStepWithBodyWithResponse(ctx context.Context, accountId string, stepId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardStepResponse, error) {
 	rsp, err := c.UpdateCardStepWithBody(ctx, accountId, stepId, contentType, body, reqEditors...)
@@ -24094,6 +24190,60 @@ func ParseSubscribeToCardColumnResponse(rsp *http.Response) (*SubscribeToCardCol
 			return nil, err
 		}
 		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetCardStepResponse parses an HTTP response from a GetCardStepWithResponse call
+func ParseGetCardStepResponse(rsp *http.Response) (*GetCardStepResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCardStepResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetCardStepResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

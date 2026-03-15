@@ -71,6 +71,7 @@ object Metadata {
         "GetCampfireLine" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetCard" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetCardColumn" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "GetCardStep" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetCardTable" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetChatbot" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetClientApproval" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

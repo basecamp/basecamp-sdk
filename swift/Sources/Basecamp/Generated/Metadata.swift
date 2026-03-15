@@ -54,6 +54,7 @@ enum Metadata {
         "GetCampfireLine": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "GetCard": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "GetCardColumn": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
+        "GetCardStep": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "GetCardTable": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "GetChatbot": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "GetClientApproval": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),

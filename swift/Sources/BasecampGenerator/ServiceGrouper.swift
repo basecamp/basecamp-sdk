@@ -41,7 +41,7 @@ let serviceSplits: [String: [String: [String]]] = [
             "SubscribeToCardColumn", "UnsubscribeFromCardColumn",
         ],
         "CardSteps": [
-            "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",
+            "GetCardStep", "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",
             "RepositionCardStep",
         ],
     ],

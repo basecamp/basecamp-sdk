@@ -60,6 +60,26 @@ class CardStepsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Get a step by ID
+     * @param stepId The step ID
+     */
+    suspend fun get(stepId: Long): CardStep {
+        val info = OperationInfo(
+            service = "CardSteps",
+            operation = "GetCardStep",
+            resourceType = "card_step",
+            isMutation = false,
+            projectId = null,
+            resourceId = stepId,
+        )
+        return request(info, {
+            httpGet("/card_tables/steps/${stepId}", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<CardStep>(body)
+        }
+    }
+
+    /**
      * Update an existing step
      * @param stepId The step ID
      * @param body Request body

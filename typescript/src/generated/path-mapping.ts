@@ -31,6 +31,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/{accountId}/card_tables/lists/{columnId}/cards.json": "CreateCard",
   "DELETE:/{accountId}/card_tables/lists/{columnId}/subscription.json": "UnsubscribeFromCardColumn",
   "POST:/{accountId}/card_tables/lists/{columnId}/subscription.json": "SubscribeToCardColumn",
+  "GET:/{accountId}/card_tables/steps/{stepId}": "GetCardStep",
   "PUT:/{accountId}/card_tables/steps/{stepId}": "UpdateCardStep",
   "PUT:/{accountId}/card_tables/steps/{stepId}/completions.json": "SetCardStepCompletion",
   "GET:/{accountId}/categories.json": "ListMessageTypes",

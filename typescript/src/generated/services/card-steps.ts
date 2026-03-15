@@ -144,6 +144,36 @@ export class CardStepsService extends BaseService {
   }
 
   /**
+   * Get a step by ID
+   * @param stepId - The step ID
+   * @returns The CardStep
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.cardSteps.get(123);
+   * ```
+   */
+  async get(stepId: number): Promise<CardStep> {
+    const response = await this.request(
+      {
+        service: "CardSteps",
+        operation: "GetCardStep",
+        resourceType: "card_step",
+        isMutation: false,
+        resourceId: stepId,
+      },
+      () =>
+        this.client.GET("/card_tables/steps/{stepId}", {
+          params: {
+            path: { stepId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
    * Update an existing step
    * @param stepId - The step ID
    * @param req - Card_step update parameters
