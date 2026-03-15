@@ -1,0 +1,41 @@
+ruby/scripts/generate-services.rb
+  a807c2f81a85442d 60
+typescript/tests/services/card-steps.test.ts
+  a807c2f81a85442d 32-57
+ruby/test/basecamp/services/card_steps_service_test.rb
+  a807c2f81a85442d 28-36
+go/pkg/basecamp/cards_test.go
+  a807c2f81a85442d 4,6-8,637-703
+go/pkg/basecamp/cards.go
+  a807c2f81a85442d 886-917
+swift/Sources/BasecampGenerator/ServiceGrouper.swift
+  a807c2f81a85442d 44
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  a807c2f81a85442d 45
+typescript/scripts/generate-services.ts
+  a807c2f81a85442d 186
+spec/overlays/tags.smithy
+  a807c2f81a85442d 116
+spec/basecamp.smithy
+  a807c2f81a85442d 164,4244-4267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "9068d66f7c04930363a12ee225ab0f8ff8edf36e",
+  "prompts": {
+    "a807c2f81a85442d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21428f07-f0b6-49db-8818-060e98f5992e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 168,
+      "overriden_lines": 0
+    }
+  }
+}
