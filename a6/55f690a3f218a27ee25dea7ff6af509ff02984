@@ -1,0 +1,25 @@
+spec/basecamp.smithy
+  698a3774091a3125 6545-6547
+spec/api-provenance.json
+  698a3774091a3125 3-4,7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "a655f690a3f218a27ee25dea7ff6af509ff02984",
+  "prompts": {
+    "698a3774091a3125": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e204b86-fa77-434c-831c-11d321199a48",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 131,
+      "total_deletions": 27,
+      "accepted_lines": 117,
+      "overriden_lines": 0
+    }
+  }
+}
