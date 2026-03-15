@@ -1,0 +1,17 @@
+conformance/runner/typescript/runner.test.ts
+  5011bd808bd35d26 189-203
+conformance/tests/paths.json
+  5011bd808bd35d26 130-178
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  5011bd808bd35d26 647-668
+conformance/runner/ruby/runner.rb
+  5011bd808bd35d26 128-143
+conformance/runner/go/main.go
+  5011bd808bd35d26 462-480
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "8a6df097fd53f9a2688ccdf2a908c6456e12f7c5",
+  "prompts": {}
+}
