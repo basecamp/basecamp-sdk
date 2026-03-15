@@ -19,7 +19,7 @@ import type { PaginationOptions } from "../../pagination.js";
  */
 export interface SearchSearchOptions extends PaginationOptions {
   /** Filter by sort */
-  sort?: "created_at" | "updated_at";
+  sort?: "best_match" | "created_at";
 }
 
 

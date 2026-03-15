@@ -51,7 +51,8 @@ type SearchListResult struct {
 
 // SearchOptions specifies optional parameters for search.
 type SearchOptions struct {
-	// Sort specifies the sort order: "created_at" or "updated_at" (default: relevance).
+	// Sort specifies the sort order: "best_match" or "created_at" (default: created_at desc).
+	// "best_match" returns results ranked by relevance with a recency boost.
 	Sort string
 
 	// Limit is the maximum number of results to return.

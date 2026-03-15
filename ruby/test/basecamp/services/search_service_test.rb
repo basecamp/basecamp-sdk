@@ -27,10 +27,10 @@ class SearchServiceTest < Minitest::Test
   def test_search_with_sort
     results = [ { "id" => 3, "title" => "Recent Doc", "type" => "Document" } ]
     stub_request(:get, "https://3.basecampapi.com/12345/search.json")
-      .with(query: { q: "doc", sort: "updated_at" })
+      .with(query: { q: "doc", sort: "best_match" })
       .to_return(status: 200, body: results.to_json)
 
-    result = @account.search.search(q: "doc", sort: "updated_at").to_a
+    result = @account.search.search(q: "doc", sort: "best_match").to_a
 
     assert_equal 1, result.length
   end

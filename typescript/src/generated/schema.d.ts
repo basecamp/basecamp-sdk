@@ -12455,7 +12455,7 @@ export interface operations {
         parameters: {
             query: {
                 q: string;
-                /** @description created_at|updated_at */
+                /** @description best_match|created_at */
                 sort?: string;
             };
             header?: never;

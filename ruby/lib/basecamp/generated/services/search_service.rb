@@ -9,7 +9,7 @@ module Basecamp
 
       # Search for content across the account
       # @param q [String] q
-      # @param sort [String, nil] created_at|updated_at
+      # @param sort [String, nil] best_match|created_at
       # @return [Enumerator<Hash>] paginated results
       def search(q:, sort: nil)
         wrap_paginated(service: "search", operation: "search", is_mutation: false) do

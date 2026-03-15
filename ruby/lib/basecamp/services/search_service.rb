@@ -17,7 +17,7 @@ module Basecamp
       # Searches for content across the account.
       #
       # @param q [String] the search query string
-      # @param sort [String, nil] sort order ("created_at" or "updated_at")
+      # @param sort [String, nil] sort order ("best_match" or "created_at")
       # @return [Enumerator<Hash>] search results
       def search(q:, sort: nil)
         params = compact_params(q: q, sort: sort)

@@ -2194,7 +2194,7 @@ type ListScheduleEntriesParams struct {
 type SearchParams struct {
 	Q string `form:"q" json:"q"`
 
-	// Sort created_at|updated_at
+	// Sort best_match|created_at
 	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
 }
 
