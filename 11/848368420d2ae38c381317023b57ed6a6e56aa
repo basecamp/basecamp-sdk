@@ -1,0 +1,29 @@
+ruby/lib/basecamp/services/tools_service.rb
+  5011bd808bd35d26 31,33-35,64,74,85
+go/pkg/basecamp/tools.go
+  5011bd808bd35d26 43,58,76,91-95,98,101,119,143,161,176,185,200,209,224,233,257
+typescript/tests/services/tools.test.ts
+  5011bd808bd35d26 16,41,46,55,60,77,79,81,87,105,115,127,132,142,144,149,159,166,176,180,187
+ruby/test/basecamp/services/tools_service_test.rb
+  5011bd808bd35d26 15,18,26,29,36,39,44,47,52-53,55,60,63,68-69,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "11848368420d2ae38c381317023b57ed6a6e56aa",
+  "prompts": {
+    "5011bd808bd35d26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "18c78034-5988-4e66-aa06-a6d18f514cc3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 185,
+      "overriden_lines": 0
+    }
+  }
+}
