@@ -933,6 +933,15 @@ type InternalServerErrorResponseContent struct {
 	Message string `json:"message,omitempty"`
 }
 
+// LineupMarker defines model for LineupMarker.
+type LineupMarker struct {
+	CreatedAt time.Time `json:"created_at"`
+	Date      string    `json:"date"`
+	Id        int64     `json:"id"`
+	Name      string    `json:"name"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // ListAnswersResponseContent defines model for ListAnswersResponseContent.
 type ListAnswersResponseContent = []QuestionAnswer
 
@@ -980,6 +989,9 @@ type ListForwardRepliesResponseContent = []ForwardReply
 
 // ListForwardsResponseContent defines model for ListForwardsResponseContent.
 type ListForwardsResponseContent = []Forward
+
+// ListLineupMarkersResponseContent defines model for ListLineupMarkersResponseContent.
+type ListLineupMarkersResponseContent = []LineupMarker
 
 // ListMessageTypesResponseContent defines model for ListMessageTypesResponseContent.
 type ListMessageTypesResponseContent = []MessageType
@@ -2930,6 +2942,9 @@ type ClientInterface interface {
 	// ListForwards request
 	ListForwards(ctx context.Context, accountId string, inboxId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListLineupMarkers request
+	ListLineupMarkers(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateLineupMarkerWithBody request with any body
 	CreateLineupMarkerWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -4326,6 +4341,16 @@ func (c *Client) ListForwards(ctx context.Context, accountId string, inboxId int
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListForwardsRequest(c.Server, accountId, inboxId)
 	}, true, "ListForwards", reqEditors...)
+
+}
+
+// ListLineupMarkers is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListLineupMarkers(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListLineupMarkersRequest(c.Server, accountId)
+	}, true, "ListLineupMarkers", reqEditors...)
 
 }
 
@@ -8941,6 +8966,40 @@ func NewListForwardsRequest(server string, accountId string, inboxId int64) (*ht
 	}
 
 	operationPath := fmt.Sprintf("/%s/inboxes/%s/forwards.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListLineupMarkersRequest generates requests for ListLineupMarkers
+func NewListLineupMarkersRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/lineup/markers.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -14654,6 +14713,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetForwardReply":                    {Idempotent: true, HasSensitiveParams: false},
 	"GetInbox":                           {Idempotent: true, HasSensitiveParams: false},
 	"ListForwards":                       {Idempotent: true, HasSensitiveParams: false},
+	"ListLineupMarkers":                  {Idempotent: true, HasSensitiveParams: false},
 	"CreateLineupMarker":                 {Idempotent: false, HasSensitiveParams: false},
 	"DeleteLineupMarker":                 {Idempotent: true, HasSensitiveParams: false},
 	"UpdateLineupMarker":                 {Idempotent: true, HasSensitiveParams: false},
@@ -15938,6 +15998,9 @@ type ClientWithResponsesInterface interface {
 
 	// ListForwardsWithResponse request
 	ListForwardsWithResponse(ctx context.Context, accountId string, inboxId int64, reqEditors ...RequestEditorFn) (*ListForwardsResponse, error)
+
+	// ListLineupMarkersWithResponse request
+	ListLineupMarkersWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListLineupMarkersResponse, error)
 
 	// CreateLineupMarkerWithBodyWithResponse request with any body
 	CreateLineupMarkerWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLineupMarkerResponse, error)
@@ -18035,6 +18098,32 @@ func (r ListForwardsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r ListForwardsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListLineupMarkersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListLineupMarkersResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListLineupMarkersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListLineupMarkersResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -21788,6 +21877,15 @@ func (c *ClientWithResponses) ListForwardsWithResponse(ctx context.Context, acco
 		return nil, err
 	}
 	return ParseListForwardsResponse(rsp)
+}
+
+// ListLineupMarkersWithResponse request returning *ListLineupMarkersResponse
+func (c *ClientWithResponses) ListLineupMarkersWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListLineupMarkersResponse, error) {
+	rsp, err := c.ListLineupMarkers(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListLineupMarkersResponse(rsp)
 }
 
 // CreateLineupMarkerWithBodyWithResponse request with arbitrary body returning *CreateLineupMarkerResponse
@@ -26665,6 +26763,60 @@ func ParseListForwardsResponse(rsp *http.Response) (*ListForwardsResponse, error
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ListForwardsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListLineupMarkersResponse parses an HTTP response from a ListLineupMarkersWithResponse call
+func ParseListLineupMarkersResponse(rsp *http.Response) (*ListLineupMarkersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListLineupMarkersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListLineupMarkersResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

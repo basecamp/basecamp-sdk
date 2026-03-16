@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-03-15T21:32:13Z",
+  "generated": "2026-03-16T01:33:13Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -824,6 +824,17 @@
         "style": "link",
         "totalCountHeader": "X-Total-Count",
         "maxPageSize": 50
+      }
+    },
+    "ListLineupMarkers": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "CreateLineupMarker": {

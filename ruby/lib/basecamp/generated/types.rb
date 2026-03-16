@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-03-15T21:32:13Z
+# Generated: 2026-03-16T01:33:13Z
 
 require "json"
 require "time"
@@ -1288,6 +1288,39 @@ module Basecamp
           "forwards_count" => @forwards_count,
           "forwards_url" => @forwards_url,
           "position" => @position,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # LineupMarker
+    class LineupMarker
+      include TypeHelpers
+      attr_accessor :created_at, :date, :id, :name, :updated_at
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[created_at date id name updated_at].freeze
+      end
+
+      def initialize(data = {})
+        @created_at = parse_datetime(data["created_at"])
+        @date = data["date"]
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+        @updated_at = parse_datetime(data["updated_at"])
+      end
+
+      def to_h
+        {
+          "created_at" => @created_at,
+          "date" => @date,
+          "id" => @id,
+          "name" => @name,
+          "updated_at" => @updated_at,
         }.compact
       end
 

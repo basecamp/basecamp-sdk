@@ -237,6 +237,7 @@ service Basecamp {
     EnableTool,
     DisableTool,
     RepositionTool,
+    ListLineupMarkers,
     CreateLineupMarker,
     UpdateLineupMarker,
     DeleteLineupMarker,
@@ -6700,6 +6701,30 @@ structure RepositionToolOutput {}
 
 // ===== Lineup Marker Operations =====
 
+/// List all lineup markers for the account
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/lineup/markers.json")
+operation ListLineupMarkers {
+  input: ListLineupMarkersInput
+  output: ListLineupMarkersOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListLineupMarkersInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+list LineupMarkerList {
+  member: LineupMarker
+}
+
+structure ListLineupMarkersOutput {
+  markers: LineupMarkerList
+}
+
 /// Create a new lineup marker
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/lineup/markers.json", code: 201)
@@ -7105,28 +7130,13 @@ structure LineupMarker {
   @required
   id: MarkerId
   @required
-  status: String
-  color: String
+  name: String
   @required
-  title: String
-  starts_on: ISO8601Date
-  ends_on: ISO8601Date
-  description: String
+  date: ISO8601Date
   @required
   created_at: ISO8601Timestamp
   @required
   updated_at: ISO8601Timestamp
-  @required
-  type: String
-  @required
-  url: String
-  @required
-  app_url: String
-  @required
-  creator: Person
-  @required
-  parent: RecordingParent
-  bucket: RecordingBucket
 }
 
 // =============================================================================
