@@ -131,6 +131,7 @@ object Metadata {
         "ListEvents" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListForwardReplies" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListForwards" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "ListLineupMarkers" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListMessageTypes" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListMessages" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListPeople" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

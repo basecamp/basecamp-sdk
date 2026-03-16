@@ -56,6 +56,7 @@ import { SearchService } from "./generated/services/search.js";
 import { ReportsService } from "./generated/services/reports.js";
 import { TemplatesService } from "./generated/services/templates.js";
 import { LineupService } from "./generated/services/lineup.js";
+import { AutomationService } from "./generated/services/automation.js";
 import { TodolistGroupsService } from "./generated/services/todolist-groups.js";
 import { ToolsService } from "./generated/services/tools.js";
 import { TimesheetsService } from "./generated/services/timesheets.js";
@@ -157,6 +158,8 @@ export interface BasecampClient extends RawClient {
   readonly templates: TemplatesService;
   /** Lineup service - manage timeline markers */
   readonly lineup: LineupService;
+  /** Automation service - lineup marker listings and other automation */
+  readonly automation: AutomationService;
   /** Todolist groups service - manage groups within todolists */
   readonly todolistGroups: TodolistGroupsService;
   /** Tools service - manage project dock tools */
@@ -354,6 +357,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("reports", () => new ReportsService(client, hooks, fetchPage, maxPages));
   defineService("templates", () => new TemplatesService(client, hooks, fetchPage, maxPages));
   defineService("lineup", () => new LineupService(client, hooks, fetchPage, maxPages));
+  defineService("automation", () => new AutomationService(client, hooks, fetchPage, maxPages));
   defineService("todolistGroups", () => new TodolistGroupsService(client, hooks, fetchPage, maxPages));
   defineService("tools", () => new ToolsService(client, hooks, fetchPage, maxPages));
   defineService("timesheets", () => new TimesheetsService(client, hooks, fetchPage, maxPages));

@@ -114,6 +114,7 @@ enum Metadata {
         "ListEvents": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "ListForwardReplies": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "ListForwards": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
+        "ListLineupMarkers": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "ListMessageTypes": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "ListMessages": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "ListPeople": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),

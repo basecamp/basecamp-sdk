@@ -9,21 +9,16 @@ import (
 
 // LineupMarker represents a marker on the Basecamp Lineup.
 type LineupMarker struct {
-	ID          int64     `json:"id"`
-	Status      string    `json:"status"`
-	Color       string    `json:"color"`
-	Title       string    `json:"title"`
-	StartsOn    string    `json:"starts_on"`
-	EndsOn      string    `json:"ends_on"`
-	Description string    `json:"description,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	Type        string    `json:"type"`
-	URL         string    `json:"url"`
-	AppURL      string    `json:"app_url"`
-	Creator     *Person   `json:"creator,omitempty"`
-	Parent      *Parent   `json:"parent,omitempty"`
-	Bucket      *Bucket   `json:"bucket,omitempty"`
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	Date      string    `json:"date"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ListMarkersResult contains the results from listing lineup markers.
+type ListMarkersResult struct {
+	Markers []LineupMarker
 }
 
 // CreateMarkerRequest specifies the parameters for creating a lineup marker.
@@ -146,5 +141,41 @@ func (s *LineupService) DeleteMarker(ctx context.Context, markerID int64) (err e
 	return checkResponse(resp.HTTPResponse)
 }
 
-// Note: lineupMarkerFromGenerated was removed because CreateLineupMarker and
-// UpdateLineupMarker now return 204 No Content with no response body.
+// ListMarkers returns all markers for the account.
+func (s *LineupService) ListMarkers(ctx context.Context) (result *ListMarkersResult, err error) {
+	op := OperationInfo{
+		Service: "Lineup", Operation: "ListMarkers",
+		ResourceType: "lineup_marker", IsMutation: false,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.ListLineupMarkersWithResponse(ctx, s.client.accountID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse); err != nil {
+		return nil, err
+	}
+
+	var markers []LineupMarker
+	if resp.JSON200 != nil {
+		for _, gm := range *resp.JSON200 {
+			markers = append(markers, LineupMarker{
+				ID:        gm.Id,
+				Name:      gm.Name,
+				Date:      gm.Date,
+				CreatedAt: gm.CreatedAt,
+				UpdatedAt: gm.UpdatedAt,
+			})
+		}
+	}
+
+	return &ListMarkersResult{Markers: markers}, nil
+}

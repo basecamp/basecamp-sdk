@@ -15,6 +15,10 @@ import com.basecamp.sdk.generated.services.*
 val AccountClient.attachments: AttachmentsService
     get() = service("Attachments") { AttachmentsService(this) }
 
+/** Automation operations. */
+val AccountClient.automation: AutomationService
+    get() = service("Automation") { AutomationService(this) }
+
 /** Boosts operations. */
 val AccountClient.boosts: BoostsService
     get() = service("Boosts") { BoostsService(this) }

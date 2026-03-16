@@ -72,6 +72,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/inbox_forwards/{forwardId}/replies/{replyId}": "GetForwardReply",
   "GET:/{accountId}/inboxes/{inboxId}": "GetInbox",
   "GET:/{accountId}/inboxes/{inboxId}/forwards.json": "ListForwards",
+  "GET:/{accountId}/lineup/markers.json": "ListLineupMarkers",
   "POST:/{accountId}/lineup/markers.json": "CreateLineupMarker",
   "DELETE:/{accountId}/lineup/markers/{markerId}": "DeleteLineupMarker",
   "PUT:/{accountId}/lineup/markers/{markerId}": "UpdateLineupMarker",

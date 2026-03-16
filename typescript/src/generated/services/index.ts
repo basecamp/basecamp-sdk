@@ -15,6 +15,7 @@ export { CommentsService } from "./comments.js";
 export { ToolsService } from "./tools.js";
 export { DocumentsService } from "./documents.js";
 export { ForwardsService } from "./forwards.js";
+export { AutomationService } from "./automation.js";
 export { LineupService } from "./lineup.js";
 export { MessageBoardsService } from "./message-boards.js";
 export { MessagesService } from "./messages.js";

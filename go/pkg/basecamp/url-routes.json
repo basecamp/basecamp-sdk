@@ -53,23 +53,6 @@
       }
     },
     {
-      "pattern": "/{accountId}/buckets/{projectId}/dock/tools",
-      "resource": "Automation",
-      "operations": {
-        "POST": "CloneTool"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "projectId": {
-          "role": "bucket",
-          "type": "int64"
-        }
-      }
-    },
-    {
       "pattern": "/{accountId}/card_tables/cards/{cardId}",
       "resource": "Card Tables",
       "operations": {
@@ -605,6 +588,19 @@
       }
     },
     {
+      "pattern": "/{accountId}/dock/tools",
+      "resource": "Automation",
+      "operations": {
+        "POST": "CloneTool"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/dock/tools/{toolId}",
       "resource": "Automation",
       "operations": {
@@ -735,6 +731,7 @@
       "pattern": "/{accountId}/lineup/markers",
       "resource": "Automation",
       "operations": {
+        "GET": "ListLineupMarkers",
         "POST": "CreateLineupMarker"
       },
       "params": {

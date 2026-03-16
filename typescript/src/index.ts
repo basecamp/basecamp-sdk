@@ -365,6 +365,12 @@ export {
   type UpdateLineupRequest,
 } from "./generated/services/lineup.js";
 
+// Automation service - generated
+export {
+  AutomationService,
+  type LineupMarker,
+} from "./generated/services/automation.js";
+
 // Organization services - generated
 export {
   TodolistGroupsService,

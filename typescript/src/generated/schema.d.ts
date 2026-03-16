@@ -812,7 +812,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** @description List all lineup markers for the account */
+        get: operations["ListLineupMarkers"];
         put?: never;
         /** @description Create a new lineup marker */
         post: operations["CreateLineupMarker"];
@@ -2897,6 +2898,14 @@ export interface components {
             error: string;
             message?: string;
         };
+        LineupMarker: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            date: string;
+            created_at: string;
+            updated_at: string;
+        };
         ListAnswersResponseContent: components["schemas"]["QuestionAnswer"][];
         ListAssignablePeopleResponseContent: components["schemas"]["Person"][];
         ListCampfireLinesResponseContent: components["schemas"]["CampfireLine"][];
@@ -2913,6 +2922,7 @@ export interface components {
         ListEventsResponseContent: components["schemas"]["Event"][];
         ListForwardRepliesResponseContent: components["schemas"]["ForwardReply"][];
         ListForwardsResponseContent: components["schemas"]["Forward"][];
+        ListLineupMarkersResponseContent: components["schemas"]["LineupMarker"][];
         ListMessageTypesResponseContent: components["schemas"]["MessageType"][];
         ListMessagesResponseContent: components["schemas"]["Message"][];
         ListPeopleResponseContent: components["schemas"]["Person"][];
@@ -7844,6 +7854,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListForwardsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListLineupMarkers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListLineupMarkers 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListLineupMarkersResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */

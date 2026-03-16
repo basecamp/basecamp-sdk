@@ -21,90 +21,33 @@ func loadLineupFixture(t *testing.T, name string) []byte {
 	return data
 }
 
-func TestLineupMarker_UnmarshalCreate(t *testing.T) {
-	data := loadLineupFixture(t, "create.json")
+func TestLineupMarker_UnmarshalList(t *testing.T) {
+	data := loadLineupFixture(t, "list.json")
 
-	var marker LineupMarker
-	if err := json.Unmarshal(data, &marker); err != nil {
-		t.Fatalf("failed to unmarshal create.json: %v", err)
-	}
-
-	if marker.ID != 1069479400 {
-		t.Errorf("expected ID 1069479400, got %d", marker.ID)
-	}
-	if marker.Status != "active" {
-		t.Errorf("expected status 'active', got %q", marker.Status)
-	}
-	if marker.Type != "Lineup::Marker" {
-		t.Errorf("expected type 'Lineup::Marker', got %q", marker.Type)
-	}
-	if marker.Title != "Product Launch" {
-		t.Errorf("expected title 'Product Launch', got %q", marker.Title)
-	}
-	if marker.Color != "blue" {
-		t.Errorf("expected color 'blue', got %q", marker.Color)
-	}
-	if marker.StartsOn != "2024-03-01" {
-		t.Errorf("expected starts_on '2024-03-01', got %q", marker.StartsOn)
-	}
-	if marker.EndsOn != "2024-03-15" {
-		t.Errorf("expected ends_on '2024-03-15', got %q", marker.EndsOn)
-	}
-	if marker.Description != "<div>Launch phase for the new product</div>" {
-		t.Errorf("unexpected description: %q", marker.Description)
-	}
-	if marker.URL != "https://3.basecampapi.com/195539477/lineup/markers/1069479400.json" {
-		t.Errorf("unexpected URL: %q", marker.URL)
-	}
-	if marker.AppURL != "https://3.basecamp.com/195539477/lineup" {
-		t.Errorf("unexpected AppURL: %q", marker.AppURL)
+	var markers []LineupMarker
+	if err := json.Unmarshal(data, &markers); err != nil {
+		t.Fatalf("failed to unmarshal list.json: %v", err)
 	}
 
-	// Verify timestamps are parsed
-	if marker.CreatedAt.IsZero() {
+	if len(markers) != 2 {
+		t.Fatalf("expected 2 markers, got %d", len(markers))
+	}
+
+	m := markers[0]
+	if m.ID != 1069479400 {
+		t.Errorf("expected ID 1069479400, got %d", m.ID)
+	}
+	if m.Name != "Product Launch" {
+		t.Errorf("expected name 'Product Launch', got %q", m.Name)
+	}
+	if m.Date != "2024-03-01" {
+		t.Errorf("expected date '2024-03-01', got %q", m.Date)
+	}
+	if m.CreatedAt.IsZero() {
 		t.Error("expected CreatedAt to be non-zero")
 	}
-	if marker.UpdatedAt.IsZero() {
+	if m.UpdatedAt.IsZero() {
 		t.Error("expected UpdatedAt to be non-zero")
-	}
-
-	// Verify creator
-	if marker.Creator == nil {
-		t.Fatal("expected Creator to be non-nil")
-	}
-	if marker.Creator.ID != 1049715914 {
-		t.Errorf("expected Creator.ID 1049715914, got %d", marker.Creator.ID)
-	}
-	if marker.Creator.Name != "Victor Cooper" {
-		t.Errorf("expected Creator.Name 'Victor Cooper', got %q", marker.Creator.Name)
-	}
-	if marker.Creator.EmailAddress != "victor@honchodesign.com" {
-		t.Errorf("expected Creator.EmailAddress 'victor@honchodesign.com', got %q", marker.Creator.EmailAddress)
-	}
-}
-
-func TestLineupMarker_UnmarshalUpdate(t *testing.T) {
-	data := loadLineupFixture(t, "update.json")
-
-	var marker LineupMarker
-	if err := json.Unmarshal(data, &marker); err != nil {
-		t.Fatalf("failed to unmarshal update.json: %v", err)
-	}
-
-	if marker.ID != 1069479400 {
-		t.Errorf("expected ID 1069479400, got %d", marker.ID)
-	}
-	if marker.Title != "Product Launch - Extended" {
-		t.Errorf("expected title 'Product Launch - Extended', got %q", marker.Title)
-	}
-	if marker.Color != "green" {
-		t.Errorf("expected color 'green', got %q", marker.Color)
-	}
-	if marker.EndsOn != "2024-03-31" {
-		t.Errorf("expected ends_on '2024-03-31', got %q", marker.EndsOn)
-	}
-	if marker.Description != "<div>Extended launch phase for the new product</div>" {
-		t.Errorf("unexpected description: %q", marker.Description)
 	}
 }
 
