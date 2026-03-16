@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "cgi/escape"
-require_relative "../errors"
 
 module Basecamp
   module Services

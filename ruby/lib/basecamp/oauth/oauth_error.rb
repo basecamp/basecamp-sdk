@@ -8,7 +8,7 @@ module Basecamp
     # @attr http_status [Integer, nil] HTTP status code if applicable
     # @attr hint [String, nil] Helpful hint for resolving the error
     # @attr retryable [Boolean] Whether the request can be retried
-    class OAuthError < StandardError
+    class OauthError < StandardError
       attr_reader :type, :http_status, :hint, :retryable
 
       # @param type [String] Error type

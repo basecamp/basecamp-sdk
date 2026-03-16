@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "event"
-require_relative "verify"
 
 module Basecamp
   module Webhooks

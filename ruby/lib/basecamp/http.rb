@@ -112,7 +112,7 @@ module Basecamp
         begin
           items = JSON.parse(response.body)
         rescue JSON::ParserError => e
-          raise Basecamp::APIError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
+          raise Basecamp::ApiError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
         end
         items.each(&block)
 
@@ -122,7 +122,7 @@ module Basecamp
         next_url = Security.resolve_url(url, next_url)
 
         unless Security.same_origin?(next_url, base_url)
-          raise Basecamp::APIError.new(
+          raise Basecamp::ApiError.new(
             "Pagination Link header points to different origin: #{Security.truncate(next_url)}"
           )
         end
@@ -157,7 +157,7 @@ module Basecamp
         begin
           data = JSON.parse(response.body)
         rescue JSON::ParserError => e
-          raise Basecamp::APIError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
+          raise Basecamp::ApiError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
         end
         unless data.key?(key)
           warn "[Basecamp SDK] paginate_key: expected key '#{key}' not found in response (page #{page})"
@@ -171,7 +171,7 @@ module Basecamp
         next_url = Security.resolve_url(url, next_url)
 
         unless Security.same_origin?(next_url, base_url)
-          raise Basecamp::APIError.new(
+          raise Basecamp::ApiError.new(
             "Pagination Link header points to different origin: #{Security.truncate(next_url)}"
           )
         end
@@ -196,7 +196,7 @@ module Basecamp
       begin
         first_data = JSON.parse(first_response.body)
       rescue JSON::ParserError => e
-        raise Basecamp::APIError.new(
+        raise Basecamp::ApiError.new(
           "Failed to parse paginated response (page 1): #{Security.truncate(e.message)}"
         )
       end
@@ -216,7 +216,7 @@ module Basecamp
           next_url = Security.resolve_url(url, next_link)
 
           unless Security.same_origin?(next_url, base_url)
-            raise Basecamp::APIError.new(
+            raise Basecamp::ApiError.new(
               "Pagination Link header points to different origin: " \
               "#{Security.truncate(next_url)}"
             )
@@ -229,7 +229,7 @@ module Basecamp
           begin
             data = JSON.parse(response.body)
           rescue JSON::ParserError => e
-            raise Basecamp::APIError.new(
+            raise Basecamp::ApiError.new(
               "Failed to parse paginated response (page #{page}): " \
               "#{Security.truncate(e.message)}"
             )
@@ -279,7 +279,7 @@ module Basecamp
 
         begin
           return single_request(method, url, params: params, body: nil, attempt: attempt)
-        rescue Basecamp::RateLimitError, Basecamp::NetworkError, Basecamp::APIError => e
+        rescue Basecamp::RateLimitError, Basecamp::NetworkError, Basecamp::ApiError => e
           raise e unless e.retryable?
 
           last_error = e
@@ -295,7 +295,7 @@ module Basecamp
         end
       end
 
-      raise last_error || Basecamp::APIError.new("Request failed after #{@config.max_retries} retries")
+      raise last_error || Basecamp::ApiError.new("Request failed after #{@config.max_retries} retries")
     end
 
     def single_request(method, url, params:, body:, attempt:, retry_count: 0)
@@ -416,12 +416,12 @@ module Basecamp
         message = Security.truncate(Basecamp.parse_error_message(body) || "Validation failed")
         Basecamp::ValidationError.new(message, http_status: status)
       when 500
-        Basecamp::APIError.new("Server error (500)", http_status: 500, retryable: true)
+        Basecamp::ApiError.new("Server error (500)", http_status: 500, retryable: true)
       when 502, 503, 504
-        Basecamp::APIError.new("Gateway error (#{status})", http_status: status, retryable: true)
+        Basecamp::ApiError.new("Gateway error (#{status})", http_status: status, retryable: true)
       else
         message = Security.truncate(Basecamp.parse_error_message(body) || "Request failed (HTTP #{status})")
-        Basecamp::APIError.from_status(status || 0, message)
+        Basecamp::ApiError.from_status(status || 0, message)
       end
 
       err.instance_variable_set(:@request_id, request_id) if request_id

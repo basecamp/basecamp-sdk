@@ -2,33 +2,9 @@
 
 require "zeitwerk"
 
-# Set up Zeitwerk loader
 loader = Zeitwerk::Loader.for_gem
-# No custom inflections - use standard Ruby camelcase (Http, Oauth, etc.)
-
-# Ignore hand-written services - we use generated services instead (spec-conformant)
-# EXCEPT: base_service.rb (infrastructure) and authorization_service.rb (OAuth, not in spec)
-loader.ignore("#{__dir__}/basecamp/services")
-
-# Collapse the generated directory so Basecamp::Generated::Services becomes Basecamp::Services
 loader.collapse("#{__dir__}/basecamp/generated")
-
-# Ignore errors.rb - it defines multiple classes, loaded explicitly below
-loader.ignore("#{__dir__}/basecamp/errors.rb")
-# Ignore auth_strategy.rb - defines both AuthStrategy and BearerAuth
-loader.ignore("#{__dir__}/basecamp/auth_strategy.rb")
-# Ignore operation_info.rb - defines both OperationInfo and OperationResult
-loader.ignore("#{__dir__}/basecamp/operation_info.rb")
-loader.ignore("#{__dir__}/basecamp/download.rb")
 loader.setup
-
-# Load infrastructure that generated services depend on
-require_relative "basecamp/errors"
-require_relative "basecamp/auth_strategy"
-require_relative "basecamp/operation_info"
-require_relative "basecamp/download"
-require_relative "basecamp/services/base_service"
-require_relative "basecamp/services/authorization_service"
 
 # Load generated types if available
 begin

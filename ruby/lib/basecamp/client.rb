@@ -227,7 +227,7 @@ module Basecamp
     # @return [DownloadResult] the download result with body, content_type, content_length, filename
     # @raise [UsageError] if raw_url is empty or not absolute
     # @raise [NetworkError] if a network error occurs
-    # @raise [APIError] if the API or download returns an error
+    # @raise [ApiError] if the API or download returns an error
     def download_url(raw_url)
       # Validation
       raise UsageError.new("download URL is required") if raw_url.nil? || raw_url.to_s.empty?
@@ -263,7 +263,7 @@ module Basecamp
         when 301, 302, 303, 307, 308
           # Redirect — extract Location, proceed to hop 2
           location = response.headers["Location"] || response.headers["location"]
-          raise APIError.new("redirect #{response.status} with no Location header") if location.nil? || location.empty?
+          raise ApiError.new("redirect #{response.status} with no Location header") if location.nil? || location.empty?
 
           # Resolve relative Location against the rewritten API URL
           resolved_url = Security.resolve_url(rewritten_url, location)
@@ -541,7 +541,7 @@ module Basecamp
       end
 
       unless response.is_a?(Net::HTTPSuccess)
-        raise APIError.new("download failed with status #{response.code}", http_status: response.code.to_i)
+        raise ApiError.new("download failed with status #{response.code}", http_status: response.code.to_i)
       end
 
       response

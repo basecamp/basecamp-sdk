@@ -58,7 +58,7 @@ class OAuthTest < Minitest::Test
     stub_request(:get, "https://launchpad.37signals.com/.well-known/oauth-authorization-server")
       .to_return(status: 200, body: discovery_response.to_json, headers: { "Content-Type" => "application/json" })
 
-    error = assert_raises(Basecamp::Oauth::OAuthError) do
+    error = assert_raises(Basecamp::Oauth::OauthError) do
       Basecamp::Oauth.discover_launchpad
     end
     assert_includes error.message, "missing required fields"
@@ -68,7 +68,7 @@ class OAuthTest < Minitest::Test
     stub_request(:get, "https://launchpad.37signals.com/.well-known/oauth-authorization-server")
       .to_return(status: 500, body: "Internal Server Error")
 
-    error = assert_raises(Basecamp::Oauth::OAuthError) do
+    error = assert_raises(Basecamp::Oauth::OauthError) do
       Basecamp::Oauth.discover_launchpad
     end
     assert_equal "network", error.type

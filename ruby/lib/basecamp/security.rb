@@ -54,7 +54,7 @@ module Basecamp
       return if body.nil?
 
       if body.bytesize > max
-        raise Basecamp::APIError.new(
+        raise Basecamp::ApiError.new(
           "#{label} body too large (#{body.bytesize} bytes, max #{max})"
         )
       end

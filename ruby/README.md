@@ -215,7 +215,7 @@ rescue Basecamp::RateLimitError => e
   puts "Rate limited, retry after: #{e.retry_after} seconds"
 rescue Basecamp::AuthError => e
   puts "Authentication failed: #{e.message}"
-rescue Basecamp::APIError => e
+rescue Basecamp::ApiError => e
   puts "API error (#{e.http_status}): #{e.message}"
 end
 ```
@@ -224,7 +224,7 @@ end
 
 | Error | Description |
 |-------|-------------|
-| `APIError` | Base error class for all API errors |
+| `ApiError` | Base error class for all API errors |
 | `AuthError` | Authentication failures (401) |
 | `ForbiddenError` | Access denied (403) |
 | `NotFoundError` | Resource not found (404) |
