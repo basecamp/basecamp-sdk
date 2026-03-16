@@ -344,7 +344,7 @@ conformance: conformance-go conformance-kotlin conformance-typescript conformanc
 # Kotlin SDK targets
 #------------------------------------------------------------------------------
 
-.PHONY: kt-generate-services kt-build kt-test kt-check kt-check-drift kt-clean
+.PHONY: kt-generate-services kt-build kt-test kt-check kt-check-drift kt-clean gradle-stop
 
 # Generate Kotlin services from OpenAPI
 kt-generate-services:
@@ -374,6 +374,11 @@ kt-check-drift:
 kt-clean:
 	@echo "==> Cleaning Kotlin SDK..."
 	cd kotlin && ./gradlew clean
+
+# Stop any lingering Gradle daemons
+gradle-stop:
+	cd kotlin && ./gradlew --stop
+	cd spec/smithy-bare-arrays && ./gradlew --stop
 
 #------------------------------------------------------------------------------
 # Swift SDK targets (delegates to swift/Makefile)
@@ -454,6 +459,7 @@ help:
 	@echo "  kt-check             Run all Kotlin checks"
 	@echo "  kt-check-drift       Check service drift vs OpenAPI spec"
 	@echo "  kt-clean             Remove Kotlin build artifacts"
+	@echo "  gradle-stop          Stop any lingering Gradle daemons"
 	@echo ""
 	@echo "Swift SDK:"
 	@echo "  swift-generate   Generate service classes from OpenAPI"
