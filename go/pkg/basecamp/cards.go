@@ -32,27 +32,36 @@ type CardTable struct {
 
 // CardColumn represents a column in a card table.
 type CardColumn struct {
-	ID               int64     `json:"id"`
-	Status           string    `json:"status"`
-	VisibleToClients bool      `json:"visible_to_clients"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	Title            string    `json:"title"`
-	InheritsStatus   bool      `json:"inherits_status"`
-	Type             string    `json:"type"`
-	URL              string    `json:"url"`
-	AppURL           string    `json:"app_url"`
-	BookmarkURL      string    `json:"bookmark_url"`
-	Position         int       `json:"position,omitempty"`
-	Color            string    `json:"color,omitempty"`
-	Description      string    `json:"description,omitempty"`
-	CardsCount       int       `json:"cards_count"`
-	CommentCount     int       `json:"comment_count"`
-	CardsURL         string    `json:"cards_url,omitempty"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
-	Subscribers      []Person  `json:"subscribers,omitempty"`
+	ID               int64            `json:"id"`
+	Status           string           `json:"status"`
+	VisibleToClients bool             `json:"visible_to_clients"`
+	CreatedAt        time.Time        `json:"created_at"`
+	UpdatedAt        time.Time        `json:"updated_at"`
+	Title            string           `json:"title"`
+	InheritsStatus   bool             `json:"inherits_status"`
+	Type             string           `json:"type"`
+	URL              string           `json:"url"`
+	AppURL           string           `json:"app_url"`
+	BookmarkURL      string           `json:"bookmark_url"`
+	Position         int              `json:"position,omitempty"`
+	Color            string           `json:"color,omitempty"`
+	Description      string           `json:"description,omitempty"`
+	CardsCount       int              `json:"cards_count"`
+	CommentCount     int              `json:"comment_count"`
+	CardsURL         string           `json:"cards_url,omitempty"`
+	OnHold           *CardColumnOnHold `json:"on_hold,omitempty"`
+	Parent           *Parent          `json:"parent,omitempty"`
+	Bucket           *Bucket          `json:"bucket,omitempty"`
+	Creator          *Person          `json:"creator,omitempty"`
+	Subscribers      []Person         `json:"subscribers,omitempty"`
+}
+
+// CardColumnOnHold represents the on-hold section status of a card column.
+type CardColumnOnHold struct {
+	ID         int64  `json:"id,omitempty"`
+	Enabled    bool   `json:"enabled"`
+	CardsCount int    `json:"cards_count,omitempty"`
+	CardsURL   string `json:"cards_url,omitempty"`
 }
 
 // Card represents a card in a card table column.
@@ -1250,6 +1259,15 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 			AvatarURL:    gc.Creator.AvatarUrl,
 			Admin:        gc.Creator.Admin,
 			Owner:        gc.Creator.Owner,
+		}
+	}
+
+	if gc.OnHold != nil {
+		cc.OnHold = &CardColumnOnHold{
+			ID:         gc.OnHold.Id,
+			Enabled:    gc.OnHold.Enabled,
+			CardsCount: int(gc.OnHold.CardsCount),
+			CardsURL:   gc.OnHold.CardsUrl,
 		}
 	}
 

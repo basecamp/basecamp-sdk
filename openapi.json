@@ -18835,6 +18835,9 @@
             "items": {
               "$ref": "#/components/schemas/Person"
             }
+          },
+          "on_hold": {
+            "$ref": "#/components/schemas/CardColumnOnHold"
           }
         },
         "required": [
@@ -18851,6 +18854,28 @@
           "updated_at",
           "url",
           "visible_to_clients"
+        ]
+      },
+      "CardColumnOnHold": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "cards_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cards_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled"
         ]
       },
       "CardStep": {

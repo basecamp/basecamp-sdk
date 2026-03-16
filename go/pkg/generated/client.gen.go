@@ -143,27 +143,36 @@ type Card struct {
 
 // CardColumn defines model for CardColumn.
 type CardColumn struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	CardsCount       int32           `json:"cards_count,omitempty"`
-	CardsUrl         string          `json:"cards_url,omitempty"`
-	Color            string          `json:"color,omitempty"`
-	CommentsCount    int32           `json:"comments_count,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	Description      string          `json:"description,omitempty"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Position         int32           `json:"position,omitempty"`
-	Status           string          `json:"status"`
-	Subscribers      []Person        `json:"subscribers,omitempty"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl           string              `json:"app_url"`
+	BookmarkUrl      string              `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket          `json:"bucket"`
+	CardsCount       int32               `json:"cards_count,omitempty"`
+	CardsUrl         string              `json:"cards_url,omitempty"`
+	Color            string              `json:"color,omitempty"`
+	CommentsCount    int32               `json:"comments_count,omitempty"`
+	CreatedAt        time.Time           `json:"created_at"`
+	Creator          Person              `json:"creator"`
+	Description      string              `json:"description,omitempty"`
+	Id               int64               `json:"id"`
+	InheritsStatus   bool                `json:"inherits_status"`
+	OnHold           *CardColumnOnHold   `json:"on_hold,omitempty"`
+	Parent           RecordingParent     `json:"parent"`
+	Position         int32               `json:"position,omitempty"`
+	Status           string              `json:"status"`
+	Subscribers      []Person            `json:"subscribers,omitempty"`
+	Title            string              `json:"title"`
+	Type             string              `json:"type"`
+	UpdatedAt        time.Time           `json:"updated_at"`
+	Url              string              `json:"url"`
+	VisibleToClients bool                `json:"visible_to_clients"`
+}
+
+// CardColumnOnHold defines model for CardColumnOnHold.
+type CardColumnOnHold struct {
+	CardsCount int32  `json:"cards_count,omitempty"`
+	CardsUrl   string `json:"cards_url,omitempty"`
+	Enabled    bool   `json:"enabled"`
+	Id         int64  `json:"id,omitempty"`
 }
 
 // CardStep defines model for CardStep.

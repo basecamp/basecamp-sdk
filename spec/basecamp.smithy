@@ -4463,6 +4463,15 @@ structure CardColumn {
   @required
   creator: Person
   subscribers: PersonList
+  on_hold: CardColumnOnHold
+}
+
+structure CardColumnOnHold {
+  id: Long
+  @required
+  enabled: Boolean
+  cards_count: Integer
+  cards_url: String
 }
 
 list CardList {

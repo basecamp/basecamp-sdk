@@ -367,7 +367,7 @@ module Basecamp
     # CardColumn
     class CardColumn
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :cards_count, :cards_url, :color, :comments_count, :description, :position, :subscribers
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :cards_count, :cards_url, :color, :comments_count, :description, :on_hold, :position, :subscribers
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -394,6 +394,7 @@ module Basecamp
         @color = data["color"]
         @comments_count = parse_integer(data["comments_count"])
         @description = data["description"]
+        @on_hold = parse_type(data["on_hold"], "CardColumnOnHold")
         @position = parse_integer(data["position"])
         @subscribers = parse_array(data["subscribers"], "Person")
       end
@@ -419,8 +420,40 @@ module Basecamp
           "color" => @color,
           "comments_count" => @comments_count,
           "description" => @description,
+          "on_hold" => @on_hold,
           "position" => @position,
           "subscribers" => @subscribers,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # CardColumnOnHold
+    class CardColumnOnHold
+      include TypeHelpers
+      attr_accessor :id, :enabled, :cards_count, :cards_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[enabled].freeze
+      end
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @enabled = parse_boolean(data["enabled"])
+        @cards_count = parse_integer(data["cards_count"])
+        @cards_url = data["cards_url"]
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "enabled" => @enabled,
+          "cards_count" => @cards_count,
+          "cards_url" => @cards_url,
         }.compact
       end
 
