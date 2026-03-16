@@ -1,0 +1,85 @@
+ruby/lib/basecamp/oauth/config.rb
+  55a7a9d8e1af0b7a 1-30
+ruby/test/basecamp/download_test.rb
+  55a7a9d8e1af0b7a 158,190,206
+ruby/lib/basecamp/exit_code.rb
+  55a7a9d8e1af0b7a 1-17
+ruby/lib/basecamp/oauth/refresh_request.rb
+  55a7a9d8e1af0b7a 1-30
+ruby/lib/basecamp/oauth/oauth_error.rb
+  55a7a9d8e1af0b7a 11
+ruby/test/basecamp/oauth_test.rb
+  55a7a9d8e1af0b7a 61,71
+ruby/lib/basecamp/oauth/token.rb
+  55a7a9d8e1af0b7a 1-52
+ruby/test/basecamp/security_test.rb
+  55a7a9d8e1af0b7a 180,236,334,348,364,374,455,472,481,491
+ruby/lib/basecamp/rate_limit_error.rb
+  55a7a9d8e1af0b7a 1-19
+ruby/test/basecamp/errors_test.rb
+  55a7a9d8e1af0b7a 67,75,144
+ruby/lib/basecamp/validation_error.rb
+  55a7a9d8e1af0b7a 1-15
+ruby/README.md
+  55a7a9d8e1af0b7a 218,227
+ruby/lib/basecamp/auth_error.rb
+  55a7a9d8e1af0b7a 1-16
+ruby/lib/basecamp/forbidden_error.rb
+  55a7a9d8e1af0b7a 1-20
+ruby/lib/basecamp/oauth.rb
+  55a7a9d8e1af0b7a 47-86
+ruby/lib/basecamp/bearer_auth.rb
+  55a7a9d8e1af0b7a 1-21
+ruby/lib/basecamp/oauth/discovery.rb
+  55a7a9d8e1af0b7a 8-9,23,26-27,41,61,63,84
+ruby/lib/basecamp/oauth/exchange.rb
+  55a7a9d8e1af0b7a 9-10,24,27,36,58,61,69,92-95,99-100,152,154,164,174,185,193
+ruby/test/basecamp/zeitwerk_test.rb
+  55a7a9d8e1af0b7a 1-7
+ruby/lib/basecamp/api_error.rb
+  55a7a9d8e1af0b7a 1-27
+ruby/test/basecamp/http_test.rb
+  55a7a9d8e1af0b7a 236
+ruby/lib/basecamp/network_error.rb
+  55a7a9d8e1af0b7a 1-16
+ruby/lib/basecamp/security.rb
+  55a7a9d8e1af0b7a 57
+ruby/lib/basecamp/operation_result.rb
+  55a7a9d8e1af0b7a 1-10
+ruby/lib/basecamp/error_code.rb
+  55a7a9d8e1af0b7a 1-16
+ruby/lib/basecamp/http.rb
+  55a7a9d8e1af0b7a 115,125,160,174,199,219,232,282,298,419,421,424
+ruby/lib/basecamp/error.rb
+  55a7a9d8e1af0b7a 1-132
+ruby/lib/basecamp/not_found_error.rb
+  55a7a9d8e1af0b7a 1-15
+ruby/lib/basecamp/usage_error.rb
+  55a7a9d8e1af0b7a 1-10
+ruby/lib/basecamp/client.rb
+  55a7a9d8e1af0b7a 230,266,544
+ruby/lib/basecamp/oauth/exchange_request.rb
+  55a7a9d8e1af0b7a 1-36
+ruby/lib/basecamp/ambiguous_error.rb
+  55a7a9d8e1af0b7a 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "c3fffe001a2e137845eb4dcdd352589790db4ec7",
+  "prompts": {
+    "55a7a9d8e1af0b7a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba1b96a8-b9ee-47e0-a738-a40ba99f5319",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 634,
+      "total_deletions": 268,
+      "accepted_lines": 632,
+      "overriden_lines": 0
+    }
+  }
+}
