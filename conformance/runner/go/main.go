@@ -467,7 +467,11 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 	case "CloneTool":
 		sourceRecordingID := getInt64Param(tc.RequestBody, "source_recording_id")
 		title := getStringParam(tc.RequestBody, "title")
-		_, err := account.Tools().Create(ctx, sourceRecordingID, title)
+		var opts *basecamp.CloneToolOptions
+		if title != "" {
+			opts = &basecamp.CloneToolOptions{Title: title}
+		}
+		_, err := account.Tools().Create(ctx, sourceRecordingID, opts)
 		return operationResult{err: err}
 
 	case "EnableTool":

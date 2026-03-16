@@ -23,6 +23,12 @@ type Tool struct {
 	Bucket    *Bucket   `json:"bucket,omitempty"`
 }
 
+// CloneToolOptions specifies optional parameters for cloning a tool.
+type CloneToolOptions struct {
+	// Title for the cloned tool. If empty, the source tool's title is used.
+	Title string
+}
+
 // UpdateToolRequest specifies the parameters for updating (renaming) a tool.
 type UpdateToolRequest struct {
 	// Title is the new title for the tool (required).
@@ -74,7 +80,7 @@ func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err
 // Create clones an existing tool to create a new one.
 // An optional title can be provided; if empty, the source tool's title is used.
 // Returns the newly created tool.
-func (s *ToolsService) Create(ctx context.Context, sourceToolID int64, title string) (result *Tool, err error) {
+func (s *ToolsService) Create(ctx context.Context, sourceToolID int64, opts *CloneToolOptions) (result *Tool, err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Create",
 		ResourceType: "tool", IsMutation: true,
@@ -91,7 +97,9 @@ func (s *ToolsService) Create(ctx context.Context, sourceToolID int64, title str
 
 	body := generated.CloneToolJSONRequestBody{
 		SourceRecordingId: sourceToolID,
-		Title:             title,
+	}
+	if opts != nil && opts.Title != "" {
+		body.Title = opts.Title
 	}
 
 	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, body)
