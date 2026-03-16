@@ -112,9 +112,6 @@ module Basecamp
     end
   end
 
-  # Parses error message from response body.
-  # @param body [String, nil]
-  # @return [String, nil]
   # Extracts a filename from the last path segment of a URL.
   # Falls back to "download" if the URL is unparseable or has no path segments.
   def self.filename_from_url(raw_url)
@@ -133,6 +130,9 @@ module Basecamp
     "download"
   end
 
+  # Parses error message from response body.
+  # @param body [String, nil]
+  # @return [String, nil]
   def self.parse_error_message(body)
     return nil if body.nil? || body.empty?
 
