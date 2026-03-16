@@ -1,0 +1,25 @@
+go/pkg/basecamp/tools.go
+  4c69d9c0b6215326 26-31,83,100-102
+conformance/runner/go/main.go
+  4c69d9c0b6215326 470-474
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "e332ae70cc8166ca9ab8da04c4bdf3ec8e91ff14",
+  "prompts": {
+    "4c69d9c0b6215326": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e066be8a-8397-476c-8947-6c5822ee1edf",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 15,
+      "total_deletions": 3,
+      "accepted_lines": 15,
+      "overriden_lines": 0
+    }
+  }
+}
