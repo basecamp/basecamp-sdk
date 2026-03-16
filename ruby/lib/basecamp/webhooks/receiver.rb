@@ -4,8 +4,6 @@ require "json"
 
 module Basecamp
   module Webhooks
-    class VerificationError < StandardError; end
-
     # Receives and routes webhook events from Basecamp.
     # Framework-agnostic: works with raw body strings and a header accessor.
     class Receiver
