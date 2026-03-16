@@ -445,6 +445,11 @@ module Basecamp
       service(:lineup) { Services::LineupService.new(self) }
     end
 
+    # @return [Services::AutomationService]
+    def automation
+      service(:automation) { Services::AutomationService.new(self) }
+    end
+
     # @return [Services::MessageTypesService]
     def message_types
       service(:message_types) { Services::MessageTypesService.new(self) }
