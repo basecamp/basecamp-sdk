@@ -82,4 +82,66 @@ module Basecamp
 
     account_id ? client.for_account(account_id) : client
   end
+
+  # Maps an HTTP response to the appropriate error class.
+  #
+  # @param status [Integer] HTTP status code
+  # @param body [String, nil] response body (will attempt JSON parse)
+  # @param retry_after [Integer, nil] Retry-After header value
+  # @return [Error]
+  def self.error_from_response(status, body = nil, retry_after: nil)
+    message = parse_error_message(body) || "Request failed"
+
+    case status
+    when 400, 422
+      ValidationError.new(message, http_status: status)
+    when 401
+      AuthError.new(message)
+    when 403
+      ForbiddenError.new(message)
+    when 404
+      NotFoundError.new(message: message)
+    when 429
+      RateLimitError.new(retry_after: retry_after)
+    when 500
+      ApiError.new("Server error (500)", http_status: 500, retryable: true)
+    when 502, 503, 504
+      ApiError.new("Gateway error (#{status})", http_status: status, retryable: true)
+    else
+      ApiError.from_status(status, message)
+    end
+  end
+
+  # Parses error message from response body.
+  # @param body [String, nil]
+  # @return [String, nil]
+  # Extracts a filename from the last path segment of a URL.
+  # Falls back to "download" if the URL is unparseable or has no path segments.
+  def self.filename_from_url(raw_url)
+    uri = URI.parse(raw_url)
+    path = uri.path
+    return "download" if path.nil? || path.empty? || path == "/" || path.end_with?("/")
+
+    segments = path.split("/").reject(&:empty?)
+    return "download" if segments.empty?
+
+    last = segments.last
+    return "download" if last.nil? || last.empty? || last == "." || last == "/"
+
+    URI::RFC2396_PARSER.unescape(last)
+  rescue URI::InvalidURIError
+    "download"
+  end
+
+  def self.parse_error_message(body)
+    return nil if body.nil? || body.empty?
+
+    Security.check_body_size!(body, Security::MAX_ERROR_BODY_BYTES, "Error")
+
+    data = JSON.parse(body)
+    msg = data["error"] || data["message"]
+    msg ? Security.truncate(msg) : nil
+  rescue JSON::ParserError, ApiError
+    nil
+  end
 end
