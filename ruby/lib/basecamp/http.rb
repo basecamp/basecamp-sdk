@@ -409,7 +409,8 @@ module Basecamp
       when 403
         Basecamp::ForbiddenError.new("Access denied")
       when 404
-        Basecamp::NotFoundError.new("Resource", "unknown")
+        message = Security.truncate(Basecamp.parse_error_message(body) || "Not found")
+        Basecamp::NotFoundError.new(message: message)
       when 429
         Basecamp::RateLimitError.new(retry_after: retry_after)
       when 400, 422

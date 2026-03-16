@@ -101,7 +101,7 @@ module Basecamp
     when 403
       ForbiddenError.new(message)
     when 404
-      NotFoundError.new("Resource", "unknown")
+      NotFoundError.new(message: message)
     when 429
       RateLimitError.new(retry_after: retry_after)
     when 500

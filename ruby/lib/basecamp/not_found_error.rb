@@ -3,10 +3,15 @@
 module Basecamp
   # Raised when a resource is not found (404).
   class NotFoundError < Error
-    def initialize(resource, identifier, hint: nil)
+    def initialize(resource = nil, identifier = nil, message: nil, hint: nil)
+      message ||= if resource
+        "#{resource} not found: #{identifier}"
+      else
+        "Not found"
+      end
       super(
         code: ErrorCode::NOT_FOUND,
-        message: "#{resource} not found: #{identifier}",
+        message: message,
         hint: hint,
         http_status: 404
       )
