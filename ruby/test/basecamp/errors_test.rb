@@ -64,7 +64,7 @@ class ErrorsTest < Minitest::Test
   end
 
   def test_api_error_from_status
-    error = Basecamp::APIError.from_status(500)
+    error = Basecamp::ApiError.from_status(500)
 
     assert_equal "Request failed (HTTP 500)", error.message
     assert_equal 500, error.http_status
@@ -72,7 +72,7 @@ class ErrorsTest < Minitest::Test
   end
 
   def test_api_error_4xx_not_retryable
-    error = Basecamp::APIError.from_status(400)
+    error = Basecamp::ApiError.from_status(400)
 
     assert_not error.retryable?
   end
@@ -141,7 +141,7 @@ class ErrorsTest < Minitest::Test
   def test_error_from_response_500
     error = Basecamp.error_from_response(500, nil)
 
-    assert_instance_of Basecamp::APIError, error
+    assert_instance_of Basecamp::ApiError, error
     assert error.retryable?
   end
 

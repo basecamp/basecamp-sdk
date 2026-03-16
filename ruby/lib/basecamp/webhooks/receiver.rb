@@ -1,13 +1,9 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "event"
-require_relative "verify"
 
 module Basecamp
   module Webhooks
-    class VerificationError < StandardError; end
-
     # Receives and routes webhook events from Basecamp.
     # Framework-agnostic: works with raw body strings and a header accessor.
     class Receiver

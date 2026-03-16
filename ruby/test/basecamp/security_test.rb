@@ -177,7 +177,7 @@ class SecurityCheckBodySizeTest < Minitest::Test
   end
 
   def test_exceeds_limit
-    assert_raises(Basecamp::APIError) do
+    assert_raises(Basecamp::ApiError) do
       Basecamp::Security.check_body_size!("x" * 200, 100)
     end
   end
@@ -233,7 +233,7 @@ class SecurityHttpTest < Minitest::Test
         }
       )
 
-    error = assert_raises(Basecamp::APIError) do
+    error = assert_raises(Basecamp::ApiError) do
       @http.paginate("/items.json").to_a
     end
     assert_includes error.message, "different origin"
@@ -331,7 +331,7 @@ class SecurityHttpTest < Minitest::Test
         headers: { "Content-Type" => "application/json" }
       )
 
-    error = assert_raises(Basecamp::APIError) do
+    error = assert_raises(Basecamp::ApiError) do
       @http.paginate("/items.json").to_a
     end
     assert_includes error.message, "Failed to parse"
@@ -345,7 +345,7 @@ class SecurityHttpTest < Minitest::Test
         headers: { "Content-Type" => "application/json" }
       )
 
-    assert_raises(Basecamp::APIError) do
+    assert_raises(Basecamp::ApiError) do
       @http.paginate("/items.json").to_a
     end
   end
@@ -361,7 +361,7 @@ class SecurityHttpTest < Minitest::Test
         }
       )
 
-    error = assert_raises(Basecamp::APIError) do
+    error = assert_raises(Basecamp::ApiError) do
       @http.paginate_key("/events.json", key: "events").to_a
     end
     assert_includes error.message, "different origin"
@@ -371,7 +371,7 @@ class SecurityHttpTest < Minitest::Test
     huge_body = "x" * (51 * 1024 * 1024)
     response = Basecamp::Response.new(body: huge_body, status: 200, headers: {})
 
-    assert_raises(Basecamp::APIError) do
+    assert_raises(Basecamp::ApiError) do
       response.json
     end
   end
@@ -452,7 +452,7 @@ class SecurityOAuthTest < Minitest::Test
     stub_request(:post, "https://launchpad.37signals.com/authorization/token")
       .to_return(status: 500, body: large_body, headers: { "Content-Type" => "text/plain" })
 
-    error = assert_raises(Basecamp::Oauth::OAuthError) do
+    error = assert_raises(Basecamp::Oauth::OauthError) do
       Basecamp::Oauth.exchange_code(
         token_endpoint: "https://launchpad.37signals.com/authorization/token",
         code: "auth-code",
@@ -469,7 +469,7 @@ class SecurityOAuthTest < Minitest::Test
     stub_request(:post, "https://launchpad.37signals.com/authorization/token")
       .to_return(status: 400, body: error_body, headers: { "Content-Type" => "application/json" })
 
-    error = assert_raises(Basecamp::Oauth::OAuthError) do
+    error = assert_raises(Basecamp::Oauth::OauthError) do
       Basecamp::Oauth.exchange_code(
         token_endpoint: "https://launchpad.37signals.com/authorization/token",
         code: "auth-code",
@@ -478,7 +478,7 @@ class SecurityOAuthTest < Minitest::Test
       )
     end
     # The error_description field is truncated to 500 bytes, but the error
-    # message may include additional context from OAuthError wrapping
+    # message may include additional context from OauthError wrapping
     assert_operator error.message.length, :<, 1000
   end
 
@@ -488,7 +488,7 @@ class SecurityOAuthTest < Minitest::Test
     stub_request(:post, "https://launchpad.37signals.com/authorization/token")
       .to_return(status: 200, body: huge_body, headers: { "Content-Type" => "application/json" })
 
-    assert_raises(Basecamp::APIError) do
+    assert_raises(Basecamp::ApiError) do
       Basecamp::Oauth.exchange_code(
         token_endpoint: "https://launchpad.37signals.com/authorization/token",
         code: "auth-code",

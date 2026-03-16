@@ -155,7 +155,7 @@ class DownloadTest < Minitest::Test
       .with(headers: { "Authorization" => "Bearer #{access_token}" })
       .to_return(status: 302, headers: {})
 
-    assert_raises(Basecamp::APIError) do
+    assert_raises(Basecamp::ApiError) do
       @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
     end
   end
@@ -187,7 +187,7 @@ class DownloadTest < Minitest::Test
       .with(headers: { "Authorization" => "Bearer #{access_token}" })
       .to_return(status: 500, body: '{"error": "Server error"}', headers: { "Content-Type" => "application/json" })
 
-    assert_raises(Basecamp::APIError) do
+    assert_raises(Basecamp::ApiError) do
       @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
     end
   end
@@ -203,7 +203,7 @@ class DownloadTest < Minitest::Test
     stub_request(:get, "https://s3.amazonaws.com/bucket/file")
       .to_return(status: 403, body: "AccessDenied")
 
-    assert_raises(Basecamp::APIError) do
+    assert_raises(Basecamp::ApiError) do
       @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
     end
   end

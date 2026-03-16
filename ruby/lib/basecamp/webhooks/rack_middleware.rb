@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "receiver"
-
 module Basecamp
   module Webhooks
     # Rack middleware that intercepts POST requests to a configurable path

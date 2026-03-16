@@ -1,10 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "oauth/errors"
-require_relative "oauth/types"
-require_relative "oauth/discovery"
-require_relative "oauth/exchange"
-
 module Basecamp
   # OAuth 2 module for Basecamp SDK.
   #
@@ -49,8 +44,45 @@ module Basecamp
   #
   # @see https://github.com/basecamp/api/blob/master/sections/authentication.md
   module Oauth
-    # Re-export constants
-    # @return [String] Default Launchpad base URL
-    # LAUNCHPAD_BASE_URL is defined in discovery.rb
+    LAUNCHPAD_BASE_URL = "https://launchpad.37signals.com"
+
+    def self.discover(base_url, timeout: 10)
+      Discovery.new(timeout: timeout).discover(base_url)
+    end
+
+    def self.discover_launchpad(timeout: 10)
+      discover(LAUNCHPAD_BASE_URL, timeout: timeout)
+    end
+
+    def self.exchange_code(
+      token_endpoint:, code:, redirect_uri:, client_id:,
+      client_secret: nil, code_verifier: nil,
+      use_legacy_format: false, timeout: 30
+    )
+      request = ExchangeRequest.new(
+        token_endpoint: token_endpoint, code: code,
+        redirect_uri: redirect_uri, client_id: client_id,
+        client_secret: client_secret, code_verifier: code_verifier,
+        use_legacy_format: use_legacy_format
+      )
+      Exchange.new(timeout: timeout).exchange(request)
+    end
+
+    def self.refresh_token(
+      token_endpoint:, refresh_token:,
+      client_id: nil, client_secret: nil,
+      use_legacy_format: false, timeout: 30
+    )
+      request = RefreshRequest.new(
+        token_endpoint: token_endpoint, refresh_token: refresh_token,
+        client_id: client_id, client_secret: client_secret,
+        use_legacy_format: use_legacy_format
+      )
+      Exchange.new(timeout: timeout).refresh(request)
+    end
+
+    def self.token_expired?(token, buffer_seconds = 60)
+      token.expired?(buffer_seconds)
+    end
   end
 end

@@ -233,7 +233,7 @@ class HTTPTest < Minitest::Test
     stub_request(:get, "https://3.basecampapi.com/test.json")
       .to_return(status: 500, body: '{"error": "Server error"}')
 
-    # 5xx errors may raise APIError or NetworkError depending on Faraday error classification
+    # 5xx errors may raise ApiError or NetworkError depending on Faraday error classification
     assert_raises(Basecamp::Error) do
       @http.get("/test.json")
     end

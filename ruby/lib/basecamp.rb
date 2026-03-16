@@ -2,33 +2,9 @@
 
 require "zeitwerk"
 
-# Set up Zeitwerk loader
 loader = Zeitwerk::Loader.for_gem
-# No custom inflections - use standard Ruby camelcase (Http, Oauth, etc.)
-
-# Ignore hand-written services - we use generated services instead (spec-conformant)
-# EXCEPT: base_service.rb (infrastructure) and authorization_service.rb (OAuth, not in spec)
-loader.ignore("#{__dir__}/basecamp/services")
-
-# Collapse the generated directory so Basecamp::Generated::Services becomes Basecamp::Services
 loader.collapse("#{__dir__}/basecamp/generated")
-
-# Ignore errors.rb - it defines multiple classes, loaded explicitly below
-loader.ignore("#{__dir__}/basecamp/errors.rb")
-# Ignore auth_strategy.rb - defines both AuthStrategy and BearerAuth
-loader.ignore("#{__dir__}/basecamp/auth_strategy.rb")
-# Ignore operation_info.rb - defines both OperationInfo and OperationResult
-loader.ignore("#{__dir__}/basecamp/operation_info.rb")
-loader.ignore("#{__dir__}/basecamp/download.rb")
 loader.setup
-
-# Load infrastructure that generated services depend on
-require_relative "basecamp/errors"
-require_relative "basecamp/auth_strategy"
-require_relative "basecamp/operation_info"
-require_relative "basecamp/download"
-require_relative "basecamp/services/base_service"
-require_relative "basecamp/services/authorization_service"
 
 # Load generated types if available
 begin
@@ -105,5 +81,67 @@ module Basecamp
     end
 
     account_id ? client.for_account(account_id) : client
+  end
+
+  # Maps an HTTP response to the appropriate error class.
+  #
+  # @param status [Integer] HTTP status code
+  # @param body [String, nil] response body (will attempt JSON parse)
+  # @param retry_after [Integer, nil] Retry-After header value
+  # @return [Error]
+  def self.error_from_response(status, body = nil, retry_after: nil)
+    message = parse_error_message(body) || "Request failed"
+
+    case status
+    when 400, 422
+      ValidationError.new(message, http_status: status)
+    when 401
+      AuthError.new(message)
+    when 403
+      ForbiddenError.new(message)
+    when 404
+      NotFoundError.new(message: message)
+    when 429
+      RateLimitError.new(retry_after: retry_after)
+    when 500
+      ApiError.new("Server error (500)", http_status: 500, retryable: true)
+    when 502, 503, 504
+      ApiError.new("Gateway error (#{status})", http_status: status, retryable: true)
+    else
+      ApiError.from_status(status, message)
+    end
+  end
+
+  # Extracts a filename from the last path segment of a URL.
+  # Falls back to "download" if the URL is unparseable or has no path segments.
+  def self.filename_from_url(raw_url)
+    uri = URI.parse(raw_url)
+    path = uri.path
+    return "download" if path.nil? || path.empty? || path == "/" || path.end_with?("/")
+
+    segments = path.split("/").reject(&:empty?)
+    return "download" if segments.empty?
+
+    last = segments.last
+    return "download" if last.nil? || last.empty? || last == "." || last == "/"
+
+    URI::RFC2396_PARSER.unescape(last)
+  rescue URI::InvalidURIError
+    "download"
+  end
+
+  # Parses error message from response body.
+  # @param body [String, nil]
+  # @return [String, nil]
+  def self.parse_error_message(body)
+    return nil if body.nil? || body.empty?
+
+    Security.check_body_size!(body, Security::MAX_ERROR_BODY_BYTES, "Error")
+
+    data = JSON.parse(body)
+    msg = data["error"] || data["message"]
+    msg ? Security.truncate(msg) : nil
+  rescue JSON::ParserError, ApiError
+    nil
   end
 end
