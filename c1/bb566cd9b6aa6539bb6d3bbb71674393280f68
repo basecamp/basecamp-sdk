@@ -1,0 +1,27 @@
+ruby/lib/basecamp/not_found_error.rb
+  55a7a9d8e1af0b7a 6-11,14
+ruby/lib/basecamp/http.rb
+  55a7a9d8e1af0b7a 412-413
+ruby/lib/basecamp/error.rb
+  55a7a9d8e1af0b7a 104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "c1bb566cd9b6aa6539bb6d3bbb71674393280f68",
+  "prompts": {
+    "55a7a9d8e1af0b7a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba1b96a8-b9ee-47e0-a738-a40ba99f5319",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 4,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    }
+  }
+}
