@@ -377,8 +377,8 @@ kt-clean:
 
 # Stop any lingering Gradle daemons
 gradle-stop:
-	cd kotlin && ./gradlew --stop
-	cd spec/smithy-bare-arrays && ./gradlew --stop
+	-cd kotlin && ./gradlew --stop
+	-cd spec/smithy-bare-arrays && ./gradlew --stop
 
 #------------------------------------------------------------------------------
 # Swift SDK targets (delegates to swift/Makefile)
