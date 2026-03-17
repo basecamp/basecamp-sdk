@@ -87,23 +87,27 @@ class CardColumnsServiceTest < Minitest::Test
 
   def test_enable_on_hold
     column_with_hold = sample_column(id: 200)
-    column_with_hold["on_hold"] = true
+    column_with_hold["on_hold"] = {
+      "id" => 9999, "status" => "active", "inherits_status" => true,
+      "title" => "On hold", "created_at" => "2024-01-15T10:00:00Z",
+      "updated_at" => "2024-01-15T10:00:00Z", "cards_count" => 0,
+      "cards_url" => "https://3.basecampapi.com/12345/card_tables/lists/9999/cards.json"
+    }
     stub_post("/12345/card_tables/columns/200/on_hold.json", response_body: column_with_hold)
 
     column = @account.card_columns.enable_on_hold(column_id: 200)
 
-    assert column["on_hold"]
+    assert_equal 9999, column["on_hold"]["id"]
+    assert_equal "active", column["on_hold"]["status"]
   end
 
   def test_disable_on_hold
     column_without_hold = sample_column(id: 200)
-    column_without_hold["on_hold"] = false
-    stub_delete("/12345/card_tables/columns/200/on_hold.json")
     stub_request(:delete, "https://3.basecampapi.com/12345/card_tables/columns/200/on_hold.json")
       .to_return(status: 200, body: column_without_hold.to_json, headers: { "Content-Type" => "application/json" })
 
     column = @account.card_columns.disable_on_hold(column_id: 200)
 
-    assert_not column["on_hold"]
+    assert_nil column["on_hold"]
   end
 end

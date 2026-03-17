@@ -2353,11 +2353,15 @@ export interface components {
         };
         CardColumnOnHold: {
             /** Format: int64 */
-            id?: number;
-            enabled: boolean;
+            id: number;
+            status: string;
+            inherits_status: boolean;
+            title: string;
+            created_at: string;
+            updated_at: string;
             /** Format: int32 */
-            cards_count?: number;
-            cards_url?: string;
+            cards_count: number;
+            cards_url: string;
         };
         CardStep: {
             /** Format: int64 */

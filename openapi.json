@@ -18861,10 +18861,33 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
-          "enabled": {
+          "status": {
+            "type": "string"
+          },
+          "inherits_status": {
             "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "updated_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "cards_count": {
             "type": "integer",
@@ -18875,7 +18898,14 @@
           }
         },
         "required": [
-          "enabled"
+          "cards_count",
+          "cards_url",
+          "created_at",
+          "id",
+          "inherits_status",
+          "status",
+          "title",
+          "updated_at"
         ]
       },
       "CardStep": {

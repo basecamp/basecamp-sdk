@@ -21,8 +21,8 @@ public struct CardColumn: Codable, Sendable {
     public var color: String?
     public var commentsCount: Int32?
     public var description: String?
-    public var position: Int32?
     public var onHold: CardColumnOnHold?
+    public var position: Int32?
     public var subscribers: [Person]?
 
     public init(

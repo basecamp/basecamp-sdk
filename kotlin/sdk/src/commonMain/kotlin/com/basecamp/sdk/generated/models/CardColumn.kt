@@ -32,6 +32,6 @@ data class CardColumn(
     @SerialName("cards_count") val cardsCount: Int = 0,
     @SerialName("comments_count") val commentsCount: Int = 0,
     @SerialName("cards_url") val cardsUrl: String? = null,
-    @SerialName("on_hold") val onHold: CardColumnOnHold? = null,
-    val subscribers: List<Person> = emptyList()
+    val subscribers: List<Person> = emptyList(),
+    @SerialName("on_hold") val onHold: CardColumnOnHold? = null
 )

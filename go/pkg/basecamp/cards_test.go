@@ -111,6 +111,15 @@ func TestCardTable_Unmarshal(t *testing.T) {
 	if inProgress.Position != 1 {
 		t.Errorf("expected position 1, got %d", inProgress.Position)
 	}
+	if inProgress.OnHold == nil {
+		t.Fatal("expected In Progress OnHold to be non-nil")
+	}
+	if inProgress.OnHold.ID != 1069479350 {
+		t.Errorf("expected OnHold.ID 1069479350, got %d", inProgress.OnHold.ID)
+	}
+	if inProgress.OnHold.CardsCount != 1 {
+		t.Errorf("expected OnHold.CardsCount 1, got %d", inProgress.OnHold.CardsCount)
+	}
 
 	// Verify done column
 	done := cardTable.Lists[2]
@@ -318,12 +327,65 @@ func TestCardColumn_Unmarshal(t *testing.T) {
 		t.Errorf("expected Parent.Type 'Kanban::Board', got %q", column.Parent.Type)
 	}
 
+	// Verify on_hold
+	if column.OnHold == nil {
+		t.Fatal("expected OnHold to be non-nil")
+	}
+	if column.OnHold.ID != 9999999 {
+		t.Errorf("expected OnHold.ID 9999999, got %d", column.OnHold.ID)
+	}
+	if column.OnHold.Status != "active" {
+		t.Errorf("expected OnHold.Status 'active', got %q", column.OnHold.Status)
+	}
+	if !column.OnHold.InheritsStatus {
+		t.Error("expected OnHold.InheritsStatus to be true")
+	}
+	if column.OnHold.Title != "On hold" {
+		t.Errorf("expected OnHold.Title 'On hold', got %q", column.OnHold.Title)
+	}
+	if column.OnHold.CardsCount != 0 {
+		t.Errorf("expected OnHold.CardsCount 0, got %d", column.OnHold.CardsCount)
+	}
+	if column.OnHold.CardsURL != "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/lists/9999999/cards.json" {
+		t.Errorf("expected OnHold.CardsURL, got %q", column.OnHold.CardsURL)
+	}
+
 	// Verify subscribers
 	if len(column.Subscribers) != 1 {
 		t.Fatalf("expected 1 subscriber, got %d", len(column.Subscribers))
 	}
 	if column.Subscribers[0].Name != "Victor Cooper" {
 		t.Errorf("expected subscriber name 'Victor Cooper', got %q", column.Subscribers[0].Name)
+	}
+}
+
+func TestCardColumn_Unmarshal_NoOnHold(t *testing.T) {
+	data := []byte(`{
+		"id": 100,
+		"status": "active",
+		"visible_to_clients": false,
+		"created_at": "2024-01-15T09:31:00.000-06:00",
+		"updated_at": "2024-01-20T14:45:00.000-06:00",
+		"title": "Backlog",
+		"inherits_status": true,
+		"type": "Kanban::Column",
+		"url": "https://3.basecampapi.com/1/buckets/2/card_tables/columns/100.json",
+		"app_url": "https://3.basecamp.com/1/buckets/2/card_tables/columns/100",
+		"bookmark_url": "https://3.basecampapi.com/1/my/bookmarks/100.json",
+		"position": 0,
+		"color": "white",
+		"cards_count": 0,
+		"comment_count": 0,
+		"cards_url": "https://3.basecampapi.com/1/buckets/2/card_tables/lists/100/cards.json"
+	}`)
+
+	var column CardColumn
+	if err := json.Unmarshal(data, &column); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if column.OnHold != nil {
+		t.Errorf("expected OnHold to be nil, got %+v", column.OnHold)
 	}
 }
 

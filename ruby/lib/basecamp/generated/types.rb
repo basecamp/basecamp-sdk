@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-03-16T01:24:22Z
+# Generated: 2026-03-16T07:14:48Z
 
 require "json"
 require "time"
@@ -434,26 +434,34 @@ module Basecamp
     # CardColumnOnHold
     class CardColumnOnHold
       include TypeHelpers
-      attr_accessor :id, :enabled, :cards_count, :cards_url
+      attr_accessor :cards_count, :cards_url, :created_at, :id, :inherits_status, :status, :title, :updated_at
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[enabled].freeze
+        %i[cards_count cards_url created_at id inherits_status status title updated_at].freeze
       end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @enabled = parse_boolean(data["enabled"])
         @cards_count = parse_integer(data["cards_count"])
         @cards_url = data["cards_url"]
+        @created_at = parse_datetime(data["created_at"])
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @status = data["status"]
+        @title = data["title"]
+        @updated_at = parse_datetime(data["updated_at"])
       end
 
       def to_h
         {
-          "id" => @id,
-          "enabled" => @enabled,
           "cards_count" => @cards_count,
           "cards_url" => @cards_url,
+          "created_at" => @created_at,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "status" => @status,
+          "title" => @title,
+          "updated_at" => @updated_at,
         }.compact
       end
 
@@ -1321,6 +1329,39 @@ module Basecamp
           "forwards_count" => @forwards_count,
           "forwards_url" => @forwards_url,
           "position" => @position,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # LineupMarker
+    class LineupMarker
+      include TypeHelpers
+      attr_accessor :created_at, :date, :id, :name, :updated_at
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[created_at date id name updated_at].freeze
+      end
+
+      def initialize(data = {})
+        @created_at = parse_datetime(data["created_at"])
+        @date = data["date"]
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+        @updated_at = parse_datetime(data["updated_at"])
+      end
+
+      def to_h
+        {
+          "created_at" => @created_at,
+          "date" => @date,
+          "id" => @id,
+          "name" => @name,
+          "updated_at" => @updated_at,
         }.compact
       end
 

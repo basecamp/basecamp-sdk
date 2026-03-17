@@ -4467,10 +4467,21 @@ structure CardColumn {
 }
 
 structure CardColumnOnHold {
-  id: Long
   @required
-  enabled: Boolean
+  id: RecordingId
+  @required
+  status: String
+  @required
+  inherits_status: Boolean
+  @required
+  title: String
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  updated_at: ISO8601Timestamp
+  @required
   cards_count: Integer
+  @required
   cards_url: String
 }
 

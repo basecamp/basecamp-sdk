@@ -2,20 +2,32 @@
 import Foundation
 
 public struct CardColumnOnHold: Codable, Sendable {
-    public let enabled: Bool
-    public var cardsCount: Int32?
-    public var cardsUrl: String?
-    public var id: Int?
+    public let cardsCount: Int32
+    public let cardsUrl: String
+    public let createdAt: String
+    public let id: Int
+    public let inheritsStatus: Bool
+    public let status: String
+    public let title: String
+    public let updatedAt: String
 
     public init(
-        enabled: Bool,
-        cardsCount: Int32? = nil,
-        cardsUrl: String? = nil,
-        id: Int? = nil
+        cardsCount: Int32,
+        cardsUrl: String,
+        createdAt: String,
+        id: Int,
+        inheritsStatus: Bool,
+        status: String,
+        title: String,
+        updatedAt: String
     ) {
-        self.enabled = enabled
         self.cardsCount = cardsCount
         self.cardsUrl = cardsUrl
+        self.createdAt = createdAt
         self.id = id
+        self.inheritsStatus = inheritsStatus
+        self.status = status
+        self.title = title
+        self.updatedAt = updatedAt
     }
 }

@@ -127,12 +127,22 @@ describe("CardColumnsService", () => {
 
       server.use(
         http.post(`${BASE_URL}/card_tables/columns/${columnId}/on_hold.json`, () => {
-          return HttpResponse.json(sampleColumn(columnId));
+          return HttpResponse.json({
+            ...sampleColumn(columnId),
+            on_hold: {
+              id: 9999, status: "active", inherits_status: true,
+              title: "On hold", created_at: "2024-01-15T10:00:00Z",
+              updated_at: "2024-01-15T10:00:00Z", cards_count: 0,
+              cards_url: "https://3.basecampapi.com/12345/card_tables/lists/9999/cards.json"
+            },
+          });
         })
       );
 
       const column = await client.cardColumns.enableOnHold(columnId);
       expect(column.id).toBe(columnId);
+      expect(column.on_hold?.id).toBe(9999);
+      expect(column.on_hold?.status).toBe("active");
     });
   });
 
@@ -148,6 +158,7 @@ describe("CardColumnsService", () => {
 
       const column = await client.cardColumns.disableOnHold(columnId);
       expect(column.id).toBe(columnId);
+      expect(column.on_hold).toBeUndefined();
     });
   });
 });
