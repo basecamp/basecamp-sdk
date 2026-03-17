@@ -1,0 +1,23 @@
+go/pkg/basecamp/cards.go
+  0f1e80251f7ca0db 61-68,1269,1272-1276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "0f7085f63a3c46f7b8e4190235e60ce88a886cff",
+  "prompts": {
+    "0f1e80251f7ca0db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c1d0b80-c78b-4ce1-8c13-7dbe4eebe2b8",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 114,
+      "overriden_lines": 0
+    }
+  }
+}
