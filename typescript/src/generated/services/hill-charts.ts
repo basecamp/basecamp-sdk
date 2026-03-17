@@ -13,9 +13,9 @@ import type { components } from "../schema.js";
 
 
 /**
- * Request parameters for updateHillChartSettings.
+ * Request parameters for updateSettings.
  */
-export interface UpdateHillChartSettingsHillChartRequest {
+export interface UpdateSettingsHillChartRequest {
   /** Tracked */
   tracked?: number[];
   /** Untracked */
@@ -36,13 +36,14 @@ export class HillChartsService extends BaseService {
    * Get the hill chart for a todoset
    * @param todosetId - The todoset ID
    * @returns The hill_chart
+   * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.hillCharts.hillChart(123);
+   * const result = await client.hillCharts.get(123);
    * ```
    */
-  async hillChart(todosetId: number): Promise<components["schemas"]["GetHillChartResponseContent"]> {
+  async get(todosetId: number): Promise<components["schemas"]["GetHillChartResponseContent"]> {
     const response = await this.request(
       {
         service: "HillCharts",
@@ -70,10 +71,10 @@ export class HillChartsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.hillCharts.updateHillChartSettings(123, { });
+   * const result = await client.hillCharts.updateSettings(123, { });
    * ```
    */
-  async updateHillChartSettings(todosetId: number, req: UpdateHillChartSettingsHillChartRequest): Promise<components["schemas"]["UpdateHillChartSettingsResponseContent"]> {
+  async updateSettings(todosetId: number, req: UpdateSettingsHillChartRequest): Promise<components["schemas"]["UpdateHillChartSettingsResponseContent"]> {
     const response = await this.request(
       {
         service: "HillCharts",

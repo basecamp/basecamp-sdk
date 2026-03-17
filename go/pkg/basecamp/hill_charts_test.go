@@ -101,7 +101,7 @@ func TestHillChart_UnmarshalUpdateSettings(t *testing.T) {
 	}
 }
 
-func TestHillChart_MarshalUpdateSettingsRequest(t *testing.T) {
+func TestHillChart_UnmarshalUpdateSettingsRequest(t *testing.T) {
 	data := loadHillChartsFixture(t, "update-settings-request.json")
 
 	var req struct {

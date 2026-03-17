@@ -236,6 +236,8 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "ListAssignablePeople" to "listAssignable",
     "GetSchedule" to "get",
     "UpdateScheduleSettings" to "updateSettings",
+    "GetHillChart" to "get",
+    "UpdateHillChartSettings" to "updateSettings",
     "GetScheduleEntry" to "getEntry",
     "UpdateScheduleEntry" to "updateEntry",
     "CreateScheduleEntry" to "createEntry",
@@ -311,4 +313,5 @@ val SIMPLE_RESOURCES = setOf(
     "campfireline", "campfirelines", "todolistgroup", "todolistgroups",
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
+    "hillchart", "hillcharts",
 )

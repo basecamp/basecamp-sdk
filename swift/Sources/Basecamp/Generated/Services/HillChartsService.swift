@@ -2,7 +2,7 @@
 import Foundation
 
 public final class HillChartsService: BaseService, @unchecked Sendable {
-    public func hillChart(todosetId: Int) async throws -> HillChart {
+    public func get(todosetId: Int) async throws -> HillChart {
         return try await request(
             OperationInfo(service: "HillCharts", operation: "GetHillChart", resourceType: "hill_chart", isMutation: false, resourceId: todosetId),
             method: "GET",
@@ -11,7 +11,7 @@ public final class HillChartsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func updateHillChartSettings(todosetId: Int, req: UpdateHillChartSettingsRequest) async throws -> HillChart {
+    public func updateSettings(todosetId: Int, req: UpdateHillChartSettingsRequest) async throws -> HillChart {
         return try await request(
             OperationInfo(service: "HillCharts", operation: "UpdateHillChartSettings", resourceType: "hill_chart_setting", isMutation: true, resourceId: todosetId),
             method: "PUT",

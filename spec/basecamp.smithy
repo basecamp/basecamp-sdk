@@ -924,7 +924,7 @@ list HillChartDotList {
 }
 
 list TodolistIdList {
-  member: Long
+  member: TodolistId
 }
 
 // ===== Todolist Operations =====

@@ -9,7 +9,7 @@ class HillChartsServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
-  def test_get_hill_chart
+  def test_get
     response = {
       "enabled" => true,
       "stale" => false,
@@ -27,14 +27,14 @@ class HillChartsServiceTest < Minitest::Test
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/todosets/\d+/hill\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.hill_charts.get_hill_chart(todoset_id: 42)
+    result = @account.hill_charts.get(todoset_id: 42)
     assert_equal true, result["enabled"]
     assert_equal false, result["stale"]
     assert_equal 1, result["dots"].length
     assert_equal "Background and research", result["dots"][0]["label"]
   end
 
-  def test_update_hill_chart_settings
+  def test_update_settings
     response = {
       "enabled" => true,
       "stale" => false,
@@ -58,7 +58,7 @@ class HillChartsServiceTest < Minitest::Test
     stub_request(:put, %r{https://3\.basecampapi\.com/12345/todosets/\d+/hills/settings\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.hill_charts.update_hill_chart_settings(
+    result = @account.hill_charts.update_settings(
       todoset_id: 42,
       tracked: [ 1069479573 ],
       untracked: [ 1069479511 ]

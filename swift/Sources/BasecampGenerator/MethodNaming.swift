@@ -130,6 +130,8 @@ let methodNameOverrides: [String: String] = [
     "CreateScheduleEntry": "createEntry",
     "ListScheduleEntries": "listEntries",
     "GetScheduleEntryOccurrence": "getEntryOccurrence",
+    "GetHillChart": "get",
+    "UpdateHillChartSettings": "updateSettings",
 ]
 
 // MARK: - Simple Resources
@@ -152,6 +154,7 @@ private let simpleResources: Set<String> = [
     "campfireline", "campfirelines", "todolistgroup", "todolistgroups",
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
+    "hillchart", "hillcharts",
 ]
 
 /// Extracts the method name for an operationId.

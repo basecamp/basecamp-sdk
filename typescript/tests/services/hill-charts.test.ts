@@ -63,7 +63,7 @@ describe("HillChartsService", () => {
     });
   });
 
-  describe("hillChart", () => {
+  describe("get", () => {
     it("should return the hill chart for a todoset", async () => {
       const todosetId = 42;
 
@@ -73,7 +73,7 @@ describe("HillChartsService", () => {
         })
       );
 
-      const result = await client.hillCharts.hillChart(todosetId);
+      const result = await client.hillCharts.get(todosetId);
       expect(result.enabled).toBe(true);
       expect(result.stale).toBe(false);
       expect(result.dots).toHaveLength(1);
@@ -87,24 +87,27 @@ describe("HillChartsService", () => {
         })
       );
 
-      await expect(client.hillCharts.hillChart(999)).rejects.toThrow(BasecampError);
+      await expect(client.hillCharts.get(999)).rejects.toThrow(BasecampError);
     });
   });
 
-  describe("updateHillChartSettings", () => {
+  describe("updateSettings", () => {
     it("should update hill chart settings", async () => {
       const todosetId = 42;
+      let capturedBody: unknown;
 
       server.use(
-        http.put(`${BASE_URL}/todosets/${todosetId}/hills/settings.json`, () => {
+        http.put(`${BASE_URL}/todosets/${todosetId}/hills/settings.json`, async ({ request }) => {
+          capturedBody = await request.json();
           return HttpResponse.json(sampleHillChartSettings());
         })
       );
 
-      const result = await client.hillCharts.updateHillChartSettings(todosetId, {
+      const result = await client.hillCharts.updateSettings(todosetId, {
         tracked: [1069479573],
         untracked: [1069479511],
       });
+      expect(capturedBody).toEqual({ tracked: [1069479573], untracked: [1069479511] });
       expect(result.enabled).toBe(true);
       expect(result.dots).toHaveLength(2);
       expect(result.dots[1].label).toBe("Design mockups");
@@ -119,7 +122,7 @@ describe("HillChartsService", () => {
       );
 
       await expect(
-        client.hillCharts.updateHillChartSettings(999, { tracked: [1] })
+        client.hillCharts.updateSettings(999, { tracked: [1] })
       ).rejects.toThrow(BasecampError);
     });
   });

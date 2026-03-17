@@ -128,7 +128,7 @@ export {
 
 export {
   HillChartsService,
-  type UpdateHillChartSettingsHillChartRequest,
+  type UpdateSettingsHillChartRequest,
 } from "./generated/services/hill-charts.js";
 
 export {

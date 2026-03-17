@@ -382,6 +382,8 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   CreateScheduleEntry: "createEntry",
   ListScheduleEntries: "listEntries",
   GetScheduleEntryOccurrence: "getEntryOccurrence",
+  GetHillChart: "get",
+  UpdateHillChartSettings: "updateSettings",
 };
 
 /**
@@ -592,6 +594,7 @@ function isSimpleResource(resource: string): boolean {
     "campfireline", "campfirelines", "todolistgroup", "todolistgroups",
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
+    "hillchart", "hillcharts",
   ];
   return simpleResources.includes(resource.toLowerCase());
 }

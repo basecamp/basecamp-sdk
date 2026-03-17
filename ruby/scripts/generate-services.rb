@@ -230,7 +230,9 @@ class ServiceGenerator
     'UpdateScheduleEntry' => 'update_entry',
     'CreateScheduleEntry' => 'create_entry',
     'ListScheduleEntries' => 'list_entries',
-    'GetScheduleEntryOccurrence' => 'get_entry_occurrence'
+    'GetScheduleEntryOccurrence' => 'get_entry_occurrence',
+    'GetHillChart' => 'get',
+    'UpdateHillChartSettings' => 'update_settings'
   }.freeze
 
   # Verb patterns for extracting method names
@@ -271,7 +273,7 @@ class ServiceGenerator
     lineupmarker clientapproval clientapprovals clientcorrespondence
     clientcorrespondences clientreply clientreplies forwardreply
     forwardreplies campfireline campfirelines todolistgroup todolistgroups
-    todolistorgroup uploadversions
+    todolistorgroup uploadversions hillchart hillcharts
   ].freeze
 
   def initialize(openapi_path)

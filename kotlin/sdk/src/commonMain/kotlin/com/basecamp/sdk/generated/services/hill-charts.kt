@@ -16,7 +16,7 @@ class HillChartsService(client: AccountClient) : BaseService(client) {
      * Get the hill chart for a todoset
      * @param todosetId The todoset ID
      */
-    suspend fun hillChart(todosetId: Long): JsonElement {
+    suspend fun get(todosetId: Long): JsonElement {
         val info = OperationInfo(
             service = "HillCharts",
             operation = "GetHillChart",
@@ -37,7 +37,7 @@ class HillChartsService(client: AccountClient) : BaseService(client) {
      * @param todosetId The todoset ID
      * @param body Request body
      */
-    suspend fun updateHillChartSettings(todosetId: Long, body: UpdateHillChartSettingsBody): JsonElement {
+    suspend fun updateSettings(todosetId: Long, body: UpdateHillChartSettingsBody): JsonElement {
         val info = OperationInfo(
             service = "HillCharts",
             operation = "UpdateHillChartSettings",

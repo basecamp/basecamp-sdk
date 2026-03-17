@@ -10,8 +10,8 @@ module Basecamp
       # Get the hill chart for a todoset
       # @param todoset_id [Integer] todoset id ID
       # @return [Hash] response data
-      def get_hill_chart(todoset_id:)
-        with_operation(service: "hillcharts", operation: "get_hill_chart", is_mutation: false, resource_id: todoset_id) do
+      def get(todoset_id:)
+        with_operation(service: "hillcharts", operation: "get", is_mutation: false, resource_id: todoset_id) do
           http_get("/todosets/#{todoset_id}/hill.json").json
         end
       end
@@ -21,8 +21,8 @@ module Basecamp
       # @param tracked [Array, nil] tracked
       # @param untracked [Array, nil] untracked
       # @return [Hash] response data
-      def update_hill_chart_settings(todoset_id:, tracked: nil, untracked: nil)
-        with_operation(service: "hillcharts", operation: "update_hill_chart_settings", is_mutation: true, resource_id: todoset_id) do
+      def update_settings(todoset_id:, tracked: nil, untracked: nil)
+        with_operation(service: "hillcharts", operation: "update_settings", is_mutation: true, resource_id: todoset_id) do
           http_put("/todosets/#{todoset_id}/hills/settings.json", body: compact_params(tracked: tracked, untracked: untracked)).json
         end
       end
