@@ -1,0 +1,29 @@
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/OperationParser.kt
+  84bf0063bffbe76b 62
+swift/Sources/BasecampGenerator/Utilities.swift
+  84bf0063bffbe76b 104-107,110-112
+spec/basecamp.smithy
+  84bf0063bffbe76b 4566-4585
+ruby/test/basecamp/services/hill_charts_service_test.rb
+  84bf0063bffbe76b 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "a17fb58d0bcdabe3cba1bcc0aa429526403316d2",
+  "prompts": {
+    "84bf0063bffbe76b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c941066-71e1-4365-8f8f-fc2b8d33633f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 32,
+      "total_deletions": 0,
+      "accepted_lines": 29,
+      "overriden_lines": 0
+    }
+  }
+}

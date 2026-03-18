@@ -1,0 +1,41 @@
+go/pkg/basecamp/hill_charts.go
+  84bf0063bffbe76b 17,118
+go/pkg/basecamp/hill_charts_test.go
+  84bf0063bffbe76b 41-43
+spec/basecamp.smithy
+  84bf0063bffbe76b 901-902,4568-4587
+spec/fixtures/hill_charts/get.json
+  84bf0063bffbe76b 6
+typescript/tests/services/hill-charts.test.ts
+  84bf0063bffbe76b 18,82
+ruby/test/basecamp/services/hill_charts_service_test.rb
+  84bf0063bffbe76b 17,36,72
+typescript/scripts/generate-services.ts
+  84bf0063bffbe76b 287-290,607-609
+swift/Sources/BasecampGenerator/Utilities.swift
+  84bf0063bffbe76b 104-107,110-112
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  84bf0063bffbe76b 248-251,297-298
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/OperationParser.kt
+  84bf0063bffbe76b 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "5b61cf014b10779becb8b7ce4525b81601aa5d6f",
+  "prompts": {
+    "84bf0063bffbe76b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c941066-71e1-4365-8f8f-fc2b8d33633f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 32,
+      "total_deletions": 0,
+      "accepted_lines": 54,
+      "overriden_lines": 0
+    }
+  }
+}
