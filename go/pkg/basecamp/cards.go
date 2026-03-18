@@ -471,26 +471,29 @@ func (s *CardsService) Update(ctx context.Context, cardID int64, req *UpdateCard
 		return nil, err
 	}
 
-	body := generated.UpdateCardJSONRequestBody{}
+	body := map[string]any{}
 	if req.Title != "" {
-		body.Title = req.Title
+		body["title"] = req.Title
 	}
 	if req.Content != "" {
-		body.Content = req.Content
+		body["content"] = req.Content
 	}
 	if req.DueOn != "" {
-		d, parseErr := types.ParseDate(req.DueOn)
-		if parseErr != nil {
+		if _, parseErr := types.ParseDate(req.DueOn); parseErr != nil {
 			err = ErrUsage("card due_on must be in YYYY-MM-DD format")
 			return nil, err
 		}
-		body.DueOn = d
+		body["due_on"] = req.DueOn
 	}
 	if len(req.AssigneeIDs) > 0 {
-		body.AssigneeIds = req.AssigneeIDs
+		body["assignee_ids"] = req.AssigneeIDs
 	}
 
-	resp, err := s.client.parent.gen.UpdateCardWithResponse(ctx, s.client.accountID, cardID, body)
+	bodyReader, err := marshalBody(body)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.parent.gen.UpdateCardWithBodyWithResponse(ctx, s.client.accountID, cardID, "application/json", bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -665,9 +668,12 @@ func (s *CardColumnsService) Update(ctx context.Context, columnID int64, req *Up
 		return nil, err
 	}
 
-	body := generated.UpdateCardColumnJSONRequestBody{
-		Title:       req.Title,
-		Description: req.Description,
+	body := generated.UpdateCardColumnJSONRequestBody{}
+	if req.Title != "" {
+		body.Title = req.Title
+	}
+	if req.Description != "" {
+		body.Description = req.Description
 	}
 
 	resp, err := s.client.parent.gen.UpdateCardColumnWithResponse(ctx, s.client.accountID, columnID, body)
@@ -1002,20 +1008,26 @@ func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *Update
 		return nil, err
 	}
 
-	body := generated.UpdateCardStepJSONRequestBody{
-		Title:     req.Title,
-		Assignees: req.Assignees,
+	body := map[string]any{}
+	if req.Title != "" {
+		body["title"] = req.Title
+	}
+	if len(req.Assignees) > 0 {
+		body["assignees"] = req.Assignees
 	}
 	if req.DueOn != "" {
-		d, parseErr := types.ParseDate(req.DueOn)
-		if parseErr != nil {
+		if _, parseErr := types.ParseDate(req.DueOn); parseErr != nil {
 			err = ErrUsage("step due_on must be in YYYY-MM-DD format")
 			return nil, err
 		}
-		body.DueOn = d
+		body["due_on"] = req.DueOn
 	}
 
-	resp, err := s.client.parent.gen.UpdateCardStepWithResponse(ctx, s.client.accountID, stepID, body)
+	bodyReader, err := marshalBody(body)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.parent.gen.UpdateCardStepWithBodyWithResponse(ctx, s.client.accountID, stepID, "application/json", bodyReader)
 	if err != nil {
 		return nil, err
 	}

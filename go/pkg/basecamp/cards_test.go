@@ -763,3 +763,75 @@ func TestCardStepsService_Get_NotFound(t *testing.T) {
 		t.Errorf("expected not_found error, got: %v", err)
 	}
 }
+
+// testCardsServer creates an httptest.Server and a CardsService wired to it.
+func testCardsServer(t *testing.T, handler http.HandlerFunc) *CardsService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Cards()
+}
+
+func TestCardsService_UpdatePartial(t *testing.T) {
+	fixture := loadCardsFixture(t, "get.json")
+	var receivedBody map[string]any
+	svc := testCardsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
+		Title: "new title",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedBody["title"] != "new title" {
+		t.Errorf("expected title 'new title', got %v", receivedBody["title"])
+	}
+
+	for _, field := range []string{"content", "due_on", "assignee_ids"} {
+		if _, ok := receivedBody[field]; ok {
+			t.Errorf("expected %q to be omitted from partial update, but it was present: %v", field, receivedBody[field])
+		}
+	}
+}
+
+func TestCardStepsService_UpdatePartial(t *testing.T) {
+	fixture := loadCardsFixture(t, "step.json")
+	var receivedBody map[string]any
+	svc := testCardStepsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.Update(context.Background(), 12345, &UpdateStepRequest{
+		Title: "new step",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedBody["title"] != "new step" {
+		t.Errorf("expected title 'new step', got %v", receivedBody["title"])
+	}
+
+	for _, field := range []string{"due_on", "assignees"} {
+		if _, ok := receivedBody[field]; ok {
+			t.Errorf("expected %q to be omitted from partial update, but it was present: %v", field, receivedBody[field])
+		}
+	}
+}

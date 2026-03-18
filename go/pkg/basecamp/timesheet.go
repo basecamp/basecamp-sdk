@@ -399,10 +399,15 @@ func (s *TimesheetService) Update(ctx context.Context, entryID int64, req *Updat
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	body := generated.UpdateTimesheetEntryJSONRequestBody{
-		Date:        req.Date,
-		Hours:       req.Hours,
-		Description: req.Description,
+	body := generated.UpdateTimesheetEntryJSONRequestBody{}
+	if req.Date != "" {
+		body.Date = req.Date
+	}
+	if req.Hours != "" {
+		body.Hours = req.Hours
+	}
+	if req.Description != "" {
+		body.Description = req.Description
 	}
 	if req.PersonID != 0 {
 		body.PersonId = &req.PersonID

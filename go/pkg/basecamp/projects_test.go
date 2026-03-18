@@ -1,7 +1,10 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -238,5 +241,72 @@ func TestProject_TimestampParsing(t *testing.T) {
 	}
 	if project.CreatedAt.Day() != 28 {
 		t.Errorf("expected day 28, got %d", project.CreatedAt.Day())
+	}
+}
+
+func testProjectsServer(t *testing.T, handler http.HandlerFunc) *ProjectsService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Projects()
+}
+
+func TestProjectsService_UpdatePartial(t *testing.T) {
+	fixture := loadFixture(t, "get.json")
+	var receivedBody map[string]any
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.Update(context.Background(), 12345, &UpdateProjectRequest{
+		Name: "My Project",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedBody["name"] != "My Project" {
+		t.Errorf("expected name 'My Project', got %v", receivedBody["name"])
+	}
+
+	for _, field := range []string{"description", "admissions", "schedule_attributes"} {
+		if _, ok := receivedBody[field]; ok {
+			t.Errorf("expected %q to be omitted from partial update, but it was present: %v", field, receivedBody[field])
+		}
+	}
+}
+
+func TestProjectsService_UpdateEmptyScheduleAttributes(t *testing.T) {
+	fixture := loadFixture(t, "get.json")
+	var receivedBody map[string]any
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	// Non-nil but empty ScheduleAttributes must not leak as {}
+	_, err := svc.Update(context.Background(), 12345, &UpdateProjectRequest{
+		Name:               "My Project",
+		ScheduleAttributes: &ScheduleAttributes{},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if _, ok := receivedBody["schedule_attributes"]; ok {
+		t.Errorf("expected schedule_attributes to be omitted for empty struct, but it was present: %v", receivedBody["schedule_attributes"])
 	}
 }

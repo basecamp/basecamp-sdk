@@ -255,8 +255,10 @@ func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *Up
 	}
 
 	body := generated.UpdateTemplateJSONRequestBody{
-		Name:        req.Name,
-		Description: req.Description,
+		Name: req.Name,
+	}
+	if req.Description != "" {
+		body.Description = req.Description
 	}
 
 	resp, err := s.client.parent.gen.UpdateTemplateWithResponse(ctx, s.client.accountID, templateID, body)

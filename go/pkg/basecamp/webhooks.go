@@ -283,10 +283,15 @@ func (s *WebhooksService) Update(ctx context.Context, webhookID int64, req *Upda
 		}
 	}
 
-	body := generated.UpdateWebhookJSONRequestBody{
-		PayloadUrl: req.PayloadURL,
-		Types:      req.Types,
-		Active:     req.Active,
+	body := generated.UpdateWebhookJSONRequestBody{}
+	if req.PayloadURL != "" {
+		body.PayloadUrl = req.PayloadURL
+	}
+	if len(req.Types) > 0 {
+		body.Types = req.Types
+	}
+	if req.Active != nil {
+		body.Active = req.Active
 	}
 
 	resp, err := s.client.parent.gen.UpdateWebhookWithResponse(ctx, s.client.accountID, webhookID, body)
