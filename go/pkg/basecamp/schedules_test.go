@@ -1,10 +1,8 @@
 package basecamp
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -624,10 +622,7 @@ func TestSchedulesService_UpdateEntryPartial(t *testing.T) {
 	fixture := loadSchedulesFixture(t, "entry_get.json")
 	var receivedBody map[string]any
 	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
-		raw, _ := io.ReadAll(r.Body)
-		dec := json.NewDecoder(bytes.NewReader(raw))
-		dec.UseNumber()
-		dec.Decode(&receivedBody)
+		receivedBody = decodeRequestBody(t, r)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
@@ -656,10 +651,7 @@ func TestSchedulesService_UpdateEntryAllDay(t *testing.T) {
 	fixture := loadSchedulesFixture(t, "entry_get.json")
 	var receivedBody map[string]any
 	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
-		raw, _ := io.ReadAll(r.Body)
-		dec := json.NewDecoder(bytes.NewReader(raw))
-		dec.UseNumber()
-		dec.Decode(&receivedBody)
+		receivedBody = decodeRequestBody(t, r)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
@@ -688,10 +680,7 @@ func TestSchedulesService_CreateEntryPartial(t *testing.T) {
 	fixture := loadSchedulesFixture(t, "entry_get.json")
 	var receivedBody map[string]any
 	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
-		raw, _ := io.ReadAll(r.Body)
-		dec := json.NewDecoder(bytes.NewReader(raw))
-		dec.UseNumber()
-		dec.Decode(&receivedBody)
+		receivedBody = decodeRequestBody(t, r)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)

@@ -1,10 +1,8 @@
 package basecamp
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -142,11 +140,11 @@ func TestQuestion_UnmarshalList(t *testing.T) {
 	if len(q1.Schedule.Days) != 5 {
 		t.Errorf("expected 5 days, got %d", len(q1.Schedule.Days))
 	}
-	if q1.Schedule.Hour != 17 {
-		t.Errorf("expected Schedule.Hour 17, got %d", q1.Schedule.Hour)
+	if q1.Schedule.Hour == nil || *q1.Schedule.Hour != 17 {
+		t.Errorf("expected Schedule.Hour 17, got %v", q1.Schedule.Hour)
 	}
-	if q1.Schedule.Minute != 0 {
-		t.Errorf("expected Schedule.Minute 0, got %d", q1.Schedule.Minute)
+	if q1.Schedule.Minute == nil || *q1.Schedule.Minute != 0 {
+		t.Errorf("expected Schedule.Minute 0, got %v", q1.Schedule.Minute)
 	}
 
 	// Verify parent (questionnaire)
@@ -414,8 +412,8 @@ func TestCreateQuestionRequest_Marshal(t *testing.T) {
 		Schedule: &QuestionSchedule{
 			Frequency: "every_day",
 			Days:      []int{1, 2, 3, 4, 5},
-			Hour:      17,
-			Minute:    0,
+			Hour:      intPtr(17),
+			Minute:    intPtr(0),
 		},
 	}
 
@@ -481,8 +479,8 @@ func TestUpdateQuestionRequest_Marshal(t *testing.T) {
 		Schedule: &QuestionSchedule{
 			Frequency: "every_week",
 			Days:      []int{5},
-			Hour:      16,
-			Minute:    30,
+			Hour:      intPtr(16),
+			Minute:    intPtr(30),
 		},
 		Paused: &paused,
 	}
@@ -710,10 +708,7 @@ func TestCheckinsService_UpdateQuestionPartial(t *testing.T) {
 	fixture := loadCheckinsFixture(t, "question.json")
 	var receivedBody map[string]any
 	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
-		raw, _ := io.ReadAll(r.Body)
-		dec := json.NewDecoder(bytes.NewReader(raw))
-		dec.UseNumber()
-		dec.Decode(&receivedBody)
+		receivedBody = decodeRequestBody(t, r)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
@@ -742,10 +737,7 @@ func TestCheckinsService_UpdateQuestionPartialSchedule(t *testing.T) {
 	fixture := loadCheckinsFixture(t, "question.json")
 	var receivedBody map[string]any
 	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
-		raw, _ := io.ReadAll(r.Body)
-		dec := json.NewDecoder(bytes.NewReader(raw))
-		dec.UseNumber()
-		dec.Decode(&receivedBody)
+		receivedBody = decodeRequestBody(t, r)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
@@ -787,10 +779,7 @@ func TestCheckinsService_UpdateQuestionEmptySchedule(t *testing.T) {
 	fixture := loadCheckinsFixture(t, "question.json")
 	var receivedBody map[string]any
 	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
-		raw, _ := io.ReadAll(r.Body)
-		dec := json.NewDecoder(bytes.NewReader(raw))
-		dec.UseNumber()
-		dec.Decode(&receivedBody)
+		receivedBody = decodeRequestBody(t, r)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)

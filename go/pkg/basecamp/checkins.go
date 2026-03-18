@@ -55,11 +55,15 @@ type Questionnaire struct {
 }
 
 // QuestionSchedule represents the schedule configuration for a question.
+//
+// BREAKING CHANGE (v0.7): Hour and Minute changed from int to *int so that
+// "not provided" (nil) is distinguishable from "set to 0" (midnight / top
+// of hour).
 type QuestionSchedule struct {
 	Frequency     string `json:"frequency"`
 	Days          []int  `json:"days"`
-	Hour          int    `json:"hour"`
-	Minute        int    `json:"minute"`
+	Hour          *int   `json:"hour,omitempty"`
+	Minute        *int   `json:"minute,omitempty"`
 	WeekInstance  *int   `json:"week_instance,omitempty"`
 	WeekInterval  *int   `json:"week_interval,omitempty"`
 	MonthInterval *int   `json:"month_interval,omitempty"`
@@ -692,11 +696,13 @@ func questionFromGenerated(gq generated.Question) Question {
 		for i, d := range gq.Schedule.Days {
 			days[i] = int(d)
 		}
+		hour := int(gq.Schedule.Hour)
+		minute := int(gq.Schedule.Minute)
 		q.Schedule = &QuestionSchedule{
 			Frequency: gq.Schedule.Frequency,
 			Days:      days,
-			Hour:      int(gq.Schedule.Hour),
-			Minute:    int(gq.Schedule.Minute),
+			Hour:      &hour,
+			Minute:    &minute,
 			StartDate: gq.Schedule.StartDate,
 			EndDate:   gq.Schedule.EndDate,
 		}
@@ -816,10 +822,14 @@ func questionScheduleToGenerated(s *QuestionSchedule) generated.QuestionSchedule
 	gs := generated.QuestionSchedule{
 		Frequency: s.Frequency,
 		Days:      days,
-		Hour:      int32(s.Hour),   // #nosec G115 -- hour is 0-23
-		Minute:    int32(s.Minute), // #nosec G115 -- minute is 0-59
 		StartDate: s.StartDate,
 		EndDate:   s.EndDate,
+	}
+	if s.Hour != nil {
+		gs.Hour = int32(*s.Hour) // #nosec G115 -- hour is 0-23
+	}
+	if s.Minute != nil {
+		gs.Minute = int32(*s.Minute) // #nosec G115 -- minute is 0-59
 	}
 
 	if s.WeekInstance != nil {
@@ -846,11 +856,11 @@ func questionScheduleToMap(s *QuestionSchedule) map[string]any {
 	if len(s.Days) > 0 {
 		m["days"] = s.Days
 	}
-	if s.Hour != 0 {
-		m["hour"] = s.Hour
+	if s.Hour != nil {
+		m["hour"] = *s.Hour
 	}
-	if s.Minute != 0 {
-		m["minute"] = s.Minute
+	if s.Minute != nil {
+		m["minute"] = *s.Minute
 	}
 	if s.StartDate != "" {
 		m["start_date"] = s.StartDate

@@ -1,11 +1,9 @@
 package basecamp
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -784,10 +782,7 @@ func TestCardsService_UpdatePartial(t *testing.T) {
 	fixture := loadCardsFixture(t, "get.json")
 	var receivedBody map[string]any
 	svc := testCardsServer(t, func(w http.ResponseWriter, r *http.Request) {
-		raw, _ := io.ReadAll(r.Body)
-		dec := json.NewDecoder(bytes.NewReader(raw))
-		dec.UseNumber()
-		dec.Decode(&receivedBody)
+		receivedBody = decodeRequestBody(t, r)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
@@ -816,10 +811,7 @@ func TestCardStepsService_UpdatePartial(t *testing.T) {
 	fixture := loadCardsFixture(t, "step.json")
 	var receivedBody map[string]any
 	svc := testCardStepsServer(t, func(w http.ResponseWriter, r *http.Request) {
-		raw, _ := io.ReadAll(r.Body)
-		dec := json.NewDecoder(bytes.NewReader(raw))
-		dec.UseNumber()
-		dec.Decode(&receivedBody)
+		receivedBody = decodeRequestBody(t, r)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)

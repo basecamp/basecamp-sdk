@@ -1,10 +1,8 @@
 package basecamp
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -959,11 +957,7 @@ func TestTodosService_Update(t *testing.T) {
 		if r.Method != "PUT" {
 			t.Errorf("expected PUT, got %s", r.Method)
 		}
-		body, _ := io.ReadAll(r.Body)
-		dec := json.NewDecoder(bytes.NewReader(body))
-		dec.UseNumber()
-		dec.Decode(&receivedBody)
-
+		receivedBody = decodeRequestBody(t, r)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write(fixture)
@@ -994,11 +988,7 @@ func TestTodosService_UpdatePartial(t *testing.T) {
 	fixture := loadTodosFixture(t, "get.json")
 	var receivedBody map[string]any
 	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		dec := json.NewDecoder(bytes.NewReader(body))
-		dec.UseNumber()
-		dec.Decode(&receivedBody)
-
+		receivedBody = decodeRequestBody(t, r)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write(fixture)
