@@ -1,0 +1,31 @@
+go/pkg/basecamp/projects_test.go
+  b7a5262168982b0e 4-5,7-9,248-320
+go/pkg/basecamp/schedules_test.go
+  b7a5262168982b0e 4-5,7-9,608-714
+go/pkg/basecamp/checkins_test.go
+  b7a5262168982b0e 4-5,7-9,695-812
+go/pkg/basecamp/cards_test.go
+  b7a5262168982b0e 4,8,706-783
+go/pkg/basecamp/todos_test.go
+  b7a5262168982b0e 4-5,7-9,937-1025
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "6824c24692d15d41660caee5bcf1ead52db6d257",
+  "prompts": {
+    "b7a5262168982b0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a17053e-961a-48d1-9a9a-b1428591e83b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 487,
+      "overriden_lines": 0
+    }
+  }
+}
