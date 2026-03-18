@@ -152,7 +152,7 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 		}, nil
 
 	default:
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorMessageLen*2))
 		_ = resp.Body.Close()
 		return nil, checkResponse(resp, body)
 	}

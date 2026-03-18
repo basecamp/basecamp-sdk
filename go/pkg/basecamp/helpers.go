@@ -102,7 +102,8 @@ func msgOrDefault(msg, fallback string) string {
 	return fallback
 }
 
-// truncate returns s truncated to maxLen runes, appending "…" if truncated.
+// truncate returns s capped at maxLen runes. If truncated, the result is
+// maxLen runes plus an appended "…" (so up to maxLen+1 runes total).
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
