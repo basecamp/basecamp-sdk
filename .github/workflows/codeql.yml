@@ -58,14 +58,13 @@ jobs:
             add go manual
             add javascript none
             add ruby none
-            # java-kotlin disabled: CodeQL doesn't support Kotlin 2.3.20 yet (github/codeql#21484)
-            # add java-kotlin manual
+            add java-kotlin manual
             swift=true
           else
             if [ "$GO" = "true" ]; then add go manual; fi
             if [ "$TS" = "true" ]; then add javascript none; fi
             if [ "$RUBY" = "true" ]; then add ruby none; fi
-            # if [ "$KOTLIN" = "true" ]; then add java-kotlin manual; fi
+            if [ "$KOTLIN" = "true" ]; then add java-kotlin manual; fi
             swift=$SWIFT
           fi
 
