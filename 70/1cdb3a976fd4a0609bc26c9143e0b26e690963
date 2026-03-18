@@ -1,0 +1,53 @@
+go/pkg/basecamp/webhooks.go
+  b7a5262168982b0e 286-294
+go/pkg/basecamp/lineup.go
+  b7a5262168982b0e 108-113
+go/pkg/basecamp/todos.go
+  b7a5262168982b0e 361-375,378,382,385,389,392-396
+go/pkg/basecamp/messages.go
+  b7a5262168982b0e 293-301
+go/pkg/basecamp/checkins.go
+  b7a5262168982b0e 398,400,403-406,409,412-416,837-871
+go/pkg/basecamp/schedules.go
+  b7a5262168982b0e 78-81,94-95,104-107,120-121,351-352,393-407,410,414,417,421,424-428
+go/pkg/basecamp/subscriptions.go
+  b7a5262168982b0e 148-153
+go/pkg/basecamp/cards.go
+  b7a5262168982b0e 461,463,466,469,473,476,479-483,658-663,998-1003,1006,1010,1013-1017
+go/pkg/basecamp/vaults.go
+  b7a5262168982b0e 406-408,615-620,806-811
+go/pkg/basecamp/timesheet.go
+  b7a5262168982b0e 402-410
+go/pkg/basecamp/projects.go
+  b7a5262168982b0e 304-311,314-316,318-322,326-330
+go/pkg/basecamp/message_types.go
+  b7a5262168982b0e 244-249
+go/pkg/basecamp/todolist_groups.go
+  b7a5262168982b0e 259-261
+go/pkg/basecamp/todolists.go
+  b7a5262168982b0e 278-283
+go/pkg/basecamp/helpers.go
+  b7a5262168982b0e 4-5,7,12-40
+go/pkg/basecamp/templates.go
+  b7a5262168982b0e 259-261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "701cdb3a976fd4a0609bc26c9143e0b26e690963",
+  "prompts": {
+    "b7a5262168982b0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a17053e-961a-48d1-9a9a-b1428591e83b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 828,
+      "total_deletions": 138,
+      "accepted_lines": 788,
+      "overriden_lines": 0
+    }
+  }
+}
