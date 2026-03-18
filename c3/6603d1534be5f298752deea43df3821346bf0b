@@ -1,0 +1,65 @@
+go/pkg/basecamp/cards.go
+  b7a5262168982b0e 474,476,479,482,486,489,492-496,671-676,1011-1016,1019,1023,1026-1030,1278-1290
+go/pkg/basecamp/vaults.go
+  b7a5262168982b0e 406-408,615-620,806-811
+go/pkg/basecamp/templates.go
+  b7a5262168982b0e 259-261
+go/pkg/basecamp/projects.go
+  b7a5262168982b0e 304-311,314-316,318-322,326-330
+go/pkg/basecamp/lineup.go
+  b7a5262168982b0e 108-113
+go/pkg/basecamp/message_types.go
+  b7a5262168982b0e 244-249
+go/pkg/basecamp/webhooks.go
+  b7a5262168982b0e 286-294
+go/pkg/basecamp/helpers.go
+  b7a5262168982b0e 4-5,7,12-40
+go/pkg/basecamp/todolist_groups.go
+  b7a5262168982b0e 259-261
+go/pkg/basecamp/timesheet.go
+  b7a5262168982b0e 402-410
+go/pkg/basecamp/todolists.go
+  b7a5262168982b0e 278-283
+go/pkg/basecamp/subscriptions.go
+  b7a5262168982b0e 148-153
+go/pkg/basecamp/messages.go
+  b7a5262168982b0e 293-301
+go/pkg/basecamp/todos.go
+  b7a5262168982b0e 361-375,378,382,385,389,392-396
+go/pkg/basecamp/projects_test.go
+  b7a5262168982b0e 4,6-7,246-312
+go/pkg/basecamp/schedules_test.go
+  b7a5262168982b0e 4,6-7,606-703
+go/pkg/basecamp/todos_test.go
+  b7a5262168982b0e 4,6-7,935-1015
+go/pkg/basecamp/checkins_test.go
+  b7a5262168982b0e 4,6-7,143-144,146-147,415-416,482-483,693-801
+go/pkg/basecamp/test_helpers_test.go
+  b7a5262168982b0e 6-8,20-39
+go/pkg/basecamp/cards_test.go
+  b7a5262168982b0e 114-122,328-344,346-351,359-388,766-837
+go/pkg/basecamp/schedules.go
+  b7a5262168982b0e 78-81,94-95,104-107,120-121,351-352,393-407,410,414,417,421,424-428
+go/pkg/basecamp/checkins.go
+  b7a5262168982b0e 58-61,65-66,402,404,407-410,413,416-420,699-700,704-705,828-832,847-881
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "c36603d1534be5f298752deea43df3821346bf0b",
+  "prompts": {
+    "b7a5262168982b0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a17053e-961a-48d1-9a9a-b1428591e83b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 824,
+      "overriden_lines": 0
+    }
+  }
+}
