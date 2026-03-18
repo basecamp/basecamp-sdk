@@ -1,0 +1,29 @@
+scripts/check-python-service-drift.sh
+  83e5079e02fbd185 34,73
+.github/workflows/test.yml
+  83e5079e02fbd185 168
+.github/workflows/release-python.yml
+  83e5079e02fbd185 53
+Makefile
+  83e5079e02fbd185 320
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "4e6eaecdcc7dc03f358fba97349018dc2b987385",
+  "prompts": {
+    "83e5079e02fbd185": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0978950-ad5c-4a5f-8dfe-1744eb0f945f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 0,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
