@@ -1,0 +1,25 @@
+.github/workflows/codeql.yml
+  df3441719e171195 61
+kotlin/gradle/libs.versions.toml
+  df3441719e171195 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "41a8adff61691da902c5aec4cc54203b49b386aa",
+  "prompts": {
+    "df3441719e171195": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1263996d-c945-4f2c-9c21-a838259efcc6",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 4,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
