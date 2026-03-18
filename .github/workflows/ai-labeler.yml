@@ -129,10 +129,9 @@ jobs:
           RESPONSE_FILE: ${{ steps.analyze.outputs.response-file }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          COMMENT_BODY=$(cat "$RESPONSE_FILE")
           EXISTING=$(gh pr view "$PR" --json comments --jq '.comments[] | select(.body | startswith("## Spec Change Impact")) | .id' | head -1)
           if [ -n "$EXISTING" ]; then
-            gh api graphql -f query="mutation { updateIssueComment(input: {id: \"$EXISTING\", body: $(echo "$COMMENT_BODY" | jq -Rs .)}) { issueComment { id } } }"
+            gh api graphql -f query="mutation { updateIssueComment(input: {id: \"$EXISTING\", body: $(jq -Rs . "$RESPONSE_FILE")}) { issueComment { id } } }"
           else
-            gh pr comment "$PR" --body "$COMMENT_BODY"
+            gh pr comment "$PR" --body-file "$RESPONSE_FILE"
           fi
