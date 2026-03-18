@@ -126,6 +126,57 @@ jobs:
       - name: Test
         run: bundle exec rake test
 
+  test-python:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13', '3.14']
+    continue-on-error: ${{ matrix.python == '3.14' }}
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v5
+
+      - name: Set up Python
+        run: uv python install ${{ matrix.python }}
+
+      - name: Install dependencies
+        run: uv sync --dev --python ${{ matrix.python }}
+
+      - name: Lint
+        if: matrix.python == '3.13'
+        run: |
+          uv run ruff check src/ tests/
+          uv run ruff format --check src/ tests/
+
+      - name: Type check
+        if: matrix.python == '3.13'
+        run: uv run mypy src/basecamp/ --ignore-missing-imports
+
+      - name: Check generated code drift
+        if: matrix.python == '3.13'
+        run: |
+          uv run python scripts/generate_services.py
+          uv run python scripts/generate_metadata.py
+          uv run python scripts/generate_types.py
+          uv run ruff format src/basecamp/generated/
+          if [ -n "$(git status --porcelain -- src/basecamp/generated/)" ]; then
+            echo "::error::Generated Python code is out of date. Run 'make py-generate' and commit."
+            git status --short -- src/basecamp/generated/
+            git diff --stat -- src/basecamp/generated/ || true
+            exit 1
+          fi
+          echo "Generated code is up to date"
+
+      - name: Test with coverage
+        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=60
+
   test-swift:
     name: Swift Tests
     runs-on: macos-15
@@ -178,7 +229,7 @@ jobs:
   conformance:
     name: Conformance Tests
     runs-on: ubuntu-latest
-    needs: [test-go, test-typescript, test-ruby, test-kotlin]
+    needs: [test-go, test-typescript, test-ruby, test-kotlin, test-python]
     defaults:
       run:
         working-directory: conformance/runner/go
@@ -239,6 +290,15 @@ jobs:
       - name: Run Ruby conformance tests
         working-directory: conformance/runner/ruby
         run: ruby runner.rb
+
+      - name: Install uv (Python)
+        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v5
+
+      - name: Run Python conformance tests
+        working-directory: conformance/runner/python
+        run: |
+          uv sync
+          uv run python runner.py
 
   lint:
     name: Lint

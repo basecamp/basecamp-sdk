@@ -358,42 +358,32 @@ func (s *TodosService) Update(ctx context.Context, todoID int64, req *UpdateTodo
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	body := map[string]any{}
-	if req.Content != "" {
-		body["content"] = req.Content
+	body := generated.UpdateTodoJSONRequestBody{
+		Content:                 req.Content,
+		Description:             req.Description,
+		AssigneeIds:             req.AssigneeIDs,
+		CompletionSubscriberIds: req.CompletionSubscriberIDs,
+		Notify:                  &req.Notify,
 	}
-	if req.Description != "" {
-		body["description"] = req.Description
-	}
-	if len(req.AssigneeIDs) > 0 {
-		body["assignee_ids"] = req.AssigneeIDs
-	}
-	if len(req.CompletionSubscriberIDs) > 0 {
-		body["completion_subscriber_ids"] = req.CompletionSubscriberIDs
-	}
-	if req.Notify {
-		body["notify"] = true
-	}
+	// Parse date strings to types.Date for the generated client
 	if req.DueOn != "" {
-		if _, parseErr := types.ParseDate(req.DueOn); parseErr != nil {
+		d, parseErr := types.ParseDate(req.DueOn)
+		if parseErr != nil {
 			err = ErrUsage("todo due_on must be in YYYY-MM-DD format")
 			return nil, err
 		}
-		body["due_on"] = req.DueOn
+		body.DueOn = d
 	}
 	if req.StartsOn != "" {
-		if _, parseErr := types.ParseDate(req.StartsOn); parseErr != nil {
+		d, parseErr := types.ParseDate(req.StartsOn)
+		if parseErr != nil {
 			err = ErrUsage("todo starts_on must be in YYYY-MM-DD format")
 			return nil, err
 		}
-		body["starts_on"] = req.StartsOn
+		body.StartsOn = d
 	}
 
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := s.client.parent.gen.UpdateTodoWithBodyWithResponse(ctx, s.client.accountID, todoID, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.UpdateTodoWithResponse(ctx, s.client.accountID, todoID, body)
 	if err != nil {
 		return nil, err
 	}

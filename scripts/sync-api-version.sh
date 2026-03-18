@@ -46,4 +46,8 @@ sedi "s/const val API_VERSION = \".*\"/const val API_VERSION = \"$API_VERSION\"/
 sedi "s/public static let apiVersion = \".*\"/public static let apiVersion = \"$API_VERSION\"/" \
   swift/Sources/Basecamp/BasecampConfig.swift
 
+# Python
+sedi "s/^API_VERSION = \".*\"/API_VERSION = \"$API_VERSION\"/" \
+  python/src/basecamp/_version.py
+
 echo "Done."

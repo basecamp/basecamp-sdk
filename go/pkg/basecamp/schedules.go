@@ -75,10 +75,6 @@ type ScheduleEntry struct {
 }
 
 // CreateScheduleEntryRequest specifies the parameters for creating a schedule entry.
-//
-// BREAKING CHANGE: AllDay changed from bool to *bool so that
-// "not provided" (nil) is distinguishable from "set to false". Use
-// a bool variable and take its address (&v) to set explicitly.
 type CreateScheduleEntryRequest struct {
 	// Summary is the event title (required).
 	Summary string `json:"summary"`
@@ -91,8 +87,7 @@ type CreateScheduleEntryRequest struct {
 	// ParticipantIDs is a list of people IDs to assign (optional).
 	ParticipantIDs []int64 `json:"participant_ids,omitempty"`
 	// AllDay indicates if this is an all-day event (optional).
-	// Use a pointer to distinguish "not set" from "set to false".
-	AllDay *bool `json:"all_day,omitempty"`
+	AllDay bool `json:"all_day,omitempty"`
 	// Notify triggers participant notifications when true (optional).
 	Notify bool `json:"notify,omitempty"`
 	// Subscriptions controls who gets notified and subscribed.
@@ -101,10 +96,6 @@ type CreateScheduleEntryRequest struct {
 }
 
 // UpdateScheduleEntryRequest specifies the parameters for updating a schedule entry.
-//
-// BREAKING CHANGE: AllDay changed from bool to *bool so that
-// "not provided" (nil) is distinguishable from "set to false". Use
-// a bool variable and take its address (&v) to set explicitly.
 type UpdateScheduleEntryRequest struct {
 	// Summary is the event title (optional).
 	Summary string `json:"summary,omitempty"`
@@ -117,8 +108,7 @@ type UpdateScheduleEntryRequest struct {
 	// ParticipantIDs is a list of people IDs to assign (optional).
 	ParticipantIDs []int64 `json:"participant_ids,omitempty"`
 	// AllDay indicates if this is an all-day event (optional).
-	// Use a pointer to distinguish "not set" from "set to false".
-	AllDay *bool `json:"all_day,omitempty"`
+	AllDay bool `json:"all_day,omitempty"`
 	// Notify triggers participant notifications when true (optional).
 	Notify bool `json:"notify,omitempty"`
 }
@@ -345,11 +335,9 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, scheduleID int64, re
 		EndsAt:         endsAt,
 		Description:    req.Description,
 		ParticipantIds: req.ParticipantIDs,
-		AllDay:         req.AllDay,
+		AllDay:         &req.AllDay,
+		Notify:         &req.Notify,
 		Subscriptions:  req.Subscriptions,
-	}
-	if req.Notify {
-		body.Notify = &req.Notify
 	}
 
 	resp, err := s.client.parent.gen.CreateScheduleEntryWithResponse(ctx, s.client.accountID, scheduleID, body)
@@ -390,42 +378,31 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, entryID int64, req *
 		return nil, err
 	}
 
-	body := map[string]any{}
-	if req.Summary != "" {
-		body["summary"] = req.Summary
-	}
-	if req.Description != "" {
-		body["description"] = req.Description
-	}
-	if len(req.ParticipantIDs) > 0 {
-		body["participant_ids"] = req.ParticipantIDs
-	}
-	if req.AllDay != nil {
-		body["all_day"] = *req.AllDay
-	}
-	if req.Notify {
-		body["notify"] = true
+	body := generated.UpdateScheduleEntryJSONRequestBody{
+		Description:    req.Description,
+		ParticipantIds: req.ParticipantIDs,
+		AllDay:         &req.AllDay,
+		Notify:         &req.Notify,
+		Summary:        req.Summary,
 	}
 	if req.StartsAt != "" {
-		if _, parseErr := time.Parse(time.RFC3339, req.StartsAt); parseErr != nil {
+		startsAt, parseErr := time.Parse(time.RFC3339, req.StartsAt)
+		if parseErr != nil {
 			err = ErrUsage("schedule entry starts_at must be in RFC3339 format (e.g., 2024-01-15T09:00:00Z)")
 			return nil, err
 		}
-		body["starts_at"] = req.StartsAt
+		body.StartsAt = startsAt
 	}
 	if req.EndsAt != "" {
-		if _, parseErr := time.Parse(time.RFC3339, req.EndsAt); parseErr != nil {
+		endsAt, parseErr := time.Parse(time.RFC3339, req.EndsAt)
+		if parseErr != nil {
 			err = ErrUsage("schedule entry ends_at must be in RFC3339 format (e.g., 2024-01-15T17:00:00Z)")
 			return nil, err
 		}
-		body["ends_at"] = req.EndsAt
+		body.EndsAt = endsAt
 	}
 
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := s.client.parent.gen.UpdateScheduleEntryWithBodyWithResponse(ctx, s.client.accountID, entryID, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.UpdateScheduleEntryWithResponse(ctx, s.client.accountID, entryID, body)
 	if err != nil {
 		return nil, err
 	}

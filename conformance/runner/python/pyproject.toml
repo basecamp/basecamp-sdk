@@ -1,0 +1,11 @@
+[project]
+name = "basecamp-conformance-python"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "respx>=0.22",
+    "basecamp-sdk",
+]
+
+[tool.uv.sources]
+basecamp-sdk = { path = "../../../python", editable = true }

@@ -275,12 +275,9 @@ func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *Up
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	body := generated.UpdateTodolistOrGroupJSONRequestBody{}
-	if req.Name != "" {
-		body.Name = req.Name
-	}
-	if req.Description != "" {
-		body.Description = req.Description
+	body := generated.UpdateTodolistOrGroupJSONRequestBody{
+		Name:        req.Name,
+		Description: req.Description,
 	}
 
 	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, todolistID, body)

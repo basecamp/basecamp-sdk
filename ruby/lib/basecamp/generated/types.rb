@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-03-16T16:40:07Z
+# Generated: 2026-03-16T07:14:48Z
 
 require "json"
 require "time"
@@ -2925,7 +2925,7 @@ module Basecamp
     # Todoset
     class Todoset
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todolists_url, :bookmark_url, :completed, :completed_ratio, :position, :todolists_count, :todolists_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todolists_url, :bookmark_url, :completed, :completed_count, :completed_ratio, :on_schedule_count, :over_schedule_count, :position, :todolists_count, :todolists_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -2949,7 +2949,10 @@ module Basecamp
         @app_todolists_url = data["app_todolists_url"]
         @bookmark_url = data["bookmark_url"]
         @completed = parse_boolean(data["completed"])
+        @completed_count = parse_integer(data["completed_count"])
         @completed_ratio = data["completed_ratio"]
+        @on_schedule_count = parse_integer(data["on_schedule_count"])
+        @over_schedule_count = parse_integer(data["over_schedule_count"])
         @position = parse_integer(data["position"])
         @todolists_count = parse_integer(data["todolists_count"])
         @todolists_url = data["todolists_url"]
@@ -2973,7 +2976,10 @@ module Basecamp
           "app_todolists_url" => @app_todolists_url,
           "bookmark_url" => @bookmark_url,
           "completed" => @completed,
+          "completed_count" => @completed_count,
           "completed_ratio" => @completed_ratio,
+          "on_schedule_count" => @on_schedule_count,
+          "over_schedule_count" => @over_schedule_count,
           "position" => @position,
           "todolists_count" => @todolists_count,
           "todolists_url" => @todolists_url,

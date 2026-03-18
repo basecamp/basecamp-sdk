@@ -1715,26 +1715,29 @@ type TodolistOrGroup1 struct {
 
 // Todoset defines model for Todoset.
 type Todoset struct {
-	AppTodolistsUrl  string     `json:"app_todolists_url,omitempty"`
-	AppUrl           string     `json:"app_url"`
-	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket `json:"bucket"`
-	Completed        bool       `json:"completed,omitempty"`
-	CompletedRatio   string     `json:"completed_ratio,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	Creator          Person     `json:"creator"`
-	Id               int64      `json:"id"`
-	InheritsStatus   bool       `json:"inherits_status"`
-	Name             string     `json:"name"`
-	Position         int32      `json:"position,omitempty"`
-	Status           string     `json:"status"`
-	Title            string     `json:"title"`
-	TodolistsCount   int32      `json:"todolists_count,omitempty"`
-	TodolistsUrl     string     `json:"todolists_url,omitempty"`
-	Type             string     `json:"type"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Url              string     `json:"url"`
-	VisibleToClients bool       `json:"visible_to_clients"`
+	AppTodolistsUrl   string     `json:"app_todolists_url,omitempty"`
+	AppUrl            string     `json:"app_url"`
+	BookmarkUrl       string     `json:"bookmark_url,omitempty"`
+	Bucket            TodoBucket `json:"bucket"`
+	Completed         bool       `json:"completed,omitempty"`
+	CompletedCount    int32      `json:"completed_count,omitempty"`
+	CompletedRatio    string     `json:"completed_ratio,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+	Creator           Person     `json:"creator"`
+	Id                int64      `json:"id"`
+	InheritsStatus    bool       `json:"inherits_status"`
+	Name              string     `json:"name"`
+	OnScheduleCount   int32      `json:"on_schedule_count,omitempty"`
+	OverScheduleCount int32      `json:"over_schedule_count,omitempty"`
+	Position          int32      `json:"position,omitempty"`
+	Status            string     `json:"status"`
+	Title             string     `json:"title"`
+	TodolistsCount    int32      `json:"todolists_count,omitempty"`
+	TodolistsUrl      string     `json:"todolists_url,omitempty"`
+	Type              string     `json:"type"`
+	UpdatedAt         time.Time  `json:"updated_at"`
+	Url               string     `json:"url"`
+	VisibleToClients  bool       `json:"visible_to_clients"`
 }
 
 // Tool defines model for Tool.
