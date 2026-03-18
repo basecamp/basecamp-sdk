@@ -1,0 +1,27 @@
+python/src/basecamp/oauth/discovery.py
+  83e5079e02fbd185 39
+python/src/basecamp/_http.py
+  83e5079e02fbd185 8,201,204
+python/src/basecamp/_async_http.py
+  83e5079e02fbd185 9,202,205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "a86c6cc03bc851fc48fc436162e2f6ae73e6e56e",
+  "prompts": {
+    "83e5079e02fbd185": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0978950-ad5c-4a5f-8dfe-1744eb0f945f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 7,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    }
+  }
+}
