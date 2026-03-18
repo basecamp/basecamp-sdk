@@ -199,7 +199,8 @@ RECORD OAuthTokenProvider implements TokenProvider
   expires_at    : Timestamp
 
   access_token() →
-    1. If expires_at - now() < 60s, call refresh().
+    1. If expires_at - now() < TOKEN_REFRESH_BUFFER, call refresh().
+       (Go uses 300s; Ruby refreshes only on expiry; other SDKs delegate to caller.)
     2. → access_token
 
   refresh() →
@@ -1076,7 +1077,7 @@ All magic numbers in one place, derived from shipping SDK code (not `rubric-audi
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
 | `API_VERSION` | `2026-01-26` | — | `openapi.json` `info.version` |
-| `TOKEN_REFRESH_BUFFER` | 60 | seconds | OAuth token refresh threshold |
+| `TOKEN_REFRESH_BUFFER` | 300 | seconds | Go OAuth token refresh threshold (5-minute buffer); Ruby refreshes only on expiry (no buffer); TS/Kotlin/Swift delegate expiry to caller |
 
 ---
 
