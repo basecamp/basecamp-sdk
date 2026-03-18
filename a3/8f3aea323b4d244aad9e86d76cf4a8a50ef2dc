@@ -1,0 +1,25 @@
+go/pkg/basecamp/schedules.go
+  b7a5262168982b0e 79,105
+go/pkg/basecamp/checkins.go
+  b7a5262168982b0e 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "a38f3aea323b4d244aad9e86d76cf4a8a50ef2dc",
+  "prompts": {
+    "b7a5262168982b0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a17053e-961a-48d1-9a9a-b1428591e83b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
