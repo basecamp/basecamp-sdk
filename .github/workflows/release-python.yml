@@ -1,0 +1,147 @@
+name: Release Python SDK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  smithy:
+    uses: ./.github/workflows/smithy-verify.yml
+
+  test:
+    name: Test Python SDK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v6.0.0 # zizmor: ignore[cache-poisoning] -- cached deps are for testing, not release artifact generation
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --dev --python 3.13
+
+      - name: Lint
+        run: |
+          uv run ruff check src/ tests/
+          uv run ruff format --check src/ tests/
+
+      - name: Type check
+        run: uv run mypy src/basecamp/ --ignore-missing-imports
+
+      - name: Check generated code drift
+        run: |
+          uv run python scripts/generate_services.py
+          uv run python scripts/generate_metadata.py
+          uv run python scripts/generate_types.py
+          uv run ruff format src/basecamp/generated/
+          if [ -n "$(git status --porcelain -- src/basecamp/generated/)" ]; then
+            echo "::error::Generated Python code is out of date. Run 'make py-generate' and commit."
+            exit 1
+          fi
+
+      - name: Run tests with coverage
+        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=60
+
+  publish:
+    name: Publish to PyPI
+    needs: [smithy, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    environment: release-pypi
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify tag is on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v6.0.0 # zizmor: ignore[cache-poisoning] -- cache is branch-isolated; fork PRs cannot write to this cache
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Extract version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          PY_VERSION=$(python3 -c "exec(open('src/basecamp/_version.py').read()); print(VERSION)")
+          TOML_VERSION=$(python3 -c "import tomllib; print(tomllib.loads(open('pyproject.toml').read())['project']['version'])")
+          if [ "$PY_VERSION" != "$TOML_VERSION" ]; then
+            echo "::error::Version mismatch: _version.py ($PY_VERSION) != pyproject.toml ($TOML_VERSION)"
+            exit 1
+          fi
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "version=$PY_VERSION" >> $GITHUB_OUTPUT
+            echo "Rehearsal for version: $PY_VERSION"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            if [ "$PY_VERSION" != "$VERSION" ]; then
+              echo "::error::Python version ($PY_VERSION) does not match tag version ($VERSION)"
+              exit 1
+            fi
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Releasing version: $VERSION"
+          fi
+
+      - name: Build package
+        run: uv build
+
+      - name: Check if already published
+        id: check-published
+        if: github.event_name == 'push'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Query the PyPI JSON API for exact version match
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/basecamp-sdk/${VERSION}/json")
+          if [ "$STATUS" = "200" ]; then
+            echo "already_published=true" >> $GITHUB_OUTPUT
+            echo "::notice::Version ${VERSION} already published to PyPI"
+          else
+            echo "already_published=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to PyPI
+        if: github.event_name == 'push' && steps.check-published.outputs.already_published != 'true'
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          packages-dir: python/dist/
+          attestations: true
+
+      - name: Dry-run build verification
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          ls -la dist/
+          echo "::notice::Dry run mode - not actually publishing"
+          echo "Would publish: $(ls dist/*.tar.gz dist/*.whl)"

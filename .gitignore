@@ -29,7 +29,17 @@ swift/.build/
 swift/.swiftpm/
 swift/Package.resolved
 
-# Kotlin SDK build artifacts
+# Python SDK build artifacts
+python/.venv/
+python/**/__pycache__/
+python/**/*.pyc
+python/dist/
+python/.pytest_cache/
+python/.coverage
+python/src/*.egg-info/
+conformance/runner/python/.venv/
+conformance/runner/python/uv.lock
+
 # TypeScript SDK build artifacts
 typescript/coverage/
 

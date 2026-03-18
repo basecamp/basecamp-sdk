@@ -151,6 +151,8 @@ endif
 		{ echo "ERROR: Kotlin Gradle project version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'public static let version = "$(VERSION)"' swift/Sources/Basecamp/BasecampConfig.swift || \
 		{ echo "ERROR: Swift version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qF 'VERSION = "$(VERSION)"' python/src/basecamp/_version.py || \
+		{ echo "ERROR: Python version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@git diff --quiet && git diff --cached --quiet || \
 		{ echo "ERROR: Working tree has uncommitted changes. Commit first."; exit 1; }
 	@# Verify we're on main — release tags must be on the default branch
@@ -179,6 +181,7 @@ sync-api-version-check:
 	grep -q "API_VERSION = \"$$API_VER\"" ruby/lib/basecamp/version.rb || ok=false; \
 	grep -q "const val API_VERSION = \"$$API_VER\"" kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt || ok=false; \
 	grep -q "public static let apiVersion = \"$$API_VER\"" swift/Sources/Basecamp/BasecampConfig.swift || ok=false; \
+	grep -q "API_VERSION = \"$$API_VER\"" python/src/basecamp/_version.py || ok=false; \
 	if [ "$$ok" = false ]; then echo "ERROR: API_VERSION constants are out of date. Run 'make sync-api-version'"; exit 1; fi
 	@echo "API version constants are up to date"
 
@@ -312,10 +315,44 @@ rb-clean:
 	rm -rf ruby/.bundle ruby/vendor ruby/doc ruby/coverage
 
 #------------------------------------------------------------------------------
+# Python SDK targets
+#------------------------------------------------------------------------------
+
+.PHONY: py-generate py-generate-services py-build py-test py-typecheck py-check py-check-drift py-clean
+
+py-generate: py-generate-services
+	cd python && uv run python scripts/generate_types.py
+	cd python && uv run python scripts/generate_metadata.py
+	cd python && uv run ruff format src/basecamp/generated/
+
+py-generate-services:
+	cd python && uv run python scripts/generate_services.py
+
+py-build:
+	cd python && uv sync --dev
+
+py-test:
+	cd python && uv run pytest --cov --cov-report=term-missing --cov-fail-under=60
+
+py-typecheck:
+	cd python && uv run mypy src/basecamp/ --ignore-missing-imports
+
+py-check: py-check-drift py-test py-typecheck
+	cd python && uv run ruff check src/ tests/
+	cd python && uv run ruff format --check src/ tests/
+
+py-check-drift:
+	@echo "==> Checking Python service drift..."
+	@./scripts/check-python-service-drift.sh
+
+py-clean:
+	rm -rf python/dist python/.pytest_cache python/src/*.egg-info python/.venv
+
+#------------------------------------------------------------------------------
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-build
+.PHONY: conformance conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python conformance-build
 
 # Build conformance test runner
 conformance-build:
@@ -342,8 +379,13 @@ conformance-ruby:
 	@echo "==> Running Ruby conformance tests..."
 	cd conformance/runner/ruby && bundle install --quiet && ruby runner.rb
 
+# Run Python conformance tests
+conformance-python:
+	@echo "==> Running Python conformance tests..."
+	cd conformance/runner/python && uv sync && uv run python runner.py
+
 # Run all conformance tests
-conformance: conformance-go conformance-kotlin conformance-typescript conformance-ruby
+conformance: conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
 	@echo "==> Conformance tests passed"
 
 #------------------------------------------------------------------------------
@@ -513,12 +555,12 @@ tools:
 # Combined targets
 #------------------------------------------------------------------------------
 
-# Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check conformance
+# Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
+check: lint-actions smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
-clean: smithy-clean go-clean ts-clean rb-clean kt-clean swift-clean
+clean: smithy-clean go-clean ts-clean rb-clean kt-clean swift-clean py-clean
 
 # Help
 help:
@@ -577,6 +619,7 @@ help:
 	@echo "  conformance-kotlin     Run Kotlin conformance tests"
 	@echo "  conformance-typescript Run TypeScript conformance tests"
 	@echo "  conformance-ruby       Run Ruby conformance tests"
+	@echo "  conformance-python     Run Python conformance tests"
 	@echo "  conformance-build      Build Go conformance test runner"
 	@echo ""
 	@echo "Ruby SDK:"
@@ -587,6 +630,15 @@ help:
 	@echo "  rb-check             Run all Ruby checks"
 	@echo "  rb-doc               Generate YARD documentation"
 	@echo "  rb-clean             Remove Ruby build artifacts"
+	@echo ""
+	@echo "Python SDK:"
+	@echo "  py-generate          Generate types and metadata from OpenAPI"
+	@echo "  py-generate-services Generate service classes from OpenAPI"
+	@echo "  py-build             Build Python SDK (install deps)"
+	@echo "  py-test              Run Python tests"
+	@echo "  py-check             Run all Python checks"
+	@echo "  py-check-drift       Check service drift vs OpenAPI spec"
+	@echo "  py-clean             Remove Python build artifacts"
 	@echo ""
 	@echo "Provenance:"
 	@echo "  provenance-sync  Copy provenance into Go package for go:embed"
@@ -607,6 +659,6 @@ help:
 	@echo "  tools            Install development tools (smithy, golangci-lint, actionlint, zizmor)"
 	@echo ""
 	@echo "Combined:"
-	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Conformance + Provenance + API version sync + Actions lint)"
+	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + Actions lint)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"

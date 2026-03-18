@@ -53,6 +53,12 @@ sedi "s/const val VERSION = \".*\"/const val VERSION = \"$VERSION\"/" \
 sedi "s/public static let version = \".*\"/public static let version = \"$VERSION\"/" \
   swift/Sources/Basecamp/BasecampConfig.swift
 
+# 9. Python pyproject.toml
+sedi "s/^version = \".*\"/version = \"$VERSION\"/" python/pyproject.toml
+
+# 10. Python _version.py
+sedi "s/^VERSION = \".*\"/VERSION = \"$VERSION\"/" python/src/basecamp/_version.py
+
 # Sync TypeScript lockfile
 echo "Syncing TypeScript lockfile..."
 (cd typescript && npm install --package-lock-only --ignore-scripts)
@@ -61,4 +67,4 @@ echo "Syncing TypeScript lockfile..."
 echo "Syncing Ruby lockfile..."
 (cd ruby && bundle install --quiet)
 
-echo "Done. Bumped 8 files to $VERSION."
+echo "Done. Bumped 10 files to $VERSION."
