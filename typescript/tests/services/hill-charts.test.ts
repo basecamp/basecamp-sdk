@@ -15,6 +15,7 @@ const sampleHillChart = () => ({
   stale: false,
   updated_at: "2026-03-11T06:38:12.167Z",
   app_update_url: `${BASE_URL}/buckets/100/todosets/42/hill/edit`,
+  app_versions_url: `https://3.basecamp.com/12345/buckets/100/todosets/42/hill/versions`,
   dots: [
     {
       id: 1069479424,
@@ -78,6 +79,7 @@ describe("HillChartsService", () => {
       expect(result.stale).toBe(false);
       expect(result.dots).toHaveLength(1);
       expect(result.dots[0].label).toBe("Background and research");
+      expect(result.app_versions_url).toBe(`https://3.basecamp.com/12345/buckets/100/todosets/42/hill/versions`);
     });
 
     it("should throw not_found for missing todoset", async () => {

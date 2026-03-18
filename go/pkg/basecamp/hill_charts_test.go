@@ -38,6 +38,9 @@ func TestHillChart_UnmarshalGet(t *testing.T) {
 	if hc.AppUpdateURL == "" {
 		t.Error("expected non-empty AppUpdateURL")
 	}
+	if hc.AppVersionsURL == "" {
+		t.Error("expected non-empty AppVersionsURL")
+	}
 	if len(hc.Dots) != 1 {
 		t.Fatalf("expected 1 dot, got %d", len(hc.Dots))
 	}

@@ -898,6 +898,8 @@ structure HillChart {
 
   app_update_url: String
 
+  app_versions_url: String
+
   dots: HillChartDotList
 }
 

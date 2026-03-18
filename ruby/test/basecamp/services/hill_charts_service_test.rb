@@ -14,6 +14,7 @@ class HillChartsServiceTest < Minitest::Test
       "enabled" => true,
       "stale" => false,
       "updated_at" => "2026-03-11T06:38:12.167Z",
+      "app_versions_url" => "https://3.basecamp.com/12345/buckets/100/todosets/42/hill/versions",
       "dots" => [
         {
           "id" => 1069479424,
@@ -32,6 +33,7 @@ class HillChartsServiceTest < Minitest::Test
     assert_equal false, result["stale"]
     assert_equal 1, result["dots"].length
     assert_equal "Background and research", result["dots"][0]["label"]
+    assert_equal "https://3.basecamp.com/12345/buckets/100/todosets/42/hill/versions", result["app_versions_url"]
   end
 
   def test_update_settings

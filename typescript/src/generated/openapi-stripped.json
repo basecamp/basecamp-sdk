@@ -19046,6 +19046,9 @@
           "app_update_url": {
             "type": "string"
           },
+          "app_versions_url": {
+            "type": "string"
+          },
           "dots": {
             "type": "array",
             "items": {

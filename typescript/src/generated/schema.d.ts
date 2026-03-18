@@ -2926,6 +2926,7 @@ export interface components {
             stale: boolean;
             updated_at?: string;
             app_update_url?: string;
+            app_versions_url?: string;
             dots?: components["schemas"]["HillChartDot"][];
         };
         HillChartDot: {

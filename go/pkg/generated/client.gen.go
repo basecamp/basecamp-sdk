@@ -925,11 +925,12 @@ type GetWebhookResponseContent = Webhook
 
 // HillChart defines model for HillChart.
 type HillChart struct {
-	AppUpdateUrl string         `json:"app_update_url,omitempty"`
-	Dots         []HillChartDot `json:"dots,omitempty"`
-	Enabled      bool           `json:"enabled"`
-	Stale        bool           `json:"stale"`
-	UpdatedAt    time.Time      `json:"updated_at,omitempty"`
+	AppUpdateUrl   string         `json:"app_update_url,omitempty"`
+	AppVersionsUrl string         `json:"app_versions_url,omitempty"`
+	Dots           []HillChartDot `json:"dots,omitempty"`
+	Enabled        bool           `json:"enabled"`
+	Stale          bool           `json:"stale"`
+	UpdatedAt      time.Time      `json:"updated_at,omitempty"`
 }
 
 // HillChartDot defines model for HillChartDot.

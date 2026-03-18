@@ -13,8 +13,9 @@ type HillChart struct {
 	Enabled      bool           `json:"enabled"`
 	Stale        bool           `json:"stale"`
 	UpdatedAt    time.Time      `json:"updated_at,omitempty"`
-	AppUpdateURL string         `json:"app_update_url,omitempty"`
-	Dots         []HillChartDot `json:"dots,omitempty"`
+	AppUpdateURL   string         `json:"app_update_url,omitempty"`
+	AppVersionsURL string         `json:"app_versions_url,omitempty"`
+	Dots           []HillChartDot `json:"dots,omitempty"`
 }
 
 // HillChartDot represents a single dot on a hill chart, corresponding to a tracked todolist.
@@ -113,7 +114,8 @@ func hillChartFromGenerated(ghc generated.HillChart) HillChart {
 		Enabled:      ghc.Enabled,
 		Stale:        ghc.Stale,
 		UpdatedAt:    ghc.UpdatedAt,
-		AppUpdateURL: ghc.AppUpdateUrl,
+		AppUpdateURL:   ghc.AppUpdateUrl,
+		AppVersionsURL: ghc.AppVersionsUrl,
 	}
 
 	if len(ghc.Dots) > 0 {
