@@ -1,0 +1,145 @@
+python/tests/test_security.py
+  83e5079e02fbd185 1-131
+python/src/basecamp/_async_http.py
+  83e5079e02fbd185 1-8,10-33,35-216
+python/tests/test_http.py
+  83e5079e02fbd185 1-199
+python/src/basecamp/_http.py
+  83e5079e02fbd185 1-7,9-32,34-215
+python/src/basecamp/webhooks/receiver.py
+  83e5079e02fbd185 1-78,81-83,86-158
+python/src/basecamp/_version.py
+  83e5079e02fbd185 1-2
+.github/workflows/release-github.yml
+  83e5079e02fbd185 31,180-184
+python/src/basecamp/services/__init__.py
+  83e5079e02fbd185 2-3
+python/src/basecamp/async_client.py
+  83e5079e02fbd185 1-343
+.gitignore
+  83e5079e02fbd185 32-42
+.github/workflows/release-python.yml
+  83e5079e02fbd185 1-135
+python/tests/oauth/test_discovery.py
+  83e5079e02fbd185 1-84
+python/src/basecamp/oauth/exchange.py
+  83e5079e02fbd185 1-4,6-104,107,109-117,119-122,124-151
+python/tests/test_auth.py
+  83e5079e02fbd185 1-3,5-175
+.pre-commit-config.yaml
+  83e5079e02fbd185 58-81
+python/src/basecamp/_security.py
+  83e5079e02fbd185 1-2,4,6-84
+python/tests/oauth/test_exchange.py
+  83e5079e02fbd185 1-131
+python/src/basecamp/async_auth.py
+  83e5079e02fbd185 1-103,105-129
+Makefile
+  83e5079e02fbd185 154-155,184,312-343,348,375-379,381,454-455,459,518,530-538,551
+python/src/basecamp/webhooks/errors.py
+  83e5079e02fbd185 1-8
+python/src/basecamp/webhooks/events.py
+  83e5079e02fbd185 1-52
+python/src/basecamp/webhooks/__init__.py
+  83e5079e02fbd185 1-15
+python/src/basecamp/oauth/discovery.py
+  83e5079e02fbd185 1-4,6-70
+scripts/sync-api-version.sh
+  83e5079e02fbd185 49-52
+python/tests/test_download.py
+  83e5079e02fbd185 1-9,12-103
+python/src/basecamp/errors.py
+  83e5079e02fbd185 1-3,5-170,172-175,177-188
+python/src/basecamp/__init__.py
+  83e5079e02fbd185 6-9,14,30-42
+python/src/basecamp/oauth/errors.py
+  83e5079e02fbd185 1-14
+python/src/basecamp/oauth/pkce.py
+  83e5079e02fbd185 1-39
+scripts/check-python-service-drift.sh
+  83e5079e02fbd185 1-87
+python/scripts/generate_metadata.py
+  83e5079e02fbd185 1-69
+python/src/basecamp/hooks.py
+  83e5079e02fbd185 1-113,115-135
+scripts/bump-version.sh
+  83e5079e02fbd185 56-61,70
+python/conformance/runner/python/pyproject.toml
+  83e5079e02fbd185 1-11
+.github/workflows/test.yml
+  83e5079e02fbd185 129-176,229,291-299
+python/tests/webhooks/test_verify.py
+  83e5079e02fbd185 1-40
+python/tests/conftest.py
+  83e5079e02fbd185 1-45
+python/tests/test_hooks.py
+  83e5079e02fbd185 1-92
+python/src/basecamp/generated/services/_base.py
+  83e5079e02fbd185 1-3,5-22,24-27,29-141,143-181,183-210,212-232,234-246
+python/src/basecamp/services/authorization.py
+  83e5079e02fbd185 1-45
+python/src/basecamp/webhooks/verify.py
+  83e5079e02fbd185 1-3,5-22
+python/tests/oauth/test_pkce.py
+  83e5079e02fbd185 1-42
+python/src/basecamp/auth.py
+  83e5079e02fbd185 1-102,104-128
+python/tests/test_client.py
+  83e5079e02fbd185 1-74
+python/src/basecamp/oauth/token.py
+  83e5079e02fbd185 1-27
+python/src/basecamp/_pagination.py
+  83e5079e02fbd185 1-50
+python/scripts/generate_types.py
+  83e5079e02fbd185 1-117
+python/tests/webhooks/test_receiver.py
+  83e5079e02fbd185 1-130
+python/pyproject.toml
+  83e5079e02fbd185 1-69
+python/src/basecamp/config.py
+  83e5079e02fbd185 1-50
+python/tests/test_config.py
+  83e5079e02fbd185 1-8,10-91
+python/src/basecamp/oauth/authorize.py
+  83e5079e02fbd185 1-49
+python/src/basecamp/oauth/__init__.py
+  83e5079e02fbd185 1-24
+python/tests/test_pagination.py
+  83e5079e02fbd185 1-77
+python/src/basecamp/generated/services/timesheets.py
+  83e5079e02fbd185 15,18,21,24,30-31,42,45,48,51,57-58
+python/src/basecamp/oauth/config.py
+  83e5079e02fbd185 1-14
+python/scripts/generate_services.py
+  83e5079e02fbd185 1-801
+python/conformance/runner/python/runner.py
+  83e5079e02fbd185 1-448
+python/src/basecamp/download.py
+  83e5079e02fbd185 1-135
+python/src/basecamp/generated/services/_async_base.py
+  83e5079e02fbd185 1-138,140-178,180-207,209-229,231-243
+python/tests/test_errors.py
+  83e5079e02fbd185 1-2,4-7,9-19,21-151,153-159,161-162
+python/src/basecamp/client.py
+  83e5079e02fbd185 1-344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "da927b48d568913e219da41792e2035b6f7476c2",
+  "prompts": {
+    "83e5079e02fbd185": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0978950-ad5c-4a5f-8dfe-1744eb0f945f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 6769,
+      "total_deletions": 112,
+      "accepted_lines": 6664,
+      "overriden_lines": 46
+    }
+  }
+}
