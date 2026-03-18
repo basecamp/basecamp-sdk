@@ -403,8 +403,9 @@ func (s *VaultsService) Update(ctx context.Context, vaultID int64, req *UpdateVa
 		return nil, err
 	}
 
-	body := generated.UpdateVaultJSONRequestBody{
-		Title: req.Title,
+	body := generated.UpdateVaultJSONRequestBody{}
+	if req.Title != "" {
+		body.Title = req.Title
 	}
 
 	resp, err := s.client.parent.gen.UpdateVaultWithResponse(ctx, s.client.accountID, vaultID, body)
@@ -611,9 +612,12 @@ func (s *DocumentsService) Update(ctx context.Context, documentID int64, req *Up
 		return nil, err
 	}
 
-	body := generated.UpdateDocumentJSONRequestBody{
-		Title:   req.Title,
-		Content: req.Content,
+	body := generated.UpdateDocumentJSONRequestBody{}
+	if req.Title != "" {
+		body.Title = req.Title
+	}
+	if req.Content != "" {
+		body.Content = req.Content
 	}
 
 	resp, err := s.client.parent.gen.UpdateDocumentWithResponse(ctx, s.client.accountID, documentID, body)
@@ -799,9 +803,12 @@ func (s *UploadsService) Update(ctx context.Context, uploadID int64, req *Update
 		return nil, err
 	}
 
-	body := generated.UpdateUploadJSONRequestBody{
-		Description: req.Description,
-		BaseName:    req.BaseName,
+	body := generated.UpdateUploadJSONRequestBody{}
+	if req.Description != "" {
+		body.Description = req.Description
+	}
+	if req.BaseName != "" {
+		body.BaseName = req.BaseName
 	}
 
 	resp, err := s.client.parent.gen.UpdateUploadWithResponse(ctx, s.client.accountID, uploadID, body)

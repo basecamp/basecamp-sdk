@@ -289,7 +289,6 @@ func TestCreateScheduleEntryRequest_Marshal(t *testing.T) {
 		EndsAt:         "2022-11-10T15:00:00.000Z",
 		Description:    "<div>Weekly sync</div>",
 		ParticipantIDs: []int64{1049715914, 1049715915},
-		AllDay:         false,
 		Notify:         true,
 	}
 
@@ -477,7 +476,6 @@ func TestUpdateScheduleEntryRequest_Marshal(t *testing.T) {
 		EndsAt:         "2022-11-11T11:00:00.000Z",
 		Description:    "<div>Changed time</div>",
 		ParticipantIDs: []int64{1049715914},
-		AllDay:         false,
 		Notify:         true,
 	}
 

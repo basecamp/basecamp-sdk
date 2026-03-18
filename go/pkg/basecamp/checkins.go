@@ -395,18 +395,25 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, questionID int64, 
 		return nil, err
 	}
 
-	body := generated.UpdateQuestionJSONRequestBody{}
+	body := map[string]any{}
 	if req.Title != "" {
-		body.Title = req.Title
+		body["title"] = req.Title
 	}
 	if req.Schedule != nil {
-		body.Schedule = questionScheduleToGenerated(req.Schedule)
+		sm := questionScheduleToMap(req.Schedule)
+		if len(sm) > 0 {
+			body["schedule"] = sm
+		}
 	}
 	if req.Paused != nil {
-		body.Paused = req.Paused
+		body["paused"] = *req.Paused
 	}
 
-	resp, err := s.client.parent.gen.UpdateQuestionWithResponse(ctx, s.client.accountID, questionID, body)
+	bodyReader, err := marshalBody(body)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.parent.gen.UpdateQuestionWithBodyWithResponse(ctx, s.client.accountID, questionID, "application/json", bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -826,4 +833,39 @@ func questionScheduleToGenerated(s *QuestionSchedule) generated.QuestionSchedule
 	}
 
 	return gs
+}
+
+// questionScheduleToMap converts a QuestionSchedule to a map for JSON marshaling.
+// Used by UpdateQuestion to avoid the generated QuestionSchedule struct's zero-value
+// serialization leaking empty fields.
+func questionScheduleToMap(s *QuestionSchedule) map[string]any {
+	m := map[string]any{}
+	if s.Frequency != "" {
+		m["frequency"] = s.Frequency
+	}
+	if len(s.Days) > 0 {
+		m["days"] = s.Days
+	}
+	if s.Hour != 0 {
+		m["hour"] = s.Hour
+	}
+	if s.Minute != 0 {
+		m["minute"] = s.Minute
+	}
+	if s.StartDate != "" {
+		m["start_date"] = s.StartDate
+	}
+	if s.EndDate != "" {
+		m["end_date"] = s.EndDate
+	}
+	if s.WeekInstance != nil {
+		m["week_instance"] = *s.WeekInstance
+	}
+	if s.WeekInterval != nil {
+		m["week_interval"] = *s.WeekInterval
+	}
+	if s.MonthInterval != nil {
+		m["month_interval"] = *s.MonthInterval
+	}
+	return m
 }

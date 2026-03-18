@@ -256,8 +256,9 @@ func (s *TodolistGroupsService) Update(ctx context.Context, groupID int64, req *
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Groups are updated via the todolists endpoint (polymorphic endpoint)
-	body := generated.UpdateTodolistOrGroupJSONRequestBody{
-		Name: req.Name,
+	body := generated.UpdateTodolistOrGroupJSONRequestBody{}
+	if req.Name != "" {
+		body.Name = req.Name
 	}
 
 	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, groupID, body)
