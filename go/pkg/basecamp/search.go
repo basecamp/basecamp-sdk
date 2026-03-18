@@ -112,7 +112,7 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -181,7 +181,7 @@ func (s *SearchService) Metadata(ctx context.Context) (result *SearchMetadata, e
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

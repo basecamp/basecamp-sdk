@@ -193,7 +193,7 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -266,7 +266,7 @@ func (s *TodosService) Get(ctx context.Context, todoID int64) (result *Todo, err
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -328,7 +328,7 @@ func (s *TodosService) Create(ctx context.Context, todolistID int64, req *Create
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -397,7 +397,7 @@ func (s *TodosService) Update(ctx context.Context, todoID int64, req *UpdateTodo
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -430,7 +430,7 @@ func (s *TodosService) Trash(ctx context.Context, todoID int64) (err error) {
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Complete marks a todo as completed.
@@ -453,7 +453,7 @@ func (s *TodosService) Complete(ctx context.Context, todoID int64) (err error) {
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Uncomplete marks a completed todo as incomplete (reopens it).
@@ -476,7 +476,7 @@ func (s *TodosService) Uncomplete(ctx context.Context, todoID int64) (err error)
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Reposition changes the position of a todo within its todolist.
@@ -508,7 +508,7 @@ func (s *TodosService) Reposition(ctx context.Context, todoID int64, position in
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // todoFromGenerated converts a generated Todo to our clean Todo type.

@@ -248,7 +248,7 @@ func (s *VaultsService) Get(ctx context.Context, vaultID int64) (result *Vault, 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -290,7 +290,7 @@ func (s *VaultsService) List(ctx context.Context, vaultID int64, opts *VaultList
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -369,7 +369,7 @@ func (s *VaultsService) Create(ctx context.Context, vaultID int64, req *CreateVa
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -412,7 +412,7 @@ func (s *VaultsService) Update(ctx context.Context, vaultID int64, req *UpdateVa
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -454,7 +454,7 @@ func (s *DocumentsService) Get(ctx context.Context, documentID int64) (result *D
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -496,7 +496,7 @@ func (s *DocumentsService) List(ctx context.Context, vaultID int64, opts *Docume
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -578,7 +578,7 @@ func (s *DocumentsService) Create(ctx context.Context, vaultID int64, req *Creat
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -624,7 +624,7 @@ func (s *DocumentsService) Update(ctx context.Context, documentID int64, req *Up
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -657,7 +657,7 @@ func (s *DocumentsService) Trash(ctx context.Context, documentID int64) (err err
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // UploadsService handles upload (file) operations.
@@ -690,7 +690,7 @@ func (s *UploadsService) Get(ctx context.Context, uploadID int64) (result *Uploa
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -732,7 +732,7 @@ func (s *UploadsService) List(ctx context.Context, vaultID int64, opts *UploadLi
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -815,7 +815,7 @@ func (s *UploadsService) Update(ctx context.Context, uploadID int64, req *Update
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -861,7 +861,7 @@ func (s *UploadsService) Create(ctx context.Context, vaultID int64, req *CreateU
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -894,7 +894,7 @@ func (s *UploadsService) Trash(ctx context.Context, uploadID int64) (err error) 
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // UploadVersionListOptions specifies options for listing upload versions.
@@ -943,7 +943,7 @@ func (s *UploadsService) ListVersions(ctx context.Context, uploadID int64, opts 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 

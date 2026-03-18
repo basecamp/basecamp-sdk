@@ -54,7 +54,7 @@ func (s *SubscriptionsService) Get(ctx context.Context, recordingID int64) (resu
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -87,7 +87,7 @@ func (s *SubscriptionsService) Subscribe(ctx context.Context, recordingID int64)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -120,7 +120,7 @@ func (s *SubscriptionsService) Unsubscribe(ctx context.Context, recordingID int6
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Update batch modifies subscriptions by adding or removing specific users.
@@ -157,7 +157,7 @@ func (s *SubscriptionsService) Update(ctx context.Context, recordingID int64, re
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

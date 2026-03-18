@@ -109,7 +109,7 @@ func (s *ClientApprovalsService) List(ctx context.Context, opts *ClientApprovalL
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -182,7 +182,7 @@ func (s *ClientApprovalsService) Get(ctx context.Context, approvalID int64) (res
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

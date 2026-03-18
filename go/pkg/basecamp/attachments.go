@@ -71,7 +71,7 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {

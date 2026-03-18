@@ -54,7 +54,7 @@ func (s *MessageBoardsService) Get(ctx context.Context, boardID int64) (result *
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

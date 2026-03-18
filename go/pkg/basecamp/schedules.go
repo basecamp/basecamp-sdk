@@ -167,7 +167,7 @@ func (s *SchedulesService) Get(ctx context.Context, scheduleID int64) (result *S
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -217,7 +217,7 @@ func (s *SchedulesService) ListEntries(ctx context.Context, scheduleID int64, op
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -286,7 +286,7 @@ func (s *SchedulesService) GetEntry(ctx context.Context, entryID int64) (result 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -356,7 +356,7 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, scheduleID int64, re
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -429,7 +429,7 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, entryID int64, req *
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -466,7 +466,7 @@ func (s *SchedulesService) GetEntryOccurrence(ctx context.Context, entryID int64
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -508,7 +508,7 @@ func (s *SchedulesService) UpdateSettings(ctx context.Context, scheduleID int64,
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -541,7 +541,7 @@ func (s *SchedulesService) TrashEntry(ctx context.Context, entryID int64) (err e
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Note: Permanent deletion of schedule entries is not supported by the Basecamp API.

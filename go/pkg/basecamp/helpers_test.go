@@ -6,7 +6,7 @@ import (
 )
 
 func TestCheckResponse_NilResponse(t *testing.T) {
-	if err := checkResponse(nil); err != nil {
+	if err := checkResponse(nil, nil); err != nil {
 		t.Fatalf("expected nil, got %v", err)
 	}
 }
@@ -14,7 +14,7 @@ func TestCheckResponse_NilResponse(t *testing.T) {
 func TestCheckResponse_SuccessStatuses(t *testing.T) {
 	for _, code := range []int{200, 201, 204, 299} {
 		resp := &http.Response{StatusCode: code}
-		if err := checkResponse(resp); err != nil {
+		if err := checkResponse(resp, nil); err != nil {
 			t.Errorf("status %d: expected nil, got %v", code, err)
 		}
 	}
@@ -37,7 +37,7 @@ func TestCheckResponse_ErrorCodes(t *testing.T) {
 
 	for _, tt := range tests {
 		resp := &http.Response{StatusCode: tt.status, Status: http.StatusText(tt.status)}
-		err := checkResponse(resp)
+		err := checkResponse(resp, nil)
 		if err == nil {
 			t.Fatalf("status %d: expected error, got nil", tt.status)
 		}
@@ -54,6 +54,63 @@ func TestCheckResponse_ErrorCodes(t *testing.T) {
 		if e.Retryable != tt.wantRetry {
 			t.Errorf("status %d: Retryable = %v, want %v", tt.status, e.Retryable, tt.wantRetry)
 		}
+	}
+}
+
+func TestCheckResponse_JSONErrorBody(t *testing.T) {
+	resp := &http.Response{StatusCode: 403, Header: http.Header{}}
+	body := []byte(`{"error":"No todolists are tracked on the hill chart"}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Message != "No todolists are tracked on the hill chart" {
+		t.Errorf("Message = %q, want server error message", e.Message)
+	}
+	if e.Code != CodeForbidden {
+		t.Errorf("Code = %q, want %q", e.Code, CodeForbidden)
+	}
+}
+
+func TestCheckResponse_JSONErrorWithDescription(t *testing.T) {
+	resp := &http.Response{StatusCode: 403, Header: http.Header{}}
+	body := []byte(`{"error":"access denied","error_description":"You do not have access to this resource"}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Message != "access denied" {
+		t.Errorf("Message = %q, want %q", e.Message, "access denied")
+	}
+	if e.Hint != "You do not have access to this resource" {
+		t.Errorf("Hint = %q, want error_description value", e.Hint)
+	}
+}
+
+func TestCheckResponse_EmptyBody(t *testing.T) {
+	resp := &http.Response{StatusCode: 403, Header: http.Header{}}
+	err := checkResponse(resp, nil)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Message != "access denied" {
+		t.Errorf("Message = %q, want default fallback", e.Message)
+	}
+}
+
+func TestCheckResponse_InvalidJSON(t *testing.T) {
+	resp := &http.Response{StatusCode: 403, Header: http.Header{}}
+	body := []byte(`not json`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Message != "access denied" {
+		t.Errorf("Message = %q, want default fallback for invalid JSON", e.Message)
 	}
 }
 

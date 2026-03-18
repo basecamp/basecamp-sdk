@@ -88,7 +88,7 @@ func (s *MessageTypesService) List(ctx context.Context, opts *MessageTypeListOpt
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -161,7 +161,7 @@ func (s *MessageTypesService) Get(ctx context.Context, typeID int64) (result *Me
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -207,7 +207,7 @@ func (s *MessageTypesService) Create(ctx context.Context, req *CreateMessageType
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -253,7 +253,7 @@ func (s *MessageTypesService) Update(ctx context.Context, typeID int64, req *Upd
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -285,7 +285,7 @@ func (s *MessageTypesService) Delete(ctx context.Context, typeID int64) (err err
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // messageTypeFromGenerated converts a generated MessageType to our clean MessageType type.

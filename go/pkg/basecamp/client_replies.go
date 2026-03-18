@@ -83,7 +83,7 @@ func (s *ClientRepliesService) List(ctx context.Context, recordingID int64, opts
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -156,7 +156,7 @@ func (s *ClientRepliesService) Get(ctx context.Context, recordingID, replyID int
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

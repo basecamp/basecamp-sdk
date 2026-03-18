@@ -63,7 +63,7 @@ func (s *TodosetsService) Get(ctx context.Context, todosetID int64) (result *Tod
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

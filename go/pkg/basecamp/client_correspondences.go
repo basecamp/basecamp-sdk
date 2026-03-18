@@ -86,7 +86,7 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, opts *ClientCor
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -159,7 +159,7 @@ func (s *ClientCorrespondencesService) Get(ctx context.Context, correspondenceID
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

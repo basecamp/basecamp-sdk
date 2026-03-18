@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -151,8 +152,9 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 		}, nil
 
 	default:
+		body, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
-		return nil, checkResponse(resp)
+		return nil, checkResponse(resp, body)
 	}
 }
 

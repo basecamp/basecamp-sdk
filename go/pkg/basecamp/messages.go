@@ -134,7 +134,7 @@ func (s *MessagesService) List(ctx context.Context, boardID int64, opts *Message
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -207,7 +207,7 @@ func (s *MessagesService) Get(ctx context.Context, messageID int64) (result *Mes
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -255,7 +255,7 @@ func (s *MessagesService) Create(ctx context.Context, boardID int64, req *Create
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -308,7 +308,7 @@ func (s *MessagesService) Update(ctx context.Context, messageID int64, req *Upda
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -340,7 +340,7 @@ func (s *MessagesService) Pin(ctx context.Context, messageID int64) (err error) 
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Unpin unpins a message from the top of the message board.
@@ -363,7 +363,7 @@ func (s *MessagesService) Unpin(ctx context.Context, messageID int64) (err error
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Trash moves a message to the trash.
@@ -387,7 +387,7 @@ func (s *MessagesService) Trash(ctx context.Context, messageID int64) (err error
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Archive moves a message to the archive.
@@ -411,7 +411,7 @@ func (s *MessagesService) Archive(ctx context.Context, messageID int64) (err err
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Unarchive restores an archived message to active status.
@@ -434,7 +434,7 @@ func (s *MessagesService) Unarchive(ctx context.Context, messageID int64) (err e
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // messageFromGenerated converts a generated Message to our clean Message type.

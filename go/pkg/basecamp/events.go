@@ -93,7 +93,7 @@ func (s *EventsService) List(ctx context.Context, recordingID int64, opts *Event
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 

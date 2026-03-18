@@ -200,7 +200,7 @@ func (s *CampfiresService) List(ctx context.Context, opts *CampfireListOptions) 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -273,7 +273,7 @@ func (s *CampfiresService) Get(ctx context.Context, campfireID int64) (result *C
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -314,7 +314,7 @@ func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64, opts
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -387,7 +387,7 @@ func (s *CampfiresService) GetLine(ctx context.Context, campfireID, lineID int64
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -444,7 +444,7 @@ func (s *CampfiresService) CreateLine(ctx context.Context, campfireID int64, con
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -476,7 +476,7 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, campfireID, lineID in
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // ListUploads returns all uploaded files in a campfire.
@@ -508,7 +508,7 @@ func (s *CampfiresService) ListUploads(ctx context.Context, campfireID int64, op
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -611,7 +611,7 @@ func (s *CampfiresService) CreateUpload(ctx context.Context, campfireID int64, f
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -670,7 +670,7 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64, o
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -743,7 +743,7 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, campfireID, chatbotID
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -789,7 +789,7 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, campfireID int64, 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -835,7 +835,7 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, campfireID, chatbo
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -868,7 +868,7 @@ func (s *CampfiresService) DeleteChatbot(ctx context.Context, campfireID, chatbo
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // campfireFromGenerated converts a generated Campfire to our clean Campfire type.

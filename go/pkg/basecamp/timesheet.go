@@ -116,7 +116,7 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -167,7 +167,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -253,7 +253,7 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, recordingID int6
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -322,7 +322,7 @@ func (s *TimesheetService) Get(ctx context.Context, entryID int64) (result *Time
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -371,7 +371,7 @@ func (s *TimesheetService) Create(ctx context.Context, recordingID int64, req *C
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -417,7 +417,7 @@ func (s *TimesheetService) Update(ctx context.Context, entryID int64, req *Updat
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -449,7 +449,7 @@ func (s *TimesheetService) Trash(ctx context.Context, entryID int64) (err error)
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // timesheetEntryFromGenerated converts a generated TimesheetEntry to our clean type.

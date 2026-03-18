@@ -259,7 +259,7 @@ func (s *CardTablesService) Get(ctx context.Context, cardTableID int64) (result 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -311,7 +311,7 @@ func (s *CardsService) List(ctx context.Context, columnID int64, opts *CardListO
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -380,7 +380,7 @@ func (s *CardsService) Get(ctx context.Context, cardID int64) (result *Card, err
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -436,7 +436,7 @@ func (s *CardsService) Create(ctx context.Context, columnID int64, req *CreateCa
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -497,7 +497,7 @@ func (s *CardsService) Update(ctx context.Context, cardID int64, req *UpdateCard
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -533,7 +533,7 @@ func (s *CardsService) Move(ctx context.Context, cardID, columnID int64) (err er
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Trash moves a card to the trash.
@@ -557,7 +557,7 @@ func (s *CardsService) Trash(ctx context.Context, cardID int64) (err error) {
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // CardColumnsService handles card column operations.
@@ -590,7 +590,7 @@ func (s *CardColumnsService) Get(ctx context.Context, columnID int64) (result *C
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -633,7 +633,7 @@ func (s *CardColumnsService) Create(ctx context.Context, cardTableID int64, req 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -680,7 +680,7 @@ func (s *CardColumnsService) Update(ctx context.Context, columnID int64, req *Up
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -723,7 +723,7 @@ func (s *CardColumnsService) Move(ctx context.Context, cardTableID int64, req *M
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // SetColor sets the color of a column.
@@ -757,7 +757,7 @@ func (s *CardColumnsService) SetColor(ctx context.Context, columnID int64, color
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -790,7 +790,7 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, columnID int64) (
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -823,7 +823,7 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, columnID int64) 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -856,7 +856,7 @@ func (s *CardColumnsService) Watch(ctx context.Context, columnID int64) (result 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -889,7 +889,7 @@ func (s *CardColumnsService) Unwatch(ctx context.Context, columnID int64) (err e
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // CardStepsService handles card step operations.
@@ -922,7 +922,7 @@ func (s *CardStepsService) Get(ctx context.Context, stepID int64) (result *CardS
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -973,7 +973,7 @@ func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *Create
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -1031,7 +1031,7 @@ func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *Update
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -1065,7 +1065,7 @@ func (s *CardStepsService) Complete(ctx context.Context, stepID int64) (result *
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -1099,7 +1099,7 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, stepID int64) (result
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -1142,7 +1142,7 @@ func (s *CardStepsService) Reposition(ctx context.Context, cardID, stepID int64,
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Delete deletes a step (moves it to trash).
@@ -1165,7 +1165,7 @@ func (s *CardStepsService) Delete(ctx context.Context, stepID int64) (err error)
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // cardTableFromGenerated converts a generated CardTable to our clean CardTable type.

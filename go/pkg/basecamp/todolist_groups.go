@@ -103,7 +103,7 @@ func (s *TodolistGroupsService) List(ctx context.Context, todolistID int64, opts
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -177,7 +177,7 @@ func (s *TodolistGroupsService) Get(ctx context.Context, groupID int64) (result 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -226,7 +226,7 @@ func (s *TodolistGroupsService) Create(ctx context.Context, todolistID int64, re
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -265,7 +265,7 @@ func (s *TodolistGroupsService) Update(ctx context.Context, groupID int64, req *
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -314,7 +314,7 @@ func (s *TodolistGroupsService) Reposition(ctx context.Context, groupID int64, p
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Trash moves a todolist group to the trash.
@@ -338,7 +338,7 @@ func (s *TodolistGroupsService) Trash(ctx context.Context, groupID int64) (err e
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // todolistGroupFromGenerated converts a generated TodolistGroup to our clean TodolistGroup type.

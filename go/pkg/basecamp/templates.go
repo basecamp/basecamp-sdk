@@ -105,7 +105,7 @@ func (s *TemplatesService) List(ctx context.Context, opts *TemplateListOptions) 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -178,7 +178,7 @@ func (s *TemplatesService) Get(ctx context.Context, templateID int64) (result *T
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -220,7 +220,7 @@ func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateReques
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -265,7 +265,7 @@ func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *Up
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -297,7 +297,7 @@ func (s *TemplatesService) Delete(ctx context.Context, templateID int64) (err er
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // CreateProject creates a new project from a template.
@@ -331,7 +331,7 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -363,7 +363,7 @@ func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, cons
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

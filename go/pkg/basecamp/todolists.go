@@ -127,7 +127,7 @@ func (s *TodolistsService) List(ctx context.Context, todosetID int64, opts *Todo
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -196,7 +196,7 @@ func (s *TodolistsService) Get(ctx context.Context, todolistID int64) (result *T
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -246,7 +246,7 @@ func (s *TodolistsService) Create(ctx context.Context, todosetID int64, req *Cre
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -287,7 +287,7 @@ func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *Up
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -327,7 +327,7 @@ func (s *TodolistsService) Trash(ctx context.Context, todolistID int64) (err err
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // todolistFromGenerated converts a generated Todolist to our clean Todolist type.

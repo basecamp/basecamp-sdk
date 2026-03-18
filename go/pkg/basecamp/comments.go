@@ -99,7 +99,7 @@ func (s *CommentsService) List(ctx context.Context, recordingID int64, opts *Com
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -172,7 +172,7 @@ func (s *CommentsService) Get(ctx context.Context, commentID int64) (result *Com
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -214,7 +214,7 @@ func (s *CommentsService) Create(ctx context.Context, recordingID int64, req *Cr
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -256,7 +256,7 @@ func (s *CommentsService) Update(ctx context.Context, commentID int64, req *Upda
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -289,7 +289,7 @@ func (s *CommentsService) Trash(ctx context.Context, commentID int64) (err error
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Note: Permanent deletion of comments is not supported by the Basecamp API.

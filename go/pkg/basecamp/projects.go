@@ -156,7 +156,7 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -225,7 +225,7 @@ func (s *ProjectsService) Get(ctx context.Context, id int64) (result *Project, e
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -267,7 +267,7 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -331,7 +331,7 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -364,7 +364,7 @@ func (s *ProjectsService) Trash(ctx context.Context, id int64) (err error) {
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // projectFromGenerated converts a generated Project to our clean Project type.

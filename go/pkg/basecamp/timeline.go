@@ -94,7 +94,7 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -167,7 +167,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -244,7 +244,7 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

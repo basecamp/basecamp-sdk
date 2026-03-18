@@ -65,7 +65,7 @@ func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -106,7 +106,7 @@ func (s *ToolsService) Create(ctx context.Context, sourceToolID int64, opts *Clo
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -148,7 +148,7 @@ func (s *ToolsService) Update(ctx context.Context, toolID int64, title string) (
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -181,7 +181,7 @@ func (s *ToolsService) Delete(ctx context.Context, toolID int64) (err error) {
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Enable enables (shows) a tool on the project dock.
@@ -205,7 +205,7 @@ func (s *ToolsService) Enable(ctx context.Context, toolID int64) (err error) {
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Disable disables (hides) a tool from the project dock.
@@ -229,7 +229,7 @@ func (s *ToolsService) Disable(ctx context.Context, toolID int64) (err error) {
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Reposition changes the position of a tool on the project dock.
@@ -262,7 +262,7 @@ func (s *ToolsService) Reposition(ctx context.Context, toolID int64, position in
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // toolFromGenerated converts a generated Tool to our clean type.

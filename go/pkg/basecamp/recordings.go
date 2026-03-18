@@ -163,7 +163,7 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -236,7 +236,7 @@ func (s *RecordingsService) Get(ctx context.Context, recordingID int64) (result 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -269,7 +269,7 @@ func (s *RecordingsService) Trash(ctx context.Context, recordingID int64) (err e
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Archive archives a recording.
@@ -293,7 +293,7 @@ func (s *RecordingsService) Archive(ctx context.Context, recordingID int64) (err
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // Unarchive restores an archived recording to active status.
@@ -316,7 +316,7 @@ func (s *RecordingsService) Unarchive(ctx context.Context, recordingID int64) (e
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // SetClientVisibility sets whether a recording is visible to clients.
@@ -346,7 +346,7 @@ func (s *RecordingsService) SetClientVisibility(ctx context.Context, recordingID
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {

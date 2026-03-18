@@ -207,7 +207,7 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, questionnaireID 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -249,7 +249,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, questionnaireID int
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -318,7 +318,7 @@ func (s *CheckinsService) GetQuestion(ctx context.Context, questionID int64) (re
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -369,7 +369,7 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, questionnaireID in
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -425,7 +425,7 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, questionID int64, 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -467,7 +467,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -536,7 +536,7 @@ func (s *CheckinsService) GetAnswer(ctx context.Context, answerID int64) (result
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -583,7 +583,7 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, questionID int64, re
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -625,7 +625,7 @@ func (s *CheckinsService) UpdateAnswer(ctx context.Context, answerID int64, req 
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // questionnaireFromGenerated converts a generated Questionnaire to our clean type.

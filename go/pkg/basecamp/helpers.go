@@ -42,7 +42,10 @@ func marshalBody(m map[string]any) (io.Reader, error) {
 
 // checkResponse converts HTTP response errors to SDK errors for non-2xx responses.
 // Used by all service methods that call the generated client.
-func checkResponse(resp *http.Response) error {
+// The body parameter is the raw response body bytes (already read by the generated
+// client). If the body contains a JSON object with an "error" key, that message is
+// used instead of the generic default.
+func checkResponse(resp *http.Response, body []byte) error {
 	if resp == nil {
 		return nil
 	}
@@ -51,22 +54,64 @@ func checkResponse(resp *http.Response) error {
 	}
 
 	requestID := resp.Header.Get("X-Request-Id")
+	serverMsg, serverHint := parseErrorBody(body)
 
 	switch resp.StatusCode {
 	case http.StatusUnauthorized:
-		return &Error{Code: CodeAuth, Message: "authentication required", HTTPStatus: 401, RequestID: requestID}
+		return &Error{Code: CodeAuth, Message: msgOrDefault(serverMsg, "authentication required"), Hint: serverHint, HTTPStatus: 401, RequestID: requestID}
 	case http.StatusForbidden:
-		return &Error{Code: CodeForbidden, Message: "access denied", HTTPStatus: 403, RequestID: requestID}
+		return &Error{Code: CodeForbidden, Message: msgOrDefault(serverMsg, "access denied"), Hint: serverHint, HTTPStatus: 403, RequestID: requestID}
 	case http.StatusNotFound:
-		return &Error{Code: CodeNotFound, Message: "resource not found", HTTPStatus: 404, RequestID: requestID}
+		return &Error{Code: CodeNotFound, Message: msgOrDefault(serverMsg, "resource not found"), Hint: serverHint, HTTPStatus: 404, RequestID: requestID}
 	case http.StatusUnprocessableEntity:
-		return &Error{Code: CodeValidation, Message: "validation error", HTTPStatus: 422, RequestID: requestID}
+		return &Error{Code: CodeValidation, Message: msgOrDefault(serverMsg, "validation error"), Hint: serverHint, HTTPStatus: 422, RequestID: requestID}
 	case http.StatusTooManyRequests:
-		return &Error{Code: CodeRateLimit, Message: "rate limited - try again later", HTTPStatus: 429, Retryable: true, RequestID: requestID}
+		return &Error{Code: CodeRateLimit, Message: msgOrDefault(serverMsg, "rate limited - try again later"), Hint: serverHint, HTTPStatus: 429, Retryable: true, RequestID: requestID}
 	default:
 		retryable := resp.StatusCode >= 500 && resp.StatusCode < 600
-		return &Error{Code: CodeAPI, Message: fmt.Sprintf("API error: %s", resp.Status), HTTPStatus: resp.StatusCode, Retryable: retryable, RequestID: requestID}
+		return &Error{Code: CodeAPI, Message: msgOrDefault(serverMsg, fmt.Sprintf("API error: %s", resp.Status)), Hint: serverHint, HTTPStatus: resp.StatusCode, Retryable: retryable, RequestID: requestID}
 	}
+}
+
+// maxErrorMessageLen caps server error messages to prevent unbounded memory growth.
+const maxErrorMessageLen = 500
+
+// parseErrorBody tries to extract "error" and "error_description" from a JSON
+// response body. Returns empty strings if the body is not JSON or missing those keys.
+func parseErrorBody(body []byte) (message, hint string) {
+	if len(body) == 0 {
+		return "", ""
+	}
+	var parsed struct {
+		Error       string `json:"error"`
+		Description string `json:"error_description"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", ""
+	}
+	message = truncate(parsed.Error, maxErrorMessageLen)
+	hint = truncate(parsed.Description, maxErrorMessageLen)
+	return message, hint
+}
+
+// msgOrDefault returns msg if non-empty, otherwise fallback.
+func msgOrDefault(msg, fallback string) string {
+	if msg != "" {
+		return msg
+	}
+	return fallback
+}
+
+// truncate returns s truncated to max runes, appending "…" if truncated.
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return string(runes[:max]) + "…"
 }
 
 // Pointer dereference helpers for converting generated types (which use pointers)

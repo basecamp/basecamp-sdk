@@ -80,7 +80,7 @@ func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64, op
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -161,7 +161,7 @@ func (s *BoostsService) ListEvent(ctx context.Context, recordingID, eventID int6
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -233,7 +233,7 @@ func (s *BoostsService) Get(ctx context.Context, boostID int64) (result *Boost, 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -276,7 +276,7 @@ func (s *BoostsService) CreateRecording(ctx context.Context, recordingID int64, 
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -319,7 +319,7 @@ func (s *BoostsService) CreateEvent(ctx context.Context, recordingID, eventID in
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -351,7 +351,7 @@ func (s *BoostsService) Delete(ctx context.Context, boostID int64) (err error) {
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // boostFromGenerated converts a generated Boost to our clean Boost type.

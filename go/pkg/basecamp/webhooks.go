@@ -118,7 +118,7 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64, opts *Webhoo
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
@@ -191,7 +191,7 @@ func (s *WebhooksService) Get(ctx context.Context, webhookID int64) (result *Web
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -247,7 +247,7 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON201 == nil {
@@ -298,7 +298,7 @@ func (s *WebhooksService) Update(ctx context.Context, webhookID int64, req *Upda
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -330,7 +330,7 @@ func (s *WebhooksService) Delete(ctx context.Context, webhookID int64) (err erro
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // webhookFromGenerated converts a generated Webhook to our clean type.

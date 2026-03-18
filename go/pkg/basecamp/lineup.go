@@ -80,7 +80,7 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // UpdateMarker updates an existing marker.
@@ -117,7 +117,7 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // DeleteMarker deletes a marker.
@@ -141,7 +141,7 @@ func (s *LineupService) DeleteMarker(ctx context.Context, markerID int64) (err e
 	if err != nil {
 		return err
 	}
-	return checkResponse(resp.HTTPResponse)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // ListMarkers returns all markers for the account.
@@ -163,7 +163,7 @@ func (s *LineupService) ListMarkers(ctx context.Context) (result *ListMarkersRes
 	if err != nil {
 		return nil, err
 	}
-	if err = checkResponse(resp.HTTPResponse); err != nil {
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 
