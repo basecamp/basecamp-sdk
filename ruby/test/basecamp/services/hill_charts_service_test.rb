@@ -70,4 +70,36 @@ class HillChartsServiceTest < Minitest::Test
     assert_equal "Design mockups", result["dots"][1]["label"]
     assert_equal 42, result["dots"][1]["position"]
   end
+
+  def test_get_not_found
+    stub_get("/12345/todosets/999/hill.json", response_body: "", status: 404)
+
+    assert_raises(Basecamp::NotFoundError) do
+      @account.hill_charts.get(todoset_id: 999)
+    end
+  end
+
+  def test_update_settings_not_found
+    stub_put("/12345/todosets/999/hills/settings.json", response_body: "", status: 404)
+
+    assert_raises(Basecamp::NotFoundError) do
+      @account.hill_charts.update_settings(todoset_id: 999, tracked: [1])
+    end
+  end
+
+  def test_update_settings_sends_body
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/todosets/\d+/hills/settings\.json})
+      .with(body: hash_including("tracked" => [1069479573], "untracked" => [1069479511]))
+      .to_return(status: 200, body: { "enabled" => true, "stale" => false, "dots" => [] }.to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    @account.hill_charts.update_settings(
+      todoset_id: 42,
+      tracked: [1069479573],
+      untracked: [1069479511]
+    )
+
+    assert_requested(:put, %r{todosets/42/hills/settings\.json},
+      body: hash_including("tracked" => [1069479573], "untracked" => [1069479511]))
+  end
 end
