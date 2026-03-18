@@ -1,0 +1,23 @@
+ruby/test/basecamp/services/hill_charts_service_test.rb
+  84bf0063bffbe76b 73-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "bfdd85ed6d3705d5bdeed3e34b1b1e078cb735cd",
+  "prompts": {
+    "84bf0063bffbe76b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c941066-71e1-4365-8f8f-fc2b8d33633f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 32,
+      "total_deletions": 0,
+      "accepted_lines": 32,
+      "overriden_lines": 0
+    }
+  }
+}
