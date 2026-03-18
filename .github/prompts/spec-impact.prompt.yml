@@ -19,6 +19,10 @@ messages:
         - [ ] Swift
 
       Keep it concise — this is a PR comment, not a document.
+
+      Do NOT wrap your response in a code fence or markdown block.
+      Output raw markdown directly — your response will be posted as-is
+      as a GitHub PR comment.
 model: openai/gpt-4o
 modelParameters:
   maxCompletionTokens: 800
