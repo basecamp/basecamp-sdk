@@ -1,0 +1,27 @@
+python/src/basecamp/async_client.py
+  83e5079e02fbd185 176-179
+python/src/basecamp/client.py
+  83e5079e02fbd185 177-180
+python/scripts/generate_services.py
+  83e5079e02fbd185 122,235-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "2e491f390a7b614a70783598aec4d97c0eaeead7",
+  "prompts": {
+    "83e5079e02fbd185": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0978950-ad5c-4a5f-8dfe-1744eb0f945f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 0,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    }
+  }
+}
