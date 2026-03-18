@@ -1,0 +1,23 @@
+.github/workflows/codeql.yml
+  77fcc15ec2a0a5ea 116-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "0239d3138eb173304a35a980a326dba37179f81b",
+  "prompts": {
+    "77fcc15ec2a0a5ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77d048d3-419d-4619-a091-9678a1b95fc3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
