@@ -76,7 +76,7 @@ type ScheduleEntry struct {
 
 // CreateScheduleEntryRequest specifies the parameters for creating a schedule entry.
 //
-// BREAKING CHANGE (v0.7): AllDay changed from bool to *bool so that
+// BREAKING CHANGE: AllDay changed from bool to *bool so that
 // "not provided" (nil) is distinguishable from "set to false". Use
 // a bool variable and taking its address (&v) to set explicitly.
 type CreateScheduleEntryRequest struct {
@@ -102,7 +102,7 @@ type CreateScheduleEntryRequest struct {
 
 // UpdateScheduleEntryRequest specifies the parameters for updating a schedule entry.
 //
-// BREAKING CHANGE (v0.7): AllDay changed from bool to *bool so that
+// BREAKING CHANGE: AllDay changed from bool to *bool so that
 // "not provided" (nil) is distinguishable from "set to false". Use
 // a bool variable and taking its address (&v) to set explicitly.
 type UpdateScheduleEntryRequest struct {

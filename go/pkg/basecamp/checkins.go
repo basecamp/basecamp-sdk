@@ -56,7 +56,7 @@ type Questionnaire struct {
 
 // QuestionSchedule represents the schedule configuration for a question.
 //
-// BREAKING CHANGE (v0.7): Hour and Minute changed from int to *int so that
+// BREAKING CHANGE: Hour and Minute changed from int to *int so that
 // "not provided" (nil) is distinguishable from "set to 0" (midnight / top
 // of hour).
 type QuestionSchedule struct {
