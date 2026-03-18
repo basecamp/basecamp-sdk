@@ -113,6 +113,8 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           config-file: ./.github/codeql/codeql-config.yml
+          # Use linked CodeQL CLI for Kotlin 2.3.x support (github/codeql#20661)
+          tools: linked
 
       # --- Build steps (manual mode only) ---
 
