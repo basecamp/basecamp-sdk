@@ -1,0 +1,75 @@
+.pre-commit-config.yaml
+  83e5079e02fbd185 80
+python/src/basecamp/async_client.py
+  83e5079e02fbd185 45
+python/src/basecamp/oauth/exchange.py
+  83e5079e02fbd185 125-131
+python/src/basecamp/async_auth.py
+  83e5079e02fbd185 4,112-113,119-121
+python/src/basecamp/_async_http.py
+  83e5079e02fbd185 70,73-74,93-94,101,107,113,224
+scripts/check-python-service-drift.sh
+  83e5079e02fbd185 33,35,50,52,67,69
+.github/workflows/release-python.yml
+  83e5079e02fbd185 114
+python/src/basecamp/download.py
+  83e5079e02fbd185 51,82
+python/src/basecamp/generated/services/_async_base.py
+  83e5079e02fbd185 62,66
+python/src/basecamp/_security.py
+  83e5079e02fbd185 40
+python/src/basecamp/oauth/errors.py
+  83e5079e02fbd185 3,5-10,20-21
+python/src/basecamp/oauth/discovery.py
+  83e5079e02fbd185 6,42,44-45
+python/pyproject.toml
+  83e5079e02fbd185 56
+python/src/basecamp/config.py
+  83e5079e02fbd185 40-43
+python/conformance/runner/python/runner.py
+  83e5079e02fbd185 225-226
+python/src/basecamp/client.py
+  83e5079e02fbd185 45
+python/src/basecamp/_http.py
+  83e5079e02fbd185 68,70-71,90-91,98,104,110,221
+Makefile
+  83e5079e02fbd185 333
+python/scripts/generate_metadata.py
+  83e5079e02fbd185 23,26,64
+python/src/basecamp/errors.py
+  83e5079e02fbd185 147
+python/tests/test_http.py
+  83e5079e02fbd185 170-171,178,181
+python/src/basecamp/generated/services/_base.py
+  83e5079e02fbd185 65,69
+python/src/basecamp/services/authorization.py
+  83e5079e02fbd185 3,36,40,43
+python/scripts/generate_services.py
+  83e5079e02fbd185 373,637,646,648,773,786,795
+python/tests/test_auth.py
+  83e5079e02fbd185 175
+python/src/basecamp/auth.py
+  83e5079e02fbd185 110-111
+python/conformance/runner/python/pyproject.toml
+  83e5079e02fbd185 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "78eb7317b5dedf857d7bb888c271efc1243e8daf",
+  "prompts": {
+    "83e5079e02fbd185": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0978950-ad5c-4a5f-8dfe-1744eb0f945f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 107,
+      "total_deletions": 59,
+      "accepted_lines": 93,
+      "overriden_lines": 0
+    }
+  }
+}
