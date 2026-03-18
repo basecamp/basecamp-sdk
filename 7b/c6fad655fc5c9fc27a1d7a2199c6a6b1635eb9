@@ -1,0 +1,27 @@
+.pre-commit-config.yaml
+  83e5079e02fbd185 60-61
+.github/workflows/test.yml
+  83e5079e02fbd185 154-156
+python/pyproject.toml
+  83e5079e02fbd185 11,13,20-23,46-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "7bc6fad655fc5c9fc27a1d7a2199c6a6b1635eb9",
+  "prompts": {
+    "83e5079e02fbd185": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0978950-ad5c-4a5f-8dfe-1744eb0f945f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 16,
+      "total_deletions": 4,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    }
+  }
+}
