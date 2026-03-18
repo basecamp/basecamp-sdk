@@ -1,7 +1,12 @@
 package basecamp
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -598,5 +603,112 @@ func TestUpdateScheduleSettingsRequest_Marshal(t *testing.T) {
 	// The field should still be present even when false (no omitempty)
 	if dataFalse["include_due_assignments"] != false {
 		t.Errorf("expected include_due_assignments to be false, got %v", dataFalse["include_due_assignments"])
+	}
+}
+
+// testSchedulesServer creates an httptest.Server and a SchedulesService wired to it.
+func testSchedulesServer(t *testing.T, handler http.HandlerFunc) *SchedulesService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Schedules()
+}
+
+func TestSchedulesService_UpdateEntryPartial(t *testing.T) {
+	fixture := loadSchedulesFixture(t, "entry_get.json")
+	var receivedBody map[string]any
+	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.UseNumber()
+		dec.Decode(&receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.UpdateEntry(context.Background(), 12345, &UpdateScheduleEntryRequest{
+		Summary: "Just the title",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedBody["summary"] != "Just the title" {
+		t.Errorf("expected summary 'Just the title', got %v", receivedBody["summary"])
+	}
+
+	for _, field := range []string{"description", "participant_ids", "all_day", "notify", "starts_at", "ends_at"} {
+		if _, ok := receivedBody[field]; ok {
+			t.Errorf("expected %q to be omitted from partial update, but it was present: %v", field, receivedBody[field])
+		}
+	}
+}
+
+func TestSchedulesService_UpdateEntryAllDay(t *testing.T) {
+	fixture := loadSchedulesFixture(t, "entry_get.json")
+	var receivedBody map[string]any
+	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.UseNumber()
+		dec.Decode(&receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	// Setting AllDay to false must send false (not omit it)
+	allDayFalse := false
+	_, err := svc.UpdateEntry(context.Background(), 12345, &UpdateScheduleEntryRequest{
+		AllDay: &allDayFalse,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	val, ok := receivedBody["all_day"]
+	if !ok {
+		t.Fatal("expected all_day to be present when explicitly set to false")
+	}
+	if val != false {
+		t.Errorf("expected all_day=false, got %v", val)
+	}
+}
+
+func TestSchedulesService_CreateEntryPartial(t *testing.T) {
+	fixture := loadSchedulesFixture(t, "entry_get.json")
+	var receivedBody map[string]any
+	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.UseNumber()
+		dec.Decode(&receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	_, err := svc.CreateEntry(context.Background(), 12345, &CreateScheduleEntryRequest{
+		Summary:  "Meeting",
+		StartsAt: "2024-01-15T09:00:00Z",
+		EndsAt:   "2024-01-15T10:00:00Z",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Notify should NOT be present when false (not explicitly requested)
+	if _, ok := receivedBody["notify"]; ok {
+		t.Errorf("expected notify to be omitted when not set, but it was present: %v", receivedBody["notify"])
 	}
 }

@@ -1,7 +1,12 @@
 package basecamp
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -927,5 +932,94 @@ func TestTodoFromGenerated_PartialNestedFields(t *testing.T) {
 	}
 	if todo.Creator.ID != creatorID {
 		t.Errorf("expected Creator.ID %d, got %d", creatorID, todo.Creator.ID)
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Service-level tests
+// -----------------------------------------------------------------------------
+
+func testTodosServer(t *testing.T, handler http.HandlerFunc) *TodosService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Todos()
+}
+
+func TestTodosService_Update(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	var receivedBody map[string]any
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		body, _ := io.ReadAll(r.Body)
+		dec := json.NewDecoder(bytes.NewReader(body))
+		dec.UseNumber()
+		dec.Decode(&receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	todo, err := svc.Update(context.Background(), 1069479520, &UpdateTodoRequest{
+		Content:     "Updated content",
+		Description: "<div>Updated description</div>",
+		AssigneeIDs: []int64{1049715920},
+		Notify:      true,
+		DueOn:       "2022-12-15",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if todo.ID != 1069479520 {
+		t.Errorf("expected ID 1069479520, got %d", todo.ID)
+	}
+	if receivedBody["content"] != "Updated content" {
+		t.Errorf("expected content 'Updated content', got %v", receivedBody["content"])
+	}
+	if receivedBody["description"] != "<div>Updated description</div>" {
+		t.Errorf("expected description in body, got %v", receivedBody["description"])
+	}
+}
+
+func TestTodosService_UpdatePartial(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	var receivedBody map[string]any
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		dec := json.NewDecoder(bytes.NewReader(body))
+		dec.UseNumber()
+		dec.Decode(&receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	// Only set Content — all other fields should be omitted from the request body
+	_, err := svc.Update(context.Background(), 1069479520, &UpdateTodoRequest{
+		Content: "new title",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedBody["content"] != "new title" {
+		t.Errorf("expected content 'new title', got %v", receivedBody["content"])
+	}
+
+	// These fields must NOT be present in the request body
+	for _, field := range []string{"description", "assignee_ids", "completion_subscriber_ids", "notify", "due_on", "starts_on"} {
+		if _, ok := receivedBody[field]; ok {
+			t.Errorf("expected %q to be omitted from partial update, but it was present: %v", field, receivedBody[field])
+		}
 	}
 }

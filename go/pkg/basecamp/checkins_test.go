@@ -1,7 +1,12 @@
 package basecamp
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -685,5 +690,123 @@ func TestUpdateAnswerRequestWrapper_Marshal(t *testing.T) {
 	}
 	if questionAnswer["content"] != "<div>My updated answer.</div>" {
 		t.Errorf("unexpected content: %v", questionAnswer["content"])
+	}
+}
+
+func testCheckinsServer(t *testing.T, handler http.HandlerFunc) *CheckinsService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Checkins()
+}
+
+func TestCheckinsService_UpdateQuestionPartial(t *testing.T) {
+	fixture := loadCheckinsFixture(t, "question.json")
+	var receivedBody map[string]any
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.UseNumber()
+		dec.Decode(&receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
+		Title: "New question title",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedBody["title"] != "New question title" {
+		t.Errorf("expected title 'New question title', got %v", receivedBody["title"])
+	}
+
+	for _, field := range []string{"schedule", "paused"} {
+		if _, ok := receivedBody[field]; ok {
+			t.Errorf("expected %q to be omitted from partial update, but it was present: %v", field, receivedBody[field])
+		}
+	}
+}
+
+func TestCheckinsService_UpdateQuestionPartialSchedule(t *testing.T) {
+	fixture := loadCheckinsFixture(t, "question.json")
+	var receivedBody map[string]any
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.UseNumber()
+		dec.Decode(&receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	// Update only the schedule end_date — other schedule fields must not leak
+	_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
+		Schedule: &QuestionSchedule{
+			EndDate: "2025-06-30",
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	schedRaw, ok := receivedBody["schedule"]
+	if !ok {
+		t.Fatal("expected schedule to be present")
+	}
+	sched, ok := schedRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("expected schedule to be a map, got %T", schedRaw)
+	}
+
+	if sched["end_date"] != "2025-06-30" {
+		t.Errorf("expected end_date '2025-06-30', got %v", sched["end_date"])
+	}
+
+	// Zero-valued schedule fields must NOT be present
+	for _, field := range []string{"frequency", "days", "hour", "minute", "start_date"} {
+		if _, ok := sched[field]; ok {
+			t.Errorf("expected schedule.%q to be omitted, but it was present: %v", field, sched[field])
+		}
+	}
+}
+
+func TestCheckinsService_UpdateQuestionEmptySchedule(t *testing.T) {
+	fixture := loadCheckinsFixture(t, "question.json")
+	var receivedBody map[string]any
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.UseNumber()
+		dec.Decode(&receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	// Non-nil but entirely empty Schedule must not leak as {}
+	_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
+		Title:    "New title",
+		Schedule: &QuestionSchedule{},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if _, ok := receivedBody["schedule"]; ok {
+		t.Errorf("expected schedule to be omitted for empty struct, but it was present: %v", receivedBody["schedule"])
 	}
 }
