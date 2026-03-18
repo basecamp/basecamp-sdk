@@ -356,12 +356,16 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, questionnaireID in
 		return nil, err
 	}
 
-	body := generated.CreateQuestionJSONRequestBody{
-		Title:    req.Title,
-		Schedule: questionScheduleToGenerated(req.Schedule),
+	body := map[string]any{
+		"title":    req.Title,
+		"schedule": questionScheduleToMap(req.Schedule),
 	}
 
-	resp, err := s.client.parent.gen.CreateQuestionWithResponse(ctx, s.client.accountID, questionnaireID, body)
+	bodyReader, err := marshalBody(body)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.parent.gen.CreateQuestionWithBodyWithResponse(ctx, s.client.accountID, questionnaireID, "application/json", bodyReader)
 	if err != nil {
 		return nil, err
 	}

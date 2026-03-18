@@ -31,6 +31,7 @@ import (
 //   - CardStepsService.Update       (types.Date: due_on)
 //   - ProjectsService.Update        (nested: schedule_attributes)
 //   - CheckinsService.UpdateQuestion (nested: schedule)
+//   - CheckinsService.CreateQuestion (nested: schedule — Hour/Minute int32 omitempty)
 func marshalBody(m map[string]any) (io.Reader, error) {
 	b, err := json.Marshal(m)
 	if err != nil {
