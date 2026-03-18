@@ -78,7 +78,7 @@ type ScheduleEntry struct {
 //
 // BREAKING CHANGE: AllDay changed from bool to *bool so that
 // "not provided" (nil) is distinguishable from "set to false". Use
-// a bool variable and taking its address (&v) to set explicitly.
+// a bool variable and take its address (&v) to set explicitly.
 type CreateScheduleEntryRequest struct {
 	// Summary is the event title (required).
 	Summary string `json:"summary"`
@@ -104,7 +104,7 @@ type CreateScheduleEntryRequest struct {
 //
 // BREAKING CHANGE: AllDay changed from bool to *bool so that
 // "not provided" (nil) is distinguishable from "set to false". Use
-// a bool variable and taking its address (&v) to set explicitly.
+// a bool variable and take its address (&v) to set explicitly.
 type UpdateScheduleEntryRequest struct {
 	// Summary is the event title (optional).
 	Summary string `json:"summary,omitempty"`

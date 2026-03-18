@@ -817,8 +817,8 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 }
 
 // questionScheduleToMap converts a QuestionSchedule to a map for JSON marshaling.
-// Used by UpdateQuestion to avoid the generated QuestionSchedule struct's zero-value
-// serialization leaking empty fields.
+// Used by CreateQuestion and UpdateQuestion to avoid the generated QuestionSchedule
+// struct's zero-value serialization leaking empty fields.
 func questionScheduleToMap(s *QuestionSchedule) map[string]any {
 	m := map[string]any{}
 	if s.Frequency != "" {
