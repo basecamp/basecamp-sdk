@@ -1,0 +1,33 @@
+.github/workflows/test.yml
+  83e5079e02fbd185 135-136,154-156
+python/src/basecamp/oauth/discovery.py
+  83e5079e02fbd185 39
+python/pyproject.toml
+  83e5079e02fbd185 11,13,20-23,46-49
+python/src/basecamp/_async_http.py
+  83e5079e02fbd185 9,229
+python/src/basecamp/_http.py
+  83e5079e02fbd185 8,228
+.pre-commit-config.yaml
+  83e5079e02fbd185 60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "b0791a8a28355c92a649c626e0027524c436a204",
+  "prompts": {
+    "83e5079e02fbd185": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0978950-ad5c-4a5f-8dfe-1744eb0f945f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    }
+  }
+}
