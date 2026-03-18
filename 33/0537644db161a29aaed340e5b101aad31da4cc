@@ -1,0 +1,25 @@
+go/pkg/basecamp/helpers.go
+  b7a5262168982b0e 34
+go/pkg/basecamp/checkins.go
+  b7a5262168982b0e 359-361,364-368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "330537644db161a29aaed340e5b101aad31da4cc",
+  "prompts": {
+    "b7a5262168982b0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a17053e-961a-48d1-9a9a-b1428591e83b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 4,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  }
+}
