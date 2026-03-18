@@ -816,39 +816,6 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 	return a
 }
 
-// questionScheduleToGenerated converts our QuestionSchedule to the generated type.
-func questionScheduleToGenerated(s *QuestionSchedule) generated.QuestionSchedule {
-	days := make([]int32, len(s.Days))
-	for i, d := range s.Days {
-		days[i] = int32(d) // #nosec G115 -- weekday values are always 0-6
-	}
-
-	gs := generated.QuestionSchedule{
-		Frequency: s.Frequency,
-		Days:      days,
-		StartDate: s.StartDate,
-		EndDate:   s.EndDate,
-	}
-	if s.Hour != nil {
-		gs.Hour = int32(*s.Hour) // #nosec G115 -- hour is 0-23
-	}
-	if s.Minute != nil {
-		gs.Minute = int32(*s.Minute) // #nosec G115 -- minute is 0-59
-	}
-
-	if s.WeekInstance != nil {
-		gs.WeekInstance = int32(*s.WeekInstance) // #nosec G115 -- bounded small value
-	}
-	if s.WeekInterval != nil {
-		gs.WeekInterval = int32(*s.WeekInterval) // #nosec G115 -- bounded small value
-	}
-	if s.MonthInterval != nil {
-		gs.MonthInterval = int32(*s.MonthInterval) // #nosec G115 -- bounded small value
-	}
-
-	return gs
-}
-
 // questionScheduleToMap converts a QuestionSchedule to a map for JSON marshaling.
 // Used by UpdateQuestion to avoid the generated QuestionSchedule struct's zero-value
 // serialization leaking empty fields.
