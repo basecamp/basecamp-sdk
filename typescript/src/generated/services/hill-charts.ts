@@ -65,8 +65,8 @@ export class HillChartsService extends BaseService {
   /**
    * Track or untrack todolists on a hill chart
    * @param todosetId - The todoset ID
-   * @param req - Hill_chart_setting update parameters
-   * @returns The hill_chart_setting
+   * @param req - Hill_chart update parameters
+   * @returns The hill_chart
    * @throws {BasecampError} If the resource is not found or fields are invalid
    *
    * @example
@@ -79,7 +79,7 @@ export class HillChartsService extends BaseService {
       {
         service: "HillCharts",
         operation: "UpdateHillChartSettings",
-        resourceType: "hill_chart_setting",
+        resourceType: "hill_chart",
         isMutation: true,
         resourceId: todosetId,
       },

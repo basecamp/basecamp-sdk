@@ -59,6 +59,7 @@ class OperationParser(private val api: OpenApiParser) {
     }
 
     fun extractResourceType(operationId: String): String {
+        RESOURCE_TYPE_OVERRIDES[operationId]?.let { return it }
         for ((prefix, _) in VERB_PATTERNS) {
             if (operationId.startsWith(prefix)) {
                 val remainder = operationId.removePrefix(prefix)

@@ -101,8 +101,15 @@ func convertPath(_ path: String) -> String {
     return path
 }
 
+private let resourceTypeOverrides: [String: String] = [
+    "UpdateHillChartSettings": "hill_chart",
+]
+
 /// Extracts the resource type from an operationId using verb patterns.
 func extractResourceType(_ operationId: String) -> String {
+    if let override = resourceTypeOverrides[operationId] {
+        return override
+    }
     for (prefix, _) in verbPatterns {
         if operationId.hasPrefix(prefix) {
             let remainder = String(operationId.dropFirst(prefix.count))

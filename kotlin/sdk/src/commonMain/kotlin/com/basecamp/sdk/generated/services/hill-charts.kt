@@ -41,7 +41,7 @@ class HillChartsService(client: AccountClient) : BaseService(client) {
         val info = OperationInfo(
             service = "HillCharts",
             operation = "UpdateHillChartSettings",
-            resourceType = "hill_chart_setting",
+            resourceType = "hill_chart",
             isMutation = true,
             projectId = null,
             resourceId = todosetId,

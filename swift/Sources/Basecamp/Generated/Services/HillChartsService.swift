@@ -13,7 +13,7 @@ public final class HillChartsService: BaseService, @unchecked Sendable {
 
     public func updateSettings(todosetId: Int, req: UpdateHillChartSettingsRequest) async throws -> HillChart {
         return try await request(
-            OperationInfo(service: "HillCharts", operation: "UpdateHillChartSettings", resourceType: "hill_chart_setting", isMutation: true, resourceId: todosetId),
+            OperationInfo(service: "HillCharts", operation: "UpdateHillChartSettings", resourceType: "hill_chart", isMutation: true, resourceId: todosetId),
             method: "PUT",
             path: "/todosets/\(todosetId)/hills/settings.json",
             body: req,

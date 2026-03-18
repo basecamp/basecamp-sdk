@@ -284,6 +284,10 @@ const VERB_PATTERNS = [
 /**
  * Method name overrides for specific operationIds.
  */
+const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
+  UpdateHillChartSettings: "hill_chart",
+};
+
 const METHOD_NAME_OVERRIDES: Record<string, string> = {
   GetMyProfile: "me",
   GetTodolistOrGroup: "get",
@@ -600,6 +604,9 @@ function isSimpleResource(resource: string): boolean {
 }
 
 function extractResourceType(operationId: string): string {
+  if (RESOURCE_TYPE_OVERRIDES[operationId]) {
+    return RESOURCE_TYPE_OVERRIDES[operationId];
+  }
   for (const { prefix } of VERB_PATTERNS) {
     if (operationId.startsWith(prefix)) {
       const remainder = operationId.slice(prefix.length);

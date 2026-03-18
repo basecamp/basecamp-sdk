@@ -245,6 +245,10 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "GetScheduleEntryOccurrence" to "getEntryOccurrence",
 )
 
+val RESOURCE_TYPE_OVERRIDES = mapOf(
+    "UpdateHillChartSettings" to "hill_chart",
+)
+
 /**
  * Maps OpenAPI schema names to friendly Kotlin type names.
  */
