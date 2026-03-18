@@ -1,0 +1,45 @@
+python/src/basecamp/generated/services/_base.py
+  83e5079e02fbd185 65,69
+python/src/basecamp/_async_http.py
+  83e5079e02fbd185 71,76,79
+python/src/basecamp/_http.py
+  83e5079e02fbd185 70,75,78
+python/scripts/generate_services.py
+  83e5079e02fbd185 641,643
+python/conformance/runner/python/runner.py
+  83e5079e02fbd185 369-371,373
+.github/workflows/test.yml
+  83e5079e02fbd185 150
+scripts/check-python-service-drift.sh
+  83e5079e02fbd185 35-39,41
+python/src/basecamp/download.py
+  83e5079e02fbd185 4,21,23-24
+python/tests/test_download.py
+  83e5079e02fbd185 46-53
+.github/workflows/release-python.yml
+  83e5079e02fbd185 114
+python/src/basecamp/generated/services/_async_base.py
+  83e5079e02fbd185 62,66
+python/src/basecamp/errors.py
+  83e5079e02fbd185 147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "cc63c48f2f57f46e839283d0b41070fd1be75aa8",
+  "prompts": {
+    "83e5079e02fbd185": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0978950-ad5c-4a5f-8dfe-1744eb0f945f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 61,
+      "total_deletions": 44,
+      "accepted_lines": 37,
+      "overriden_lines": 0
+    }
+  }
+}
