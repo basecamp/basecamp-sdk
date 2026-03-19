@@ -83,32 +83,32 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       # --- Language setup (conditional) ---
 
       - name: Set up Go
         if: matrix.language == 'go'
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version-file: 'go/go.mod'
           cache-dependency-path: 'go/go.sum'
 
       - name: Set up Java
         if: matrix.language == 'java-kotlin'
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Gradle
         if: matrix.language == 'java-kotlin'
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
 
       # --- CodeQL init ---
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4
+        uses: github/codeql-action/init@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -131,7 +131,7 @@ jobs:
       # --- Analysis (fails build on real errors) ---
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4
+        uses: github/codeql-action/analyze@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         with:
           category: codeql-${{ matrix.language }}
           upload: never
@@ -164,7 +164,7 @@ jobs:
       # --- Upload (tolerates GHAS unavailability) ---
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4
+        uses: github/codeql-action/upload-sarif@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         continue-on-error: true  # Requires GitHub Advanced Security
         with:
           sarif_file: sarif-results
@@ -178,10 +178,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4
+        uses: github/codeql-action/init@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         with:
           languages: swift
           build-mode: manual
@@ -192,7 +192,7 @@ jobs:
         run: swift build
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4
+        uses: github/codeql-action/analyze@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         with:
           category: codeql-swift
           upload: never
@@ -217,7 +217,7 @@ jobs:
           done
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4
+        uses: github/codeql-action/upload-sarif@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         continue-on-error: true  # Requires GitHub Advanced Security
         with:
           sarif_file: sarif-results
