@@ -55,15 +55,11 @@ type Questionnaire struct {
 }
 
 // QuestionSchedule represents the schedule configuration for a question.
-//
-// BREAKING CHANGE: Hour and Minute changed from int to *int so that
-// "not provided" (nil) is distinguishable from "set to 0" (midnight / top
-// of hour).
 type QuestionSchedule struct {
 	Frequency     string `json:"frequency"`
 	Days          []int  `json:"days"`
-	Hour          *int   `json:"hour,omitempty"`
-	Minute        *int   `json:"minute,omitempty"`
+	Hour          int    `json:"hour"`
+	Minute        int    `json:"minute"`
 	WeekInstance  *int   `json:"week_instance,omitempty"`
 	WeekInterval  *int   `json:"week_interval,omitempty"`
 	MonthInterval *int   `json:"month_interval,omitempty"`
@@ -356,16 +352,12 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, questionnaireID in
 		return nil, err
 	}
 
-	body := map[string]any{
-		"title":    req.Title,
-		"schedule": questionScheduleToMap(req.Schedule),
+	body := generated.CreateQuestionJSONRequestBody{
+		Title:    req.Title,
+		Schedule: questionScheduleToGenerated(req.Schedule),
 	}
 
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := s.client.parent.gen.CreateQuestionWithBodyWithResponse(ctx, s.client.accountID, questionnaireID, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.CreateQuestionWithResponse(ctx, s.client.accountID, questionnaireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -403,25 +395,18 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, questionID int64, 
 		return nil, err
 	}
 
-	body := map[string]any{}
+	body := generated.UpdateQuestionJSONRequestBody{}
 	if req.Title != "" {
-		body["title"] = req.Title
+		body.Title = req.Title
 	}
 	if req.Schedule != nil {
-		sm := questionScheduleToMap(req.Schedule)
-		if len(sm) > 0 {
-			body["schedule"] = sm
-		}
+		body.Schedule = questionScheduleToGenerated(req.Schedule)
 	}
 	if req.Paused != nil {
-		body["paused"] = *req.Paused
+		body.Paused = req.Paused
 	}
 
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := s.client.parent.gen.UpdateQuestionWithBodyWithResponse(ctx, s.client.accountID, questionID, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.UpdateQuestionWithResponse(ctx, s.client.accountID, questionID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -700,13 +685,11 @@ func questionFromGenerated(gq generated.Question) Question {
 		for i, d := range gq.Schedule.Days {
 			days[i] = int(d)
 		}
-		hour := int(gq.Schedule.Hour)
-		minute := int(gq.Schedule.Minute)
 		q.Schedule = &QuestionSchedule{
 			Frequency: gq.Schedule.Frequency,
 			Days:      days,
-			Hour:      &hour,
-			Minute:    &minute,
+			Hour:      int(gq.Schedule.Hour),
+			Minute:    int(gq.Schedule.Minute),
 			StartDate: gq.Schedule.StartDate,
 			EndDate:   gq.Schedule.EndDate,
 		}
@@ -816,37 +799,31 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 	return a
 }
 
-// questionScheduleToMap converts a QuestionSchedule to a map for JSON marshaling.
-// Used by CreateQuestion and UpdateQuestion to avoid the generated QuestionSchedule
-// struct's zero-value serialization leaking empty fields.
-func questionScheduleToMap(s *QuestionSchedule) map[string]any {
-	m := map[string]any{}
-	if s.Frequency != "" {
-		m["frequency"] = s.Frequency
+// questionScheduleToGenerated converts our QuestionSchedule to the generated type.
+func questionScheduleToGenerated(s *QuestionSchedule) generated.QuestionSchedule {
+	days := make([]int32, len(s.Days))
+	for i, d := range s.Days {
+		days[i] = int32(d) // #nosec G115 -- weekday values are always 0-6
 	}
-	if len(s.Days) > 0 {
-		m["days"] = s.Days
+
+	gs := generated.QuestionSchedule{
+		Frequency: s.Frequency,
+		Days:      days,
+		Hour:      int32(s.Hour),   // #nosec G115 -- hour is 0-23
+		Minute:    int32(s.Minute), // #nosec G115 -- minute is 0-59
+		StartDate: s.StartDate,
+		EndDate:   s.EndDate,
 	}
-	if s.Hour != nil {
-		m["hour"] = *s.Hour
-	}
-	if s.Minute != nil {
-		m["minute"] = *s.Minute
-	}
-	if s.StartDate != "" {
-		m["start_date"] = s.StartDate
-	}
-	if s.EndDate != "" {
-		m["end_date"] = s.EndDate
-	}
+
 	if s.WeekInstance != nil {
-		m["week_instance"] = *s.WeekInstance
+		gs.WeekInstance = int32(*s.WeekInstance) // #nosec G115 -- bounded small value
 	}
 	if s.WeekInterval != nil {
-		m["week_interval"] = *s.WeekInterval
+		gs.WeekInterval = int32(*s.WeekInterval) // #nosec G115 -- bounded small value
 	}
 	if s.MonthInterval != nil {
-		m["month_interval"] = *s.MonthInterval
+		gs.MonthInterval = int32(*s.MonthInterval) // #nosec G115 -- bounded small value
 	}
-	return m
+
+	return gs
 }

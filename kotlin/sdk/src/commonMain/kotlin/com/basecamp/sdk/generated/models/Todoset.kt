@@ -31,5 +31,8 @@ data class Todoset(
     @SerialName("todolists_url") val todolistsUrl: String? = null,
     @SerialName("completed_ratio") val completedRatio: String? = null,
     val completed: Boolean = false,
+    @SerialName("completed_count") val completedCount: Int = 0,
+    @SerialName("on_schedule_count") val onScheduleCount: Int = 0,
+    @SerialName("over_schedule_count") val overScheduleCount: Int = 0,
     @SerialName("app_todolists_url") val appTodolistsUrl: String? = null
 )

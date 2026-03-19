@@ -55,3 +55,27 @@ repos:
         pass_filenames: false
         files: ^typescript/.*\.(ts|tsx)$
         stages: [push]
+
+      - id: python-lint
+        name: python ruff check + format
+        entry: bash -c 'cd python && uv run ruff check src/ tests/ && uv run ruff format --check src/ tests/'
+        language: system
+        pass_filenames: false
+        files: ^python/.*\.py$
+        stages: [commit]
+
+      - id: python-typecheck
+        name: python mypy
+        entry: bash -c 'cd python && uv run mypy src/basecamp/ --ignore-missing-imports'
+        language: system
+        pass_filenames: false
+        files: ^python/.*\.py$
+        stages: [push]
+
+      - id: python-test-short
+        name: python test (short)
+        entry: bash -c 'cd python && uv run pytest -x -q --no-header'
+        language: system
+        pass_filenames: false
+        files: ^python/.*\.py$
+        stages: [push]

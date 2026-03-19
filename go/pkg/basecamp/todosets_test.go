@@ -50,6 +50,15 @@ func TestTodoset_UnmarshalGet(t *testing.T) {
 	if todoset.CompletedRatio != "5/15" {
 		t.Errorf("expected completed_ratio '5/15', got %q", todoset.CompletedRatio)
 	}
+	if todoset.CompletedCount != 5 {
+		t.Errorf("expected completed_count 5, got %d", todoset.CompletedCount)
+	}
+	if todoset.OnScheduleCount != 3 {
+		t.Errorf("expected on_schedule_count 3, got %d", todoset.OnScheduleCount)
+	}
+	if todoset.OverScheduleCount != 2 {
+		t.Errorf("expected over_schedule_count 2, got %d", todoset.OverScheduleCount)
+	}
 	if todoset.Bucket == nil {
 		t.Fatal("expected Bucket to be non-nil")
 	}

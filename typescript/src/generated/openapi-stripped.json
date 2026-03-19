@@ -21672,6 +21672,18 @@
           "completed": {
             "type": "boolean"
           },
+          "completed_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "on_schedule_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "over_schedule_count": {
+            "type": "integer",
+            "format": "int32"
+          },
           "app_todolists_url": {
             "type": "string"
           }

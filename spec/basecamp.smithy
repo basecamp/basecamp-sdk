@@ -1321,6 +1321,9 @@ structure Todoset {
   todolists_url: String
   completed_ratio: String
   completed: Boolean
+  completed_count: Integer
+  on_schedule_count: Integer
+  over_schedule_count: Integer
   app_todolists_url: String
 }
 

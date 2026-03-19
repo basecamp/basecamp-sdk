@@ -1,44 +1,10 @@
 package basecamp
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 )
-
-// marshalBody encodes a map as JSON and returns an io.Reader suitable for the
-// generated client's *WithBodyWithResponse methods.
-//
-// This is an intentional architectural exception to the normal pattern of using
-// generated typed request bodies. It exists because the generated structs for
-// several Update endpoints contain value-type fields (types.Date, time.Time,
-// nested structs) whose Go zero values serialize as non-empty JSON:
-//
-//   - types.Date{}  → "due_on": null
-//   - time.Time{}   → "starts_at": "0001-01-01T00:00:00Z"
-//   - struct{}      → "schedule_attributes": {}
-//
-// These leak into partial updates and can clear existing data server-side.
-// Building a map[string]any and only inserting provided keys avoids this.
-//
-// Methods using this pattern (do not "simplify" back to generated bodies):
-//   - TodosService.Update           (types.Date: due_on, starts_on)
-//   - SchedulesService.UpdateEntry  (time.Time: starts_at, ends_at)
-//   - CardsService.Update           (types.Date: due_on)
-//   - CardStepsService.Update       (types.Date: due_on)
-//   - ProjectsService.Update        (nested: schedule_attributes)
-//   - CheckinsService.UpdateQuestion (nested: schedule)
-//   - CheckinsService.CreateQuestion (nested: schedule — Hour/Minute int32 omitempty)
-func marshalBody(m map[string]any) (io.Reader, error) {
-	b, err := json.Marshal(m)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request body: %w", err)
-	}
-	return bytes.NewReader(b), nil
-}
 
 // checkResponse converts HTTP response errors to SDK errors for non-2xx responses.
 // Used by all service methods that call the generated client.

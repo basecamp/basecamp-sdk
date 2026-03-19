@@ -45,5 +45,8 @@
   "todolists_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todosets/1069479338/todolists.json",
   "completed_ratio": "5/15",
   "completed": false,
+  "completed_count": 5,
+  "on_schedule_count": 3,
+  "over_schedule_count": 2,
   "app_todolists_url": "https://3.basecamp.com/195539477/buckets/2085958500/todosets/1069479338/todolists"
 }

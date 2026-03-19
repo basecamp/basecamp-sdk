@@ -290,15 +290,10 @@ func (s *MessagesService) Update(ctx context.Context, messageID int64, req *Upda
 		return nil, err
 	}
 
-	body := generated.UpdateMessageJSONRequestBody{}
-	if req.Subject != "" {
-		body.Subject = req.Subject
-	}
-	if req.Content != "" {
-		body.Content = req.Content
-	}
-	if req.Status != "" {
-		body.Status = req.Status
+	body := generated.UpdateMessageJSONRequestBody{
+		Subject: req.Subject,
+		Content: req.Content,
+		Status:  req.Status,
 	}
 	if req.CategoryID != 0 {
 		body.CategoryId = &req.CategoryID

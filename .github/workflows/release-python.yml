@@ -1,0 +1,137 @@
+name: Release Python SDK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  smithy:
+    uses: ./.github/workflows/smithy-verify.yml
+
+  test:
+    name: Test Python SDK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v5
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --dev --python 3.13
+
+      - name: Lint
+        run: |
+          uv run ruff check src/ tests/
+          uv run ruff format --check src/ tests/
+
+      - name: Type check
+        run: uv run mypy src/basecamp/ --ignore-missing-imports
+
+      - name: Check generated code drift
+        run: |
+          uv run python scripts/generate_services.py
+          uv run python scripts/generate_metadata.py
+          uv run python scripts/generate_types.py
+          uv run ruff format src/basecamp/generated/
+          if [ -n "$(git status --porcelain -- src/basecamp/generated/)" ]; then
+            echo "::error::Generated Python code is out of date. Run 'make py-generate' and commit."
+            exit 1
+          fi
+
+      - name: Run tests with coverage
+        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=60
+
+  publish:
+    name: Publish to PyPI
+    needs: [smithy, test]
+    runs-on: ubuntu-latest
+    environment: release-pypi
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v5
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Extract version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            VERSION=$(python3 -c "exec(open('src/basecamp/_version.py').read()); print(VERSION)")
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Rehearsal for version: $VERSION"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            PY_VERSION=$(python3 -c "exec(open('src/basecamp/_version.py').read()); print(VERSION)")
+            if [ "$PY_VERSION" != "$VERSION" ]; then
+              echo "::error::Python version ($PY_VERSION) does not match tag version ($VERSION)"
+              exit 1
+            fi
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Releasing version: $VERSION"
+          fi
+
+      - name: Build package
+        run: uv build
+
+      - name: Check if already published
+        id: check-published
+        if: github.event_name == 'push'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Query the PyPI JSON API for exact version match
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/basecamp-sdk/${VERSION}/json")
+          if [ "$STATUS" = "200" ]; then
+            echo "already_published=true" >> $GITHUB_OUTPUT
+            echo "::notice::Version ${VERSION} already published to PyPI"
+          else
+            echo "already_published=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to PyPI
+        if: github.event_name == 'push' && steps.check-published.outputs.already_published != 'true'
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b54f72e44af12044e8c37f06 # v1.12.4
+        with:
+          packages-dir: python/dist/
+          attestations: true
+
+      - name: Dry-run build verification
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          ls -la dist/
+          echo "::notice::Dry run mode - not actually publishing"
+          echo "Would publish: $(ls dist/*.tar.gz dist/*.whl)"

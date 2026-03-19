@@ -3618,6 +3618,12 @@ export interface components {
             todolists_url?: string;
             completed_ratio?: string;
             completed?: boolean;
+            /** Format: int32 */
+            completed_count?: number;
+            /** Format: int32 */
+            on_schedule_count?: number;
+            /** Format: int32 */
+            over_schedule_count?: number;
             app_todolists_url?: string;
         };
         Tool: {

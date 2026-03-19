@@ -18,7 +18,10 @@ public struct Todoset: Codable, Sendable {
     public var appTodolistsUrl: String?
     public var bookmarkUrl: String?
     public var completed: Bool?
+    public var completedCount: Int32?
     public var completedRatio: String?
+    public var onScheduleCount: Int32?
+    public var overScheduleCount: Int32?
     public var position: Int32?
     public var todolistsCount: Int32?
     public var todolistsUrl: String?
@@ -40,7 +43,10 @@ public struct Todoset: Codable, Sendable {
         appTodolistsUrl: String? = nil,
         bookmarkUrl: String? = nil,
         completed: Bool? = nil,
+        completedCount: Int32? = nil,
         completedRatio: String? = nil,
+        onScheduleCount: Int32? = nil,
+        overScheduleCount: Int32? = nil,
         position: Int32? = nil,
         todolistsCount: Int32? = nil,
         todolistsUrl: String? = nil
@@ -61,7 +67,10 @@ public struct Todoset: Codable, Sendable {
         self.appTodolistsUrl = appTodolistsUrl
         self.bookmarkUrl = bookmarkUrl
         self.completed = completed
+        self.completedCount = completedCount
         self.completedRatio = completedRatio
+        self.onScheduleCount = onScheduleCount
+        self.overScheduleCount = overScheduleCount
         self.position = position
         self.todolistsCount = todolistsCount
         self.todolistsUrl = todolistsUrl

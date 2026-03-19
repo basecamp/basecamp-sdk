@@ -241,12 +241,9 @@ func (s *MessageTypesService) Update(ctx context.Context, typeID int64, req *Upd
 		return nil, err
 	}
 
-	body := generated.UpdateMessageTypeJSONRequestBody{}
-	if req.Name != "" {
-		body.Name = req.Name
-	}
-	if req.Icon != "" {
-		body.Icon = req.Icon
+	body := generated.UpdateMessageTypeJSONRequestBody{
+		Name: req.Name,
+		Icon: req.Icon,
 	}
 
 	resp, err := s.client.parent.gen.UpdateMessageTypeWithResponse(ctx, s.client.accountID, typeID, body)
