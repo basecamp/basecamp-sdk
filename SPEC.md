@@ -4,7 +4,11 @@
 
 ### Audience
 
-This document is a complete, implementation-grade specification for building a Basecamp API SDK in any programming language. The primary audience is coding agents and developers who need to implement a new language SDK without reading the five existing implementations (Go, Ruby, TypeScript, Kotlin, Swift).
+This document is a complete, implementation-grade specification for building a Basecamp API SDK in any programming language. The primary audience is coding agents and developers who need to implement a new language SDK.
+
+### Existing SDKs as Exemplars
+
+Five shipping SDKs live alongside this spec in the same repository: Go, Ruby, TypeScript, Kotlin, and Swift. Use them as reference implementations when the spec leaves room for interpretation. TypeScript (`typescript/src/client.ts`) is the most complete single-file reference for auth, retry, pagination, and caching. Ruby (`ruby/lib/basecamp/http.rb`) has the most explicit pagination variants. Go (`go/pkg/basecamp/`) demonstrates the hand-written service wrapper pattern. When in doubt, read the code — the spec prescribes the contract, the SDKs show how it's been realized.
 
 ### Input Artifacts
 
@@ -639,11 +643,11 @@ INTERFACE BasecampHooks
   on_request_start(info: RequestInfo) → void
   on_request_end(info: RequestInfo, result: RequestResult) → void
   on_retry(info: RequestInfo, attempt: Integer, error: Error, delay_ms: Integer) → void
-  on_paginate(url: String, page: Integer) → void       -- Ruby/Go only; not in TS/Kotlin/Swift
+  on_paginate(url: String, page: Integer) → void       -- Ruby only; not in Go/TS/Kotlin/Swift
 END
 ```
 
-All methods are optional. A no-op default is valid. `on_paginate` is implemented in Ruby and Go but not in TypeScript, Kotlin, or Swift — new implementations may omit it.
+All methods are optional. A no-op default is valid. `on_paginate` is Ruby-only — new implementations may omit it.
 
 ### OperationInfo RECORD
 
@@ -676,7 +680,7 @@ RECORD RequestResult
   duration_ms : Integer    -- request duration in milliseconds
   from_cache  : Boolean    -- whether response was served from ETag cache
   error       : Error?     -- error if the request failed
-  retry_after : Integer?   -- Retry-After value in seconds if present (Ruby only; other SDKs omit this field)
+  retry_after : Integer?   -- Retry-After value in seconds if present (Ruby and Go; other SDKs omit this field)
 END
 ```
 
@@ -773,7 +777,7 @@ END
 
 ```
 FUNCTION verifyWebhookSignature(payload: Bytes, signature: String, secret: String) → Boolean
-  1. If payload, signature, or secret is empty → return false.
+  1. If signature or secret is empty → return false.
   2. Compute HMAC-SHA256 of payload using secret as key.
   3. Hex-encode the digest.
   4. Compare with signature using constant-time comparison.
@@ -836,11 +840,11 @@ END
 
 ### Launchpad Legacy Format
 
-The Basecamp Launchpad OAuth endpoints use a legacy format:
+The Basecamp Launchpad OAuth endpoints use a mix of standard and legacy parameters:
 
-- Authorization: `type=web_server` parameter instead of `response_type=code`
-- Token exchange: `type=web_server` parameter
-- Token refresh: `type=refresh` parameter
+- Authorization URL: standard `response_type=code`
+- Token exchange: `type=web_server` parameter (in addition to or instead of `grant_type=authorization_code`)
+- Token refresh: `type=refresh` parameter (in addition to or instead of `grant_type=refresh_token`)
 
 ---
 
