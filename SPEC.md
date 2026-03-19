@@ -177,7 +177,7 @@ Services are lazy-initialized, cached, and (where the language supports it) thre
 The minimal contract is a way to obtain an access token — either a static string or an async function:
 
 ```
-TokenProvider = String | (() → String)
+TokenProvider = String | (() → async String)
 ```
 
 TypeScript, Kotlin, and Swift use this minimal form. Go and Ruby extend it with a refreshable interface:
