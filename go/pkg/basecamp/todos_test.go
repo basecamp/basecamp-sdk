@@ -984,6 +984,72 @@ func TestTodosService_Update(t *testing.T) {
 	}
 }
 
+func TestTodosService_UpdateClearsAssignees(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	var receivedBody map[string]any
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	// An empty non-nil slice means "clear all assignees" — this must be sent
+	// to the API as assignee_ids:[], not omitted.
+	_, err := svc.Update(context.Background(), 1069479520, &UpdateTodoRequest{
+		Content:     "keep content",
+		AssigneeIDs: []int64{},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ids, ok := receivedBody["assignee_ids"]
+	if !ok {
+		t.Fatal("expected assignee_ids to be present in request body, but it was omitted")
+	}
+	arr, ok := ids.([]any)
+	if !ok {
+		t.Fatalf("expected assignee_ids to be an array, got %T", ids)
+	}
+	if len(arr) != 0 {
+		t.Errorf("expected empty assignee_ids array, got %v", arr)
+	}
+}
+
+func TestTodosService_UpdateClearsCompletionSubscribers(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	var receivedBody map[string]any
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	// An empty non-nil slice means "clear all completion subscribers" — this must
+	// be sent to the API as completion_subscriber_ids:[], not omitted.
+	_, err := svc.Update(context.Background(), 1069479520, &UpdateTodoRequest{
+		Content:                 "keep content",
+		CompletionSubscriberIDs: []int64{},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ids, ok := receivedBody["completion_subscriber_ids"]
+	if !ok {
+		t.Fatal("expected completion_subscriber_ids to be present in request body, but it was omitted")
+	}
+	arr, ok := ids.([]any)
+	if !ok {
+		t.Fatalf("expected completion_subscriber_ids to be an array, got %T", ids)
+	}
+	if len(arr) != 0 {
+		t.Errorf("expected empty completion_subscriber_ids array, got %v", arr)
+	}
+}
+
 func TestTodosService_UpdatePartial(t *testing.T) {
 	fixture := loadTodosFixture(t, "get.json")
 	var receivedBody map[string]any
