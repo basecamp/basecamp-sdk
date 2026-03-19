@@ -102,7 +102,7 @@ END
 
 ### Environment Variable Mapping (optional convention)
 
-These environment variables are implemented in the Ruby SDK and recommended for new implementations. They are not a universal cross-language contract — Go, TypeScript, and Kotlin do not currently load config from environment variables.
+These environment variables are implemented in the Ruby SDK and recommended for new implementations. Go also loads environment overrides via `Config.LoadConfigFromEnv()` (supports `BASECAMP_BASE_URL`, `BASECAMP_PROJECT_ID`, `BASECAMP_TODOLIST_ID`, `BASECAMP_CACHE_DIR`, `BASECAMP_CACHE_ENABLED`). TypeScript and Kotlin do not currently load config from environment variables.
 
 | Variable | Config field | Parse |
 |----------|-------------|-------|
@@ -643,7 +643,8 @@ INTERFACE BasecampHooks
   on_operation_end(info: OperationInfo, result: OperationResult) → void
   on_request_start(info: RequestInfo) → void
   on_request_end(info: RequestInfo, result: RequestResult) → void
-  on_retry(info: RequestInfo, attempt: Integer, error: Error, delay_ms: Integer) → void
+  on_retry(info: RequestInfo, attempt: Integer, error: Error, delay_ms?: Integer) → void
+    -- delay_ms is optional; Ruby and TS pass it, Go's OnRetry omits it
   on_paginate(url: String, page: Integer) → void       -- Ruby only; not in Go/TS/Kotlin/Swift
 END
 ```
@@ -687,7 +688,7 @@ END
 
 ### Hook Safety Invariant `[static]`
 
-Hook exceptions must be caught and never propagated to the caller. A failing hook must not break API operations. Implementations should log caught exceptions to stderr, but the logging mechanism is a language adaptation. Cross-SDK status: TypeScript and Ruby wrap hook calls in try/catch; Go does not currently use `recover` for hooks (a known gap).
+Hook exceptions must be caught and never propagated to the caller. A failing hook must not break API operations. Implementations should log caught exceptions to stderr, but the logging mechanism is a language adaptation. Cross-SDK status: TypeScript, Ruby, Kotlin, and Swift wrap hook calls in try/catch (or equivalent). Go does not currently use `recover` for hooks (a known gap).
 
 ### ChainHooks Combinator
 
@@ -696,7 +697,7 @@ FUNCTION chainHooks(hooks: BasecampHooks[]) → BasecampHooks
   Invokes start events (on_operation_start, on_request_start) in forward order.
   End events (on_operation_end, on_request_end): reverse order (LIFO) is
   recommended (mirrors middleware stacking), but forward order is acceptable.
-  Ruby uses LIFO; other SDKs use forward order.
+  Ruby, Go, and Swift use LIFO; TypeScript and Kotlin use forward order.
   Each invocation is wrapped in try/catch — a failing hook
   does not prevent subsequent hooks from running.
 END
@@ -859,12 +860,11 @@ The Basecamp Launchpad OAuth endpoints use a mix of standard and legacy paramete
 
 ### Cache Key
 
-The cache key must incorporate both the URL and a credential hash to ensure cross-credential isolation. The exact format is a language adaptation:
+The cache key must include the URL. Credential-scoped isolation is recommended but the exact format is a language adaptation:
 
-- **TypeScript:** `SHA256(authorization_header)[0:16] + ":" + url`
-- **Go:** `SHA256(url + ":" + accountId + ":" + SHA256(authorization)[0:8])`
-
-The requirement is that cached responses are never shared between different tokens.
+- **TypeScript:** `SHA256(authorization_header)[0:16] + ":" + url` (credential-scoped)
+- **Go:** `SHA256(url + ":" + accountId + ":" + SHA256(authorization)[0:8])` (credential-scoped)
+- **Swift:** URL-only key (per-client isolation — each client has its own cache instance)
 
 ### Cache Algorithm
 
@@ -888,7 +888,7 @@ END
 
 ### Constants
 
-- `MAX_CACHE_ENTRIES` = 1000 (LRU eviction)
+- `MAX_CACHE_ENTRIES` = 1000 (evict oldest-inserted entry when full; FIFO via insertion-order map, not true LRU)
 - `MAX_TOKEN_HASH_ENTRIES` = 100 (for token hash map)
 
 ---
