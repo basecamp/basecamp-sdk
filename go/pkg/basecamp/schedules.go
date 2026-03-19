@@ -397,7 +397,7 @@ func (s *SchedulesService) UpdateEntry(ctx context.Context, entryID int64, req *
 	if req.Description != "" {
 		body["description"] = req.Description
 	}
-	if len(req.ParticipantIDs) > 0 {
+	if req.ParticipantIDs != nil {
 		body["participant_ids"] = req.ParticipantIDs
 	}
 	if req.AllDay != nil {

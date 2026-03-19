@@ -647,6 +647,40 @@ func TestSchedulesService_UpdateEntryPartial(t *testing.T) {
 	}
 }
 
+func TestSchedulesService_UpdateEntryClearsParticipants(t *testing.T) {
+	fixture := loadSchedulesFixture(t, "entry_get.json")
+	var receivedBody map[string]any
+	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	// An empty non-nil slice means "clear all participants" — this must be sent
+	// to the API as participant_ids:[], not omitted.
+	_, err := svc.UpdateEntry(context.Background(), 12345, &UpdateScheduleEntryRequest{
+		Summary:        "keep summary",
+		ParticipantIDs: []int64{},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ids, ok := receivedBody["participant_ids"]
+	if !ok {
+		t.Fatal("expected participant_ids to be present in request body, but it was omitted")
+	}
+	arr, ok := ids.([]any)
+	if !ok {
+		t.Fatalf("expected participant_ids to be an array, got %T", ids)
+	}
+	if len(arr) != 0 {
+		t.Errorf("expected empty participant_ids array, got %v", arr)
+	}
+}
+
 func TestSchedulesService_UpdateEntryAllDay(t *testing.T) {
 	fixture := loadSchedulesFixture(t, "entry_get.json")
 	var receivedBody map[string]any
