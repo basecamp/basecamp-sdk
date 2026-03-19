@@ -48,7 +48,7 @@ When artifacts conflict, this precedence governs:
 |-----------|---------------|
 | **Config** | Holds validated configuration: base URL, timeouts, retry params, pagination caps. Supports env-var override. |
 | **Client** | Top-level entry point. Enforces exactly-one-of auth. Owns account-independent services (authorization). |
-| **AccountClient** | Account-scoped facade. Prepends `/{accountId}` to paths. Owns all 39 account-scoped services. |
+| **AccountClient** | Account-scoped facade. Prepends `/{accountId}` to paths. Owns all 40 account-scoped services. |
 | **Services** | One class per API resource group. Generated from OpenAPI tags. Methods map to operations. |
 | **BaseService** | Abstract base for generated services. Provides request execution, error mapping, pagination following, hooks integration. |
 | **HTTP Transport** | Executes HTTP requests. Applies auth headers, User-Agent, Content-Type. Implements retry, caching. |
@@ -63,7 +63,7 @@ Client
 └── forAccount(accountId) → AccountClient
     ├── projects (service)
     ├── todos (service)
-    ├── ... (37 more services)
+    ├── ... (38 more services)
     └── HTTP Transport
         ├── Auth Middleware
         ├── Retry Middleware
@@ -172,10 +172,18 @@ Services are lazy-initialized, cached, and (where the language supports it) thre
 
 ## §4. Authentication
 
-### TokenProvider INTERFACE
+### TokenProvider
+
+The minimal contract is a way to obtain an access token — either a static string or an async function:
 
 ```
-INTERFACE TokenProvider
+TokenProvider = String | (() → String)
+```
+
+TypeScript, Kotlin, and Swift use this minimal form. Go and Ruby extend it with a refreshable interface:
+
+```
+INTERFACE RefreshableTokenProvider
   access_token()  → String       -- returns current token
   refresh()       → Boolean      -- attempts refresh, returns success
   refreshable()   → Boolean      -- whether refresh is supported
@@ -185,7 +193,7 @@ END
 ### StaticTokenProvider RECORD
 
 ```
-RECORD StaticTokenProvider implements TokenProvider
+RECORD StaticTokenProvider
   token : String
   access_token() → token
   refresh()      → false
@@ -264,7 +272,7 @@ attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, 
 
 ### Derivation Rule `[static]`
 
-The OpenAPI spec uses 12 coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split these into 39 fine-grained services using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`. These mappings are defined in each language's generator script and produce identical service sets across SDKs.
+The OpenAPI spec uses 12 coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split these into 40 fine-grained services using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`. These mappings are defined in each language's generator script and produce identical service sets across SDKs.
 
 ### Known Gaps (informational, not prescriptive)
 
@@ -606,7 +614,7 @@ All integer IDs must use at least 64 bits of precision (e.g., Go `int64`, Kotlin
 
 ### Date/Time Fields `[static]`
 
-Fields declared with `format: date-time` in the OpenAPI spec use ISO 8601 format. Map to the language's native date/time type (`time.Time`, `Date`, `Time`, `Instant`, etc.).
+Fields declared with `format: date-time` in the OpenAPI spec use ISO 8601 format. Implementations may use the language's native date/time type (Go `time.Time`, Ruby `Time`, Kotlin `Instant`) or keep them as ISO 8601 strings (TypeScript uses `string` from openapi-fetch schema types). The choice is a language adaptation.
 
 ### Optional Fields `[static]`
 
@@ -1306,8 +1314,8 @@ For ASCII text (all conformance test fixtures today), these are equivalent.
 
 | SDK | Account-scoped services |
 |-----|------------------------|
-| Swift | 39 (full canonical set) |
-| TypeScript | 39 (full canonical set) |
-| Kotlin | 39 (full canonical set) |
-| Ruby | 39 (full canonical set) |
+| Swift | 40 (full canonical set) |
+| TypeScript | 40 (full canonical set) |
+| Kotlin | 40 (full canonical set) |
+| Ruby | 40 (full canonical set) |
 | Go | 37 as standalone services (missing standalone `automation`; `clientVisibility` ops exist on `RecordingsService`). Hand-written service wrappers around generated OpenAPI client — not fully generated. |
