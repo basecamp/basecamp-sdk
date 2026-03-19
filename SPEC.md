@@ -153,7 +153,13 @@ END
 Every account-scoped request prepends `/{accountId}` to the path:
 
 ```
-full_path = "/" + account_id + path
+FUNCTION buildURL(base_url, account_id, path) → String
+  1. If path starts with "https://" → return path unchanged (absolute URL passthrough
+     for Launchpad/OAuth endpoints at a different host).
+  2. If path starts with "http://" → ⊥ UsageError("URL must use HTTPS").
+  3. If path does not start with "/" → prepend "/".
+  4. → base_url + "/" + account_id + path
+END
 ```
 
 Conformance tests in `paths.json` verify correct path construction (e.g., `GetProjectTimeline` → `/999/projects/12345/timeline.json`).
@@ -248,7 +254,7 @@ END
 
 ### Client-Level Services (account-independent)
 
-- **authorization** — OAuth flows, identity lookup, Launchpad integration
+- **authorization** — identity lookup and account listing via Launchpad (OAuth utility functions like PKCE, state generation, and discovery are standalone helpers in §16, not service methods)
 
 ### AccountClient-Level Services (account-scoped) — 39 services
 
@@ -614,12 +620,17 @@ Responses with status 204 have no body. The SDK must handle this without attempt
 
 ### Success Status Codes `[conformance]`
 
-| Method | Success Status | Behavior |
+Common patterns by HTTP verb:
+
+| Method | Typical Status | Behavior |
 |--------|---------------|----------|
 | GET | 200 | Parse body as JSON, return typed result |
 | PUT | 200 | Parse body as JSON, return typed result |
 | POST (create) | 201 | Parse body as JSON, return typed result |
+| POST (action) | 200 or 204 | Some POST operations (e.g., `Subscribe`, `MoveCard`, `PinMessage`) are state mutations, not creates, and may return 200 or 204 |
 | DELETE | 204 | No body; return void |
+
+The authoritative success status for each operation is defined in `openapi.json`. The table above covers common patterns; generated code should use the per-operation status from the OpenAPI spec.
 
 ### Error Surfacing `[conformance]`
 
@@ -710,7 +721,7 @@ END
 
 ### Required Headers `[conformance]`
 
-Every request must include:
+Every API request (excluding download Hop 1, see §14) must include:
 
 | Header | Value |
 |--------|-------|
@@ -743,7 +754,7 @@ FUNCTION downloadURL(rawURL: String) → DownloadResult
   1. Validate rawURL is an absolute URL with http(s) scheme.
   2. Rewrite URL: replace origin with baseUrl origin, preserve path+query+fragment.
   3. Hop 1 — Authenticated API GET:
-     a. Set Authorization, User-Agent headers.
+     a. Set Authorization and User-Agent headers only (no Accept or Content-Type — this is a binary download, not a JSON API call).
      b. Fetch with redirect: manual (do not follow redirects automatically).
      c. If response is redirect (301, 302, 303, 307, 308):
         - Extract Location header. ⊥ if absent.
