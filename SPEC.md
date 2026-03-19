@@ -794,14 +794,17 @@ Constant-time comparison prevents timing attacks. Never short-circuit on first m
 ```
 RECORD WebhookReceiver
   handlers : Map<GlobPattern, Handler>
-  dedup    : LRU<String, Boolean>   -- window of 1000 entries
+  dedup    : LRU<String, Boolean>   -- window of 1000 entries, keyed by delivery_id
+    -- Note: redeliveries get new delivery IDs, so this deduplicates network
+    -- retries but not manual redeliveries. Payload-level dedup is caller responsibility.
   secret   : String
 
   receive(payload, signature, delivery_id) →
     1. Verify signature. If invalid → reject.
     2. If delivery_id in dedup → skip (already processed).
-    3. Add delivery_id to dedup.
-    4. Parse payload, dispatch to matching handler(s) by event type glob.
+    3. Parse payload, dispatch to matching handler(s) by event type glob.
+    4. Add delivery_id to dedup only after successful handler execution.
+       (If a handler throws, the event can be reprocessed on redelivery.)
 END
 ```
 
@@ -872,7 +875,7 @@ The cache key must include the URL. Credential-scoped isolation is recommended b
 FUNCTION cacheMiddleware(request, cache) → Response
   ON REQUEST:
     1. If method ≠ GET → pass through.
-    2. Compute cache key from auth header + URL.
+    2. Compute cache key (see Cache Key above — format varies by SDK).
     3. If cache has entry for key → set If-None-Match: entry.etag on request.
 
   ON RESPONSE:
@@ -1206,10 +1209,14 @@ attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, 
         "backoff": "exponential",  // always "exponential" in practice
         "retry_on": [429, 503]     // HTTP statuses that trigger retry
       }
-    }
+    },
+    "redaction": { ... },       // PII field paths per request/response type
+    "sensitiveTypes": [ ... ]   // Smithy-defined sensitive type names
   }
 }
 ```
+
+The `redaction` and `sensitiveTypes` sections are used for PII handling and are not part of the retry/idempotency contract. They are omitted from the detailed schema above for brevity.
 
 ### Field Semantics
 
