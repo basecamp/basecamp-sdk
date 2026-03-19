@@ -161,7 +161,7 @@ FUNCTION buildURL(base_url, account_id, path) → String
   1. If path starts with "https://" → return path unchanged.
      Absolute URLs are passed through without account-path prefixing.
      This handles pagination follow-up URLs and any pre-constructed absolute URLs.
-  2. If path starts with "http://" → ⊥ UsageError("URL must use HTTPS").
+  2. If path starts with "http://" → ⊥ BasecampError(code: "usage", message: "URL must use HTTPS").
   3. If path does not start with "/" → prepend "/".
   4. → base_url + "/" + account_id + path
 END
