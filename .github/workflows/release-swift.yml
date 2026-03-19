@@ -6,8 +6,7 @@ on:
       - 'v*'
   workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,10 +15,14 @@ concurrency:
 jobs:
   smithy:
     uses: ./.github/workflows/smithy-verify.yml
+    permissions:
+      contents: read
 
   test:
     name: Test Swift SDK
     runs-on: macos-15
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: swift
@@ -27,6 +30,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Verify tag is on main
         if: github.event_name == 'push'

@@ -8,15 +8,15 @@ on:
     - cron: '0 7 * * 1'     # Monday 7am UTC (security.yml at 6am)
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pull-requests: read
-  security-events: write
+permissions: {}
 
 jobs:
   changes:
     name: Detect changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       swift: ${{ steps.set-matrix.outputs.swift }}
@@ -76,6 +76,9 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.matrix != '[]' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -84,6 +87,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       # --- Language setup (conditional) ---
 
@@ -175,10 +180,15 @@ jobs:
     needs: changes
     if: needs.changes.outputs.swift == 'true'
     runs-on: macos-15
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
