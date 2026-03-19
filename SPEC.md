@@ -108,11 +108,13 @@ These environment variables are implemented in the Ruby SDK and recommended for 
 
 ### Validation Algorithm
 
-1. Parse `base_url`. → `⊥ UsageError` if malformed.
-2. If `base_url` is not the default (`https://3.basecampapi.com`) and not localhost (§9), enforce HTTPS. → `⊥ UsageError("base URL must use HTTPS")` if scheme ≠ `https`.
-3. Validate `timeout > 0`. → `⊥ ArgumentError` otherwise.
-4. Validate `max_retries ≥ 0`. → `⊥ ArgumentError` otherwise.
-5. Validate `max_pages > 0`. → `⊥ ArgumentError` otherwise.
+All validation errors are `BasecampError(code: "usage")` (see §6 error taxonomy).
+
+1. Parse `base_url`. → `⊥ BasecampError(code: "usage")` if malformed.
+2. If `base_url` is not the default (`https://3.basecampapi.com`) and not localhost (§9), enforce HTTPS. → `⊥ BasecampError(code: "usage", message: "base URL must use HTTPS")` if scheme ≠ `https`.
+3. Validate `timeout > 0`. → `⊥ BasecampError(code: "usage")` otherwise.
+4. Validate `max_retries ≥ 0`. → `⊥ BasecampError(code: "usage")` otherwise.
+5. Validate `max_pages > 0`. → `⊥ BasecampError(code: "usage")` otherwise.
 6. Normalize `base_url`: strip trailing `/`.
 
 ---
@@ -122,8 +124,8 @@ These environment variables are implemented in the Ruby SDK and recommended for 
 ### Client Construction Algorithm
 
 1. Accept auth options: exactly one of `access_token` (string or provider) or `auth` (AuthStrategy).
-2. If both provided → `⊥ UsageError("Provide either 'auth' or 'accessToken', not both")`. `[static]`
-3. If neither provided → `⊥ UsageError("Either 'auth' or 'accessToken' is required")`. `[static]`
+2. If both provided → `⊥ BasecampError(code: "usage", message: "Provide either 'auth' or 'accessToken', not both")`. `[static]`
+3. If neither provided → `⊥ BasecampError(code: "usage", message: "Either 'auth' or 'accessToken' is required")`. `[static]`
 4. If `access_token` provided, wrap in `BearerAuth` strategy.
 5. Validate config (§2 validation algorithm).
 6. Initialize HTTP transport with auth strategy, config, and optional hooks.
@@ -148,14 +150,17 @@ END
 - `authorization` → on Client (no account context; calls Launchpad endpoints)
 - All other services → on AccountClient (account-scoped)
 
+**TypeScript divergence:** TypeScript embeds `accountId` in the base URL (`https://3.basecampapi.com/{accountId}`) and exposes all services on a single flat `BasecampClient` — no separate `AccountClient`. The path construction still prepends `/{accountId}`, but it happens at client creation rather than per-request. This is a valid language adaptation.
+
 ### Account Path Construction `[conformance]`
 
 Every account-scoped request prepends `/{accountId}` to the path:
 
 ```
 FUNCTION buildURL(base_url, account_id, path) → String
-  1. If path starts with "https://" → return path unchanged (absolute URL passthrough
-     for endpoints at a different host, e.g., pagination follow-up URLs).
+  1. If path starts with "https://" → return path unchanged.
+     Absolute URLs are passed through without account-path prefixing.
+     This handles pagination follow-up URLs and any pre-constructed absolute URLs.
   2. If path starts with "http://" → ⊥ UsageError("URL must use HTTPS").
   3. If path does not start with "/" → prepend "/".
   4. → base_url + "/" + account_id + path
@@ -172,15 +177,33 @@ Services are lazy-initialized, cached, and (where the language supports it) thre
 
 ## §4. Authentication
 
-### TokenProvider
-
-The minimal contract is a way to obtain an access token — either a static string or an async function:
+### AuthStrategy INTERFACE
 
 ```
-TokenProvider = String | (() → async String)
+INTERFACE AuthStrategy
+  authenticate(headers: Headers) → void
+    -- Mutates headers to apply authentication credentials.
+    -- May be async (e.g., to fetch/refresh tokens).
+END
 ```
 
-TypeScript, Kotlin, and Swift use this minimal form. Go and Ruby extend it with a refreshable interface:
+### BearerAuth RECORD
+
+The default strategy. Accepts a token as a static string or an async function that returns one:
+
+```
+RECORD BearerAuth implements AuthStrategy
+  token : String | (() → async String)
+
+  authenticate(headers) →
+    1. resolved = (typeof token == function) ? await token() : token
+    2. headers.set("Authorization", "Bearer " + resolved)
+END
+```
+
+### Token Refresh (Go/Ruby extension)
+
+Go and Ruby support automatic token refresh via a richer provider interface. TypeScript, Kotlin, and Swift delegate refresh to the caller (the async function can internally handle refresh logic).
 
 ```
 INTERFACE RefreshableTokenProvider
@@ -190,68 +213,16 @@ INTERFACE RefreshableTokenProvider
 END
 ```
 
-### StaticTokenProvider RECORD
-
-```
-RECORD StaticTokenProvider
-  token : String
-  access_token() → token
-  refresh()      → false
-  refreshable()  → false
-END
-```
-
-### OAuthTokenProvider RECORD
-
-```
-RECORD OAuthTokenProvider implements TokenProvider
-  client_id     : String
-  client_secret : String
-  refresh_token : String
-  token_url     : String
-  access_token  : String    -- cached, refreshed on expiry
-  expires_at    : Timestamp
-
-  access_token() →
-    1. If expires_at - now() < TOKEN_REFRESH_BUFFER, call refresh().
-       (Go uses 300s; Ruby refreshes only on expiry; other SDKs delegate to caller.)
-    2. → access_token
-
-  refresh() →
-    1. POST token_url with grant_type=refresh_token.
-    2. Parse response, update access_token and expires_at.
-    3. → true on success, false on failure.
-
-  refreshable() → true
-END
-```
-
-### AuthStrategy INTERFACE
-
-```
-INTERFACE AuthStrategy
-  authenticate(headers: Headers) → void
-    -- Mutates headers to apply authentication credentials.
-END
-```
-
-### BearerAuth RECORD
-
-```
-RECORD BearerAuth implements AuthStrategy
-  token_provider : TokenProvider
-
-  authenticate(headers) →
-    1. token = token_provider.access_token()
-    2. headers.set("Authorization", "Bearer " + token)
-END
-```
+**OAuthTokenProvider** (Go/Ruby only):
+- Caches the access token and its expiry timestamp.
+- Proactively refreshes when `expires_at - now() < TOKEN_REFRESH_BUFFER` (Go uses 300s; Ruby refreshes only on expiry).
+- `refresh()` POSTs to the token URL with `grant_type=refresh_token`.
 
 ### 401 Refresh-and-Retry Algorithm
 
 1. Receive 401 response.
-2. If `token_provider.refreshable()` and `retry_count < 1`:
-   a. Call `token_provider.refresh()`.
+2. If the token provider supports refresh (`refreshable() == true`) and `retry_count < 1`:
+   a. Call `refresh()`.
    b. If refresh succeeded, retry the request once with updated token.
    c. → response from retry.
 3. → `⊥ BasecampError(code: "auth_required", httpStatus: 401)`.
@@ -323,7 +294,7 @@ Given an HTTP response with status code `status` and body `body`:
 2. If `status == 403` → `BasecampError(code: "forbidden", httpStatus: 403, retryable: false)`.
 3. If `status == 404` → `BasecampError(code: "not_found", httpStatus: 404, retryable: false)`.
 4. If `status == 429` → `BasecampError(code: "rate_limit", httpStatus: 429, retryable: true, retryAfter: parseRetryAfter(headers))`.
-5. If `status == 400` → `BasecampError(code: "validation", httpStatus: 400, retryable: false)`.
+5. If `status == 400` → `BasecampError(code: "validation", httpStatus: 400, retryable: false)`. `[CONFLICT: Go currently maps 400 to "api_error" (falls through to default case). The spec prescribes "validation" to match the conformance tests and other SDKs.]`
 6. If `status == 422` → `BasecampError(code: "validation", httpStatus: 422, retryable: false)`.
 7. If `status == 500` → `BasecampError(code: "api_error", httpStatus: 500, retryable: true)`.
 8. If `status == 502` → `BasecampError(code: "api_error", httpStatus: 502, retryable: true)`.
@@ -397,7 +368,7 @@ FUNCTION executeWithRetry(request, retryConfig) → Response
      a. method = request.method
      b. If method is POST:
         - Look up operation in behavior-model.json by operation name (the generated service passes the operationId; the transport maps it to behavior-model.json's key)
-        - If operation.idempotent ≠ true → retryConfig = NO_RETRY (maxAttempts=1)
+        - If operation.idempotent ≠ true → retryConfig = NO_RETRY_CONFIG (maxAttempts=1)
      c. If method is GET, HEAD, PUT, DELETE → use retryConfig from metadata or DEFAULT_RETRY_CONFIG
 
   2. For attempt = 0 to retryConfig.maxAttempts - 1:
@@ -462,8 +433,9 @@ All 181 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(
 ### ListResult RECORD
 
 ```
-RECORD ListResult<T> extends Array<T>
-  meta : ListMeta
+RECORD ListResult<T>
+  items : List<T>    -- the items (may extend Array, wrap List, or use language-appropriate collection)
+  meta  : ListMeta
 END
 
 RECORD ListMeta
@@ -738,7 +710,7 @@ Every API request (excluding download Hop 1, see §14) must include:
 | `Authorization` | `Bearer {token}` (from AuthStrategy) |
 | `User-Agent` | `basecamp-sdk-{lang}/{VERSION} (api:{API_VERSION})` |
 | `Accept` | `application/json` |
-| `Content-Type` | `application/json` (set unconditionally unless already present; preserves binary uploads that set their own Content-Type) |
+| `Content-Type` | `application/json` (for requests with a body; preserve if already set for binary uploads). TypeScript and Go set it unconditionally; Swift and Kotlin set it only when a body is present. Either approach is acceptable. |
 
 Where:
 - `{lang}` is the language identifier: `go`, `ts`, `ruby`, `kotlin`, `swift`
@@ -786,7 +758,7 @@ END
 
 ```
 RECORD DownloadResult
-  body           : Stream<Bytes>  -- file content (caller must consume or cancel)
+  body           : Bytes          -- file content (language adaptation: TS uses ReadableStream, Swift uses Data, Go uses io.ReadCloser, Ruby uses String)
   content_type   : String         -- MIME type from Content-Type header
   content_length : Integer        -- size in bytes (-1 if unknown)
   filename       : String         -- extracted from last URL path segment
@@ -878,7 +850,7 @@ The Basecamp Launchpad OAuth endpoints use a legacy format:
 
 - **Default:** disabled (opt-in via `enableCache` / `cache_enabled`)
 - **Scope:** GET requests only
-- **Implementation status:** TypeScript and Go implement ETag caching. Ruby, Kotlin, and Swift do not. New implementations may omit this or defer it.
+- **Implementation status:** TypeScript, Go, and Swift implement ETag caching. Ruby and Kotlin do not. New implementations may omit this or defer it.
 
 ### Cache Key
 
