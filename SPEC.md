@@ -128,8 +128,8 @@ All validation errors are `BasecampError(code: "usage")` (see §6 error taxonomy
 ### Client Construction Algorithm
 
 1. Accept auth options: exactly one of `access_token` (string or provider) or `auth` (AuthStrategy).
-2. If both provided → `⊥ BasecampError(code: "usage", message: "Provide either 'auth' or 'accessToken', not both")`. `[static]`
-3. If neither provided → `⊥ BasecampError(code: "usage", message: "Either 'auth' or 'accessToken' is required")`. `[static]`
+2. If both provided → `⊥ BasecampError(code: "usage", message: "Provide either auth or access_token, not both")`. `[static]`
+3. If neither provided → `⊥ BasecampError(code: "usage", message: "Either auth or access_token is required")`. `[static]`
 4. If `access_token` provided, wrap in `BearerAuth` strategy.
 5. Validate config (§2 validation algorithm).
 6. Initialize HTTP transport with auth strategy, config, and optional hooks.
@@ -144,7 +144,7 @@ INTERFACE AccountClient
   post(path, body)      → Response
   put(path, body)       → Response
   delete(path)          → Response
-  paginate(path, params) → Iterator<Item>
+  paginate(path, params) → ListResult<Item> | Iterator<Item>  -- language adaptation (see §8)
   download_url(url)     → DownloadResult
 END
 ```
@@ -162,9 +162,10 @@ Every account-scoped request prepends `/{accountId}` to the path:
 
 ```
 FUNCTION buildURL(base_url, account_id, path) → String
+  -- Internal to the HTTP transport layer. Callers (service methods) pass
+  -- relative paths; only the transport passes absolute URLs (e.g., pagination
+  -- follow-up URLs). This is not a public API surface.
   1. If path starts with "https://" → return path unchanged.
-     Absolute URLs are passed through without account-path prefixing.
-     This handles pagination follow-up URLs and any pre-constructed absolute URLs.
   2. If path starts with "http://" → ⊥ BasecampError(code: "usage", message: "URL must use HTTPS").
   3. If path does not start with "/" → prepend "/".
   4. → base_url + "/" + account_id + path
@@ -693,9 +694,9 @@ Hook exceptions must be caught and never propagated to the caller. A failing hoo
 ```
 FUNCTION chainHooks(hooks: BasecampHooks[]) → BasecampHooks
   Invokes start events (on_operation_start, on_request_start) in forward order.
-  Invokes end events (on_operation_end, on_request_end) in reverse order (LIFO).
-  This mirrors middleware/decorator stacking: the first hook to see a start
-  is the last to see the corresponding end.
+  End events (on_operation_end, on_request_end): reverse order (LIFO) is
+  recommended (mirrors middleware stacking), but forward order is acceptable.
+  Ruby uses LIFO; other SDKs use forward order.
   Each invocation is wrapped in try/catch — a failing hook
   does not prevent subsequent hooks from running.
 END
