@@ -262,7 +262,7 @@ The OpenAPI spec uses 12 coarse tags (e.g., `Automation`, `Todos`, `Files`). The
 
 ### Known Gaps (informational, not prescriptive)
 
-- Go is missing `automation` and `clientVisibility`; uses singular `Timesheet` vs `timesheets`
+- Go is missing a standalone `automation` service; `clientVisibility` is implemented on `RecordingsService` (not a separate service); uses singular `Timesheet` vs `timesheets`
 - TypeScript flattens both tiers onto a single client object (no separate AccountClient exposed to consumers) — a valid language adaptation
 - Ruby returns lazy `Enumerator` for pagination rather than `ListResult`
 
@@ -367,7 +367,7 @@ The error's HTTP status must be in the transport's retryable set. The `behavior-
 
 ### Cross-SDK Divergence `[CONFLICT]`
 
-- **TypeScript, Kotlin, Python** implement the three-gate algorithm (POST retries only when `idempotent: true`).
+- **TypeScript, Kotlin** implement the three-gate algorithm (POST retries only when `idempotent: true`).
 - **Go** is stricter: only GET retries with exponential backoff; all non-GET methods make a single attempt (plus one re-attempt after successful 401 token refresh). No idempotency gate.
 - **Ruby** is stricter: only GET retries; all non-GET methods do not retry. Go and Ruby are acceptably conservative.
 - **Swift** currently over-retries: generated create methods pass retry config directly, and the transport retries any request whose status matches `retryOn` — no idempotency gate. Non-idempotent POSTs like `CreateProject` are retried. This is a known bug.
@@ -432,7 +432,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All 179 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
+All 181 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -557,11 +557,11 @@ Client construction with a non-HTTPS, non-localhost base URL must fail with `Usa
 ### Response Body Size Cap
 
 ```
-MAX_RESPONSE_BODY_BYTES = 52,428,800  (50 MB)
-MAX_ERROR_BODY_BYTES    = 1,048,576   (1 MB)
+MAX_RESPONSE_BODY_BYTES = 52,428,800  (50 MiB, i.e., 50 × 1024 × 1024)
+MAX_ERROR_BODY_BYTES    = 1,048,576   (1 MiB)
 ```
 
-Responses exceeding `MAX_RESPONSE_BODY_BYTES` must be rejected with an error, not silently consumed. `[static]`
+Go and Ruby enforce this limit. TypeScript, Kotlin, and Swift do not currently enforce it — they rely on the HTTP library's native limits. New implementations should enforce it. `[static]`
 
 ### Error Message Truncation `[static]`
 
@@ -592,7 +592,7 @@ Comparison is case-insensitive.
 
 ### Integer Precision `[conformance]`
 
-All integer IDs must use at least 64 bits of precision (`int64`, `Long`, `Int`, etc.). IDs up to 2^53 + 1 (`9007199254740993`) must survive JSON round-trip without precision loss.
+All integer IDs must use at least 64 bits of precision (e.g., Go `int64`, Kotlin `Long`, Swift `Int` on 64-bit platforms). Note: Kotlin `Int` is 32-bit and must not be used for IDs — use `Long`. IDs up to 2^53 + 1 (`9007199254740993`) must survive JSON round-trip without precision loss.
 
 `[CONFLICT: JavaScript Number.MAX_SAFE_INTEGER is 2^53 - 1. The TypeScript SDK has a documented known gap — JSON.parse truncates integers beyond this value. The spec prescribes 64-bit precision; TypeScript implementations must document the limitation. See waiver 1B.6 in rubric-audit.json.]`
 
@@ -627,7 +627,7 @@ All 4xx and 5xx responses must produce typed `BasecampError` errors (not silentl
 
 ### Non-Retryable Errors `[conformance]`
 
-Status codes 401, 403, 404, and 422 must NOT be retried. Conformance tests assert `requestCount == 1` for these statuses.
+Status codes 400, 401, 403, 404, and 422 must NOT be retried. Conformance tests assert `requestCount == 1` for these statuses.
 
 ### Retry Exhaustion
 
@@ -689,13 +689,16 @@ END
 
 ### Hook Safety Invariant `[static]`
 
-Hook exceptions must be caught, logged to stderr, and never propagated to the caller. A failing hook must not break API operations.
+Hook exceptions must be caught and never propagated to the caller. A failing hook must not break API operations. Implementations should log caught exceptions to stderr, but the logging mechanism is a language adaptation. Cross-SDK status: TypeScript and Ruby wrap hook calls in try/catch; Go does not currently use `recover` for hooks (a known gap).
 
 ### ChainHooks Combinator
 
 ```
 FUNCTION chainHooks(hooks: BasecampHooks[]) → BasecampHooks
-  Returns a BasecampHooks that invokes each hook in order.
+  Invokes start events (on_operation_start, on_request_start) in forward order.
+  Invokes end events (on_operation_end, on_request_end) in reverse order (LIFO).
+  This mirrors middleware/decorator stacking: the first hook to see a start
+  is the last to see the corresponding end.
   Each invocation is wrapped in try/catch — a failing hook
   does not prevent subsequent hooks from running.
 END
@@ -857,11 +860,12 @@ The Basecamp Launchpad OAuth endpoints use a legacy format:
 
 ### Cache Key
 
-```
-key = SHA256(authorization_header)[0:16] + ":" + url
-```
+The cache key must incorporate both the URL and a credential hash to ensure cross-credential isolation. The exact format is a language adaptation:
 
-The auth-header hash prefix ensures cross-credential isolation — cached responses are never shared between different tokens.
+- **TypeScript:** `SHA256(authorization_header)[0:16] + ":" + url`
+- **Go:** `SHA256(url + ":" + accountId + ":" + SHA256(authorization)[0:8])`
+
+The requirement is that cached responses are never shared between different tokens.
 
 ### Cache Algorithm
 
@@ -1006,7 +1010,7 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | 6 | 2C.5 | Cross-origin pagination Link header rejected | §8 | `[conformance]` |
 | 7 | 3C.1 | HTTPS enforcement for non-localhost | §9 | `[conformance]` |
 | 8 | 1C.3 | No manual path construction | §3, §18 | `[manual]` |
-| 9 | 1A.6 | No hand-written API methods (multi-language only) | §18 | `[manual]` |
+| 9 | 1A.6 | No hand-written API methods (multi-language only; Go uses hand-written service wrappers around generated client — see Appendix F) | §18 | `[manual]` |
 | 10 | 4A.1 | Smithy → OpenAPI freshness check | §21 | `[static]` |
 
 ---
@@ -1064,8 +1068,8 @@ All magic numbers in one place, derived from shipping SDK code (not `rubric-audi
 
 | Constant | Value | Unit | Source |
 |----------|-------|------|--------|
-| `MAX_RESPONSE_BODY_BYTES` | 52,428,800 | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb` |
-| `MAX_ERROR_BODY_BYTES` | 1,048,576 | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb` |
+| `MAX_RESPONSE_BODY_BYTES` | 52,428,800 (50 MiB) | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb`; Go/Ruby enforce; TS/Kotlin/Swift do not |
+| `MAX_ERROR_BODY_BYTES` | 1,048,576 (1 MiB) | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb` |
 | `MAX_ERROR_MESSAGE_LENGTH` | 500 | bytes (Go/Ruby) or code units (TS/Swift/Kotlin) | All 5 SDKs |
 | `DEFAULT_BASE_URL` | `https://3.basecampapi.com` | — | All 5 SDKs |
 | `DEFAULT_TIMEOUT` | 30 | seconds | All 5 SDKs |
@@ -1223,9 +1227,9 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: 179
+- Total operations: 181
 - Idempotent: 54 (flagged with `idempotent: true`)
-- Non-idempotent: 125 (no `idempotent` field, or not present)
+- Non-idempotent: 127 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`
 
 ---
@@ -1292,4 +1296,4 @@ For ASCII text (all conformance test fixtures today), these are equivalent.
 | TypeScript | 39 (full canonical set) |
 | Kotlin | 39 (full canonical set) |
 | Ruby | 39 (full canonical set) |
-| Go | 37 (missing: automation, clientVisibility) |
+| Go | 37 as standalone services (missing standalone `automation`; `clientVisibility` ops exist on `RecordingsService`). Hand-written service wrappers around generated OpenAPI client — not fully generated. |
