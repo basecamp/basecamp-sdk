@@ -10,9 +10,7 @@ on:
         description: 'Tag to release (e.g. v0.3.0). Required for manual runs.'
         required: true
 
-permissions:
-  contents: write
-  actions: read
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -23,6 +21,8 @@ jobs:
     name: Wait for SDK publishes
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
     steps:
       - name: Wait for all SDK release workflows
         env:
@@ -95,6 +95,8 @@ jobs:
     needs: [wait-for-publishes]
     if: always() && (needs.wait-for-publishes.result == 'success' || needs.wait-for-publishes.result == 'skipped')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:

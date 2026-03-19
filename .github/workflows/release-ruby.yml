@@ -6,9 +6,7 @@ on:
       - 'v*'
   workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
 
-permissions:
-  contents: read
-  id-token: write
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,10 +15,14 @@ concurrency:
 jobs:
   smithy:
     uses: ./.github/workflows/smithy-verify.yml
+    permissions:
+      contents: read
 
   test:
     name: Test Ruby SDK
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ruby
@@ -28,7 +30,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@dffb23f65a78bba8db45d387d5ea1bbd6be3ef18 # v1.293.0
+        uses: ruby/setup-ruby@dffb23f65a78bba8db45d387d5ea1bbd6be3ef18 # v1.293.0 # zizmor: ignore[cache-poisoning] -- cached deps are for testing, not release artifact generation
         with:
           ruby-version: '3.3'
           bundler-cache: true
@@ -45,6 +47,9 @@ jobs:
     needs: [smithy, test]
     runs-on: ubuntu-latest
     environment: release-rubygems
+    permissions:
+      contents: read
+      id-token: write
     defaults:
       run:
         working-directory: ruby
@@ -60,7 +65,7 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@dffb23f65a78bba8db45d387d5ea1bbd6be3ef18 # v1.293.0
+        uses: ruby/setup-ruby@dffb23f65a78bba8db45d387d5ea1bbd6be3ef18 # v1.293.0 # zizmor: ignore[cache-poisoning] -- cache is branch-isolated; fork PRs cannot write to this cache
         with:
           ruby-version: '3.3'
           bundler-cache: true

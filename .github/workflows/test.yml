@@ -309,7 +309,7 @@ jobs:
         run: |
           # Store the current commit SHA
           PR_SHA="${{ github.event.pull_request.head.sha }}"
-          BASE_REF="${{ github.base_ref }}"
+          BASE_REF="${GITHUB_BASE_REF}"
 
           # Export the current (PR) API
           apidiff -w pr.api ./pkg/basecamp
