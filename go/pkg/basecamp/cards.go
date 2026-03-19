@@ -485,7 +485,7 @@ func (s *CardsService) Update(ctx context.Context, cardID int64, req *UpdateCard
 		}
 		body["due_on"] = req.DueOn
 	}
-	if len(req.AssigneeIDs) > 0 {
+	if req.AssigneeIDs != nil {
 		body["assignee_ids"] = req.AssigneeIDs
 	}
 
@@ -1012,7 +1012,7 @@ func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *Update
 	if req.Title != "" {
 		body["title"] = req.Title
 	}
-	if len(req.Assignees) > 0 {
+	if req.Assignees != nil {
 		body["assignees"] = req.Assignees
 	}
 	if req.DueOn != "" {
