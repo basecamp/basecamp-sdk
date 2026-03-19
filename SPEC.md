@@ -155,7 +155,7 @@ Every account-scoped request prepends `/{accountId}` to the path:
 ```
 FUNCTION buildURL(base_url, account_id, path) → String
   1. If path starts with "https://" → return path unchanged (absolute URL passthrough
-     for Launchpad/OAuth endpoints at a different host).
+     for endpoints at a different host, e.g., pagination follow-up URLs).
   2. If path starts with "http://" → ⊥ UsageError("URL must use HTTPS").
   3. If path does not start with "/" → prepend "/".
   4. → base_url + "/" + account_id + path
@@ -256,11 +256,11 @@ END
 
 - **authorization** — identity lookup and account listing via Launchpad (OAuth utility functions like PKCE, state generation, and discovery are standalone helpers in §16, not service methods)
 
-### AccountClient-Level Services (account-scoped) — 39 services
+### AccountClient-Level Services (account-scoped) — 40 services
 
-attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, comments, documents, events, forwards, lineup, messageBoards, messageTypes, messages, people, projects, recordings, reports, schedules, search, subscriptions, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks
+attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, comments, documents, events, forwards, hillCharts, lineup, messageBoards, messageTypes, messages, people, projects, recordings, reports, schedules, search, subscriptions, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks
 
-**Total surface:** 1 client-level + 39 account-scoped = 40 services.
+**Total surface:** 1 client-level + 40 account-scoped = 41 services.
 
 ### Derivation Rule `[static]`
 
@@ -331,9 +331,11 @@ In all cases, extract `request_id` from `X-Request-Id` response header if presen
 1. Attempt to parse `body` as JSON.
 2. If JSON and has `"error"` key (string value) → use as `message`.
 3. If JSON and has `"error_description"` key (string value) → use as `hint`.
-4. If JSON and has `"message"` key (string value) → use as `message`.
+4. Else if JSON and has `"message"` key (string value) and `message` not yet set → use as `message`.
 5. If parsing fails or body is empty → use HTTP status text as `message`.
 6. Truncate `message` to `MAX_ERROR_MESSAGE_LENGTH` (see §9).
+
+Note: `"error"` takes precedence over `"message"` — step 4 is a fallback for APIs that use `"message"` instead of `"error"`.
 
 ### Retry-After Parsing Algorithm
 
@@ -386,7 +388,7 @@ FUNCTION executeWithRetry(request, retryConfig) → Response
   1. Determine retry eligibility:
      a. method = request.method
      b. If method is POST:
-        - Look up operation in behavior-model.json by path+method
+        - Look up operation in behavior-model.json by operation name (the generated service passes the operationId; the transport maps it to behavior-model.json's key)
         - If operation.idempotent ≠ true → retryConfig = NO_RETRY (maxAttempts=1)
      c. If method is GET, HEAD, PUT, DELETE → use retryConfig from metadata or DEFAULT_RETRY_CONFIG
 
@@ -395,7 +397,7 @@ FUNCTION executeWithRetry(request, retryConfig) → Response
      b. If response.status NOT IN retryConfig.retryOn → return response.
      c. If attempt == retryConfig.maxAttempts - 1 → return response (exhausted).
      d. Calculate delay:
-        - If response has valid Retry-After header → delay = parsed value in ms.
+        - If response has valid Retry-After header → delay = parsed value × 1000 (Retry-After is in seconds; delay is in ms).
         - Else → delay = backoff formula (see below).
      e. Invoke hooks.onRetry(requestInfo, attempt+1, error, delay).
      f. Sleep delay ms.
@@ -459,7 +461,7 @@ END
 RECORD ListMeta
   total_count : Integer   -- from X-Total-Count header; 0 if absent
   truncated   : Boolean   -- true if results were capped by maxPages or maxItems
-  next_url    : String?   -- URL of the next page, if pagination was stopped early
+  next_url    : String?   -- URL of the next page when truncated; not populated by all SDKs (optional field)
 END
 ```
 
@@ -657,11 +659,11 @@ INTERFACE BasecampHooks
   on_request_start(info: RequestInfo) → void
   on_request_end(info: RequestInfo, result: RequestResult) → void
   on_retry(info: RequestInfo, attempt: Integer, error: Error, delay_ms: Integer) → void
-  on_paginate(url: String, page: Integer) → void
+  on_paginate(url: String, page: Integer) → void       -- Ruby/Go only; not in TS/Kotlin/Swift
 END
 ```
 
-All methods are optional. A no-op default is valid.
+All methods are optional. A no-op default is valid. `on_paginate` is implemented in Ruby and Go but not in TypeScript, Kotlin, or Swift — new implementations may omit it.
 
 ### OperationInfo RECORD
 
@@ -694,7 +696,7 @@ RECORD RequestResult
   duration_ms : Integer    -- request duration in milliseconds
   from_cache  : Boolean    -- whether response was served from ETag cache
   error       : Error?     -- error if the request failed
-  retry_after : Integer?   -- Retry-After value if present
+  retry_after : Integer?   -- Retry-After value in seconds if present (Ruby only; other SDKs omit this field)
 END
 ```
 
@@ -868,6 +870,7 @@ The Basecamp Launchpad OAuth endpoints use a legacy format:
 
 - **Default:** disabled (opt-in via `enableCache` / `cache_enabled`)
 - **Scope:** GET requests only
+- **Implementation status:** TypeScript and Go implement ETag caching. Ruby, Kotlin, and Swift do not. New implementations may omit this or defer it.
 
 ### Cache Key
 
@@ -1102,8 +1105,8 @@ Repeated from §5 for quick reference.
 
 **Client-level (1):** authorization
 
-**AccountClient-level (39):**
-attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, comments, documents, events, forwards, lineup, messageBoards, messageTypes, messages, people, projects, recordings, reports, schedules, search, subscriptions, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks
+**AccountClient-level (40):**
+attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, comments, documents, events, forwards, hillCharts, lineup, messageBoards, messageTypes, messages, people, projects, recordings, reports, schedules, search, subscriptions, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks
 
 ---
 
@@ -1239,8 +1242,8 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 ### Operation Counts
 
 - Total operations: 181
-- Idempotent: 54 (flagged with `idempotent: true`)
-- Non-idempotent: 127 (no `idempotent` field, or not present)
+- Idempotent: 55 (flagged with `idempotent: true`)
+- Non-idempotent: 126 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`
 
 ---
