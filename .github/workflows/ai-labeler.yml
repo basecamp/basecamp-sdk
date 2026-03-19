@@ -129,12 +129,12 @@ jobs:
           RESPONSE_FILE: ${{ steps.analyze.outputs.response-file }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          # Strip code-fence wrapper if the model adds one
-          sed -E '/^```(markdown)?$/d' "$RESPONSE_FILE" > /tmp/clean-comment.md
+          # Strip outer code-fence wrapper if the model adds one (first/last lines only)
+          sed -E '1{/^``` *(markdown|md)? *$/d;}; ${/^``` *$/d;}' "$RESPONSE_FILE" > /tmp/clean-comment.md
 
           EXISTING=$(gh pr view "$PR" --json comments --jq '.comments[] | select(.body | startswith("## Spec Change Impact")) | .id' | head -1)
           if [ -n "$EXISTING" ]; then
-            gh api graphql -f query="mutation { updateIssueComment(input: {id: \"$EXISTING\", body: $(jq -Rs . /tmp/clean-comment.md)}) { issueComment { id } } }"
+            gh api graphql -f query="mutation { updateIssueComment(input: {id: \"$EXISTING\", body: $(jq -Rs . "/tmp/clean-comment.md")}) { issueComment { id } } }"
           else
-            gh pr comment "$PR" --body-file /tmp/clean-comment.md
+            gh pr comment "$PR" --body-file "/tmp/clean-comment.md"
           fi
