@@ -123,7 +123,7 @@ All validation errors are `BasecampError(code: "usage")` (see §6 error taxonomy
 1. Parse `base_url`. → `⊥ BasecampError(code: "usage")` if malformed.
 2. If `base_url` is not the default (`https://3.basecampapi.com`) and not localhost (§9), enforce HTTPS. → `⊥ BasecampError(code: "usage", message: "base URL must use HTTPS")` if scheme ≠ `https`.
 3. Validate `timeout > 0`. → `⊥ BasecampError(code: "usage")` otherwise.
-4. Validate `max_retries ≥ 0`. → `⊥ BasecampError(code: "usage")` otherwise.
+4. Validate `max_retries ≥ 1`. → `⊥ BasecampError(code: "usage")` otherwise. (`max_retries` is total attempts including the initial request; 0 would mean no request is made.)
 5. Validate `max_pages > 0`. → `⊥ BasecampError(code: "usage")` otherwise.
 6. Normalize `base_url`: strip trailing `/`.
 
@@ -232,11 +232,13 @@ END
 ### 401 Refresh-and-Retry Algorithm
 
 1. Receive 401 response.
-2. If the token provider supports refresh (`refreshable() == true`) and `retry_count < 1`:
+2. If the token provider supports refresh (`refreshable() == true`) and refresh has not yet been attempted for this request:
    a. Call `refresh()`.
    b. If refresh succeeded, retry the request once with updated token.
    c. → response from retry.
 3. → `⊥ BasecampError(code: "auth_required", http_status: 401)`.
+
+Refresh is attempted at most once per request. Implementations track this with a boolean (e.g., `refresh_attempted`) rather than a counter.
 
 ---
 
@@ -363,7 +365,10 @@ If `behavior-model.json` marks an operation with `idempotent: true`, the POST be
 
 **Gate 3 — Error retryability:**
 
-The error's HTTP status must be in the transport's retryable set. The `behavior-model.json` specifies `retry_on: [429, 503]` for all operations. Implementations may expand this set to include other 5xx statuses (500, 502, 504).
+The error must be retryable. Two categories qualify:
+
+- **HTTP status retry:** Response status is in the transport's retryable set. The `behavior-model.json` specifies `retry_on: [429, 503]` for all operations. Implementations may expand this set to include other 5xx statuses (500, 502, 504).
+- **Network error retry:** Connection failures, timeouts, and DNS errors (no HTTP response received) are retryable. These correspond to `BasecampError(code: "network", retryable: true)` in §6.
 
 **Non-retryable statuses (never retry regardless of method):** 401, 403, 404, 400, 422.
 
@@ -388,8 +393,9 @@ FUNCTION executeWithRetry(request, retryConfig) → Response
 
   2. For attempt = 0 to retryConfig.max_attempts - 1:
      a. Execute request.
-     b. If response.status NOT IN retryConfig.retry_on → return response.
-     c. If attempt == retryConfig.max_attempts - 1 → return response (exhausted).
+     b. If network error (no response): error is retryable → continue to step d (skip status check).
+     c. If response.status NOT IN retryConfig.retry_on → return response.
+     d. If attempt == retryConfig.max_attempts - 1 → return response or raise last error (exhausted).
      d. Calculate delay:
         - If response has valid Retry-After header → delay = parsed value × 1000 (Retry-After is in seconds; delay is in ms).
         - Else → delay = backoff formula (see below).
@@ -483,7 +489,8 @@ FUNCTION paginate(initialResponse, maxPages, maxItems?) → ListResult<T>
   2. total_count = parse X-Total-Count header (0 if absent).
   3. allItems = firstPageItems.
   4. If maxItems set and allItems.length ≥ maxItems:
-     → ListResult(allItems[0:maxItems], meta: {total_count, truncated: true}).
+     a. hasMore = parseNextLink(initialResponse.headers["Link"]) ≠ null OR allItems.length > maxItems.
+     → ListResult(allItems[0:maxItems], meta: {total_count, truncated: hasMore}).
 
   5. response = initialResponse.
   6. For page = 1 to maxPages - 1:
@@ -494,7 +501,8 @@ FUNCTION paginate(initialResponse, maxPages, maxItems?) → ListResult<T>
      e. response = authenticatedFetch(nextUrl).
      f. Parse page items, append to allItems.
      g. If maxItems set and allItems.length ≥ maxItems:
-        → ListResult(allItems[0:maxItems], meta: {total_count, truncated: true}).
+        a. hasMore = parseNextLink(response.headers["Link"]) ≠ null OR allItems.length > maxItems.
+        → ListResult(allItems[0:maxItems], meta: {total_count, truncated: hasMore}).
 
   7. truncated = parseNextLink(response.headers["Link"]) ≠ null.
   8. → ListResult(allItems, meta: {total_count, truncated}).
