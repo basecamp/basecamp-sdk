@@ -111,7 +111,7 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 	httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	httpReq.Header.Set("Accept", "application/json")
 
-	resp, err := e.httpClient.Do(httpReq)
+	resp, err := e.httpClient.Do(httpReq) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 	if err != nil {
 		return nil, fmt.Errorf("token request failed: %w", err)
 	}

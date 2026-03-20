@@ -133,7 +133,7 @@ func (s *AuthorizationService) GetInfo(ctx context.Context, opts *GetInfoOptions
 	req.Header.Set("Accept", "application/json")
 
 	// Execute request using the client's HTTP client
-	resp, err := s.client.httpClient.Do(req)
+	resp, err := s.client.httpClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 	if err != nil {
 		return nil, ErrNetwork(err)
 	}

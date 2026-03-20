@@ -24,6 +24,11 @@ updates:
     labels:
       - "dependencies"
       - "go"
+    cooldown:
+      default-days: 10
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 2
 
   # Kotlin SDK dependencies
   - package-ecosystem: gradle
@@ -52,6 +57,11 @@ updates:
     labels:
       - "dependencies"
       - "kotlin"
+    cooldown:
+      default-days: 10
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 2
 
   # TypeScript SDK dependencies
   - package-ecosystem: npm
@@ -71,6 +81,11 @@ updates:
     labels:
       - "dependencies"
       - "typescript"
+    cooldown:
+      default-days: 10
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 2
 
   # Ruby SDK dependencies
   - package-ecosystem: bundler
@@ -90,6 +105,11 @@ updates:
     labels:
       - "dependencies"
       - "ruby"
+    cooldown:
+      default-days: 10
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 2
 
   # Root package (npm publishing shim)
   - package-ecosystem: npm
@@ -109,6 +129,11 @@ updates:
     labels:
       - "dependencies"
       - "typescript"
+    cooldown:
+      default-days: 10
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 2
 
   # GitHub Actions dependencies
   - package-ecosystem: github-actions
@@ -128,6 +153,8 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+    cooldown:
+      default-days: 10
 
   # Conformance runner — Go
   - package-ecosystem: gomod
@@ -148,6 +175,11 @@ updates:
       - "dependencies"
       - "go"
       - "conformance"
+    cooldown:
+      default-days: 10
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 2
 
   # Conformance runner — TypeScript
   - package-ecosystem: npm
@@ -168,6 +200,11 @@ updates:
       - "dependencies"
       - "typescript"
       - "conformance"
+    cooldown:
+      default-days: 10
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 2
 
   # Conformance runner — Ruby
   - package-ecosystem: bundler
@@ -188,6 +225,11 @@ updates:
       - "dependencies"
       - "ruby"
       - "conformance"
+    cooldown:
+      default-days: 10
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 2
 
   # Smithy bare-arrays spec (standalone Gradle project)
   - package-ecosystem: gradle
@@ -207,3 +249,8 @@ updates:
     labels:
       - "dependencies"
       - "spec"
+    cooldown:
+      default-days: 10
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 2

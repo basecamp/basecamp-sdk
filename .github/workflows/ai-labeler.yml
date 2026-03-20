@@ -1,18 +1,14 @@
 name: Classify PR
 
 on:
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] -- required for write access to PRs from forks; workflow only runs trusted actions, no PR code is checked out or executed
     types: [opened, synchronize, reopened]
 
 concurrency:
   group: classify-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-  issues: write
-  models: read
-  pull-requests: write
+permissions: {}
 
 jobs:
   classify:
@@ -59,8 +55,14 @@ jobs:
 
   spec-impact:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      models: read
+      pull-requests: write
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Build prompt
         id: check

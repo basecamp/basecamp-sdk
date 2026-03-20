@@ -6,9 +6,7 @@ on:
       - 'v*'
   workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
 
-permissions:
-  contents: read
-  packages: write
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,24 +15,30 @@ concurrency:
 jobs:
   smithy:
     uses: ./.github/workflows/smithy-verify.yml
+    permissions:
+      contents: read
 
   test:
     name: Test Kotlin SDK
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: kotlin
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Set up Java
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2 # zizmor: ignore[cache-poisoning] -- cached deps are for testing, not release artifact generation
 
       - name: Build
         run: ./gradlew :basecamp-sdk:build
@@ -57,13 +61,17 @@ jobs:
     name: Publish to GitHub Packages
     needs: [smithy, test]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     defaults:
       run:
         working-directory: kotlin
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Verify tag is on main
         if: github.event_name == 'push'
@@ -72,13 +80,13 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Set up Java
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2 # zizmor: ignore[cache-poisoning] -- cache is branch-isolated; fork PRs cannot write to this cache
 
       - name: Extract version
         id: version
