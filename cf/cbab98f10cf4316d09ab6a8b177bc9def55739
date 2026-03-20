@@ -1,0 +1,23 @@
+.github/workflows/sensitive-change-gate.yml
+  729b375aeda8877d 12-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "cfcbab98f10cf4316d09ab6a8b177bc9def55739",
+  "prompts": {
+    "729b375aeda8877d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02792006-b334-4625-b825-c79118f8a2af",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 0,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}
