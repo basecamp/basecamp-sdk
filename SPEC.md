@@ -412,10 +412,10 @@ END
 ### Backoff Formula
 
 ```
-delay = base_delay * 2^(attempt) + random(0, max_jitter)
+delay = base_delay * 2^(retry_index) + random(0, max_jitter)
 ```
 
-Where `attempt` is 0-indexed (first retry is attempt 0). Default constants:
+Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry = 1, etc.). In the `executeWithRetry` loop, `retry_index = attempt - 1` since `attempt=0` is the initial request. Default constants:
 - `base_delay` = 1000ms
 - `max_jitter` = 100ms
 
