@@ -7387,6 +7387,92 @@
             503
           ]
         }
+      },
+      "put": {
+        "description": "Update the current authenticated user's profile (returns 204 No Content)",
+        "operationId": "UpdateMyProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyProfileRequestContent"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "UpdateMyProfile 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "People"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
       }
     },
     "/{accountId}/my/question_reminders.json": {
@@ -24022,6 +24108,41 @@
       },
       "UpdateMessageTypeResponseContent": {
         "$ref": "#/components/schemas/MessageType"
+      },
+      "UpdateMyProfileRequestContent": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "format": "password"
+          },
+          "email_address": {
+            "type": "string",
+            "format": "password"
+          },
+          "title": {
+            "type": "string",
+            "format": "password"
+          },
+          "bio": {
+            "type": "string",
+            "format": "password"
+          },
+          "location": {
+            "type": "string",
+            "format": "password"
+          },
+          "time_zone_name": {
+            "type": "string"
+          },
+          "first_week_day": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "time_format": {
+            "type": "string"
+          }
+        }
       },
       "UpdateProjectAccessRequestContent": {
         "type": "object",

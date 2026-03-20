@@ -32,6 +32,7 @@ import (
 //   - ProjectsService.Update        (nested: schedule_attributes)
 //   - CheckinsService.UpdateQuestion (nested: schedule)
 //   - CheckinsService.CreateQuestion (nested: schedule — Hour/Minute int32 omitempty)
+//   - PeopleService.UpdateMyProfile   (int32 omitempty: first_week_day — 0 is valid)
 func marshalBody(m map[string]any) (io.Reader, error) {
 	b, err := json.Marshal(m)
 	if err != nil {

@@ -171,6 +171,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
 
   // My Profile
   "GET:/{accountId}/my/profile.json": "GetMyProfile",
+  "PUT:/{accountId}/my/profile.json": "UpdateMyProfile",
   "GET:/{accountId}/my/question_reminders.json": "GetQuestionReminders",
 
   // Projects

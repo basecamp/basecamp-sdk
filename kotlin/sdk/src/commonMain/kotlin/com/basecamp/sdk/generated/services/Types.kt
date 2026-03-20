@@ -228,6 +228,18 @@ data class UpdateMessageBody(
     val categoryId: Long? = null
 )
 
+/** Request body for UpdateMyProfile. */
+data class UpdateMyProfileBody(
+    val name: String? = null,
+    val emailAddress: String? = null,
+    val title: String? = null,
+    val bio: String? = null,
+    val location: String? = null,
+    val timeZoneName: String? = null,
+    val firstWeekDay: Int? = null,
+    val timeFormat: String? = null
+)
+
 /** Request body for UpdateProjectAccess. */
 data class UpdateProjectAccessBody(
     val grant: List<Long>? = null,

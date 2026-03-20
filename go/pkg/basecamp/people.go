@@ -39,6 +39,26 @@ type UpdateProjectAccessResponse struct {
 	Revoked []Person `json:"revoked"`
 }
 
+// UpdateMyProfileRequest specifies the parameters for updating the current user's profile.
+type UpdateMyProfileRequest struct {
+	// Name is the person's display name.
+	Name string `json:"name,omitempty"`
+	// EmailAddress is the person's email address.
+	EmailAddress string `json:"email_address,omitempty"`
+	// Title is the person's job title.
+	Title string `json:"title,omitempty"`
+	// Bio is a short biographical text.
+	Bio string `json:"bio,omitempty"`
+	// Location is the person's location.
+	Location string `json:"location,omitempty"`
+	// TimeZoneName is a Rails time zone name (e.g. "America/Chicago").
+	TimeZoneName string `json:"time_zone_name,omitempty"`
+	// FirstWeekDay is the first day of the week (0 = Sunday, 1 = Monday).
+	FirstWeekDay *int `json:"first_week_day,omitempty"`
+	// TimeFormat is the time display format (e.g. "twelve_hour", "twenty_four_hour").
+	TimeFormat string `json:"time_format,omitempty"`
+}
+
 // PeopleListOptions specifies options for listing people.
 type PeopleListOptions struct {
 	// Limit is the maximum number of people to return.
@@ -206,6 +226,67 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 
 	person := personFromGenerated(*resp.JSON200)
 	return &person, nil
+}
+
+// UpdateMyProfile updates the current authenticated user's profile.
+func (s *PeopleService) UpdateMyProfile(ctx context.Context, req *UpdateMyProfileRequest) (err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "UpdateMyProfile",
+		ResourceType: "person", IsMutation: true,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil {
+		err = ErrUsage("update request is required")
+		return err
+	}
+
+	body := map[string]any{}
+	if req.Name != "" {
+		body["name"] = req.Name
+	}
+	if req.EmailAddress != "" {
+		body["email_address"] = req.EmailAddress
+	}
+	if req.Title != "" {
+		body["title"] = req.Title
+	}
+	if req.Bio != "" {
+		body["bio"] = req.Bio
+	}
+	if req.Location != "" {
+		body["location"] = req.Location
+	}
+	if req.TimeZoneName != "" {
+		body["time_zone_name"] = req.TimeZoneName
+	}
+	if req.FirstWeekDay != nil {
+		if *req.FirstWeekDay < 0 || *req.FirstWeekDay > 1 {
+			err = ErrUsage("first_week_day must be 0 (Sunday) or 1 (Monday)")
+			return err
+		}
+		body["first_week_day"] = *req.FirstWeekDay
+	}
+	if req.TimeFormat != "" {
+		body["time_format"] = req.TimeFormat
+	}
+
+	bodyReader, err := marshalBody(body)
+	if err != nil {
+		return err
+	}
+	resp, err := s.client.parent.gen.UpdateMyProfileWithBodyWithResponse(ctx, s.client.accountID, "application/json", bodyReader)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // ListProjectPeople returns all active people on a project.

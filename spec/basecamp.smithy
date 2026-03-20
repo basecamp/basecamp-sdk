@@ -173,6 +173,7 @@ service Basecamp {
     ListPeople,
     GetPerson,
     GetMyProfile,
+    UpdateMyProfile,
     ListProjectPeople,
     ListPingablePeople,
     UpdateProjectAccess,
@@ -4751,6 +4752,34 @@ structure GetMyProfileOutput {
 
   person: Person
 }
+
+/// Update the current authenticated user's profile (returns 204 No Content)
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/my/profile.json", code: 204)
+operation UpdateMyProfile {
+  input: UpdateMyProfileInput
+  output: UpdateMyProfileOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure UpdateMyProfileInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  name: PersonName
+  email_address: EmailAddress
+  title: PersonTitle
+  bio: PersonBio
+  location: PersonLocation
+  time_zone_name: String
+  first_week_day: Integer
+  time_format: String
+}
+
+structure UpdateMyProfileOutput {}
 
 /// List all active people on a project
 ///
