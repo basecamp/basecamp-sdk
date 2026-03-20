@@ -30,6 +30,120 @@ class ReportsServiceTest < Minitest::Test
     assert_equal "created", result[0]["action"]
   end
 
+  def test_my_assignments
+    response = {
+      "priorities" => [
+        {
+          "id" => 1,
+          "content" => "Priority assignment",
+          "completed" => false,
+          "type" => "Todo",
+          "comments_count" => 2,
+          "has_description" => true,
+          "children" => [
+            {
+              "id" => 2,
+              "content" => "Nested assignment",
+              "completed" => true,
+              "type" => "Todo",
+              "comments_count" => 0,
+              "has_description" => false
+            }
+          ]
+        }
+      ],
+      "non_priorities" => [
+        {
+          "id" => 3,
+          "content" => "Backlog assignment",
+          "completed" => true,
+          "type" => "Todo",
+          "comments_count" => 1,
+          "has_description" => false
+        }
+      ]
+    }
+    stub_get("/12345/my/assignments.json", response_body: response)
+
+    result = @account.reports.my_assignments
+
+    assert_kind_of Hash, result
+    assert_equal 1, result["priorities"].length
+    assert_equal "Priority assignment", result["priorities"][0]["content"]
+    assert_equal "Nested assignment", result["priorities"][0]["children"][0]["content"]
+    assert_equal true, result["non_priorities"][0]["completed"]
+  end
+
+  def test_my_assignments_unauthorized
+    stub_get("/12345/my/assignments.json", response_body: "", status: 401)
+
+    assert_raises(Basecamp::AuthError) do
+      @account.reports.my_assignments
+    end
+  end
+
+  def test_my_assignments_completed
+    response = [
+      {
+        "id" => 10,
+        "content" => "Completed assignment",
+        "completed" => true,
+        "type" => "Todo",
+        "comments_count" => 4,
+        "has_description" => true
+      }
+    ]
+    stub_get("/12345/my/assignments/completed.json", response_body: response)
+
+    result = @account.reports.my_assignments_completed
+
+    assert_kind_of Array, result
+    assert_equal 1, result.length
+    assert_equal "Completed assignment", result[0]["content"]
+    assert_equal true, result[0]["completed"]
+  end
+
+  def test_my_assignments_completed_forbidden
+    stub_get("/12345/my/assignments/completed.json", response_body: "", status: 403)
+
+    assert_raises(Basecamp::ForbiddenError) do
+      @account.reports.my_assignments_completed
+    end
+  end
+
+  def test_my_assignments_due
+    response = [
+      {
+        "id" => 20,
+        "content" => "Due assignment",
+        "due_on" => "2024-04-03",
+        "completed" => false,
+        "type" => "Todo",
+        "comments_count" => 0,
+        "has_description" => false
+      }
+    ]
+    stub_request(:get, "https://3.basecampapi.com/12345/my/assignments/due.json")
+      .with(query: { scope: "due_today" })
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.reports.my_assignments_due(scope: "due_today")
+
+    assert_kind_of Array, result
+    assert_equal 1, result.length
+    assert_equal "2024-04-03", result[0]["due_on"]
+  end
+
+  def test_my_assignments_due_rate_limited
+    stub_request(:get, "https://3.basecampapi.com/12345/my/assignments/due.json")
+      .with(query: { scope: "due_today" })
+      .to_return(status: 429, body: "", headers: { "Content-Type" => "application/json" })
+
+    assert_raises(Basecamp::RateLimitError) do
+      @account.reports.my_assignments_due(scope: "due_today")
+    end
+  end
+
   def test_upcoming
     upcoming = {
       "entries" => [

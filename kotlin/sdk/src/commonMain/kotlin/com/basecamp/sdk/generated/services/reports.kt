@@ -21,6 +21,67 @@ data class PersonProgressResult(
 class ReportsService(client: AccountClient) : BaseService(client) {
 
     /**
+     * Get the current user's assignments grouped into priorities and non-priorities
+     */
+    suspend fun myAssignments(): JsonElement {
+        val info = OperationInfo(
+            service = "Reports",
+            operation = "GetMyAssignments",
+            resourceType = "my_assignment",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpGet("/my/assignments.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
+     * Get the current user's completed assignments
+     */
+    suspend fun myAssignmentsCompleted(): List<MyAssignment> {
+        val info = OperationInfo(
+            service = "Reports",
+            operation = "GetMyAssignmentsCompleted",
+            resourceType = "my_assignments_completed",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpGet("/my/assignments/completed.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<MyAssignment>>(body)
+        }
+    }
+
+    /**
+     * Get the current user's due assignments filtered by scope
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun myAssignmentsDue(options: GetMyAssignmentsDueOptions? = null): List<MyAssignment> {
+        val info = OperationInfo(
+            service = "Reports",
+            operation = "GetMyAssignmentsDue",
+            resourceType = "my_assignments_due",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "scope" to options?.scope,
+        )
+        return request(info, {
+            httpGet("/my/assignments/due.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<MyAssignment>>(body)
+        }
+    }
+
+    /**
      * Get account-wide activity feed (progress report)
      * @param options Optional query parameters and pagination control
      */

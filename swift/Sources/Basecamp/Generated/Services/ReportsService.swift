@@ -9,6 +9,14 @@ public struct AssignedReportOptions: Sendable {
     }
 }
 
+public struct MyAssignmentsDueReportOptions: Sendable {
+    public var scope: String?
+
+    public init(scope: String? = nil) {
+        self.scope = scope
+    }
+}
+
 public struct PersonProgressReportOptions: Sendable {
     public var maxItems: Int?
 
@@ -53,6 +61,37 @@ public final class ReportsService: BaseService, @unchecked Sendable {
             method: "GET",
             path: "/reports/todos/assigned/\(personId)" + queryString(queryItems),
             retryConfig: Metadata.retryConfig(for: "GetAssignedTodos")
+        )
+    }
+
+    public func myAssignments() async throws -> GetMyAssignmentsResponseContent {
+        return try await request(
+            OperationInfo(service: "Reports", operation: "GetMyAssignments", resourceType: "my_assignment", isMutation: false),
+            method: "GET",
+            path: "/my/assignments.json",
+            retryConfig: Metadata.retryConfig(for: "GetMyAssignments")
+        )
+    }
+
+    public func myAssignmentsCompleted() async throws -> [MyAssignment] {
+        return try await request(
+            OperationInfo(service: "Reports", operation: "GetMyAssignmentsCompleted", resourceType: "my_assignments_completed", isMutation: false),
+            method: "GET",
+            path: "/my/assignments/completed.json",
+            retryConfig: Metadata.retryConfig(for: "GetMyAssignmentsCompleted")
+        )
+    }
+
+    public func myAssignmentsDue(options: MyAssignmentsDueReportOptions? = nil) async throws -> [MyAssignment] {
+        var queryItems: [URLQueryItem] = []
+        if let scope = options?.scope {
+            queryItems.append(URLQueryItem(name: "scope", value: scope))
+        }
+        return try await request(
+            OperationInfo(service: "Reports", operation: "GetMyAssignmentsDue", resourceType: "my_assignments_due", isMutation: false),
+            method: "GET",
+            path: "/my/assignments/due.json" + queryString(queryItems),
+            retryConfig: Metadata.retryConfig(for: "GetMyAssignmentsDue")
         )
     }
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-03-16T16:40:07.598Z",
+  "generated": "2026-03-20T16:08:05.261Z",
   "operations": {
     "CreateAttachment": {
       "retry": {
@@ -937,6 +937,39 @@
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "GetMyAssignments": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetMyAssignmentsCompleted": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetMyAssignmentsDue": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "GetMyProfile": {

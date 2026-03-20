@@ -268,6 +268,12 @@ data class ListRecordingsOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
+/** Options for GetMyAssignmentsDue. */
+data class GetMyAssignmentsDueOptions(
+    val scope: String? = null
+) {
+}
+
 /** Options for GetUpcomingSchedule. */
 data class GetUpcomingScheduleOptions(
     val windowStartsOn: String? = null,

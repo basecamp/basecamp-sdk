@@ -813,6 +813,45 @@
       }
     },
     {
+      "pattern": "/{accountId}/my/assignments",
+      "resource": "Reports",
+      "operations": {
+        "GET": "GetMyAssignments"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/my/assignments/completed",
+      "resource": "Reports",
+      "operations": {
+        "GET": "GetMyAssignmentsCompleted"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/my/assignments/due",
+      "resource": "Reports",
+      "operations": {
+        "GET": "GetMyAssignmentsDue"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/my/profile",
       "resource": "People",
       "operations": {

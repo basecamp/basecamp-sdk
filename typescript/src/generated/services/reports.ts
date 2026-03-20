@@ -13,10 +13,20 @@ import type { PaginationOptions } from "../../pagination.js";
 // Types
 // =============================================================================
 
+/** MyAssignment entity from the Basecamp API. */
+export type MyAssignment = components["schemas"]["MyAssignment"];
 /** TimelineEvent entity from the Basecamp API. */
 export type TimelineEvent = components["schemas"]["TimelineEvent"];
 /** Person entity from the Basecamp API. */
 export type Person = components["schemas"]["Person"];
+
+/**
+ * Options for myAssignmentsDue.
+ */
+export interface MyAssignmentsDueReportOptions {
+  /** Filter by due scope: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later */
+  scope?: string;
+}
 
 /**
  * Options for progress.
@@ -57,6 +67,82 @@ export interface PersonProgressReportOptions extends PaginationOptions {
  * Service for Reports operations.
  */
 export class ReportsService extends BaseService {
+
+  /**
+   * Get the current user's assignments grouped into priorities and non-priorities
+   * @returns The my_assignment
+   *
+   * @example
+   * ```ts
+   * const result = await client.reports.myAssignments();
+   * ```
+   */
+  async myAssignments(): Promise<components["schemas"]["GetMyAssignmentsResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Reports",
+        operation: "GetMyAssignments",
+        resourceType: "my_assignment",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/my/assignments.json", {
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Get the current user's completed assignments
+   * @returns Array of MyAssignment
+   *
+   * @example
+   * ```ts
+   * const result = await client.reports.myAssignmentsCompleted();
+   * ```
+   */
+  async myAssignmentsCompleted(): Promise<MyAssignment[]> {
+    const response = await this.request(
+      {
+        service: "Reports",
+        operation: "GetMyAssignmentsCompleted",
+        resourceType: "my_assignments_completed",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/my/assignments/completed.json", {
+        })
+    );
+    return response ?? [];
+  }
+
+  /**
+   * Get the current user's due assignments filtered by scope
+   * @param options - Optional query parameters
+   * @returns Array of MyAssignment
+   *
+   * @example
+   * ```ts
+   * const result = await client.reports.myAssignmentsDue();
+   * ```
+   */
+  async myAssignmentsDue(options?: MyAssignmentsDueReportOptions): Promise<MyAssignment[]> {
+    const response = await this.request(
+      {
+        service: "Reports",
+        operation: "GetMyAssignmentsDue",
+        resourceType: "my_assignments_due",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/my/assignments/due.json", {
+          params: {
+            query: { scope: options?.scope },
+          },
+        })
+    );
+    return response ?? [];
+  }
 
   /**
    * Get account-wide activity feed (progress report)

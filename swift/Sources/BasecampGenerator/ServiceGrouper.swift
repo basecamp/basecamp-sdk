@@ -13,6 +13,7 @@ let tagToService: [String: String] = [
     "Schedule": "Schedules",
     "People": "People",
     "Projects": "Projects",
+    "Reports": "Reports",
     "Automation": "Automation",
     "ClientFeatures": "ClientFeatures",
     "Boosts": "Boosts",

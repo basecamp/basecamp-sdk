@@ -43,6 +43,7 @@ let typeAliases: [String: (name: String, kind: String)] = [
     "ClientApproval": ("ClientApproval", "entity"),
     "ClientCorrespondence": ("ClientCorrespondence", "entity"),
     "ClientReply": ("ClientReply", "entity"),
+    "MyAssignment": ("MyAssignment", "entity"),
     "Boost": ("Boost", "entity"),
     "TimelineEvent": ("TimelineEvent", "entity"),
     "TimesheetEntry": ("TimesheetEntry", "entity"),

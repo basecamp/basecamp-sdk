@@ -821,6 +821,18 @@ type GetMessageResponseContent = Message
 // GetMessageTypeResponseContent defines model for GetMessageTypeResponseContent.
 type GetMessageTypeResponseContent = MessageType
 
+// GetMyAssignmentsCompletedResponseContent defines model for GetMyAssignmentsCompletedResponseContent.
+type GetMyAssignmentsCompletedResponseContent = []MyAssignment
+
+// GetMyAssignmentsDueResponseContent defines model for GetMyAssignmentsDueResponseContent.
+type GetMyAssignmentsDueResponseContent = []MyAssignment
+
+// GetMyAssignmentsResponseContent defines model for GetMyAssignmentsResponseContent.
+type GetMyAssignmentsResponseContent struct {
+	NonPriorities []MyAssignment `json:"non_priorities,omitempty"`
+	Priorities    []MyAssignment `json:"priorities,omitempty"`
+}
+
 // GetMyProfileResponseContent defines model for GetMyProfileResponseContent.
 type GetMyProfileResponseContent = Person
 
@@ -1152,6 +1164,45 @@ type MoveCardColumnRequestContent struct {
 // MoveCardRequestContent defines model for MoveCardRequestContent.
 type MoveCardRequestContent struct {
 	ColumnId int64 `json:"column_id"`
+}
+
+// MyAssignment defines model for MyAssignment.
+type MyAssignment struct {
+	AppUrl              string               `json:"app_url,omitempty"`
+	Assignees           []MyAssignmentPerson `json:"assignees,omitempty"`
+	Bucket              MyAssignmentBucket   `json:"bucket,omitempty"`
+	Children            []MyAssignment       `json:"children,omitempty"`
+	CommentsCount       int32                `json:"comments_count,omitempty"`
+	Completed           bool                 `json:"completed,omitempty"`
+	Content             string               `json:"content,omitempty"`
+	DueOn               types.Date           `json:"due_on,omitempty"`
+	HasDescription      bool                 `json:"has_description,omitempty"`
+	Id                  int64                `json:"id"`
+	Parent              MyAssignmentParent   `json:"parent,omitempty"`
+	PriorityRecordingId *int64               `json:"priority_recording_id,omitempty"`
+	StartsOn            types.Date           `json:"starts_on,omitempty"`
+	Type                string               `json:"type,omitempty"`
+}
+
+// MyAssignmentBucket defines model for MyAssignmentBucket.
+type MyAssignmentBucket struct {
+	AppUrl string `json:"app_url,omitempty"`
+	Id     int64  `json:"id"`
+	Name   string `json:"name"`
+}
+
+// MyAssignmentParent defines model for MyAssignmentParent.
+type MyAssignmentParent struct {
+	AppUrl string `json:"app_url,omitempty"`
+	Id     int64  `json:"id"`
+	Title  string `json:"title"`
+}
+
+// MyAssignmentPerson defines model for MyAssignmentPerson.
+type MyAssignmentPerson struct {
+	AvatarUrl string `json:"avatar_url,omitempty"`
+	Id        int64  `json:"id"`
+	Name      string `json:"name"`
 }
 
 // NotFoundErrorResponseContent defines model for NotFoundErrorResponseContent.
@@ -2187,6 +2238,12 @@ type ListMessagesParams struct {
 	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
+// GetMyAssignmentsDueParams defines parameters for GetMyAssignmentsDue.
+type GetMyAssignmentsDueParams struct {
+	// Scope Filter by due scope: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later
+	Scope string `form:"scope,omitempty" json:"scope,omitempty"`
+}
+
 // ListProjectsParams defines parameters for ListProjects.
 type ListProjectsParams struct {
 	// Status active|archived|trashed
@@ -3021,6 +3078,15 @@ type ClientInterface interface {
 	UpdateMessageWithBody(ctx context.Context, accountId string, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateMessage(ctx context.Context, accountId string, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMyAssignments request
+	GetMyAssignments(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMyAssignmentsCompleted request
+	GetMyAssignmentsCompleted(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMyAssignmentsDue request
+	GetMyAssignmentsDue(ctx context.Context, accountId string, params *GetMyAssignmentsDueParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMyProfile request
 	GetMyProfile(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4540,6 +4606,36 @@ func (c *Client) UpdateMessage(ctx context.Context, accountId string, messageId 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateMessageRequest(c.Server, accountId, messageId, body)
 	}, true, "UpdateMessage", reqEditors...)
+
+}
+
+// GetMyAssignments is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetMyAssignments(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetMyAssignmentsRequest(c.Server, accountId)
+	}, true, "GetMyAssignments", reqEditors...)
+
+}
+
+// GetMyAssignmentsCompleted is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetMyAssignmentsCompleted(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetMyAssignmentsCompletedRequest(c.Server, accountId)
+	}, true, "GetMyAssignmentsCompleted", reqEditors...)
+
+}
+
+// GetMyAssignmentsDue is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetMyAssignmentsDue(ctx context.Context, accountId string, params *GetMyAssignmentsDueParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetMyAssignmentsDueRequest(c.Server, accountId, params)
+	}, true, "GetMyAssignmentsDue", reqEditors...)
 
 }
 
@@ -9505,6 +9601,130 @@ func NewUpdateMessageRequestWithBody(server string, accountId string, messageId 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetMyAssignmentsRequest generates requests for GetMyAssignments
+func NewGetMyAssignmentsRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/assignments.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetMyAssignmentsCompletedRequest generates requests for GetMyAssignmentsCompleted
+func NewGetMyAssignmentsCompletedRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/assignments/completed.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetMyAssignmentsDueRequest generates requests for GetMyAssignmentsDue
+func NewGetMyAssignmentsDueRequest(server string, accountId string, params *GetMyAssignmentsDueParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/assignments/due.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Scope != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "scope", runtime.ParamLocationQuery, params.Scope); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -14898,6 +15118,9 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateMessage":                      {Idempotent: false, HasSensitiveParams: false},
 	"GetMessage":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMessage":                      {Idempotent: true, HasSensitiveParams: false},
+	"GetMyAssignments":                   {Idempotent: true, HasSensitiveParams: false},
+	"GetMyAssignmentsCompleted":          {Idempotent: true, HasSensitiveParams: false},
+	"GetMyAssignmentsDue":                {Idempotent: true, HasSensitiveParams: false},
 	"GetMyProfile":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetQuestionReminders":               {Idempotent: true, HasSensitiveParams: false},
 	"ListPeople":                         {Idempotent: true, HasSensitiveParams: false},
@@ -16211,6 +16434,15 @@ type ClientWithResponsesInterface interface {
 	UpdateMessageWithBodyWithResponse(ctx context.Context, accountId string, messageId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error)
 
 	UpdateMessageWithResponse(ctx context.Context, accountId string, messageId int64, body UpdateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageResponse, error)
+
+	// GetMyAssignmentsWithResponse request
+	GetMyAssignmentsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyAssignmentsResponse, error)
+
+	// GetMyAssignmentsCompletedWithResponse request
+	GetMyAssignmentsCompletedWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyAssignmentsCompletedResponse, error)
+
+	// GetMyAssignmentsDueWithResponse request
+	GetMyAssignmentsDueWithResponse(ctx context.Context, accountId string, params *GetMyAssignmentsDueParams, reqEditors ...RequestEditorFn) (*GetMyAssignmentsDueResponse, error)
 
 	// GetMyProfileWithResponse request
 	GetMyProfileWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyProfileResponse, error)
@@ -18519,6 +18751,84 @@ func (r UpdateMessageResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateMessageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetMyAssignmentsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetMyAssignmentsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyAssignmentsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyAssignmentsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetMyAssignmentsCompletedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetMyAssignmentsCompletedResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyAssignmentsCompletedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyAssignmentsCompletedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetMyAssignmentsDueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetMyAssignmentsDueResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyAssignmentsDueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyAssignmentsDueResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -22229,6 +22539,33 @@ func (c *ClientWithResponses) UpdateMessageWithResponse(ctx context.Context, acc
 		return nil, err
 	}
 	return ParseUpdateMessageResponse(rsp)
+}
+
+// GetMyAssignmentsWithResponse request returning *GetMyAssignmentsResponse
+func (c *ClientWithResponses) GetMyAssignmentsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyAssignmentsResponse, error) {
+	rsp, err := c.GetMyAssignments(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyAssignmentsResponse(rsp)
+}
+
+// GetMyAssignmentsCompletedWithResponse request returning *GetMyAssignmentsCompletedResponse
+func (c *ClientWithResponses) GetMyAssignmentsCompletedWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyAssignmentsCompletedResponse, error) {
+	rsp, err := c.GetMyAssignmentsCompleted(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyAssignmentsCompletedResponse(rsp)
+}
+
+// GetMyAssignmentsDueWithResponse request returning *GetMyAssignmentsDueResponse
+func (c *ClientWithResponses) GetMyAssignmentsDueWithResponse(ctx context.Context, accountId string, params *GetMyAssignmentsDueParams, reqEditors ...RequestEditorFn) (*GetMyAssignmentsDueResponse, error) {
+	rsp, err := c.GetMyAssignmentsDue(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyAssignmentsDueResponse(rsp)
 }
 
 // GetMyProfileWithResponse request returning *GetMyProfileResponse
@@ -27546,6 +27883,168 @@ func ParseUpdateMessageResponse(rsp *http.Response) (*UpdateMessageResponse, err
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetMyAssignmentsResponse parses an HTTP response from a GetMyAssignmentsWithResponse call
+func ParseGetMyAssignmentsResponse(rsp *http.Response) (*GetMyAssignmentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyAssignmentsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetMyAssignmentsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetMyAssignmentsCompletedResponse parses an HTTP response from a GetMyAssignmentsCompletedWithResponse call
+func ParseGetMyAssignmentsCompletedResponse(rsp *http.Response) (*GetMyAssignmentsCompletedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyAssignmentsCompletedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetMyAssignmentsCompletedResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetMyAssignmentsDueResponse parses an HTTP response from a GetMyAssignmentsDueWithResponse call
+func ParseGetMyAssignmentsDueResponse(rsp *http.Response) (*GetMyAssignmentsDueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyAssignmentsDueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetMyAssignmentsDueResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

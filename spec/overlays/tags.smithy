@@ -193,3 +193,8 @@ apply ListAnswers @tags(["Automation"])
 apply GetAnswer @tags(["Automation"])
 apply CreateAnswer @tags(["Automation"])
 apply UpdateAnswer @tags(["Automation"])
+
+// Reports
+apply GetMyAssignments @tags(["Reports"])
+apply GetMyAssignmentsCompleted @tags(["Reports"])
+apply GetMyAssignmentsDue @tags(["Reports"])
