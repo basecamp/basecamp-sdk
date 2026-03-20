@@ -407,11 +407,24 @@ swift-clean:
 	@$(MAKE) -C swift clean
 
 #------------------------------------------------------------------------------
+# GitHub Actions lint targets
+#------------------------------------------------------------------------------
+
+.PHONY: lint-actions
+
+# Lint GitHub Actions workflows (requires actionlint + zizmor)
+lint-actions:
+	@command -v actionlint >/dev/null || (echo "Install actionlint: go install github.com/rhysd/actionlint/cmd/actionlint@latest" && exit 1)
+	@command -v zizmor >/dev/null || (echo "Install zizmor: https://docs.zizmor.sh/installation/" && exit 1)
+	actionlint
+	zizmor .
+
+#------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
 
-# Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Behavior Model + Conformance + Provenance)
-check: smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check conformance
+# Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Behavior Model + Conformance + Provenance + Actions lint)
+check: lint-actions smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check conformance
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -496,7 +509,10 @@ help:
 	@echo "  sync-api-version-check   Verify API_VERSION constants are up to date"
 	@echo "  release VERSION=x.y.z    Tag and push a global release (triggers all SDK releases)"
 	@echo ""
+	@echo "GitHub Actions:"
+	@echo "  lint-actions     Lint GitHub Actions workflows (actionlint + zizmor)"
+	@echo ""
 	@echo "Combined:"
-	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Conformance + Provenance + API version sync)"
+	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Conformance + Provenance + API version sync + Actions lint)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"
