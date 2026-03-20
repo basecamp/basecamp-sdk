@@ -122,7 +122,7 @@ jobs:
           cache-dependency-path: 'go/go.sum'
 
       - name: Install gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.23.0
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.4
 
       - name: Run gosec
         run: gosec -severity high -exclude-dir=pkg/generated -fmt sarif -out gosec-results.sarif ./...
@@ -132,7 +132,7 @@ jobs:
         if: always()
         continue-on-error: true
         with:
-          sarif_file: 'gosec-results.sarif'
+          sarif_file: 'go/gosec-results.sarif'
           category: 'gosec'
 
   npm-audit:
