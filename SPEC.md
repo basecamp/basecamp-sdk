@@ -170,7 +170,7 @@ FUNCTION buildURL(base_url, account_id, path) → String
   -- relative paths; only the transport passes absolute URLs (e.g., pagination
   -- follow-up URLs). This is not a public API surface.
   1. If path starts with "https://" → return path unchanged.
-  2. If path starts with "http://" → ⊥ BasecampError(code: "usage", message: "URL must use HTTPS").
+  2. If path starts with "http://" and is not a localhost URL (see §9) → ⊥ BasecampError(code: "usage", message: "URL must use HTTPS").
   3. If path does not start with "/" → prepend "/".
   4. → base_url + "/" + account_id + path
 END
@@ -387,7 +387,7 @@ FUNCTION executeWithRetry(request, retryConfig) → Response
      d. Calculate delay:
         - If response has valid Retry-After header → delay = parsed value × 1000 (Retry-After is in seconds; delay is in ms).
         - Else → delay = backoff formula (see below).
-     e. Invoke hooks.onRetry(requestInfo, attempt+1, error, delay).
+     e. Invoke hooks.on_retry(requestInfo, attempt+1, error, delay).
      f. Sleep delay ms.
      g. Refresh auth headers (token may have been refreshed during sleep).
      h. Continue loop.
@@ -701,7 +701,7 @@ FUNCTION chainHooks(hooks: BasecampHooks[]) → BasecampHooks
   Invokes start events (on_operation_start, on_request_start) in forward order.
   End events (on_operation_end, on_request_end): reverse order (LIFO) is
   recommended (mirrors middleware stacking), but forward order is acceptable.
-  Ruby, Go, and Swift use LIFO; TypeScript and Kotlin use forward order.
+  Ruby, Go, Swift, and Kotlin use LIFO; TypeScript uses forward order.
   Each invocation is wrapped in try/catch — a failing hook
   does not prevent subsequent hooks from running.
 END
@@ -1199,24 +1199,24 @@ attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, 
 
 ### Structure
 
-```json
+```
 {
   "$schema": "https://basecamp.com/schemas/behavior-model.json",
   "version": "1.0.0",
   "generated": true,
   "operations": {
     "<OperationId>": {
-      "idempotent": true,          // optional — only present when true
+      "idempotent": true,           ← optional; only present when true
       "retry": {
-        "max": 3,                  // total attempts (including first)
-        "base_delay_ms": 1000,     // initial delay before first retry
-        "backoff": "exponential",  // always "exponential" in practice
-        "retry_on": [429, 503]     // HTTP statuses that trigger retry
+        "max": 3,                   ← total attempts (including first)
+        "base_delay_ms": 1000,      ← initial delay before first retry
+        "backoff": "exponential",   ← always "exponential" in practice
+        "retry_on": [429, 503]      ← HTTP statuses that trigger retry
       }
     }
   },
-  "redaction": { ... },       // PII field paths per request/response type (root-level)
-  "sensitiveTypes": [ ... ]   // Smithy-defined sensitive type names (root-level)
+  "redaction": { "<TypeName>": ["$.fieldPath", ...] },
+  "sensitiveTypes": ["AvatarUrl", "EmailAddress", ...]
 }
 ```
 
