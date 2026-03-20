@@ -19,20 +19,20 @@ func NewMyAssignmentsService(client *AccountClient) *MyAssignmentsService {
 
 // MyAssignment represents an assignable item in the current user's assignments.
 type MyAssignment struct {
-	ID                  int64                `json:"id"`
-	AppURL              string               `json:"app_url"`
-	Content             string               `json:"content"`
-	StartsOn            string               `json:"starts_on,omitempty"`
-	DueOn               string               `json:"due_on,omitempty"`
-	Completed           bool                 `json:"completed"`
-	Type                string               `json:"type"`
-	CommentsCount       int                  `json:"comments_count"`
-	HasDescription      bool                 `json:"has_description"`
-	PriorityRecordingID *int64               `json:"priority_recording_id,omitempty"`
-	Bucket              *MyAssignmentRef     `json:"bucket,omitempty"`
-	Parent              *MyAssignmentRef     `json:"parent,omitempty"`
-	Assignees           []MyAssignmentPerson `json:"assignees,omitempty"`
-	Children            []MyAssignment       `json:"children,omitempty"`
+	ID                  int64            `json:"id"`
+	AppURL              string           `json:"app_url"`
+	Content             string           `json:"content"`
+	StartsOn            string           `json:"starts_on,omitempty"`
+	DueOn               string           `json:"due_on,omitempty"`
+	Completed           bool             `json:"completed"`
+	Type                string           `json:"type"`
+	CommentsCount       int              `json:"comments_count"`
+	HasDescription      bool             `json:"has_description"`
+	PriorityRecordingID *int64           `json:"priority_recording_id,omitempty"`
+	Bucket              *MyAssignmentRef `json:"bucket,omitempty"`
+	Parent              *MyAssignmentRef `json:"parent,omitempty"`
+	Assignees           []Person         `json:"assignees,omitempty"`
+	Children            []MyAssignment   `json:"children,omitempty"`
 }
 
 // MyAssignmentRef represents a bucket or parent reference on an assignment.
@@ -41,13 +41,6 @@ type MyAssignmentRef struct {
 	Name   string `json:"name,omitempty"`
 	Title  string `json:"title,omitempty"`
 	AppURL string `json:"app_url,omitempty"`
-}
-
-// MyAssignmentPerson represents a minimal person on an assignment.
-type MyAssignmentPerson struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	AvatarURL string `json:"avatar_url,omitempty"`
 }
 
 // MyAssignmentsResponse contains the current user's assignments.
@@ -211,7 +204,7 @@ func myAssignmentFromGenerated(ga generated.MyAssignment) MyAssignment {
 	}
 
 	for _, gp := range ga.Assignees {
-		a.Assignees = append(a.Assignees, MyAssignmentPerson{
+		a.Assignees = append(a.Assignees, Person{
 			ID:        gp.Id,
 			Name:      gp.Name,
 			AvatarURL: gp.AvatarUrl,
