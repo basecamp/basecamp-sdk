@@ -90,8 +90,8 @@ RECORD Config
   base_url        : String    = "https://3.basecampapi.com"
   timeout         : Duration  = 30s
   max_pages       : Integer   = 10000
-  -- Retry/backoff fields below are exposed by Ruby and Go but not by
-  -- TypeScript, Kotlin, or Swift (which use per-operation metadata from
+  -- Retry/backoff fields below are exposed by Ruby, Go, and Kotlin but
+  -- not by TypeScript or Swift (which use per-operation metadata from
   -- behavior-model.json). New implementations may omit these from the
   -- public config and use the behavior-model defaults directly.
   max_retries     : Integer   = 3       -- optional config field
@@ -100,7 +100,7 @@ RECORD Config
 END
 ```
 
-**Go Config divergence:** Go splits this across two structs — `Config` (base URL, timeouts, retry params) and `HTTPOptions` (redirect policy, TLS config). The spec's single `Config` RECORD is the canonical shape; Go's split is a language adaptation.
+**Go Config divergence:** Go splits this across two structs — `Config` (base URL, project/todolist IDs, cache settings) and `HTTPOptions` (timeout, retry params, redirect policy, TLS config). The spec's single `Config` RECORD is the canonical shape; Go's split is a language adaptation.
 
 **Naming note:** `max_retries` means total attempts (including the initial request), not the number of retries after the first attempt. With `max_retries = 3`, the transport makes at most 3 attempts total (1 initial + 2 retries). This name is inherited from the shipping Ruby SDK; the behavior-model.json uses `retry.max` with identical semantics.
 
@@ -123,7 +123,7 @@ All validation errors are `BasecampError(code: "usage")` (see §6 error taxonomy
 1. Parse `base_url`. → `⊥ BasecampError(code: "usage")` if malformed.
 2. If `base_url` is not the default (`https://3.basecampapi.com`) and not localhost (§9), enforce HTTPS. → `⊥ BasecampError(code: "usage", message: "base URL must use HTTPS")` if scheme ≠ `https`.
 3. Validate `timeout > 0`. → `⊥ BasecampError(code: "usage")` otherwise.
-4. Validate `max_retries ≥ 1`. → `⊥ BasecampError(code: "usage")` otherwise. (`max_retries` is total attempts including the initial request; 0 would mean no request is made.)
+4. Validate `max_retries ≥ 1`. → `⊥ BasecampError(code: "usage")` otherwise. (`max_retries` is total attempts including the initial request; 0 would mean no request is made.) **Divergence:** Ruby and Go currently accept `max_retries = 0`; the spec prescribes `≥ 1` as the intended contract.
 5. Validate `max_pages > 0`. → `⊥ BasecampError(code: "usage")` otherwise.
 6. Normalize `base_url`: strip trailing `/`.
 
@@ -289,7 +289,7 @@ END
 
 ### Error Code Table
 
-Status-mapped codes (`not_found` through `validation`) are `[conformance]`-verified. Client-side codes (`usage`, `network`, `ambiguous`) and exit codes are `[static]`.
+Status-mapped codes are verified per the Verification column. Most are `[conformance]`-verified; 400→`validation` is `[static]` (no conformance test). Client-side codes (`usage`, `network`, `ambiguous`) and exit codes are `[static]`.
 
 | Code | Exit Code | HTTP Status | Retryable | Description | Verification |
 |------|-----------|-------------|-----------|-------------|-------------|
@@ -301,7 +301,8 @@ Status-mapped codes (`not_found` through `validation`) are `[conformance]`-verif
 | `network` | 6 | — | true | Connection failure, timeout, DNS | `[static]` |
 | `api_error` | 7 | 500, 502, 503, 504 | true | Server-side error | `[conformance]` |
 | `ambiguous` | 8 | — | false | Multiple matches found (CLI disambiguation) | `[static]` |
-| `validation` | 9 | 400, 422 | false | Request validation failed | `[conformance]` |
+| `validation` | 9 | 422 | false | Request validation failed | `[conformance]` |
+| `validation` | 9 | 400 | false | Request validation failed | `[static]` |
 
 ### HTTP Status Mapping Algorithm `[conformance]`
 
@@ -393,9 +394,9 @@ FUNCTION executeWithRetry(request, retryConfig) → Response
 
   2. For attempt = 0 to retryConfig.max_attempts - 1:
      a. Execute request.
-     b. If network error (no response): error is retryable → continue to step e (skip status check).
+     b. If network error (no response): error is retryable. If attempt == retryConfig.max_attempts - 1 → raise last error (exhausted). Else → continue to step e (skip status check).
      c. If response.status NOT IN retryConfig.retry_on → return response.
-     d. If attempt == retryConfig.max_attempts - 1 → return response or raise last error (exhausted).
+     d. If attempt == retryConfig.max_attempts - 1 → return response (exhausted).
      e. Calculate delay:
         - If response has valid Retry-After header → delay = parsed value × 1000 (Retry-After is in seconds; delay is in ms).
         - Else → delay = backoff formula (see below).
@@ -641,9 +642,11 @@ The authoritative success status for each operation is defined in `openapi.json`
 
 All 4xx and 5xx responses must produce typed `BasecampError` errors (not silently swallowed). The error must include the HTTP status code, error code, message, and request ID.
 
-### Non-Retryable Errors `[conformance]`
+### Non-Retryable Errors
 
-Status codes 400, 401, 403, 404, and 422 must NOT be retried. Conformance tests assert `requestCount == 1` for these statuses.
+Status codes 401, 403, 404, and 422 must NOT be retried. Conformance tests assert `requestCount == 1` for these statuses. `[conformance]`
+
+Status code 400 must also NOT be retried. This is a `[static]` contract (no dedicated conformance test exists for 400).
 
 ### Retry Exhaustion
 
