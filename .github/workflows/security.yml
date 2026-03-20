@@ -300,3 +300,16 @@ jobs:
         run: |
           go install github.com/zricethezav/gitleaks/v8@v8.22.0
           gitleaks detect --source . --no-git -v
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    continue-on-error: true  # Requires GitHub Advanced Security
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
