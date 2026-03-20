@@ -159,20 +159,20 @@ func (s *CredentialStore) saveAllToFile(all map[string]*Credentials) error {
 	tmpPath := tmpFile.Name()
 	if _, err := tmpFile.Write(data); err != nil {
 		_ = tmpFile.Close()
-		_ = os.Remove(tmpPath)
+		_ = os.Remove(tmpPath) // #nosec G703 -- path derived from caller-configured credentials directory
 		return err
 	}
 	if err := tmpFile.Chmod(0600); err != nil {
 		_ = tmpFile.Close()
-		_ = os.Remove(tmpPath)
+		_ = os.Remove(tmpPath) // #nosec G703 -- path derived from caller-configured credentials directory
 		return err
 	}
 	if err := tmpFile.Close(); err != nil {
-		_ = os.Remove(tmpPath)
+		_ = os.Remove(tmpPath) // #nosec G703 -- path derived from caller-configured credentials directory
 		return err
 	}
-	if err := os.Rename(tmpPath, s.credentialsPath()); err != nil {
-		_ = os.Remove(tmpPath)
+	if err := os.Rename(tmpPath, s.credentialsPath()); err != nil { // #nosec G703 -- path derived from caller-configured credentials directory
+		_ = os.Remove(tmpPath) // #nosec G703 -- path derived from caller-configured credentials directory
 		return err
 	}
 	return nil
@@ -324,7 +324,7 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := m.httpClient.Do(req)
+	resp, err := m.httpClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 	if err != nil {
 		return ErrNetwork(err)
 	}

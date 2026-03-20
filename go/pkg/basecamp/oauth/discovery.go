@@ -36,7 +36,7 @@ func (d *Discoverer) Discover(ctx context.Context, baseURL string) (*Config, err
 	}
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := d.httpClient.Do(req)
+	resp, err := d.httpClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 	if err != nil {
 		return nil, fmt.Errorf("discovery request failed: %w", err)
 	}

@@ -693,7 +693,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 	c.logger.Debug("http request", "method", method, "url", url, "attempt", attempt)
 
 	// Execute request (hooks are called in transport layer)
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 	if err != nil {
 		return nil, ErrNetwork(err)
 	}

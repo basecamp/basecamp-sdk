@@ -125,10 +125,7 @@ jobs:
         run: go install github.com/securego/gosec/v2/cmd/gosec@v2.23.0
 
       - name: Run gosec
-        # Exclude G703 (path traversal) and G704 (SSRF) taint analysis rules:
-        # an HTTP client SDK constructs URLs and file paths from caller-provided
-        # parameters by design — these are architectural false positives.
-        run: gosec -exclude=G703,G704 -severity high -exclude-dir=pkg/generated -fmt sarif -out gosec-results.sarif ./...
+        run: gosec -severity high -exclude-dir=pkg/generated -fmt sarif -out gosec-results.sarif ./...
 
       - name: Upload gosec results
         uses: github/codeql-action/upload-sarif@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
@@ -294,15 +291,16 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Set up Go
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
-        with:
-          go-version: 'stable'
-          cache: false
       - name: Install and run gitleaks
+        env:
+          GITLEAKS_VERSION: '8.22.0'
         run: |
-          go install github.com/zricethezav/gitleaks/v8@v8.22.0
-          gitleaks detect --source . --no-git -v
+          TARBALL="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -O "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${TARBALL}"
+          curl -sSfL -O "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          sha256sum --check --ignore-missing "gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          tar xzf "${TARBALL}" gitleaks
+          ./gitleaks detect --source . --no-git -v
 
   dependency-review:
     name: Dependency Review

@@ -27,7 +27,7 @@ func (c *Client) fetchSignedDownload(ctx context.Context, downloadURL string) (*
 		Timeout:   0, // no client-level timeout — streaming owned by caller
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := httpClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 	if err != nil {
 		return nil, fmt.Errorf("failed to download file: %w", err)
 	}
@@ -111,7 +111,7 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 	ctx = contextWithAttempt(ctx, 1)
 	req = req.WithContext(ctx)
 
-	resp, err := apiClient.Do(req)
+	resp, err := apiClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 	if err != nil {
 		return nil, ErrNetwork(err)
 	}
