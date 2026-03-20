@@ -777,14 +777,14 @@ END
 
 ### Required Headers
 
-Every API request (excluding download Hop 2 — the unauthenticated signed URL fetch, see §14) must include:
+Every JSON API request must include all four headers below. Download requests (§14) differ: Hop 1 sends only `Authorization` + `User-Agent` (no `Accept` or `Content-Type` — it's a binary download, not a JSON API call). Hop 2 sends no SDK headers (unauthenticated signed URL fetch).
 
-| Header | Value | Verification |
-|--------|-------|-------------|
-| `Authorization` | `Bearer {token}` (from AuthStrategy) | `[conformance]` |
-| `User-Agent` | `basecamp-sdk-{lang}/{VERSION} (api:{API_VERSION})` | `[conformance]` |
-| `Accept` | `application/json` | `[static]` |
-| `Content-Type` | `application/json` (for requests with a body; preserve if already set for binary uploads). TypeScript and Go set it unconditionally; Swift and Kotlin set it only when a body is present. Either approach is acceptable. | `[conformance]` |
+| Header | Value | Scope | Verification |
+|--------|-------|-------|-------------|
+| `Authorization` | `Bearer {token}` (from AuthStrategy) | All API requests + download Hop 1 | `[conformance]` |
+| `User-Agent` | `basecamp-sdk-{lang}/{VERSION} (api:{API_VERSION})` | All API requests + download Hop 1 | `[conformance]` |
+| `Accept` | `application/json` | JSON API requests only (not download Hop 1) | `[static]` |
+| `Content-Type` | `application/json` (for requests with a body; preserve if already set for binary uploads). TypeScript and Go set it unconditionally; Swift and Kotlin set it only when a body is present. Either approach is acceptable. | JSON API requests only (not download Hop 1) | `[conformance]` |
 
 Where:
 - `{lang}` is the language identifier: `go`, `ts`, `ruby`, `kotlin`, `swift`
